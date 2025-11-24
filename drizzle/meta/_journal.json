@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1763729969141,
+      "tag": "0000_blue_ezekiel_stane",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1763730028325,
+      "tag": "0001_melted_sue_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1763807260150,
+      "tag": "0002_nappy_havok",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1763815403507,
+      "tag": "0003_square_tiger_shark",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1763824158915,
+      "tag": "0004_mature_frightful_four",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1763824558472,
+      "tag": "0005_square_morgan_stark",
+      "breakpoints": true
+    }
+  ]
+}

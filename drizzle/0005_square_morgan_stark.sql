@@ -1,0 +1,2 @@
+ALTER TABLE `jobs` ADD `contactId` int;--> statement-breakpoint
+ALTER TABLE `jobs` ADD CONSTRAINT `jobs_contactId_contacts_id_fk` FOREIGN KEY (`contactId`) REFERENCES `contacts`(`id`) ON DELETE no action ON UPDATE no action;
