@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=mysql://mantodeus:mantodeus_password@db:3306/mantodeus_manager
+      - JWT_SECRET=${JWT_SECRET:-change_this_secret_in_production}
+      - OAUTH_SERVER_URL=https://api.manus.im
+      - VITE_OAUTH_PORTAL_URL=https://portal.manus.im
+      - VITE_APP_ID=${VITE_APP_ID}
+      - VITE_APP_TITLE=Mantodeus Manager
+      - VITE_APP_LOGO=/mantodeus-logo.png
+      - OWNER_OPEN_ID=${OWNER_OPEN_ID}
+      - OWNER_NAME=${OWNER_NAME}
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=mantodeus_manager
+      - MYSQL_USER=mantodeus
+      - MYSQL_PASSWORD=mantodeus_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
