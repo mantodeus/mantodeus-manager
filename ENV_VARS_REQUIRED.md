@@ -1,0 +1,245 @@
+# Required Environment Variables for Infomaniak
+
+## 🔴 CRITICAL: Missing Environment Variables
+
+The "Invalid URL" error you're seeing is caused by **missing environment variables** on Infomaniak.
+
+### Error Details
+```
+TypeError: Invalid URL
+```
+
+This happens when `VITE_OAUTH_PORTAL_URL` or `VITE_APP_ID` are not set, causing `new URL()` to fail.
+
+---
+
+## ✅ Required Environment Variables
+
+You MUST set these in your Infomaniak dashboard:
+
+### 1. OAuth Configuration (REQUIRED)
+
+```bash
+VITE_OAUTH_PORTAL_URL=https://portal.manus.im
+VITE_APP_ID=your_actual_app_id_here
+```
+
+**⚠️ IMPORTANT**: Replace `your_actual_app_id_here` with your real Manus App ID
+
+### 2. Backend OAuth Configuration (REQUIRED)
+
+```bash
+OAUTH_SERVER_URL=https://api.manus.im
+```
+
+### 3. Database Configuration (REQUIRED)
+
+```bash
+DATABASE_URL=mysql://username:password@host:port/database_name
+```
+
+**Example**:
+```bash
+DATABASE_URL=mysql://mantodeus:your_password@localhost:3306/mantodeus_manager
+```
+
+### 4. JWT Secret (REQUIRED)
+
+```bash
+JWT_SECRET=your_random_secret_key_here
+```
+
+Generate a random string (at least 32 characters). Example:
+```bash
+JWT_SECRET=abc123def456ghi789jkl012mno345pqr678stu901vwx234yz
+```
+
+### 5. Application Configuration (OPTIONAL)
+
+```bash
+VITE_APP_TITLE=Mantodeus Manager
+VITE_APP_LOGO=/mantodeus-logo.png
+PORT=3000
+NODE_ENV=production
+```
+
+### 6. Owner Configuration (OPTIONAL)
+
+```bash
+OWNER_OPEN_ID=your_owner_open_id
+OWNER_NAME=Your Name
+```
+
+### 7. S3 Storage (OPTIONAL - for file uploads)
+
+```bash
+S3_ENDPOINT=your_s3_endpoint
+S3_REGION=us-east-1
+S3_BUCKET=mantodeus-manager-files
+S3_ACCESS_KEY_ID=your_access_key
+S3_SECRET_ACCESS_KEY=your_secret_key
+```
+
+---
+
+## 🚀 How to Set Environment Variables on Infomaniak
+
+### Step 1: Go to Environment Variables
+
+1. Log into Infomaniak dashboard
+2. Navigate to your Node.js hosting: `manager.mantodeus.com`
+3. Go to **Configuration** or **Environment Variables** section
+
+### Step 2: Add Each Variable
+
+For each variable above, add:
+- **Name**: (e.g., `VITE_OAUTH_PORTAL_URL`)
+- **Value**: (e.g., `https://portal.manus.im`)
+
+### Step 3: Save and Restart
+
+1. **Save** all environment variables
+2. **Restart** the application or trigger a new deployment
+
+---
+
+## 🔍 Priority Order
+
+Set these in order of importance:
+
+### Priority 1 (CRITICAL - App won't work without these):
+1. ✅ `VITE_OAUTH_PORTAL_URL=https://portal.manus.im`
+2. ✅ `VITE_APP_ID=your_actual_app_id`
+3. ✅ `OAUTH_SERVER_URL=https://api.manus.im`
+4. ✅ `DATABASE_URL=mysql://...`
+5. ✅ `JWT_SECRET=your_random_secret`
+
+### Priority 2 (RECOMMENDED):
+6. ✅ `NODE_ENV=production`
+7. ✅ `PORT=3000`
+8. ✅ `VITE_APP_TITLE=Mantodeus Manager`
+
+### Priority 3 (OPTIONAL):
+9. ⚪ `OWNER_OPEN_ID=...`
+10. ⚪ `OWNER_NAME=...`
+11. ⚪ S3 variables (only if you need file uploads)
+
+---
+
+## 🎯 Quick Copy-Paste Template
+
+Copy this and fill in your actual values:
+
+```bash
+# CRITICAL - Replace with your actual values
+VITE_OAUTH_PORTAL_URL=https://portal.manus.im
+VITE_APP_ID=YOUR_ACTUAL_APP_ID_HERE
+OAUTH_SERVER_URL=https://api.manus.im
+DATABASE_URL=mysql://username:password@host:port/database_name
+JWT_SECRET=YOUR_RANDOM_SECRET_KEY_HERE
+
+# RECOMMENDED
+NODE_ENV=production
+PORT=3000
+VITE_APP_TITLE=Mantodeus Manager
+VITE_APP_LOGO=/mantodeus-logo.png
+
+# OPTIONAL
+OWNER_OPEN_ID=your_owner_open_id
+OWNER_NAME=Your Name
+
+# OPTIONAL - S3 Storage (for file uploads)
+S3_ENDPOINT=your_s3_endpoint
+S3_REGION=us-east-1
+S3_BUCKET=mantodeus-manager-files
+S3_ACCESS_KEY_ID=your_access_key
+S3_SECRET_ACCESS_KEY=your_secret_key
+```
+
+---
+
+## ⚠️ Common Mistakes
+
+### Mistake 1: Not Setting VITE_APP_ID
+```
+❌ VITE_APP_ID=your_app_id
+✅ VITE_APP_ID=abc123def456  (your actual App ID)
+```
+
+### Mistake 2: Wrong DATABASE_URL Format
+```
+❌ DATABASE_URL=localhost:3306
+✅ DATABASE_URL=mysql://user:pass@localhost:3306/dbname
+```
+
+### Mistake 3: Spaces in Values
+```
+❌ JWT_SECRET= my secret key
+✅ JWT_SECRET=mysecretkey
+```
+
+### Mistake 4: Missing Protocol in URLs
+```
+❌ VITE_OAUTH_PORTAL_URL=portal.manus.im
+✅ VITE_OAUTH_PORTAL_URL=https://portal.manus.im
+```
+
+---
+
+## 🔧 After Setting Environment Variables
+
+1. **Save** all variables in Infomaniak dashboard
+2. **Restart** the application:
+   - Either click "Restart" button
+   - Or trigger a new deployment
+3. **Clear browser cache** and reload https://manager.mantodeus.com
+4. The "Invalid URL" error should be gone! ✅
+
+---
+
+## 🆘 Still Getting Errors?
+
+### Check Browser Console
+
+1. Open https://manager.mantodeus.com
+2. Press F12 to open Developer Tools
+3. Go to **Console** tab
+4. Look for error messages
+
+You should see one of these:
+
+**If VITE_APP_ID is missing**:
+```
+Error: OAuth configuration is missing. Please set VITE_APP_ID environment variable.
+```
+
+**If VITE_OAUTH_PORTAL_URL is missing**:
+```
+Error: OAuth configuration is missing. Please set VITE_OAUTH_PORTAL_URL environment variable.
+```
+
+**If both are set correctly**:
+```
+No errors! The app should work.
+```
+
+---
+
+## ✨ Summary
+
+The "Invalid URL" error is caused by missing environment variables. 
+
+**Quick Fix**:
+1. Set `VITE_OAUTH_PORTAL_URL=https://portal.manus.im`
+2. Set `VITE_APP_ID=your_actual_app_id`
+3. Set `OAUTH_SERVER_URL=https://api.manus.im`
+4. Set `DATABASE_URL=mysql://...`
+5. Set `JWT_SECRET=random_secret`
+6. Restart the application
+7. Reload the website
+
+**The error will be fixed!** 🎉
+
+---
+
+**Need your Manus App ID?** Check your Manus account settings or contact Manus support.
