@@ -5,7 +5,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "npm run build:frontend && npm run build:backend",
+    "build": "node build-debug.js",
+    "build:split": "npm run build:frontend && npm run build:backend",
     "build:frontend": "vite build",
     "build:backend": "esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:check": "node build.js",
