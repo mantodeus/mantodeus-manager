@@ -10,126 +10,222 @@ Add these variables to your `.env` file:
 # Infomaniak S3 Configuration
 S3_ENDPOINT=https://s3.pub1.infomaniak.cloud
 S3_REGION=us-east-1
-S3_BUCKET=your-bucket-name
+S3_BUCKET=mantodeus-manager-files
 S3_ACCESS_KEY_ID=your-access-key-id
 S3_SECRET_ACCESS_KEY=your-secret-access-key
 ```
 
-## Architecture
+## Architecture Overview
 
-### Backend Storage (`server/storage.ts`)
+### Why Server-Side Upload?
 
-The storage module provides three main functions:
+Infomaniak S3 does not support configuring CORS via the AWS CLI or API. While the Horizon dashboard has a CORS section, direct browser-to-S3 uploads can still fail. To ensure reliable uploads, we use a **server-side upload pattern**:
 
-1. **`storagePut(key, data, contentType)`** - Direct server-side upload
-   - Used when the server already has file bytes (e.g., base64 conversion)
-   - Uploads directly to S3 using AWS SDK v3
+1. **Browser** → sends base64 file data → **Server**
+2. **Server** → uploads to S3 using AWS SDK → **S3**
 
-2. **`createPresignedUploadUrl(key, contentType)`** - Presigned URL generation
-   - Generates a presigned URL that allows direct browser-to-S3 uploads
-   - Expires in 15 minutes by default
-   - Returns both the upload URL and the public URL
+This bypasses CORS entirely since the S3 request comes from the server, not the browser.
 
-3. **`deleteFromStorage(key)`** - Delete files from S3
-   - Removes files from S3 when records are deleted
-   - Used in both image and invoice deletion flows
+### File Viewing
 
-### Upload Flow
+For viewing files (images, PDFs, documents), we use a **server-side proxy**:
 
-#### Images (Presigned URLs)
+- `/api/image-proxy?key=<fileKey>` - For images (with aggressive caching)
+- `/api/file-proxy?key=<fileKey>&filename=<name>` - For documents (PDFs, etc.)
+- `/api/file-proxy?key=<fileKey>&filename=<name>&download=true` - For downloads
 
-1. Frontend requests presigned URL via `images.getUploadUrl`
-2. Backend generates presigned URL and returns it
-3. Frontend uploads file directly to S3 using the presigned URL
-4. Frontend confirms upload via `images.confirmUpload`
-5. Backend saves metadata to database
+This ensures files work regardless of bucket visibility or CORS settings.
 
-#### Invoices (Presigned URLs)
+## Backend Storage (`server/storage.ts`)
 
-1. Frontend requests presigned URL via `invoices.getUploadUrl`
-2. Backend generates presigned URL and returns it
-3. Frontend uploads file directly to S3 using the presigned URL
-4. Frontend confirms upload via `invoices.confirmUpload`
-5. Backend saves metadata to database
+The storage module provides these main functions:
 
-### File Organization
+### Upload Operations
+
+1. **`storagePut(key, data, contentType)`** - Server-side upload
+   - Accepts Buffer, Uint8Array, or base64 string
+   - Returns `{ key, url, size }`
+   - Primary method for all uploads
+
+2. **`createPresignedUploadUrl(key, contentType)`** - Presigned URL (for future use)
+   - Available if CORS is configured in the future
+   - Returns `{ uploadUrl, key, publicUrl }`
+
+### Read Operations
+
+3. **`storageGet(key)`** - Get file from S3
+   - Returns `{ data: Buffer, contentType, size }`
+   - Used by proxy endpoints
+
+4. **`createPresignedReadUrl(key, expiresIn)`** - Signed read URL
+   - Generates a time-limited URL for direct access
+   - Default: 1 hour expiration
+
+5. **`storageHead(key)`** - Get file metadata
+   - Returns `{ key, size, lastModified, contentType }`
+
+6. **`storageExists(key)`** - Check if file exists
+   - Returns boolean
+
+### List Operations
+
+7. **`storageList(prefix, maxKeys)`** - List files
+   - Returns array of `FileMetadata`
+
+8. **`listJobFiles(jobId)`** - List all files for a job
+   - Combines uploads and invoices
+
+### Delete Operations
+
+9. **`deleteFromStorage(key)`** - Delete single file
+10. **`deleteMultipleFromStorage(keys)`** - Delete multiple files
+
+### Utility Functions
+
+- `generateFileKey(prefix, userId, filename)` - Generate unique file keys
+- `getPublicUrl(key)` - Get public URL (for public buckets)
+- `getContentType(filename)` - Detect content type from extension
+- `isImageFile(filename)` - Check if file is an image
+- `isPdfFile(filename)` - Check if file is a PDF
+
+## API Endpoints
+
+### Images Router (`/api/trpc/images.*`)
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `listByJob` | Query | List images for a job |
+| `listByTask` | Query | List images for a task |
+| `getReadUrl` | Query | Get presigned read URL for an image |
+| `getReadUrls` | Query | Get presigned URLs for multiple images |
+| `upload` | Mutation | **Server-side upload** (base64 data) |
+| `getUploadUrl` | Mutation | Get presigned upload URL (requires CORS) |
+| `confirmUpload` | Mutation | Confirm direct upload |
+| `updateCaption` | Mutation | Update image caption |
+| `delete` | Mutation | Delete image (S3 + DB) |
+
+### Invoices Router (`/api/trpc/invoices.*`)
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `list` | Query | List all invoices |
+| `getByJob` | Query | List invoices for a job |
+| `getByContact` | Query | List invoices for a contact |
+| `getReadUrl` | Query | Get presigned read URL |
+| `upload` | Mutation | **Server-side upload** (base64 data) |
+| `getUploadUrl` | Mutation | Get presigned upload URL (requires CORS) |
+| `confirmUpload` | Mutation | Confirm direct upload |
+| `delete` | Mutation | Delete invoice (S3 + DB) |
+
+### Files Router (`/api/trpc/files.*`)
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `listByJob` | Query | List all files for a job (images + invoices) |
+| `getReadUrls` | Query | Get presigned URLs for multiple files |
+| `delete` | Mutation | Delete file by type |
+| `listS3` | Query | List raw S3 objects (admin) |
+
+### Proxy Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/image-proxy` | GET | Proxy images from S3 (1 year cache) |
+| `/api/file-proxy` | GET | Proxy files from S3 (1 hour cache) |
+
+## File Organization
 
 Files are organized in S3 with the following structure:
 
 ```
-uploads/
-  {userId}/
-    {timestamp}-{random}-{filename}  # Images
-invoices/
-  {userId}/
-    {timestamp}-{filename}            # Invoices
+mantodeus-manager-files/
+├── uploads/
+│   └── {userId}/
+│       └── {timestamp}-{random}-{filename}   # Images
+└── invoices/
+    └── {userId}/
+        └── {timestamp}-{random}-{filename}   # Documents
 ```
 
-## CORS Configuration
+## Upload Flow (Current Implementation)
 
-For Infomaniak S3 to accept direct browser uploads, you need to configure CORS on your bucket.
+### Images
 
-### Required CORS Settings
-
-In your Infomaniak Object Storage bucket settings, add the following CORS configuration:
-
-```json
-[
-  {
-    "AllowedOrigins": [
-      "https://manager.mantodeus.com",
-      "http://localhost:3000",
-      "http://localhost:5173"
-    ],
-    "AllowedMethods": [
-      "GET",
-      "PUT",
-      "POST",
-      "DELETE",
-      "HEAD"
-    ],
-    "AllowedHeaders": [
-      "*"
-    ],
-    "ExposeHeaders": [
-      "ETag",
-      "x-amz-request-id"
-    ],
-    "MaxAgeSeconds": 3600
-  }
-]
+```
+1. User selects image file
+2. Frontend converts file to base64
+3. Frontend calls images.upload mutation with base64 data
+4. Backend decodes base64 and uploads to S3
+5. Backend saves metadata to database
+6. Frontend refreshes image list
 ```
 
-### How to Configure CORS in Infomaniak
+### Invoices
 
-**Note:** Infomaniak's S3-compatible API does not support CORS configuration via AWS CLI. You must configure CORS through the Infomaniak web interface:
+```
+1. User selects document file
+2. Frontend converts file to base64
+3. Frontend calls invoices.upload mutation with base64 data
+4. Backend decodes base64 and uploads to S3
+5. Backend saves metadata to database
+6. Frontend refreshes invoice list
+```
 
-1. Log in to your Infomaniak account
-2. Navigate to **Object Storage** → **Your Bucket** (`mantodeus-manager-files`)
-3. Go to the **"CORS"** or **"Permissions"** section
-4. Add the CORS configuration above (as JSON)
-5. Save the changes
+## Database Schema
 
-**Note:** Replace `https://manager.mantodeus.com` with your actual production domain, and add any other development domains you use.
+### Images Table
 
-**Alternative:** If the web interface uses a different format, you can also try configuring CORS through the Infomaniak control panel's Object Storage settings.
+```sql
+CREATE TABLE images (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  jobId INT,
+  taskId INT,
+  fileKey VARCHAR(500) NOT NULL,
+  url TEXT NOT NULL,
+  filename VARCHAR(255),
+  mimeType VARCHAR(100),
+  fileSize INT,
+  caption TEXT,
+  uploadedBy INT NOT NULL,
+  createdAt TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Invoices Table
+
+```sql
+CREATE TABLE invoices (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  filename VARCHAR(255) NOT NULL,
+  fileKey VARCHAR(500) NOT NULL,
+  fileSize INT,
+  mimeType VARCHAR(100),
+  jobId INT,
+  contactId INT,
+  uploadDate TIMESTAMP,
+  uploadedBy INT NOT NULL,
+  createdAt TIMESTAMP DEFAULT NOW()
+);
+```
 
 ## Error Handling
 
 All S3 operations include comprehensive error handling:
 
-- **Upload failures**: Logged to console, error message returned to client
-- **Delete failures**: Logged to console, but database deletion continues (prevents orphaned DB records)
-- **Missing configuration**: Clear error messages guide setup
+- **Upload failures**: Clear error messages with details
+- **Delete failures**: Logged, but database deletion continues (prevents orphaned records)
+- **Missing configuration**: Lists missing environment variables
+- **Network errors**: Properly wrapped with context
 
 ## Development vs Production
 
-The same S3 configuration works in both environments. The only difference is:
+The same code works in both environments. The key differences:
 
-- **Development**: Uses `http://localhost:3000` or `http://localhost:5173` in CORS
-- **Production**: Uses your production domain in CORS
-
-Make sure both are included in your CORS configuration.
+| Aspect | Development | Production |
+|--------|-------------|------------|
+| S3 Credentials | From `.env` | From Infomaniak dashboard |
+| File Access | Via proxy endpoints | Via proxy endpoints |
+| Cache Duration | Same | Same |
 
 ## Testing
 
@@ -139,7 +235,15 @@ Make sure both are included in your CORS configuration.
 2. Navigate to a job detail page
 3. Upload an image
 4. Verify the image appears in the gallery
-5. Check browser network tab to confirm direct S3 upload
+5. Check browser network tab - should see `/api/trpc/images.upload` mutation
+
+### Test Invoice Upload
+
+1. Navigate to Invoices page
+2. Click "Upload Invoice"
+3. Select a PDF file
+4. Verify it appears in the list
+5. Click View to open in new tab
 
 ### Test Delete Flow
 
@@ -156,41 +260,45 @@ Make sure both are included in your CORS configuration.
 - Verify S3 credentials are correct
 - Check bucket name matches exactly
 - Ensure bucket exists and is accessible
+- Test with AWS CLI: `aws s3 ls s3://mantodeus-manager-files --profile infomaniak --endpoint-url https://s3.pub1.infomaniak.cloud`
 
-### CORS Errors in Browser
+### Images Not Loading
 
-- Verify CORS configuration includes your domain
-- Check that `AllowedMethods` includes `PUT` (for presigned uploads)
-- Ensure `AllowedHeaders` includes `*` or specific headers needed
-- Clear browser cache and try again
+- Check browser console for 500 errors on `/api/image-proxy`
+- Verify the `fileKey` in database is correct
+- Test the proxy URL directly in browser
+- Check server logs for S3 errors
 
-### Files Not Appearing After Upload
+### Large File Uploads Failing
 
-- Check browser console for errors
-- Verify presigned URL hasn't expired (15 minutes)
-- Check S3 bucket to see if file was uploaded
-- Verify database record was created
+- Current limit: 10MB (enforced on frontend)
+- Server body limit: 50mb (in express config)
+- For larger files, consider chunked uploads
 
 ### Delete Not Working
 
 - Check S3 bucket permissions (delete access)
 - Verify `fileKey` is stored correctly in database
 - Check server logs for S3 delete errors
-- Note: Database record is deleted even if S3 delete fails (prevents orphaned records)
+- Note: Database record is deleted even if S3 delete fails
 
 ## Security Considerations
 
-1. **Presigned URLs**: Expire after 15 minutes for security
-2. **File Keys**: Include user ID to prevent unauthorized access
-3. **Content Types**: Validated on both client and server
-4. **File Size Limits**: Enforced on client (10MB for images, configurable for invoices)
+1. **File Keys**: Include user ID to organize files
+2. **Content Types**: Validated on frontend
+3. **File Size Limits**: 10MB enforced on client
+4. **Proxy Caching**: Images cached for 1 year, documents for 1 hour
+5. **No Direct S3 Access**: All access through server proxy
 
-## Migration Notes
+## AWS CLI Commands (for debugging)
 
-If migrating from the old storage system:
+```bash
+# List bucket contents
+aws s3 ls s3://mantodeus-manager-files --profile infomaniak --endpoint-url https://s3.pub1.infomaniak.cloud
 
-1. Existing files in the old system will continue to work via the image proxy
-2. New uploads will use the new S3 system
-3. Old file keys will remain in the database
-4. Consider a migration script to move old files to S3 if needed
+# Upload a test file
+aws s3 cp test.jpg s3://mantodeus-manager-files/test.jpg --profile infomaniak --endpoint-url https://s3.pub1.infomaniak.cloud
 
+# Delete a file
+aws s3 rm s3://mantodeus-manager-files/uploads/1/example.jpg --profile infomaniak --endpoint-url https://s3.pub1.infomaniak.cloud
+```

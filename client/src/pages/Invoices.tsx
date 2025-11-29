@@ -2,26 +2,44 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Trash2, Upload, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { FileText, Plus, Trash2, Upload, ExternalLink, Eye, Download } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
+
+// Convert file to base64
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Remove the data:mime/type;base64, prefix
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+}
 
 export default function Invoices() {
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string>("");
+  const [selectedContactId, setSelectedContactId] = useState<string>("");
   const [jobFilter, setJobFilter] = useState<string>("");
   const [contactFilter, setContactFilter] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
-  const getUploadUrl = trpc.invoices.getUploadUrl.useMutation();
-  const confirmUpload = trpc.invoices.confirmUpload.useMutation();
+  const uploadMutation = trpc.invoices.upload.useMutation();
   const deleteMutation = trpc.invoices.delete.useMutation();
 
   const filteredInvoices = invoices.filter((invoice) => {
@@ -31,8 +49,26 @@ export default function Invoices() {
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSelectedFile(e.target.files[0]);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      // Validate file type
+      const allowedTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Please select a valid document file (PDF, DOC, DOCX, XLS, XLSX)");
+        return;
+      }
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("File size must be less than 10MB");
+        return;
+      }
+      setSelectedFile(file);
     }
   };
 
@@ -44,42 +80,27 @@ export default function Invoices() {
 
     setIsUploading(true);
     try {
-      // Step 1: request presigned URL from backend
-      const { uploadUrl, fileKey, publicUrl } = await getUploadUrl.mutateAsync({
+      // Convert file to base64
+      const base64Data = await fileToBase64(selectedFile);
+
+      // Upload via server (bypasses CORS)
+      await uploadMutation.mutateAsync({
         filename: selectedFile.name,
         mimeType: selectedFile.type || "application/octet-stream",
-      });
-
-      // Step 2: upload file to S3
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": selectedFile.type || "application/octet-stream",
-        },
-        body: selectedFile,
-      });
-
-      if (!uploadResponse.ok) {
-        const message = await uploadResponse.text().catch(() => uploadResponse.statusText);
-        throw new Error(`Upload failed: ${uploadResponse.status} ${message}`);
-      }
-
-      // Step 3: confirm upload and save invoice metadata
-      await confirmUpload.mutateAsync({
-        filename: selectedFile.name,
-        fileKey,
-        url: publicUrl,
         fileSize: selectedFile.size,
-        mimeType: selectedFile.type || "application/octet-stream",
-        jobId: jobFilter ? parseInt(jobFilter) : undefined,
-        contactId: contactFilter ? parseInt(contactFilter) : undefined,
+        base64Data,
+        jobId: selectedJobId ? parseInt(selectedJobId) : undefined,
+        contactId: selectedContactId ? parseInt(selectedContactId) : undefined,
       });
 
       toast.success("Invoice uploaded successfully");
       setSelectedFile(null);
-      setJobFilter("");
-      setContactFilter("");
+      setSelectedJobId("");
+      setSelectedContactId("");
       setIsDialogOpen(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       refetch();
     } catch (error) {
       console.error(error);
@@ -110,13 +131,56 @@ export default function Invoices() {
     });
   };
 
-  const handleOpenInvoice = (filename: string) => {
-    // Simple approach: Open in new tab or download
-    // Since we don't have actual file URLs, we'll show a toast for now
-    toast.info(`Opening ${filename}...`);
-    // In production, you would open the actual file URL:
-    // window.open(fileUrl, '_blank');
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return "Unknown size";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
+
+  // Component to handle viewing invoice via file proxy (bypasses CORS)
+  function InvoiceViewButton({ fileKey, filename }: { fileKey: string; filename: string }) {
+    // Use file proxy instead of presigned URLs (CORS-free)
+    const viewUrl = `/api/file-proxy?key=${encodeURIComponent(fileKey)}&filename=${encodeURIComponent(filename)}`;
+    const downloadUrl = `/api/file-proxy?key=${encodeURIComponent(fileKey)}&filename=${encodeURIComponent(filename)}&download=true`;
+
+    const handleView = () => {
+      window.open(viewUrl, "_blank");
+    };
+
+    const handleDownload = () => {
+      // Create a link and trigger download
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    return (
+      <div className="flex gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-[#00ff88] hover:text-[#00dd77]"
+          onClick={handleView}
+          title="View"
+        >
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-blue-400 hover:text-blue-300"
+          onClick={handleDownload}
+          title="Download"
+        >
+          <Download className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -139,8 +203,9 @@ export default function Invoices() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Select File *</label>
-                <div className="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center">
+                <div className="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center hover:border-[#00ff88] transition-colors">
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept=".pdf,.doc,.docx,.xls,.xlsx"
                     onChange={handleFileChange}
@@ -150,7 +215,14 @@ export default function Invoices() {
                   <label htmlFor="file-input" className="cursor-pointer">
                     <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                     <p className="text-sm text-gray-400">
-                      {selectedFile ? selectedFile.name : "Click to select or drag and drop"}
+                      {selectedFile ? (
+                        <span className="text-[#00ff88]">{selectedFile.name}</span>
+                      ) : (
+                        "Click to select or drag and drop"
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      PDF, DOC, DOCX, XLS, XLSX up to 10MB
                     </p>
                   </label>
                 </div>
@@ -158,7 +230,10 @@ export default function Invoices() {
 
               <div>
                 <label className="block text-sm font-medium mb-2">Link to Job (optional)</label>
-                <Select value={jobFilter || "none"} onValueChange={(val) => setJobFilter(val === "none" ? "" : val)}>
+                <Select 
+                  value={selectedJobId || "none"} 
+                  onValueChange={(val) => setSelectedJobId(val === "none" ? "" : val)}
+                >
                   <SelectTrigger className="bg-gray-900 border-gray-700">
                     <SelectValue placeholder="Select a job..." />
                   </SelectTrigger>
@@ -181,7 +256,10 @@ export default function Invoices() {
 
               <div>
                 <label className="block text-sm font-medium mb-2">Link to Contact (optional)</label>
-                <Select value={contactFilter || "none"} onValueChange={(val) => setContactFilter(val === "none" ? "" : val)}>
+                <Select 
+                  value={selectedContactId || "none"} 
+                  onValueChange={(val) => setSelectedContactId(val === "none" ? "" : val)}
+                >
                   <SelectTrigger className="bg-gray-900 border-gray-700">
                     <SelectValue placeholder="Select a contact..." />
                   </SelectTrigger>
@@ -278,21 +356,23 @@ export default function Invoices() {
                   <div className="flex items-start gap-3 flex-1">
                     <FileText className="w-5 h-5 text-[#00ff88] mt-1 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <h3 
-                        className="font-regular text-lg cursor-pointer hover:text-[#00ff88] transition-colors truncate"
-                        onClick={() => handleOpenInvoice(invoice.filename)}
-                      >
+                      <h3 className="font-regular text-lg truncate" title={invoice.filename}>
                         {invoice.filename}
                       </h3>
-                      <p className="text-gray-400 text-xs">{formatDate(invoice.createdAt)}</p>
+                      <p className="text-gray-400 text-xs">
+                        {formatDate(invoice.createdAt)} • {formatFileSize(invoice.fileSize)}
+                      </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDelete(invoice.id)}
-                    className="text-red-500 hover:text-red-400 transition-colors flex-shrink-0 ml-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <InvoiceViewButton fileKey={invoice.fileKey} filename={invoice.filename} />
+                    <button
+                      onClick={() => handleDelete(invoice.id)}
+                      className="text-red-500 hover:text-red-400 transition-colors flex-shrink-0 p-1.5"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2 text-sm text-gray-400">
@@ -318,18 +398,12 @@ export default function Invoices() {
                         size="sm" 
                         className="h-6 px-2 text-[#00ff88] hover:text-[#00dd77]"
                         onClick={() => {
-                          // Open contacts page and trigger edit for this contact
                           window.location.href = '/contacts';
                         }}
                       >
                         <ExternalLink className="h-3 w-3" />
                       </Button>
                     </div>
-                  )}
-                  {invoice.fileSize && (
-                    <p className="text-xs text-gray-500">
-                      Size: {(invoice.fileSize / 1024).toFixed(2)} KB
-                    </p>
                   )}
                 </div>
               </Card>

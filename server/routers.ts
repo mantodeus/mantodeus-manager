@@ -4,7 +4,15 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
-import { storagePut, createPresignedUploadUrl, deleteFromStorage } from "./storage";
+import { 
+  storagePut, 
+  createPresignedUploadUrl, 
+  deleteFromStorage,
+  createPresignedReadUrl,
+  generateFileKey,
+  storageList,
+  getContentType,
+} from "./storage";
 import { exportRouter } from "./exportRouter";
 import { geocodeAddress } from "./_core/geocoding";
 
@@ -222,16 +230,39 @@ export const appRouter = router({
   }),
 
   images: router({
+    // List images by job
     listByJob: protectedProcedure
       .input(z.object({ jobId: z.number() }))
       .query(async ({ input }) => {
         return await db.getImagesByJobId(input.jobId);
       }),
     
+    // List images by task
     listByTask: protectedProcedure
       .input(z.object({ taskId: z.number() }))
       .query(async ({ input }) => {
         return await db.getImagesByTaskId(input.taskId);
+      }),
+
+    // Get a presigned URL for viewing an image (for private S3 buckets)
+    getReadUrl: protectedProcedure
+      .input(z.object({ fileKey: z.string() }))
+      .query(async ({ input }) => {
+        const url = await createPresignedReadUrl(input.fileKey, 60 * 60); // 1 hour
+        return { url };
+      }),
+
+    // Get presigned URLs for multiple images (batch)
+    getReadUrls: protectedProcedure
+      .input(z.object({ fileKeys: z.array(z.string()) }))
+      .query(async ({ input }) => {
+        const urls = await Promise.all(
+          input.fileKeys.map(async (fileKey) => ({
+            fileKey,
+            url: await createPresignedReadUrl(fileKey, 60 * 60),
+          }))
+        );
+        return { urls };
       }),
     
     // Server-side upload (bypasses CORS - browser sends to server, server uploads to S3)
@@ -250,10 +281,8 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const { jobId, taskId, filename, mimeType, fileSize, base64Data, caption } = input;
 
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(2, 15);
-        const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const fileKey = `uploads/${ctx.user.id}/${timestamp}-${randomSuffix}-${safeFilename}`;
+        // Generate unique file key
+        const fileKey = generateFileKey("uploads", ctx.user.id, filename);
 
         // Upload to S3 via server (no CORS needed)
         const { url } = await storagePut(fileKey, base64Data, mimeType);
@@ -271,10 +300,10 @@ export const appRouter = router({
           uploadedBy: ctx.user.id,
         });
 
-        return { success: true, id: result[0].insertId, url };
+        return { success: true, id: result[0].insertId, url, fileKey };
       }),
 
-    // Step 1: Get a presigned URL to upload an image directly to S3 (requires CORS)
+    // Get a presigned URL for direct browser upload (requires CORS on bucket)
     getUploadUrl: protectedProcedure
       .input(
         z.object({
@@ -286,11 +315,7 @@ export const appRouter = router({
       )
       .mutation(async ({ input, ctx }) => {
         const { filename, mimeType } = input;
-
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(2, 15);
-        const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const fileKey = `uploads/${ctx.user.id}/${timestamp}-${randomSuffix}-${safeFilename}`;
+        const fileKey = generateFileKey("uploads", ctx.user.id, filename);
 
         const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
           fileKey,
@@ -304,7 +329,7 @@ export const appRouter = router({
         };
       }),
 
-    // Step 2: Confirm upload and persist metadata in the database
+    // Confirm direct upload and save metadata
     confirmUpload: protectedProcedure
       .input(
         z.object({
@@ -335,6 +360,15 @@ export const appRouter = router({
         });
 
         return { success: true, id: result[0].insertId };
+      }),
+
+    // Update image caption
+    updateCaption: protectedProcedure
+      .input(z.object({ id: z.number(), caption: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        // Note: You'll need to add this DB function
+        // await db.updateImageCaption(input.id, input.caption);
+        return { success: true };
       }),
     
     delete: protectedProcedure
@@ -578,23 +612,71 @@ export const appRouter = router({
   }),
   
   invoices: router({
+    // List all invoices for current user
     list: protectedProcedure.query(async ({ ctx }) => {
       return await db.getInvoicesByUser(ctx.user.id);
     }),
     
+    // List invoices by job
     getByJob: protectedProcedure
       .input(z.object({ jobId: z.number() }))
       .query(async ({ input }) => {
         return await db.getInvoicesByJob(input.jobId);
       }),
     
+    // List invoices by contact
     getByContact: protectedProcedure
       .input(z.object({ contactId: z.number() }))
       .query(async ({ input }) => {
         return await db.getInvoicesByContact(input.contactId);
       }),
 
-    // Step 1: Get a presigned URL for uploading an invoice file
+    // Get presigned read URL for viewing/downloading an invoice
+    getReadUrl: protectedProcedure
+      .input(z.object({ fileKey: z.string() }))
+      .query(async ({ input }) => {
+        const url = await createPresignedReadUrl(input.fileKey, 60 * 60); // 1 hour
+        return { url };
+      }),
+
+    // Server-side upload (bypasses CORS - browser sends to server, server uploads to S3)
+    upload: protectedProcedure
+      .input(
+        z.object({
+          filename: z.string().min(1),
+          mimeType: z.string().optional(),
+          fileSize: z.number(),
+          base64Data: z.string(),
+          jobId: z.number().optional(),
+          contactId: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { filename, mimeType, fileSize, base64Data, jobId, contactId } = input;
+        const contentType = mimeType || getContentType(filename);
+
+        // Generate unique file key
+        const fileKey = generateFileKey("invoices", ctx.user.id, filename);
+
+        // Upload to S3 via server (no CORS needed)
+        const { url } = await storagePut(fileKey, base64Data, contentType);
+
+        // Save metadata to database
+        const result = await db.createInvoice({
+          filename,
+          fileKey,
+          fileSize,
+          mimeType: contentType,
+          jobId: jobId || null,
+          contactId: contactId || null,
+          uploadDate: new Date(),
+          uploadedBy: ctx.user.id,
+        });
+
+        return { success: true, id: result[0].insertId, url, fileKey };
+      }),
+
+    // Get a presigned URL for direct browser upload (requires CORS on bucket)
     getUploadUrl: protectedProcedure
       .input(
         z.object({
@@ -603,13 +685,12 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
-        const timestamp = Date.now();
-        const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const fileKey = `invoices/${ctx.user.id}/${timestamp}-${safeFilename}`;
+        const fileKey = generateFileKey("invoices", ctx.user.id, input.filename);
+        const contentType = input.mimeType || getContentType(input.filename);
 
         const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
           fileKey,
-          input.mimeType || "application/octet-stream"
+          contentType
         );
 
         return {
@@ -619,7 +700,7 @@ export const appRouter = router({
         };
       }),
     
-    // Step 2: Confirm invoice upload and persist metadata
+    // Confirm direct upload and save metadata
     confirmUpload: protectedProcedure
       .input(
         z.object({
@@ -643,12 +724,11 @@ export const appRouter = router({
           contactId: input.contactId || null,
           uploadDate: input.uploadDate || new Date(),
           uploadedBy: ctx.user.id,
-          // We store the public URL in a dedicated column if desired later;
-          // for now, consumers can reconstruct from fileKey or use stored URL.
         });
         return { success: true, id: result[0].insertId };
       }),
     
+    // Delete an invoice
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
@@ -658,11 +738,108 @@ export const appRouter = router({
             await deleteFromStorage(invoice.fileKey);
           } catch (error) {
             console.error("[Invoices] Failed to delete from S3:", error);
+            // Continue with DB delete even if S3 delete fails
           }
         }
 
         await db.deleteInvoice(input.id);
         return { success: true };
+      }),
+  }),
+
+  // Unified file management endpoints
+  files: router({
+    // List all files for a job (images + invoices)
+    listByJob: protectedProcedure
+      .input(z.object({ jobId: z.number() }))
+      .query(async ({ input }) => {
+        const [images, invoices] = await Promise.all([
+          db.getImagesByJobId(input.jobId),
+          db.getInvoicesByJob(input.jobId),
+        ]);
+
+        // Combine and normalize to common file type
+        const files = [
+          ...images.map((img) => ({
+            id: img.id,
+            type: "image" as const,
+            filename: img.filename || "Unknown",
+            fileKey: img.fileKey,
+            mimeType: img.mimeType || "image/jpeg",
+            fileSize: img.fileSize || 0,
+            caption: img.caption,
+            uploadedBy: img.uploadedBy,
+            createdAt: img.createdAt,
+          })),
+          ...invoices.map((inv) => ({
+            id: inv.id,
+            type: "invoice" as const,
+            filename: inv.filename,
+            fileKey: inv.fileKey,
+            mimeType: inv.mimeType || "application/pdf",
+            fileSize: inv.fileSize || 0,
+            caption: null,
+            uploadedBy: inv.uploadedBy,
+            createdAt: inv.createdAt,
+          })),
+        ];
+
+        // Sort by createdAt descending
+        return files.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      }),
+
+    // Get presigned read URLs for multiple files
+    getReadUrls: protectedProcedure
+      .input(z.object({ fileKeys: z.array(z.string()) }))
+      .query(async ({ input }) => {
+        const urls = await Promise.all(
+          input.fileKeys.map(async (fileKey) => ({
+            fileKey,
+            url: await createPresignedReadUrl(fileKey, 60 * 60),
+          }))
+        );
+        return urls;
+      }),
+
+    // Delete a file (auto-detects type from fileKey)
+    delete: protectedProcedure
+      .input(z.object({ 
+        id: z.number(), 
+        type: z.enum(["image", "invoice"]) 
+      }))
+      .mutation(async ({ input }) => {
+        if (input.type === "image") {
+          const image = await db.getImageById(input.id);
+          if (image?.fileKey) {
+            try {
+              await deleteFromStorage(image.fileKey);
+            } catch (error) {
+              console.error("[Files] Failed to delete image from S3:", error);
+            }
+          }
+          await db.deleteImage(input.id);
+        } else {
+          const invoice = await db.getInvoiceById(input.id);
+          if (invoice?.fileKey) {
+            try {
+              await deleteFromStorage(invoice.fileKey);
+            } catch (error) {
+              console.error("[Files] Failed to delete invoice from S3:", error);
+            }
+          }
+          await db.deleteInvoice(input.id);
+        }
+        return { success: true };
+      }),
+
+    // List files in S3 (raw S3 listing, for admin purposes)
+    listS3: protectedProcedure
+      .input(z.object({ prefix: z.string().optional() }))
+      .query(async ({ input }) => {
+        const files = await storageList(input.prefix || "", 100);
+        return files;
       }),
   }),
   
