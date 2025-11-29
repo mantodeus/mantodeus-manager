@@ -1,6 +1,6 @@
 // Service Worker for Mantodeus Manager PWA
 // Version number - increment this to force update
-const VERSION = 'v2.0.0';
+const VERSION = 'v3.0.0'; // Updated for S3 refactor
 const CACHE_NAME = `mantodeus-${VERSION}`;
 const RUNTIME_CACHE = `mantodeus-runtime-${VERSION}`;
 
@@ -51,8 +51,18 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip cross-origin requests
+  // Skip cross-origin requests (including S3 uploads)
   if (url.origin !== location.origin) {
+    return;
+  }
+
+  // Never cache POST, PUT, DELETE, PATCH requests (mutations)
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method)) {
+    return; // Let browser handle directly, no caching
+  }
+
+  // Never cache OPTIONS requests (CORS preflight)
+  if (request.method === 'OPTIONS') {
     return;
   }
 
@@ -60,8 +70,8 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Clone and cache successful responses
-        if (response && response.ok) {
+        // Only cache GET requests for static assets and API responses
+        if (response && response.ok && request.method === 'GET') {
           const responseClone = response.clone();
           const cacheName = url.pathname.startsWith('/api/') ? RUNTIME_CACHE : CACHE_NAME;
           caches.open(cacheName).then((cache) => {
@@ -71,21 +81,25 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Only fallback to cache if network fails
-        console.log(`[SW ${VERSION}] Network failed, trying cache for: ${url.pathname}`);
-        return caches.match(request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Return offline page or error
-          return new Response('Offline - content not available', {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: new Headers({
-              'Content-Type': 'text/plain',
-            }),
+        // Only fallback to cache if network fails (and it's a GET request)
+        if (request.method === 'GET') {
+          console.log(`[SW ${VERSION}] Network failed, trying cache for: ${url.pathname}`);
+          return caches.match(request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // Return offline page or error
+            return new Response('Offline - content not available', {
+              status: 503,
+              statusText: 'Service Unavailable',
+              headers: new Headers({
+                'Content-Type': 'text/plain',
+              }),
+            });
           });
-        });
+        }
+        // For non-GET requests, just let them fail
+        throw new Error('Network request failed');
       })
   );
 });
