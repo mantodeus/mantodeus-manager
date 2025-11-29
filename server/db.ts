@@ -586,3 +586,176 @@ export async function deleteLocation(id: number) {
   if (!db) throw new Error("Database not available");
   return db.delete(locations).where(eq(locations.id, id));
 }
+
+// ===== EXPORT/IMPORT DATA QUERIES =====
+
+export async function getAllJobsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(jobs).where(eq(jobs.createdBy, userId));
+}
+
+export async function getAllTasksByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(tasks).where(eq(tasks.createdBy, userId));
+}
+
+export async function getAllCommentsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(comments).where(eq(comments.createdBy, userId));
+}
+
+export async function getAllReportsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reports).where(eq(reports.createdBy, userId));
+}
+
+export async function getAllJobDatesByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get job dates for jobs created by this user
+  return db.select({
+    id: jobDates.id,
+    jobId: jobDates.jobId,
+    date: jobDates.date,
+    createdAt: jobDates.createdAt,
+  }).from(jobDates)
+    .innerJoin(jobs, eq(jobDates.jobId, jobs.id))
+    .where(eq(jobs.createdBy, userId));
+}
+
+export async function getAllJobContactsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get job contacts for jobs created by this user
+  return db.select({
+    id: jobContacts.id,
+    jobId: jobContacts.jobId,
+    contactId: jobContacts.contactId,
+    role: jobContacts.role,
+    createdAt: jobContacts.createdAt,
+  }).from(jobContacts)
+    .innerJoin(jobs, eq(jobContacts.jobId, jobs.id))
+    .where(eq(jobs.createdBy, userId));
+}
+
+// Bulk insert functions for import
+export async function bulkCreateJobs(jobsData: InsertJob[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (jobsData.length === 0) return [];
+  
+  const results = [];
+  for (const job of jobsData) {
+    const result = await db.insert(jobs).values(job);
+    results.push(result);
+  }
+  return results;
+}
+
+export async function bulkCreateTasks(tasksData: InsertTask[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (tasksData.length === 0) return [];
+  
+  const results = [];
+  for (const task of tasksData) {
+    const result = await db.insert(tasks).values(task);
+    results.push(result);
+  }
+  return results;
+}
+
+export async function bulkCreateContacts(contactsData: InsertContact[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (contactsData.length === 0) return [];
+  
+  const results = [];
+  for (const contact of contactsData) {
+    const result = await db.insert(contacts).values(contact);
+    results.push(result);
+  }
+  return results;
+}
+
+export async function bulkCreateNotes(notesData: InsertNote[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (notesData.length === 0) return [];
+  
+  const results = [];
+  for (const note of notesData) {
+    const result = await db.insert(notes).values(note);
+    results.push(result);
+  }
+  return results;
+}
+
+export async function bulkCreateLocations(locationsData: InsertLocation[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (locationsData.length === 0) return [];
+  
+  const results = [];
+  for (const location of locationsData) {
+    const result = await db.insert(locations).values(location);
+    results.push(result);
+  }
+  return results;
+}
+
+export async function bulkCreateComments(commentsData: InsertComment[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (commentsData.length === 0) return [];
+  
+  const results = [];
+  for (const comment of commentsData) {
+    const result = await db.insert(comments).values(comment);
+    results.push(result);
+  }
+  return results;
+}
+
+export async function bulkCreateReports(reportsData: InsertReport[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (reportsData.length === 0) return [];
+  
+  const results = [];
+  for (const report of reportsData) {
+    const result = await db.insert(reports).values(report);
+    results.push(result);
+  }
+  return results;
+}
+
+export async function bulkCreateJobDates(jobDatesData: InsertJobDate[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (jobDatesData.length === 0) return [];
+  
+  const results = [];
+  for (const jobDate of jobDatesData) {
+    const result = await db.insert(jobDates).values(jobDate);
+    results.push(result);
+  }
+  return results;
+}
+
+export async function bulkCreateJobContacts(jobContactsData: { jobId: number; contactId: number; role?: string }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (jobContactsData.length === 0) return [];
+  
+  const results = [];
+  for (const jc of jobContactsData) {
+    const result = await db.insert(jobContacts).values(jc);
+    results.push(result);
+  }
+  return results;
+}
