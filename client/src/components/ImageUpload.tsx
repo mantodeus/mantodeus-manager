@@ -12,14 +12,30 @@ interface ImageUploadProps {
   taskId?: number;
 }
 
+// Convert file to base64
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Remove the data:image/xxx;base64, prefix
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
-  const getUploadUrl = trpc.images.getUploadUrl.useMutation();
-  const confirmUpload = trpc.images.confirmUpload.useMutation({
+  
+  // Server-side upload (bypasses CORS - no direct S3 access from browser)
+  const uploadImage = trpc.images.upload.useMutation({
     onSuccess: () => {
       toast.success("Image uploaded successfully");
       if (jobId) {
@@ -35,7 +51,7 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
       setUploading(false);
     },
     onError: (error) => {
-      toast.error("Failed to save image metadata: " + error.message);
+      toast.error("Upload failed: " + error.message);
       setUploading(false);
     },
   });
@@ -59,37 +75,17 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
     setUploading(true);
 
     try {
-      // Step 1: ask the server for a presigned upload URL
-      const { uploadUrl, fileKey, publicUrl } = await getUploadUrl.mutateAsync({
+      // Convert file to base64
+      const base64Data = await fileToBase64(file);
+
+      // Upload via server (server uploads to S3, no CORS needed)
+      await uploadImage.mutateAsync({
         jobId,
         taskId,
-        filename: file.name,
-        mimeType: file.type,
-      });
-
-      // Step 2: upload directly to S3 using the presigned URL
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type,
-        },
-        body: file,
-      });
-
-      if (!uploadResponse.ok) {
-        const message = await uploadResponse.text().catch(() => uploadResponse.statusText);
-        throw new Error(`Upload failed: ${uploadResponse.status} ${message}`);
-      }
-
-      // Step 3: confirm upload and save metadata in our database
-      await confirmUpload.mutateAsync({
-        jobId,
-        taskId,
-        fileKey,
-        url: publicUrl,
         filename: file.name,
         mimeType: file.type,
         fileSize: file.size,
+        base64Data,
         caption: caption.trim() || undefined,
       });
     } catch (error) {
