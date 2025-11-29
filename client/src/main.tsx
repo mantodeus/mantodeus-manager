@@ -6,7 +6,41 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
+import { supabase } from "./lib/supabase";
 import "./index.css";
+
+// Handle Supabase session and sync with server
+supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log("[Auth] Auth state changed:", event, session ? "has session" : "no session");
+  
+  if (session?.access_token && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) {
+    console.log("[Auth] Syncing session with server...");
+    // Send access token to server to set as cookie
+    try {
+      const response = await fetch("/api/auth/callback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ access_token: session.access_token }),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        console.error("[Auth] Callback failed:", response.status, errorData);
+        // Don't throw - allow login to continue even if callback fails
+        // The user can still use the app, just might need to refresh
+      } else {
+        const data = await response.json();
+        console.log("[Auth] Session synced successfully:", data);
+      }
+    } catch (error) {
+      console.error("[Auth] Failed to sync session with server:", error);
+      // Don't block login - this is a background sync
+    }
+  }
+});
 
 const queryClient = new QueryClient();
 

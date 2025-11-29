@@ -13,10 +13,12 @@ import Contacts from "./pages/Contacts";
 import Invoices from "./pages/Invoices";
 import Notes from "./pages/Notes";
 import Maps from "./pages/Maps";
+import Login from "./pages/Login";
 
 function Router() {
   return (
     <Switch>
+      <Route path="/login" component={Login} />
       <Route path="/">
         <DashboardLayout>
           <Jobs />
