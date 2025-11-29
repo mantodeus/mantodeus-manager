@@ -20,7 +20,8 @@ export default function Invoices() {
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
-  const createMutation = trpc.invoices.create.useMutation();
+  const getUploadUrl = trpc.invoices.getUploadUrl.useMutation();
+  const confirmUpload = trpc.invoices.confirmUpload.useMutation();
   const deleteMutation = trpc.invoices.delete.useMutation();
 
   const filteredInvoices = invoices.filter((invoice) => {
@@ -43,11 +44,33 @@ export default function Invoices() {
 
     setIsUploading(true);
     try {
-      await createMutation.mutateAsync({
+      // Step 1: request presigned URL from backend
+      const { uploadUrl, fileKey, publicUrl } = await getUploadUrl.mutateAsync({
         filename: selectedFile.name,
-        fileKey: `invoices/${Date.now()}-${selectedFile.name}`,
+        mimeType: selectedFile.type || "application/octet-stream",
+      });
+
+      // Step 2: upload file to S3
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": selectedFile.type || "application/octet-stream",
+        },
+        body: selectedFile,
+      });
+
+      if (!uploadResponse.ok) {
+        const message = await uploadResponse.text().catch(() => uploadResponse.statusText);
+        throw new Error(`Upload failed: ${uploadResponse.status} ${message}`);
+      }
+
+      // Step 3: confirm upload and save invoice metadata
+      await confirmUpload.mutateAsync({
+        filename: selectedFile.name,
+        fileKey,
+        url: publicUrl,
         fileSize: selectedFile.size,
-        mimeType: selectedFile.type,
+        mimeType: selectedFile.type || "application/octet-stream",
         jobId: jobFilter ? parseInt(jobFilter) : undefined,
         contactId: contactFilter ? parseInt(contactFilter) : undefined,
       });
@@ -59,8 +82,9 @@ export default function Invoices() {
       setIsDialogOpen(false);
       refetch();
     } catch (error) {
-      toast.error("Failed to upload invoice");
       console.error(error);
+      const message = error instanceof Error ? error.message : "Failed to upload invoice";
+      toast.error(message);
     } finally {
       setIsUploading(false);
     }

@@ -18,7 +18,8 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
-  const uploadImage = trpc.images.upload.useMutation({
+  const getUploadUrl = trpc.images.getUploadUrl.useMutation();
+  const confirmUpload = trpc.images.confirmUpload.useMutation({
     onSuccess: () => {
       toast.success("Image uploaded successfully");
       if (jobId) {
@@ -34,7 +35,7 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
       setUploading(false);
     },
     onError: (error) => {
-      toast.error("Failed to upload image: " + error.message);
+      toast.error("Failed to save image metadata: " + error.message);
       setUploading(false);
     },
   });
@@ -58,29 +59,43 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
     setUploading(true);
 
     try {
-      // Convert file to base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64Data = reader.result as string;
-        const base64String = base64Data.split(",")[1]; // Remove data:image/...;base64, prefix
+      // Step 1: ask the server for a presigned upload URL
+      const { uploadUrl, fileKey, publicUrl } = await getUploadUrl.mutateAsync({
+        jobId,
+        taskId,
+        filename: file.name,
+        mimeType: file.type,
+      });
 
-        uploadImage.mutate({
-          jobId,
-          taskId,
-          filename: file.name,
-          mimeType: file.type,
-          fileSize: file.size,
-          caption: caption.trim() || undefined,
-          base64Data: base64String,
-        });
-      };
-      reader.onerror = () => {
-        toast.error("Failed to read file");
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
+      // Step 2: upload directly to S3 using the presigned URL
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type,
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        const message = await uploadResponse.text().catch(() => uploadResponse.statusText);
+        throw new Error(`Upload failed: ${uploadResponse.status} ${message}`);
+      }
+
+      // Step 3: confirm upload and save metadata in our database
+      await confirmUpload.mutateAsync({
+        jobId,
+        taskId,
+        fileKey,
+        url: publicUrl,
+        filename: file.name,
+        mimeType: file.type,
+        fileSize: file.size,
+        caption: caption.trim() || undefined,
+      });
     } catch (error) {
-      toast.error("Failed to process image");
+      console.error(error);
+      const message = error instanceof Error ? error.message : "Failed to upload image";
+      toast.error(message);
       setUploading(false);
     }
   };

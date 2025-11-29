@@ -131,3 +131,9 @@ mantodeus-manager.zip
 PROJECT_SUMMARY.md
 server/db.sqlite.ts
 .env.local
+
+# OpenStack RC files (contain credentials)
+*openrc*
+*openrc.sh
+*openrc.txt
+clouds.yaml

@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
-import { storagePut } from "./storage";
+import { storagePut, createPresignedUploadUrl, deleteFromStorage } from "./storage";
 import { exportRouter } from "./exportRouter";
 import { geocodeAddress } from "./_core/geocoding";
 
@@ -234,31 +234,54 @@ export const appRouter = router({
         return await db.getImagesByTaskId(input.taskId);
       }),
     
-    upload: protectedProcedure
-      .input(z.object({
-        jobId: z.number().optional(),
-        taskId: z.number().optional(),
-        filename: z.string(),
-        mimeType: z.string(),
-        fileSize: z.number(),
-        caption: z.string().optional(),
-        base64Data: z.string(),
-      }))
+    // Step 1: Get a presigned URL to upload an image directly to S3
+    getUploadUrl: protectedProcedure
+      .input(
+        z.object({
+          jobId: z.number().optional(),
+          taskId: z.number().optional(),
+          filename: z.string(),
+          mimeType: z.string(),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
-        const { base64Data, filename, mimeType, fileSize, jobId, taskId, caption } = input;
-        
-        // Convert base64 to buffer
-        const buffer = Buffer.from(base64Data, 'base64');
-        
-        // Generate unique file key
+        const { filename, mimeType } = input;
+
         const timestamp = Date.now();
         const randomSuffix = Math.random().toString(36).substring(2, 15);
-        const fileKey = `uploads/${ctx.user.id}/${timestamp}-${randomSuffix}-${filename}`;
-        
-        // Upload to S3
-        const { url } = await storagePut(fileKey, buffer, mimeType);
-        
-        // Save metadata to database
+        const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const fileKey = `uploads/${ctx.user.id}/${timestamp}-${randomSuffix}-${safeFilename}`;
+
+        const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
+          fileKey,
+          mimeType
+        );
+
+        return {
+          uploadUrl,
+          fileKey,
+          publicUrl,
+        };
+      }),
+
+    // Step 2: Confirm upload and persist metadata in the database
+    confirmUpload: protectedProcedure
+      .input(
+        z.object({
+          jobId: z.number().optional(),
+          taskId: z.number().optional(),
+          fileKey: z.string(),
+          url: z.string(),
+          filename: z.string(),
+          mimeType: z.string(),
+          fileSize: z.number(),
+          caption: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { jobId, taskId, fileKey, url, filename, mimeType, fileSize, caption } =
+          input;
+
         const result = await db.createImage({
           jobId: jobId || null,
           taskId: taskId || null,
@@ -270,13 +293,23 @@ export const appRouter = router({
           caption: caption || null,
           uploadedBy: ctx.user.id,
         });
-        
-        return { success: true, id: result[0].insertId, url };
+
+        return { success: true, id: result[0].insertId };
       }),
     
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
+        const image = await db.getImageById(input.id);
+        if (image?.fileKey) {
+          try {
+            await deleteFromStorage(image.fileKey);
+          } catch (error) {
+            console.error("[Images] Failed to delete from S3:", error);
+            // Continue with DB delete even if S3 delete fails
+          }
+        }
+
         await db.deleteImage(input.id);
         return { success: true };
       }),
@@ -520,17 +553,46 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await db.getInvoicesByContact(input.contactId);
       }),
+
+    // Step 1: Get a presigned URL for uploading an invoice file
+    getUploadUrl: protectedProcedure
+      .input(
+        z.object({
+          filename: z.string().min(1),
+          mimeType: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const timestamp = Date.now();
+        const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const fileKey = `invoices/${ctx.user.id}/${timestamp}-${safeFilename}`;
+
+        const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
+          fileKey,
+          input.mimeType || "application/octet-stream"
+        );
+
+        return {
+          uploadUrl,
+          fileKey,
+          publicUrl,
+        };
+      }),
     
-    create: protectedProcedure
-      .input(z.object({
-        filename: z.string().min(1),
-        fileKey: z.string().min(1),
-        fileSize: z.number().optional(),
-        mimeType: z.string().optional(),
-        jobId: z.number().optional(),
-        contactId: z.number().optional(),
-        uploadDate: z.date().optional(),
-      }))
+    // Step 2: Confirm invoice upload and persist metadata
+    confirmUpload: protectedProcedure
+      .input(
+        z.object({
+          filename: z.string().min(1),
+          fileKey: z.string().min(1),
+          url: z.string().min(1),
+          fileSize: z.number().optional(),
+          mimeType: z.string().optional(),
+          jobId: z.number().optional(),
+          contactId: z.number().optional(),
+          uploadDate: z.date().optional(),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
         const result = await db.createInvoice({
           filename: input.filename,
@@ -541,6 +603,8 @@ export const appRouter = router({
           contactId: input.contactId || null,
           uploadDate: input.uploadDate || new Date(),
           uploadedBy: ctx.user.id,
+          // We store the public URL in a dedicated column if desired later;
+          // for now, consumers can reconstruct from fileKey or use stored URL.
         });
         return { success: true, id: result[0].insertId };
       }),
@@ -548,6 +612,15 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
+        const invoice = await db.getInvoiceById(input.id);
+        if (invoice?.fileKey) {
+          try {
+            await deleteFromStorage(invoice.fileKey);
+          } catch (error) {
+            console.error("[Invoices] Failed to delete from S3:", error);
+          }
+        }
+
         await db.deleteInvoice(input.id);
         return { success: true };
       }),

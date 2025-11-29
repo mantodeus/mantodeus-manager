@@ -29,6 +29,16 @@ services:
         value: Mantodeus Manager
       - key: VITE_APP_LOGO
         value: /mantodeus-logo.png
+      - key: S3_ENDPOINT
+        value: https://s3.pub1.infomaniak.cloud
+      - key: S3_REGION
+        value: us-east-1
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
 
 databases:
   - name: mantodeus-db

@@ -73,7 +73,7 @@ OWNER_NAME=Your Name
 ### 7. S3 Storage (OPTIONAL - for file uploads)
 
 ```bash
-S3_ENDPOINT=your_s3_endpoint
+S3_ENDPOINT=https://s3.pub1.infomaniak.cloud
 S3_REGION=us-east-1
 S3_BUCKET=mantodeus-manager-files
 S3_ACCESS_KEY_ID=your_access_key
@@ -149,7 +149,7 @@ OWNER_OPEN_ID=your_owner_open_id
 OWNER_NAME=Your Name
 
 # OPTIONAL - S3 Storage (for file uploads)
-S3_ENDPOINT=your_s3_endpoint
+S3_ENDPOINT=https://s3.pub1.infomaniak.cloud
 S3_REGION=us-east-1
 S3_BUCKET=mantodeus-manager-files
 S3_ACCESS_KEY_ID=your_access_key

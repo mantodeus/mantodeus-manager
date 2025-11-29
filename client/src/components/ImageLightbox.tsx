@@ -43,7 +43,8 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
   const [touchStart, setTouchStart] = useState<{ dist: number; center: { x: number; y: number }; zoom: number; offset: { x: number; y: number } } | null>(null);
 
   const utils = trpc.useUtils();
-  const uploadMutation = trpc.images.upload.useMutation({
+  const getUploadUrl = trpc.images.getUploadUrl.useMutation();
+  const confirmUpload = trpc.images.confirmUpload.useMutation({
     onSuccess: () => {
       utils.images.listByJob.invalidate({ jobId });
       toast.success("Annotated image saved");
@@ -344,26 +345,38 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
         );
       });
 
-      // Convert blob to base64
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          const base64 = result.split(",")[1];
-          if (base64) resolve(base64);
-          else reject(new Error("Failed to read blob"));
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      const filename = `annotated-${currentImage.filename || "image.jpg"}`;
+
+      // Step 1: get presigned URL
+      const { uploadUrl, fileKey, publicUrl } = await getUploadUrl.mutateAsync({
+        jobId,
+        filename,
+        mimeType: "image/jpeg",
       });
 
-      // Upload annotated image
-      await uploadMutation.mutateAsync({
+      // Step 2: upload annotated image directly to S3
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "image/jpeg",
+        },
+        body: blob,
+      });
+
+      if (!uploadResponse.ok) {
+        const message = await uploadResponse.text().catch(() => uploadResponse.statusText);
+        throw new Error(`Upload failed: ${uploadResponse.status} ${message}`);
+      }
+
+      // Step 3: confirm upload and save metadata
+      await confirmUpload.mutateAsync({
         jobId,
-        filename: `annotated-${currentImage.filename || "image.jpg"}`,
+        taskId: undefined,
+        fileKey,
+        url: publicUrl,
+        filename,
         mimeType: "image/jpeg",
         fileSize: blob.size,
-        base64Data,
         caption: currentImage.caption || undefined,
       });
     } catch (error) {
@@ -511,9 +524,15 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
             variant="default"
             size="sm"
             onClick={handleSave}
-            disabled={!hasChanges || uploadMutation.isPending}
+            disabled={
+              !hasChanges ||
+              getUploadUrl.isPending ||
+              confirmUpload.isPending
+            }
           >
-            {uploadMutation.isPending ? "Saving..." : "Save"}
+            {getUploadUrl.isPending || confirmUpload.isPending
+              ? "Saving..."
+              : "Save"}
           </Button>
           <Button variant="outline" size="sm" onClick={handleDownload} title="Download">
             <Download className="h-4 w-4" />
