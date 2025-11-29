@@ -6,6 +6,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { storageGet } from "../storage";
 
 async function startServer() {
   const app = express();
@@ -18,29 +19,22 @@ async function startServer() {
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
 
-  // Image proxy endpoint for CORS-enabled image access
+  // Image proxy endpoint - fetches from S3 with credentials
   app.get("/api/image-proxy", async (req, res) => {
     try {
-      const imageUrl = req.query.url as string;
-      if (!imageUrl) {
-        return res.status(400).send("Missing url parameter");
+      const fileKey = req.query.key as string;
+      if (!fileKey) {
+        return res.status(400).send("Missing key parameter");
       }
 
-      // Fetch image from S3/CloudFront
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        return res.status(response.status).send("Failed to fetch image");
-      }
+      // Fetch image from S3 using credentials
+      const { data, contentType } = await storageGet(fileKey);
 
-      // Get image data and content type
-      const imageBuffer = Buffer.from(await response.arrayBuffer());
-      const contentType = response.headers.get("content-type") || "image/jpeg";
-
-      // Set CORS headers and send image
+      // Set headers and send image
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Content-Type", contentType);
       res.setHeader("Cache-Control", "public, max-age=31536000");
-      res.send(imageBuffer);
+      res.send(data);
     } catch (error) {
       console.error("Image proxy error:", error);
       res.status(500).send("Internal server error");

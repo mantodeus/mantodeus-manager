@@ -146,7 +146,7 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
               onClick={() => setSelectedImageIndex(index)}
             >
               <img
-                src={`/api/image-proxy?url=${encodeURIComponent(image.url)}`}
+                src={`/api/image-proxy?key=${encodeURIComponent(image.fileKey)}`}
                 alt={image.caption || image.filename || "Job image"}
                 className="w-full h-full object-cover"
               />

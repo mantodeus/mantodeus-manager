@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ENV } from "./_core/env";
 
@@ -92,6 +92,7 @@ export async function storagePut(
       Key: key,
       Body: body,
       ContentType: contentType,
+      ACL: "public-read", // Make uploaded files publicly readable
     });
 
     await client.send(command);
@@ -158,6 +159,71 @@ export async function deleteFromStorage(relKey: string): Promise<void> {
     console.error("[S3] Delete failed:", error);
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Storage delete failed: ${message}`);
+  }
+}
+
+/**
+ * Get an object from S3 storage (for proxying to client)
+ */
+export async function storageGet(relKey: string): Promise<{ data: Buffer; contentType: string }> {
+  const key = normalizeKey(relKey);
+  const client = getS3Client();
+  const config = getS3Config();
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+    });
+
+    const response = await client.send(command);
+    
+    if (!response.Body) {
+      throw new Error("Empty response body");
+    }
+
+    // Convert stream to buffer
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+    const data = Buffer.concat(chunks);
+    
+    return {
+      data,
+      contentType: response.ContentType || "application/octet-stream",
+    };
+  } catch (error) {
+    console.error("[S3] Get failed:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Storage get failed: ${message}`);
+  }
+}
+
+/**
+ * Create a presigned URL for reading a file from S3
+ */
+export async function createPresignedReadUrl(
+  relKey: string,
+  expiresInSeconds = 60 * 60 // 1 hour default
+): Promise<string> {
+  const key = normalizeKey(relKey);
+  const client = getS3Client();
+  const config = getS3Config();
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+    });
+
+    return await getSignedUrl(client, command, {
+      expiresIn: expiresInSeconds,
+    });
+  } catch (error) {
+    console.error("[S3] Failed to create presigned read URL:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to create read URL: ${message}`);
   }
 }
 

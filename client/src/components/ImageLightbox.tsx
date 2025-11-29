@@ -7,6 +7,7 @@ import { toast } from "sonner";
 interface Image {
   id: number;
   url: string;
+  fileKey: string;
   filename: string | null;
   caption: string | null;
 }
@@ -119,7 +120,7 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
     };
 
     // Use proxy endpoint to avoid CORS taint
-    const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(currentImage.url)}`;
+    const proxyUrl = `/api/image-proxy?key=${encodeURIComponent(currentImage.fileKey)}`;
     img.src = proxyUrl;
     setHasChanges(false);
   };
