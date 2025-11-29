@@ -43,8 +43,9 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
   const [touchStart, setTouchStart] = useState<{ dist: number; center: { x: number; y: number }; zoom: number; offset: { x: number; y: number } } | null>(null);
 
   const utils = trpc.useUtils();
-  const getUploadUrl = trpc.images.getUploadUrl.useMutation();
-  const confirmUpload = trpc.images.confirmUpload.useMutation({
+  
+  // Server-side upload (bypasses CORS)
+  const uploadImage = trpc.images.upload.useMutation({
     onSuccess: () => {
       utils.images.listByJob.invalidate({ jobId });
       toast.success("Annotated image saved");
@@ -347,36 +348,26 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
 
       const filename = `annotated-${currentImage.filename || "image.jpg"}`;
 
-      // Step 1: get presigned URL
-      const { uploadUrl, fileKey, publicUrl } = await getUploadUrl.mutateAsync({
-        jobId,
-        filename,
-        mimeType: "image/jpeg",
+      // Convert blob to base64
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64 = result.split(",")[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
       });
 
-      // Step 2: upload annotated image directly to S3
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "image/jpeg",
-        },
-        body: blob,
-      });
-
-      if (!uploadResponse.ok) {
-        const message = await uploadResponse.text().catch(() => uploadResponse.statusText);
-        throw new Error(`Upload failed: ${uploadResponse.status} ${message}`);
-      }
-
-      // Step 3: confirm upload and save metadata
-      await confirmUpload.mutateAsync({
+      // Upload via server (bypasses CORS)
+      await uploadImage.mutateAsync({
         jobId,
         taskId: undefined,
-        fileKey,
-        url: publicUrl,
         filename,
         mimeType: "image/jpeg",
         fileSize: blob.size,
+        base64Data,
         caption: currentImage.caption || undefined,
       });
     } catch (error) {
@@ -526,11 +517,10 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
             onClick={handleSave}
             disabled={
               !hasChanges ||
-              getUploadUrl.isPending ||
-              confirmUpload.isPending
+              uploadImage.isPending
             }
           >
-            {getUploadUrl.isPending || confirmUpload.isPending
+            {uploadImage.isPending
               ? "Saving..."
               : "Save"}
           </Button>

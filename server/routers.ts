@@ -234,7 +234,47 @@ export const appRouter = router({
         return await db.getImagesByTaskId(input.taskId);
       }),
     
-    // Step 1: Get a presigned URL to upload an image directly to S3
+    // Server-side upload (bypasses CORS - browser sends to server, server uploads to S3)
+    upload: protectedProcedure
+      .input(
+        z.object({
+          jobId: z.number().optional(),
+          taskId: z.number().optional(),
+          filename: z.string(),
+          mimeType: z.string(),
+          fileSize: z.number(),
+          base64Data: z.string(),
+          caption: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { jobId, taskId, filename, mimeType, fileSize, base64Data, caption } = input;
+
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 15);
+        const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const fileKey = `uploads/${ctx.user.id}/${timestamp}-${randomSuffix}-${safeFilename}`;
+
+        // Upload to S3 via server (no CORS needed)
+        const { url } = await storagePut(fileKey, base64Data, mimeType);
+
+        // Save metadata to database
+        const result = await db.createImage({
+          jobId: jobId || null,
+          taskId: taskId || null,
+          fileKey,
+          url,
+          filename,
+          mimeType,
+          fileSize,
+          caption: caption || null,
+          uploadedBy: ctx.user.id,
+        });
+
+        return { success: true, id: result[0].insertId, url };
+      }),
+
+    // Step 1: Get a presigned URL to upload an image directly to S3 (requires CORS)
     getUploadUrl: protectedProcedure
       .input(
         z.object({
