@@ -7,6 +7,14 @@ import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
 
+// Validate Supabase configuration
+if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
+  console.error("[Supabase] Missing configuration:");
+  console.error("  VITE_SUPABASE_URL:", ENV.supabaseUrl ? "✓" : "✗");
+  console.error("  SUPABASE_SERVICE_ROLE_KEY:", ENV.supabaseServiceRoleKey ? "✓" : "✗");
+  throw new Error("Supabase configuration is missing. Please set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.");
+}
+
 // Create Supabase client for server-side operations
 export const supabaseAdmin = createClient(
   ENV.supabaseUrl,

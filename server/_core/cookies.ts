@@ -39,10 +39,14 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
+  // For sameSite: "none", secure MUST be true
+  // If behind a proxy (like Infomaniak), assume HTTPS
+  const isSecure = isSecureRequest(req) || process.env.NODE_ENV === "production";
+  
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    sameSite: isSecure ? "none" : "lax", // Use "lax" for non-HTTPS, "none" for HTTPS
+    secure: isSecure,
   };
 }

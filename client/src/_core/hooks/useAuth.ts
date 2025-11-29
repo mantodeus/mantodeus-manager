@@ -1,5 +1,6 @@
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -19,13 +20,17 @@ export function useAuth(options?: UseAuthOptions) {
   });
 
   const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
       utils.auth.me.setData(undefined, null);
     },
   });
 
   const logout = useCallback(async () => {
     try {
+      // Sign out from Supabase first
+      await supabase.auth.signOut();
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
       if (
@@ -42,10 +47,6 @@ export function useAuth(options?: UseAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
     return {
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,
