@@ -1,0 +1,9 @@
+{
+  "secret": "mc3t3iyEMTp62ncTB2wnY2H9xvbj/kpn1RIXZ/yq1f8",
+  "appPath": "/srv/customer/sites/manager.mantodeus.com",
+  "pm2AppName": "mantodeus-manager",
+  "port": 3000,
+  "usePnpm": false,
+  "logFile": "./deploy.log"
+}
+
