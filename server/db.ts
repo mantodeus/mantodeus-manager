@@ -196,6 +196,14 @@ export async function createImage(image: InsertImage) {
   return result;
 }
 
+export async function getImageById(imageId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(images).where(eq(images.id, imageId)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
 export async function getImagesByJobId(jobId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -475,6 +483,13 @@ export async function createInvoice(data: InsertInvoice) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.insert(invoices).values(data);
+}
+
+export async function getInvoiceById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
 }
 
 export async function deleteInvoice(id: number) {

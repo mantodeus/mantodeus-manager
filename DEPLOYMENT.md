@@ -90,7 +90,7 @@ VITE_APP_TITLE=Mantodeus Manager
 VITE_APP_LOGO=/logo.png
 
 # S3 Storage Configuration
-S3_ENDPOINT=your-s3-endpoint
+S3_ENDPOINT=https://s3.pub1.infomaniak.cloud
 S3_REGION=us-east-1
 S3_BUCKET=mantodeus-manager-files
 S3_ACCESS_KEY_ID=your_access_key

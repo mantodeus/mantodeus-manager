@@ -15,7 +15,8 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
 
   const utils = trpc.useUtils();
   const { data: images = [], isLoading } = trpc.images.listByJob.useQuery({ jobId });
-  const uploadMutation = trpc.images.upload.useMutation({
+  const getUploadUrl = trpc.images.getUploadUrl.useMutation();
+  const confirmUpload = trpc.images.confirmUpload.useMutation({
     onSuccess: () => {
       utils.images.listByJob.invalidate({ jobId });
       toast.success("Image uploaded successfully");
@@ -43,27 +44,52 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
 
     setIsUploading(true);
 
-    for (const file of Array.from(files)) {
-      // Check file size (16MB limit)
-      if (file.size > 16 * 1024 * 1024) {
-        toast.error(`${file.name} is too large (max 16MB)`);
-        continue;
-      }
+    try {
+      for (const file of Array.from(files)) {
+        // Check file size (16MB limit)
+        if (file.size > 16 * 1024 * 1024) {
+          toast.error(`${file.name} is too large (max 16MB)`);
+          continue;
+        }
 
-      // Read file as base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64Data = (reader.result as string).split(",")[1];
-        
-        await uploadMutation.mutateAsync({
+        // Step 1: request a presigned URL from the backend
+        const { uploadUrl, fileKey, publicUrl } = await getUploadUrl.mutateAsync({
           jobId,
           filename: file.name,
           mimeType: file.type,
-          fileSize: file.size,
-          base64Data,
         });
-      };
-      reader.readAsDataURL(file);
+
+        // Step 2: upload directly to S3
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type,
+          },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          const message = await uploadResponse.text().catch(() => uploadResponse.statusText);
+          throw new Error(`Upload failed for ${file.name}: ${uploadResponse.status} ${message}`);
+        }
+
+        // Step 3: confirm upload and persist metadata
+        await confirmUpload.mutateAsync({
+          jobId,
+          taskId: undefined,
+          fileKey,
+          url: publicUrl,
+          filename: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+          caption: undefined,
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      const message = error instanceof Error ? error.message : "Failed to upload images";
+      toast.error(message);
+      setIsUploading(false);
     }
   };
 

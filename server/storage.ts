@@ -1,102 +1,165 @@
-// Preconfigured storage helpers for Manus WebDev templates
-// Uses the Biz-provided storage proxy (Authorization: Bearer <token>)
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { ENV } from "./_core/env";
 
-import { ENV } from './_core/env';
+type S3Config = {
+  endpoint: string;
+  region: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+};
 
-type StorageConfig = { baseUrl: string; apiKey: string };
+let s3Client: S3Client | null = null;
 
-function getStorageConfig(): StorageConfig {
-  const baseUrl = ENV.forgeApiUrl;
-  const apiKey = ENV.forgeApiKey;
+function getS3Config(): S3Config {
+  const { s3Endpoint, s3Region, s3Bucket, s3AccessKeyId, s3SecretAccessKey } = ENV;
 
-  if (!baseUrl || !apiKey) {
+  // Debug logging to help diagnose missing variables
+  if (!s3Endpoint || !s3Region || !s3Bucket || !s3AccessKeyId || !s3SecretAccessKey) {
+    const missing = [];
+    if (!s3Endpoint) missing.push("S3_ENDPOINT");
+    if (!s3Region) missing.push("S3_REGION");
+    if (!s3Bucket) missing.push("S3_BUCKET");
+    if (!s3AccessKeyId) missing.push("S3_ACCESS_KEY_ID");
+    if (!s3SecretAccessKey) missing.push("S3_SECRET_ACCESS_KEY");
+    
+    console.error("[S3 Config] Missing environment variables:", missing.join(", "));
     throw new Error(
-      "Storage proxy credentials missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
+      `S3 storage is not configured. Missing: ${missing.join(", ")}. Please set S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY in your environment.`
     );
   }
 
-  return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
+  return {
+    endpoint: s3Endpoint.replace(/\/+$/, ""),
+    region: s3Region,
+    bucket: s3Bucket,
+    accessKeyId: s3AccessKeyId,
+    secretAccessKey: s3SecretAccessKey,
+  };
 }
 
-function buildUploadUrl(baseUrl: string, relKey: string): URL {
-  const url = new URL("v1/storage/upload", ensureTrailingSlash(baseUrl));
-  url.searchParams.set("path", normalizeKey(relKey));
-  return url;
-}
+function getS3Client(): S3Client {
+  if (s3Client) return s3Client;
 
-async function buildDownloadUrl(
-  baseUrl: string,
-  relKey: string,
-  apiKey: string
-): Promise<string> {
-  const downloadApiUrl = new URL(
-    "v1/storage/downloadUrl",
-    ensureTrailingSlash(baseUrl)
-  );
-  downloadApiUrl.searchParams.set("path", normalizeKey(relKey));
-  const response = await fetch(downloadApiUrl, {
-    method: "GET",
-    headers: buildAuthHeaders(apiKey),
+  const config = getS3Config();
+
+  s3Client = new S3Client({
+    region: config.region,
+    endpoint: config.endpoint,
+    forcePathStyle: true, // Infomaniak uses path-style URLs
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
   });
-  return (await response.json()).url;
-}
 
-function ensureTrailingSlash(value: string): string {
-  return value.endsWith("/") ? value : `${value}/`;
+  return s3Client;
 }
 
 function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");
 }
 
-function toFormData(
-  data: Buffer | Uint8Array | string,
-  contentType: string,
-  fileName: string
-): FormData {
-  const blob =
-    typeof data === "string"
-      ? new Blob([data], { type: contentType })
-      : new Blob([data as any], { type: contentType });
-  const form = new FormData();
-  form.append("file", blob, fileName || "file");
-  return form;
+function getPublicUrl(key: string): string {
+  const { endpoint, bucket } = getS3Config();
+  const normalized = normalizeKey(key);
+  // Path-style URL: https://endpoint/bucket/key
+  return `${endpoint}/${bucket}/${encodeURI(normalized)}`;
 }
 
-function buildAuthHeaders(apiKey: string): HeadersInit {
-  return { Authorization: `Bearer ${apiKey}` };
-}
-
+/**
+ * Direct upload helper used for server-side uploads (e.g. when we already have file bytes).
+ * Most browser uploads should use createPresignedUploadUrl instead.
+ */
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
-  const { baseUrl, apiKey } = getStorageConfig();
   const key = normalizeKey(relKey);
-  const uploadUrl = buildUploadUrl(baseUrl, key);
-  const formData = toFormData(data, contentType, key.split("/").pop() ?? key);
-  const response = await fetch(uploadUrl, {
-    method: "POST",
-    headers: buildAuthHeaders(apiKey),
-    body: formData,
-  });
+  const client = getS3Client();
+  const config = getS3Config();
 
-  if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
-    throw new Error(
-      `Storage upload failed (${response.status} ${response.statusText}): ${message}`
-    );
+  try {
+    const body =
+      typeof data === "string"
+        ? Buffer.from(data, "base64")
+        : (data as Buffer | Uint8Array);
+
+    const command = new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    });
+
+    await client.send(command);
+
+    return {
+      key,
+      url: getPublicUrl(key),
+    };
+  } catch (error) {
+    console.error("[S3] Upload failed:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Storage upload failed: ${message}`);
   }
-  const url = (await response.json()).url;
-  return { key, url };
 }
 
-export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
-  const { baseUrl, apiKey } = getStorageConfig();
+/**
+ * Create a presigned URL that the frontend can use to upload a file directly to S3.
+ */
+export async function createPresignedUploadUrl(
+  relKey: string,
+  contentType: string,
+  expiresInSeconds = 15 * 60
+): Promise<{ uploadUrl: string; key: string; publicUrl: string }> {
   const key = normalizeKey(relKey);
-  return {
-    key,
-    url: await buildDownloadUrl(baseUrl, key, apiKey),
-  };
+  const client = getS3Client();
+  const config = getS3Config();
+
+  try {
+    const command = new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(client, command, {
+      expiresIn: expiresInSeconds,
+    });
+
+    return {
+      uploadUrl,
+      key,
+      publicUrl: getPublicUrl(key),
+    };
+  } catch (error) {
+    console.error("[S3] Failed to create presigned upload URL:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to create upload URL: ${message}`);
+  }
 }
+
+export async function deleteFromStorage(relKey: string): Promise<void> {
+  const key = normalizeKey(relKey);
+  const client = getS3Client();
+  const config = getS3Config();
+
+  try {
+    const command = new DeleteObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+    });
+
+    await client.send(command);
+  } catch (error) {
+    console.error("[S3] Delete failed:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Storage delete failed: ${message}`);
+  }
+}
+
+
+
