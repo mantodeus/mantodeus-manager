@@ -1,0 +1,41 @@
+name: Auto Deploy to Infomaniak
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+      
+      - name: Deploy to Infomaniak via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.INFOMANIAK_HOST }}
+          username: ${{ secrets.INFOMANIAK_USER }}
+          key: ${{ secrets.INFOMANIAK_SSH_KEY }}
+          script: |
+            cd /srv/customer/sites/manager.mantodeus.com
+            git pull origin main
+            npm install
+            npm run build
+            # Restart will be handled by Infomaniak or you can add: pm2 restart mantodeus-manager
+
