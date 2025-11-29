@@ -41,6 +41,40 @@ async function startServer() {
     }
   });
 
+  // Generic file proxy endpoint - for PDFs, documents, etc.
+  app.get("/api/file-proxy", async (req, res) => {
+    try {
+      const fileKey = req.query.key as string;
+      const download = req.query.download === "true";
+      const filename = req.query.filename as string || "file";
+
+      if (!fileKey) {
+        return res.status(400).send("Missing key parameter");
+      }
+
+      // Fetch file from S3 using credentials
+      const { data, contentType, size } = await storageGet(fileKey);
+
+      // Set headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Length", size);
+      
+      if (download) {
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      } else {
+        res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      }
+      
+      // Cache for 1 hour for frequently accessed files
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.send(data);
+    } catch (error) {
+      console.error("File proxy error:", error);
+      res.status(500).send("Internal server error");
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

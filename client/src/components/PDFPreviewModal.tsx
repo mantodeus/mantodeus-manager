@@ -15,7 +15,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 interface PDFPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  fileUrl: string;
+  fileUrl?: string;
+  fileKey?: string;
   fileName: string;
 }
 
@@ -23,12 +24,22 @@ export function PDFPreviewModal({
   isOpen,
   onClose,
   fileUrl,
+  fileKey,
   fileName,
 }: PDFPreviewModalProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoom, setZoom] = useState<number>(100);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Build the URL - prefer fileKey with file proxy, fallback to direct URL
+  const pdfUrl = fileKey 
+    ? `/api/file-proxy?key=${encodeURIComponent(fileKey)}&filename=${encodeURIComponent(fileName)}`
+    : fileUrl || "";
+  
+  const downloadUrl = fileKey 
+    ? `/api/file-proxy?key=${encodeURIComponent(fileKey)}&filename=${encodeURIComponent(fileName)}&download=true`
+    : fileUrl || "";
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -54,7 +65,7 @@ export function PDFPreviewModal({
 
   const handleDownload = () => {
     const link = document.createElement("a");
-    link.href = fileUrl;
+    link.href = downloadUrl;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
@@ -139,7 +150,7 @@ export function PDFPreviewModal({
               <div className="text-gray-400">Loading PDF...</div>
             )}
             <Document
-              file={fileUrl}
+              file={pdfUrl}
               onLoadSuccess={onDocumentLoadSuccess}
               onLoadStart={() => setIsLoading(true)}
               loading={<div className="text-gray-400">Loading...</div>}
