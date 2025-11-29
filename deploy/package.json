@@ -1,0 +1,22 @@
+{
+  "name": "github-webhook-deploy",
+  "version": "1.0.0",
+  "description": "GitHub webhook server for automatic deployment",
+  "type": "module",
+  "main": "deploy.js",
+  "scripts": {
+    "start": "node deploy.js"
+  },
+  "keywords": [
+    "webhook",
+    "deployment",
+    "github",
+    "automation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+
