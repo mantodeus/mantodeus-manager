@@ -1,0 +1,113 @@
+{
+  "exportDate": "2025-11-30T19:34:34.917Z",
+  "userId": 1,
+  "userName": "divineropeaccess",
+  "userEmail": "divineropeaccess@duck.com",
+  "data": {
+    "jobs": [
+      {
+        "id": 180002,
+        "title": "Fassadendokumentation",
+        "description": null,
+        "location": "Löwensteinring 9, 12353 Berlin",
+        "latitude": "52.42760860000001",
+        "longitude": "13.4641315",
+        "status": "active",
+        "dateMode": "individual",
+        "startDate": "2025-11-17T23:00:00.000Z",
+        "endDate": "2025-11-27T23:00:00.000Z",
+        "contactId": 180001,
+        "createdBy": 1,
+        "createdAt": "2025-11-22T14:41:21.000Z",
+        "updatedAt": "2025-11-22T16:01:04.000Z"
+      },
+      {
+        "id": 210001,
+        "title": "Schornstein Haube",
+        "description": null,
+        "location": "Deidesheimer Str. 3, 14197 Berlin",
+        "latitude": "52.4745838",
+        "longitude": "13.3217558",
+        "status": "completed",
+        "dateMode": "individual",
+        "startDate": "2025-11-23T23:00:00.000Z",
+        "endDate": "2025-11-23T23:00:00.000Z",
+        "contactId": 150002,
+        "createdBy": 1,
+        "createdAt": "2025-11-23T11:31:29.000Z",
+        "updatedAt": "2025-11-24T21:05:53.000Z"
+      },
+      {
+        "id": 270001,
+        "title": "3KER",
+        "description": null,
+        "location": "Almstadtstraße 5, 10119 Berlin",
+        "latitude": "52.5246493",
+        "longitude": "13.4088347",
+        "status": "completed",
+        "dateMode": "individual",
+        "startDate": "2025-11-24T23:00:00.000Z",
+        "endDate": "2025-11-24T23:00:00.000Z",
+        "contactId": 150002,
+        "createdBy": 1,
+        "createdAt": "2025-11-24T20:57:04.000Z",
+        "updatedAt": "2025-11-25T21:51:39.000Z"
+      }
+    ],
+    "tasks": [],
+    "contacts": [
+      {
+        "id": 150001,
+        "name": "Mantodeus",
+        "email": "stan@mantodeus.com",
+        "phone": "+44 7399696111",
+        "address": "Warschauer Str. 69, 10243 Berlin",
+        "latitude": "52.5114965",
+        "longitude": "13.4526044",
+        "notes": null,
+        "createdBy": 1,
+        "createdAt": "2025-11-22T14:24:02.000Z",
+        "updatedAt": "2025-11-22T16:03:33.000Z"
+      }
+    ],
+    "notes": [
+      {
+        "id": 60001,
+        "title": "Industriekletterer Berlin",
+        "content": "Industriekletter Berlin",
+        "tags": "info",
+        "jobId": null,
+        "contactId": null,
+        "createdBy": 1,
+        "createdAt": "2025-11-22T15:24:13.000Z",
+        "updatedAt": "2025-11-22T15:24:13.000Z"
+      }
+    ],
+    "locations": [
+      {
+        "id": 60001,
+        "name": "Mantodeus",
+        "latitude": "52.5114965",
+        "longitude": "13.4526044",
+        "address": "Warschauer Str. 69, 10243 Berlin",
+        "type": "contact",
+        "jobId": null,
+        "contactId": 150001,
+        "createdBy": 1,
+        "createdAt": "2025-11-22T14:23:14.000Z"
+      }
+    ],
+    "images": [],
+    "jobDates": [
+      {
+        "id": 30001,
+        "jobId": 180002,
+        "date": "2025-11-17T00:00:00.000Z",
+        "createdAt": "2025-11-23T12:09:28.000Z"
+      }
+    ],
+    "comments": [],
+    "reports": [],
+    "invoices": []
+  }
+}
