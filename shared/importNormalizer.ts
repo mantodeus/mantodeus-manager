@@ -172,13 +172,19 @@ const isLegacyPayload = (input: unknown): input is LegacyPayload => {
   }
   const candidate = input as Record<string, unknown>;
   const dataSection = candidate.data;
+  if (!dataSection || typeof dataSection !== "object") {
+    return false;
+  }
+  if (typeof candidate.exportDate === "string") {
+    return true;
+  }
+
+  const section = dataSection as Record<string, unknown>;
   return (
-    !!dataSection &&
-    typeof dataSection === "object" &&
-    (Array.isArray((dataSection as Record<string, unknown>).jobs) ||
-      Array.isArray((dataSection as Record<string, unknown>).contacts) ||
-      Array.isArray((dataSection as Record<string, unknown>).notes) ||
-      Array.isArray((dataSection as Record<string, unknown>).locations))
+    Array.isArray(section.jobs) ||
+    Array.isArray(section.contacts) ||
+    Array.isArray(section.notes) ||
+    Array.isArray(section.locations)
   );
 };
 
