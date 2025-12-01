@@ -11,6 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Download, Upload, FileJson, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { normalizeExportPayload } from "@shared/importNormalizer";
 
 interface DataExportImportDialogProps {
   open: boolean;
@@ -90,14 +91,10 @@ export function DataExportImportDialog({ open, onOpenChange }: DataExportImportD
 
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
-      
-      // Validate basic structure
-      if (!data.version || !data.exportedAt) {
-        throw new Error("Invalid export file format");
-      }
+      const rawData = JSON.parse(text);
+      const normalizedData = normalizeExportPayload(rawData);
 
-      await importMutation.mutateAsync(data);
+      await importMutation.mutateAsync(normalizedData);
     } catch (error) {
       if (error instanceof SyntaxError) {
         setImportResult({ success: false, error: "Invalid JSON file" });
