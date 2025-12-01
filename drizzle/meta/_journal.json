@@ -43,6 +43,13 @@
       "when": 1763824558472,
       "tag": "0005_square_morgan_stark",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1733072400000,
+      "tag": "0006_add_projects_jobs_files",
+      "breakpoints": true
     }
   ]
 }

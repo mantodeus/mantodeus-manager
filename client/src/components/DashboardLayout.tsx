@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, FileCheck, StickyNote, MapPin, FileJson } from "lucide-react";
+import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, FileCheck, StickyNote, MapPin, FileJson, FolderOpen, Briefcase } from "lucide-react";
 import { DataExportImportDialog } from "./DataExportImportDialog";
 
 // Custom Carabiner icon component - Professional rope access style
@@ -51,7 +51,8 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: Carabiner, label: "Jobs", path: "/jobs" },
+  { icon: FolderOpen, label: "Projects", path: "/projects" },
+  { icon: Carabiner, label: "Jobs (Legacy)", path: "/jobs" },
   { icon: CalendarIcon, label: "Calendar", path: "/calendar" },
   { icon: Users, label: "Contacts", path: "/contacts" },
   { icon: FileCheck, label: "Invoices", path: "/invoices" },

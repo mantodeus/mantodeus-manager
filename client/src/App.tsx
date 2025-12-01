@@ -5,6 +5,11 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import DashboardLayout from "./components/DashboardLayout";
+// New project-based pages
+import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
+import ProjectJobDetail from "./pages/ProjectJobDetail";
+// Legacy pages (kept for backward compatibility)
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import Reports from "./pages/Reports";
@@ -21,9 +26,28 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/">
         <DashboardLayout>
-          <Jobs />
+          <Projects />
         </DashboardLayout>
       </Route>
+      
+      {/* New project-based routes */}
+      <Route path="/projects">
+        <DashboardLayout>
+          <Projects />
+        </DashboardLayout>
+      </Route>
+      <Route path="/projects/:id">
+        <DashboardLayout>
+          <ProjectDetail />
+        </DashboardLayout>
+      </Route>
+      <Route path="/projects/:projectId/jobs/:jobId">
+        <DashboardLayout>
+          <ProjectJobDetail />
+        </DashboardLayout>
+      </Route>
+      
+      {/* Legacy routes (kept for backward compatibility) */}
       <Route path="/jobs">
         <DashboardLayout>
           <Jobs />
