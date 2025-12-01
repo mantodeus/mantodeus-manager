@@ -1,19 +1,20 @@
 # Mantodeus Manager
 
-A comprehensive construction project management application for tracking jobs, tasks, contacts, invoices, and documentation.
+A comprehensive construction project management application for tracking projects, jobs, contacts, invoices, and documentation.
 
 ![Mantodeus Manager](client/public/mantodeus-logo.png)
 
 ## Features
 
-- **Job Management** - Track construction projects with status, dates, and locations
-- **Task Management** - Assign and track tasks with priorities and workflows
+- **Project Management** - Organize work under projects with clients, dates, and locations
+- **Job Management** - Track jobs within projects with status, assignments, and workflows
+- **File Attachments** - Upload files to projects and jobs via S3 storage
 - **Contact Management** - Manage clients and contractors
 - **Invoice Management** - Upload and preview invoice PDFs
 - **Image Gallery** - Upload progress photos with captions
-- **Calendar** - Visualize job timelines
+- **Calendar** - Visualize project and job timelines
 - **Reports & Export** - Generate professional PDF reports
-- **Maps Integration** - Google Maps integration for job locations
+- **Maps Integration** - Google Maps integration for project locations
 - **PWA Support** - Install as a Progressive Web App
 
 ## Tech Stack
@@ -159,17 +160,191 @@ mantodeus-manager/
 ├── server/                # Backend Node.js/Express application
 │   ├── _core/            # Core server functionality
 │   ├── routers.ts        # tRPC routers
+│   ├── projectsRouter.ts # Projects & Jobs CRUD
+│   ├── projectFilesRouter.ts # File upload/download
 │   └── db.ts             # Database queries
 ├── shared/               # Shared types and constants
 ├── drizzle/              # Database schema and migrations
+├── scripts/              # Utility scripts (backfill, etc.)
 ├── dist/                 # Production build output
 └── docs/                 # Documentation
 ```
+
+## Database Schema
+
+The application uses a hierarchical data model:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         PROJECTS                            │
+│  - id, name, client, description                           │
+│  - status (planned|active|completed|archived)              │
+│  - start_date, end_date, address, geo (lat/lng)            │
+│  - created_by → users.id                                   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ has many
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      PROJECT_JOBS                           │
+│  - id, project_id → projects.id                            │
+│  - title, category, description                            │
+│  - status (pending|in_progress|done|cancelled)             │
+│  - assigned_users (JSON array)                             │
+│  - start_time, end_time                                    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ has many
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      FILE_METADATA                          │
+│  - id, project_id → projects.id                            │
+│  - job_id → project_jobs.id (nullable)                     │
+│  - s3_key, original_name, mime_type                        │
+│  - uploaded_by → users.id                                  │
+│  - uploaded_at                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Legacy Tables (Deprecated)
+
+The following tables are deprecated and will be removed after data migration:
+- `jobs` - Use `projects` instead
+- `tasks` - Use `project_jobs` instead
+
+See [docs/BACKUP_AND_MIGRATION.md](docs/BACKUP_AND_MIGRATION.md) for migration instructions.
+
+## API Routes (tRPC Procedures)
+
+### Projects
+
+| Procedure | Description |
+|-----------|-------------|
+| `projects.list` | List all projects for current user |
+| `projects.getById` | Get project by ID |
+| `projects.create` | Create a new project |
+| `projects.update` | Update project details |
+| `projects.archive` | Archive a project (soft delete) |
+| `projects.delete` | Delete a project permanently |
+
+### Jobs (nested under projects)
+
+| Procedure | Description |
+|-----------|-------------|
+| `projects.jobs.list` | List jobs for a project |
+| `projects.jobs.get` | Get job by ID |
+| `projects.jobs.create` | Create a job under a project |
+| `projects.jobs.update` | Update job details |
+| `projects.jobs.delete` | Delete a job |
+
+### Files (nested under projects)
+
+| Procedure | Description |
+|-----------|-------------|
+| `projects.files.presignUpload` | Get presigned URL for upload |
+| `projects.files.register` | Register uploaded file metadata |
+| `projects.files.getPresignedUrl` | Get presigned URL for viewing |
+| `projects.files.listByProject` | List files for a project |
+| `projects.files.listByJob` | List files for a job |
+| `projects.files.delete` | Delete a file |
+| `projects.files.upload` | Server-side upload (base64) |
+
+## S3 Key Conventions
+
+Files are stored in S3 with the following key pattern:
+
+```
+projects/{projectId}/jobs/{jobId}/{timestamp}-{uuid}-{filename}
+```
+
+- `{projectId}` - The project ID (integer)
+- `{jobId}` - The job ID, or `_project` if file is project-level
+- `{timestamp}` - Unix timestamp in milliseconds
+- `{uuid}` - 12-character unique identifier
+- `{filename}` - Sanitized original filename
+
+Example:
+```
+projects/42/jobs/123/1701432000000-abc123def456-document.pdf
+projects/42/_project/1701432000000-xyz789abc012-project-plan.pdf
+```
+
+## File Upload Flow
+
+```
+┌──────────┐     ┌────────────┐     ┌─────────────┐     ┌────────────┐
+│  Client  │────▶│ presignUp  │────▶│   S3 PUT    │────▶│  register  │
+│          │     │   load     │     │   Upload    │     │    file    │
+└──────────┘     └────────────┘     └─────────────┘     └────────────┘
+     │                │                    │                  │
+     │                ▼                    ▼                  ▼
+     │         { uploadUrl,          Direct upload     { id, s3Key,
+     │           s3Key }             to S3 bucket       originalName,
+     │                                                  mimeType, ... }
+     │
+     └─────────────────────────────────────────────────────────────────▶
+                              File ready to view via
+                            getPresignedUrl → S3 GET
+```
+
+1. **presignUpload** - Client requests a presigned URL for upload
+2. **S3 PUT** - Client uploads file directly to S3 using the URL
+3. **register** - Client registers the uploaded file in the database
+4. **getPresignedUrl** - To view, client requests a presigned GET URL
+
+### Supported File Types
+
+- Images: `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `image/svg+xml`
+- Documents: `application/pdf`, `application/msword`, `application/vnd.openxmlformats-*`
+- Text: `text/plain`, `text/csv`
+- Archives: `application/zip`, `application/gzip`
+
+Max file size: **50 MB**
+
+## Deployment
+
+### Pre-Deployment Checklist
+
+1. **Backup Database**
+   ```bash
+   mysqldump -u root -p mantodeus_manager > backup-$(date +%Y%m%d-%H%M%S).sql
+   ```
+
+2. **Run Migrations**
+   ```bash
+   npm run db:migrate
+   ```
+
+3. **Run Backfill (if migrating from legacy)**
+   ```bash
+   npm run db:backfill:dry  # Preview changes
+   npm run db:backfill       # Execute migration
+   ```
+
+4. **Run Tests**
+   ```bash
+   npm test
+   ```
+
+5. **Build Application**
+   ```bash
+   npm run build
+   ```
+
+### Staging vs Production
+
+| Environment | Actions |
+|-------------|---------|
+| Staging | Run migrations, run backfill with `--dry-run`, verify |
+| Production | Backup DB, run migrations, run backfill, health check |
+
+**Important**: CI only builds, tests, and prepares PRs. Deployment is manual.
 
 ## Documentation
 
 - **[User Guide](USER_GUIDE.md)** - End-user documentation
 - **[Deployment Guide](DEPLOYMENT.md)** - Detailed deployment instructions
+- **[Backup & Migration](docs/BACKUP_AND_MIGRATION.md)** - Database backup and data migration guide
 - **[Todo List](todo.md)** - Development history and roadmap
 
 ## Contributing
@@ -193,5 +368,5 @@ Built with modern web technologies and best practices for construction project m
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: November 2025
+**Version**: 2.0.0  
+**Last Updated**: December 2025

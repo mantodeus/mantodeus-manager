@@ -14,11 +14,16 @@ import {
   getContentType,
 } from "./storage";
 import { exportRouter } from "./exportRouter";
+import { projectsRouter } from "./projectsRouter";
 import { geocodeAddress } from "./_core/geocoding";
 
 export const appRouter = router({
   system: systemRouter,
   export: exportRouter,
+  
+  // New project-based structure
+  projects: projectsRouter,
+  
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
