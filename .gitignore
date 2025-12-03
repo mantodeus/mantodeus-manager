@@ -136,4 +136,5 @@ server/db.sqlite.ts
 *openrc*
 *openrc.sh
 *openrc.txt
-clouds.yaml
+clouds.yamlcore
+*.core

@@ -1,6 +1,18 @@
 import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, jobs, tasks, images, reports, comments, contacts, invoices, notes, locations, InsertJob, InsertTask, InsertImage, InsertReport, InsertComment, InsertContact, InsertInvoice, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate } from "../drizzle/schema";
+import { 
+  // User types
+  InsertUser, users, 
+  // New project-based types
+  projects, projectJobs, fileMetadata,
+  type Project, type InsertProject,
+  type ProjectJob, type InsertProjectJob,
+  type FileMetadata, type InsertFileMetadata,
+  // Legacy types (kept for backward compatibility)
+  jobs, tasks, images, reports, comments, contacts, invoices, notes, locations, 
+  InsertJob, InsertTask, InsertImage, InsertReport, InsertComment, InsertContact, 
+  InsertInvoice, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate 
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -758,4 +770,171 @@ export async function bulkCreateJobContacts(jobContactsData: { jobId: number; co
     results.push(result);
   }
   return results;
+}
+
+// =============================================================================
+// NEW PROJECT-BASED QUERIES
+// =============================================================================
+// These functions support the new Projects → Jobs → Files hierarchy.
+// Legacy job/task functions above are kept for backward compatibility.
+
+// ===== PROJECTS QUERIES =====
+
+export async function createProject(project: InsertProject) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(projects).values(project);
+  return result;
+}
+
+export async function getProjectById(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getProjectsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(projects)
+    .where(eq(projects.createdBy, userId))
+    .orderBy(desc(projects.createdAt));
+}
+
+export async function getAllProjects() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(projects).orderBy(desc(projects.createdAt));
+}
+
+export async function updateProject(projectId: number, updates: Partial<InsertProject>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.update(projects).set(updates).where(eq(projects.id, projectId));
+}
+
+export async function deleteProject(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Note: ON DELETE CASCADE will automatically delete related project_jobs and file_metadata
+  return await db.delete(projects).where(eq(projects.id, projectId));
+}
+
+export async function archiveProject(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.update(projects)
+    .set({ status: "archived" })
+    .where(eq(projects.id, projectId));
+}
+
+// ===== PROJECT JOBS QUERIES =====
+
+export async function createProjectJob(job: InsertProjectJob) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(projectJobs).values(job);
+  return result;
+}
+
+export async function getProjectJobById(jobId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.select().from(projectJobs).where(eq(projectJobs.id, jobId)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getProjectJobsByProjectId(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(projectJobs)
+    .where(eq(projectJobs.projectId, projectId))
+    .orderBy(desc(projectJobs.createdAt));
+}
+
+export async function updateProjectJob(jobId: number, updates: Partial<InsertProjectJob>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.update(projectJobs).set(updates).where(eq(projectJobs.id, jobId));
+}
+
+export async function deleteProjectJob(jobId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Note: ON DELETE CASCADE will automatically delete related file_metadata
+  return await db.delete(projectJobs).where(eq(projectJobs.id, jobId));
+}
+
+// ===== FILE METADATA QUERIES =====
+
+export async function createFileMetadata(file: InsertFileMetadata) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(fileMetadata).values(file);
+  return result;
+}
+
+export async function getFileMetadataById(fileId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.select().from(fileMetadata).where(eq(fileMetadata.id, fileId)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getFileMetadataByS3Key(s3Key: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.select().from(fileMetadata).where(eq(fileMetadata.s3Key, s3Key)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getFilesByProjectId(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(fileMetadata)
+    .where(eq(fileMetadata.projectId, projectId))
+    .orderBy(desc(fileMetadata.uploadedAt));
+}
+
+export async function getFilesByJobId(projectId: number, jobId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(fileMetadata)
+    .where(and(
+      eq(fileMetadata.projectId, projectId),
+      eq(fileMetadata.jobId, jobId)
+    ))
+    .orderBy(desc(fileMetadata.uploadedAt));
+}
+
+export async function deleteFileMetadata(fileId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.delete(fileMetadata).where(eq(fileMetadata.id, fileId));
+}
+
+export async function deleteFileMetadataByS3Key(s3Key: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.delete(fileMetadata).where(eq(fileMetadata.s3Key, s3Key));
 }

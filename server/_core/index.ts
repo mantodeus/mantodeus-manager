@@ -7,6 +7,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { storageGet } from "../storage";
+import crypto from "crypto";
+import { exec } from "child_process";
 
 async function startServer() {
   const app = express();
@@ -72,6 +74,71 @@ async function startServer() {
     } catch (error) {
       console.error("File proxy error:", error);
       res.status(500).send("Internal server error");
+    }
+  });
+
+  // GitHub Webhook endpoint for auto-deployment
+  app.post("/api/github-webhook", express.raw({ type: "application/json" }), async (req, res) => {
+    const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
+    
+    if (!WEBHOOK_SECRET) {
+      console.log("[Webhook] No GITHUB_WEBHOOK_SECRET configured, skipping signature verification");
+    } else {
+      // Verify GitHub signature
+      const signature = req.headers["x-hub-signature-256"] as string;
+      if (!signature) {
+        console.log("[Webhook] Missing signature header");
+        return res.status(401).send("Missing signature");
+      }
+
+      const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+      const hmac = crypto.createHmac("sha256", WEBHOOK_SECRET);
+      hmac.update(body);
+      const expectedSignature = `sha256=${hmac.digest("hex")}`;
+
+      if (signature !== expectedSignature) {
+        console.log("[Webhook] Invalid signature");
+        return res.status(401).send("Invalid signature");
+      }
+    }
+
+    const event = req.headers["x-github-event"] as string;
+    const payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const ref = payload.ref;
+
+    console.log(`[Webhook] Received - Event: ${event}, Ref: ${ref}`);
+
+    // Handle ping event
+    if (event === "ping") {
+      console.log("[Webhook] Ping received successfully");
+      return res.status(200).send("Pong!");
+    }
+
+    // Only deploy on push to main/master
+    if (event === "push" && (ref === "refs/heads/main" || ref === "refs/heads/master")) {
+      console.log("[Webhook] Push to main detected, starting deployment...");
+      
+      // Respond immediately
+      res.status(200).send("Deployment started");
+
+      // Run deployment asynchronously
+      const appPath = process.env.APP_PATH || "/srv/customer/sites/manager.mantodeus.com";
+      const pm2Name = process.env.PM2_APP_NAME || "mantodeus-manager";
+      
+      const deployCmd = `cd ${appPath} && git pull && npm install && npm run build && npx pm2 restart ${pm2Name}`;
+      
+      exec(deployCmd, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+        if (err) {
+          console.error("[Webhook] Deployment failed:", err.message);
+          console.error("[Webhook] stderr:", stderr);
+        } else {
+          console.log("[Webhook] Deployment successful!");
+          console.log("[Webhook] stdout:", stdout);
+        }
+      });
+    } else {
+      console.log(`[Webhook] Ignoring event: ${event} on ref: ${ref}`);
+      res.status(200).send("Event ignored");
     }
   });
 

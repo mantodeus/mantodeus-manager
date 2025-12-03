@@ -1,0 +1,30 @@
+{
+  "exportDate": "2025-11-30T19:34:34.917Z",
+  "userId": 1,
+  "userName": "divineropeaccess",
+  "userEmail": "divineropeaccess@duck.com",
+  "data": {
+    "jobs": [
+      {
+        "id": 180002,
+        "title": "Fassadendokumentation",
+        "description": null,
+        "location": "Löwensteinring 9, 12353 Berlin",
+        "latitude": "52.42760860000001",
+        "longitude": "13.4641315",
+        "status": "active",
+        "dateMode": "individual",
+        "startDate": "2025-11-17T23:00:00.000Z",
+        "endDate": "2025-11-27T23:00:00.000Z",
+        "contactId": 180001,
+        "createdBy": 1,
+        "createdAt": "2025-11-22T14:41:21.000Z",
+        "updatedAt": "2025-11-22T16:01:04.000Z"
+      }
+    ],
+    "tasks": [],
+    "contacts": [],
+    "notes": [],
+    "locations": []
+  }
+}

@@ -25,6 +25,10 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+          VITE_APP_TITLE: ${{ secrets.VITE_APP_TITLE || 'Mantodeus Manager' }}
+          VITE_APP_LOGO: ${{ secrets.VITE_APP_LOGO || '/mantodeus-logo.png' }}
+          VITE_ANALYTICS_ENDPOINT: ${{ secrets.VITE_ANALYTICS_ENDPOINT || '' }}
+          VITE_ANALYTICS_WEBSITE_ID: ${{ secrets.VITE_ANALYTICS_WEBSITE_ID || '' }}
       
       - name: Deploy to Infomaniak via SSH
         uses: appleboy/ssh-action@v1.0.3

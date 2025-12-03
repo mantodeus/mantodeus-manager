@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, json, index } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -25,8 +25,124 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+// =============================================================================
+// NEW PROJECT-BASED STRUCTURE
+// =============================================================================
+// These tables implement the new Projects → Jobs hierarchy.
+// The existing `jobs` and `tasks` tables are kept for backward compatibility
+// and will be migrated via the backfill script (Task 5).
+//
+// Naming note: `project_jobs` is used instead of `jobs` to avoid MySQL table
+// name conflict with the legacy `jobs` table. After migration is complete,
+// the legacy table can be dropped and this table renamed if desired.
+// =============================================================================
+
+/**
+ * Projects table - top-level entity representing client projects/engagements.
+ * 
+ * Primary key: Auto-increment integer (consistent with existing tables)
+ * 
+ * Indexes:
+ * - status: For filtering projects by status
+ * - createdBy: For listing user's own projects
+ */
+export const projects = mysqlTable("projects", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  client: varchar("client", { length: 255 }),
+  description: text("description"),
+  startDate: timestamp("startDate"),
+  endDate: timestamp("endDate"),
+  address: text("address"),
+  /** Geographic coordinates stored as JSON: { lat: number, lng: number } */
+  geo: json("geo").$type<{ lat: number; lng: number } | null>(),
+  status: mysqlEnum("status", ["planned", "active", "completed", "archived"]).default("planned").notNull(),
+  createdBy: int("createdBy").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("projects_status_idx").on(table.status),
+  index("projects_createdBy_idx").on(table.createdBy),
+]);
+
+export type Project = typeof projects.$inferSelect;
+export type InsertProject = typeof projects.$inferInsert;
+
+/**
+ * Project Jobs table - work items nested under projects.
+ * 
+ * Named `project_jobs` to avoid conflict with legacy `jobs` table.
+ * Can be renamed to `jobs` after legacy migration is complete.
+ * 
+ * Indexes:
+ * - projectId: For listing jobs within a project
+ * - status: For filtering by status
+ * - (projectId, status): Composite for efficient project+status queries
+ */
+export const projectJobs = mysqlTable("project_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  category: varchar("category", { length: 100 }),
+  description: text("description"),
+  /** Array of user IDs assigned to this job. Stored as JSON for simplicity. */
+  assignedUsers: json("assignedUsers").$type<number[]>(),
+  status: mysqlEnum("status", ["pending", "in_progress", "done", "cancelled"]).default("pending").notNull(),
+  startTime: timestamp("startTime"),
+  endTime: timestamp("endTime"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("project_jobs_projectId_idx").on(table.projectId),
+  index("project_jobs_status_idx").on(table.status),
+  index("project_jobs_projectId_status_idx").on(table.projectId, table.status),
+]);
+
+export type ProjectJob = typeof projectJobs.$inferSelect;
+export type InsertProjectJob = typeof projectJobs.$inferInsert;
+
+/**
+ * File Metadata table - tracks files uploaded to S3 for projects/jobs.
+ * 
+ * S3 key pattern: projects/{projectId}/jobs/{jobId}/{timestamp}-{uuid}-{originalFileName}
+ * If jobId is null, uses: projects/{projectId}/_project/{timestamp}-{uuid}-{originalFileName}
+ * 
+ * Indexes:
+ * - projectId: For listing project files
+ * - jobId: For listing job files  
+ * - (projectId, jobId): Composite for efficient queries
+ * - uploadedBy: For listing user's uploads
+ */
+export const fileMetadata = mysqlTable("file_metadata", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  /** Nullable - if null, file belongs to project level, not a specific job */
+  jobId: int("jobId").references(() => projectJobs.id, { onDelete: "cascade" }),
+  s3Key: varchar("s3Key", { length: 500 }).notNull(),
+  originalName: varchar("originalName", { length: 255 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }).notNull(),
+  /** File size in bytes - useful for display and validation */
+  fileSize: int("fileSize"),
+  uploadedBy: int("uploadedBy").notNull().references(() => users.id),
+  uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+}, (table) => [
+  index("file_metadata_projectId_idx").on(table.projectId),
+  index("file_metadata_jobId_idx").on(table.jobId),
+  index("file_metadata_projectId_jobId_idx").on(table.projectId, table.jobId),
+  index("file_metadata_uploadedBy_idx").on(table.uploadedBy),
+]);
+
+export type FileMetadata = typeof fileMetadata.$inferSelect;
+export type InsertFileMetadata = typeof fileMetadata.$inferInsert;
+
+// =============================================================================
+// LEGACY TABLES (kept for backward compatibility)
+// =============================================================================
+
 /**
  * Jobs table - represents construction projects
+ * @deprecated This is the legacy jobs table. New code should use `projects` table.
+ * Will be migrated via backfill script and eventually dropped.
  */
 export const jobs = mysqlTable("jobs", {
   id: int("id").autoincrement().primaryKey(),
@@ -63,6 +179,8 @@ export type InsertJob = typeof jobs.$inferInsert;
 
 /**
  * Tasks table - represents individual tasks within jobs
+ * @deprecated This is the legacy tasks table. New code should use `projectJobs` table.
+ * Will be migrated via backfill script and eventually dropped.
  */
 export const tasks = mysqlTable("tasks", {
   id: int("id").autoincrement().primaryKey(),
