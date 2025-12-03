@@ -644,7 +644,7 @@ export default function Maps() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
-            className="pl-10 pr-10 bg-[#131416] border-[#131416] focus:border-[#131416]"
+            className="pl-10 pr-10 bg-[#0D0E10] border-[#0D0E10] focus:border-[#0D0E10]"
             style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
           />
           {searchQuery && (
@@ -662,7 +662,7 @@ export default function Maps() {
 
         {/* Search Results Dropdown */}
         {showSearchResults && (
-          <Card className="absolute z-50 w-full mt-2 bg-[#131416] border-[#131416] max-h-96 overflow-y-auto">
+          <Card className="absolute z-50 w-full mt-2 bg-[#0D0E10] border-[#0D0E10] max-h-96 overflow-y-auto">
             {searchResults.length > 0 ? (
               <div className="p-2">
                 {searchResults.map((result) => (
@@ -737,7 +737,7 @@ export default function Maps() {
                       console.error(error);
                     }
                   }}
-                  className="w-full text-left p-3 hover:bg-gray-800 rounded-md transition-colors flex items-start gap-3 border border-dashed border-[#131416]"
+                  className="w-full text-left p-3 hover:bg-gray-800 rounded-md transition-colors flex items-start gap-3 border border-dashed border-[#0D0E10]"
                 >
                   <MapPin className="h-4 w-4 text-[#00ff88] mt-1 flex-shrink-0" />
                   <div className="flex-1">

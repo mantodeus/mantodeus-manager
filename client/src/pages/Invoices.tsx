@@ -172,7 +172,7 @@ export default function Invoices() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-[#131416] hover:text-[#131416]"
+          className="h-7 px-2 text-[#0D0E10] hover:text-[#0D0E10]"
           onClick={handleDownload}
           title="Download"
         >
@@ -196,14 +196,14 @@ export default function Invoices() {
               Upload Invoice
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#1a1a1a] border-[#131416]">
+          <DialogContent className="bg-[#1a1a1a] border-[#0D0E10]">
             <DialogHeader>
               <DialogTitle>Upload Invoice</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Select File *</label>
-                <div className="border-2 border-dashed border-[#131416] rounded-lg p-6 text-center hover:border-[#131416] transition-colors">
+                <div className="border-2 border-dashed border-[#0D0E10] rounded-lg p-6 text-center hover:border-[#0D0E10] transition-colors">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -234,10 +234,10 @@ export default function Invoices() {
                   value={selectedProjectId || "none"} 
                   onValueChange={(val) => setSelectedProjectId(val === "none" ? "" : val)}
                 >
-                  <SelectTrigger className="bg-[#131416] border-[#131416]">
+                  <SelectTrigger className="bg-[#0D0E10] border-[#0D0E10]">
                     <SelectValue placeholder="Select a project..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#131416] border-[#131416]">
+                  <SelectContent className="bg-[#0D0E10] border-[#0D0E10]">
                     <SelectItem value="none">None</SelectItem>
                     {projects && projects.length > 0 ? (
                       projects.map((project) => (
@@ -260,10 +260,10 @@ export default function Invoices() {
                   value={selectedContactId || "none"} 
                   onValueChange={(val) => setSelectedContactId(val === "none" ? "" : val)}
                 >
-                  <SelectTrigger className="bg-[#131416] border-[#131416]">
+                  <SelectTrigger className="bg-[#0D0E10] border-[#0D0E10]">
                     <SelectValue placeholder="Select a contact..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#131416] border-[#131416]">
+                  <SelectContent className="bg-[#0D0E10] border-[#0D0E10]">
                     <SelectItem value="none">None</SelectItem>
                     {contacts && contacts.length > 0 ? (
                       contacts.map((contact) => (
@@ -296,10 +296,10 @@ export default function Invoices() {
         <div>
           <label className="block text-sm font-medium mb-2">Filter by Project</label>
           <Select value={projectFilter || "all"} onValueChange={(val) => setProjectFilter(val === "all" ? "" : val)}>
-            <SelectTrigger className="bg-[#131416] border-[#131416]">
+            <SelectTrigger className="bg-[#0D0E10] border-[#0D0E10]">
               <SelectValue placeholder="All projects" />
             </SelectTrigger>
-            <SelectContent className="bg-[#131416] border-[#131416]">
+            <SelectContent className="bg-[#0D0E10] border-[#0D0E10]">
               <SelectItem value="all">All jobs</SelectItem>
               {jobs && jobs.length > 0 ? (
                 jobs.map((job) => (
@@ -319,10 +319,10 @@ export default function Invoices() {
         <div>
           <label className="block text-sm font-medium mb-2">Filter by Contact</label>
           <Select value={contactFilter || "all"} onValueChange={(val) => setContactFilter(val === "all" ? "" : val)}>
-            <SelectTrigger className="bg-[#131416] border-[#131416]">
+            <SelectTrigger className="bg-[#0D0E10] border-[#0D0E10]">
               <SelectValue placeholder="All contacts" />
             </SelectTrigger>
-            <SelectContent className="bg-[#131416] border-[#131416]">
+            <SelectContent className="bg-[#0D0E10] border-[#0D0E10]">
               <SelectItem value="all">All contacts</SelectItem>
               {contacts && contacts.length > 0 ? (
                 contacts.map((contact) => (
@@ -341,7 +341,7 @@ export default function Invoices() {
       </div>
 
       {filteredInvoices.length === 0 ? (
-        <Card className="bg-[#131416] border-[#131416] p-8 text-center">
+        <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
           <p className="text-gray-400">No invoices found. Upload your first invoice to get started.</p>
         </Card>
       ) : (
@@ -351,7 +351,7 @@ export default function Invoices() {
             const linkedContact = contacts.find((c) => c.id === invoice.contactId);
 
             return (
-              <Card key={invoice.id} className="bg-[#131416] border-[#131416] p-4 hover:border-[#131416] transition-colors">
+              <Card key={invoice.id} className="bg-[#0D0E10] border-[#0D0E10] p-4 hover:border-[#0D0E10] transition-colors">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-start gap-3 flex-1">
                     <FileText className="w-5 h-5 text-[#00ff88] mt-1 flex-shrink-0" />
