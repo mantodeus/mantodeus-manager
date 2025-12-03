@@ -193,10 +193,10 @@ export default function Calendar() {
           onClick={() => setSelectedDate(date)}
           className={`border rounded p-2 min-h-40 cursor-pointer transition-all ${
             today
-              ? 'border-accent/40 bg-accent/5'
+              ? 'border-[#131416] bg-[#131416]/10'
               : selected
-              ? 'border-accent bg-accent/10'
-              : 'border-border hover:border-accent/50 hover:bg-muted/30'
+              ? 'border-[#131416] bg-[#131416]/20'
+              : 'border-[#131416] hover:border-[#131416] hover:bg-[#131416]/10'
           }`}
         >
           <div className={`font-medium text-xs mb-2 ${today ? 'text-accent/80' : ''}`}>
@@ -228,7 +228,7 @@ export default function Calendar() {
 
     return (
       <div className="space-y-3">
-        <div className={`p-3 rounded-lg border ${today ? 'bg-accent/5 border-accent/40' : 'bg-muted/5'}`}>
+        <div className={`p-3 rounded-lg border ${today ? 'bg-[#131416]/10 border-[#131416]' : 'bg-[#131416]/5 border-[#131416]'}`}>
           <h3 className={`text-base font-medium ${today ? 'text-accent/80' : ''}`}>
             {currentDate.toLocaleDateString('en-US', {
               weekday: 'long',

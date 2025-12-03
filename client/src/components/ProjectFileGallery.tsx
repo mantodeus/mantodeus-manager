@@ -156,7 +156,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
 
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith("image/")) {
-      return <ImageIcon className="h-8 w-8 text-blue-500" />;
+      return <ImageIcon className="h-8 w-8 text-[#131416]" />;
     } else if (mimeType === "application/pdf") {
       return <FileText className="h-8 w-8 text-red-500" />;
     } else {
