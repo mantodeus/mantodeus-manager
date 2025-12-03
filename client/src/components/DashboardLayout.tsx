@@ -22,29 +22,8 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, FileCheck, StickyNote, MapPin, FileJson, FolderOpen, Briefcase } from "lucide-react";
+import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, FileCheck, StickyNote, MapPin, FileJson, FolderOpen } from "lucide-react";
 import { DataExportImportDialog } from "./DataExportImportDialog";
-
-// Custom Carabiner icon component - Professional rope access style
-const Carabiner = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    {...props}
-  >
-    {/* Smooth D-shaped carabiner body */}
-    <path d="M9 4 C7 4 5.5 5.5 5.5 7.5 L5.5 16.5 C5.5 18.5 7 20 9 20 L15 20 C17 20 18.5 18.5 18.5 16.5 L18.5 7.5 C18.5 5.5 17 4 15 4 L12 4" />
-    {/* Gate with locking mechanism */}
-    <path d="M12 4 L9 4" strokeWidth="2.5" />
-    <rect x="8.5" y="3" width="1.5" height="2.5" rx="0.5" fill="currentColor" />
-  </svg>
-);
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -52,7 +31,6 @@ import { Button } from "./ui/button";
 
 const menuItems = [
   { icon: FolderOpen, label: "Projects", path: "/projects" },
-  { icon: Carabiner, label: "Jobs (Legacy)", path: "/jobs" },
   { icon: CalendarIcon, label: "Calendar", path: "/calendar" },
   { icon: Users, label: "Contacts", path: "/contacts" },
   { icon: FileCheck, label: "Invoices", path: "/invoices" },
