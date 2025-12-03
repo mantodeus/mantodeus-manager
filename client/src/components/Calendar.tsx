@@ -26,8 +26,8 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
 
-  const handleJobClick = (jobId: number) => {
-    setLocation(`/jobs/${jobId}`);
+  const handleProjectClick = (projectId: number) => {
+    setLocation(`/projects/${projectId}`);
   };
 
   const dateRange = useMemo(() => {

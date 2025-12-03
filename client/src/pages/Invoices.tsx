@@ -37,13 +37,13 @@ export default function Invoices() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
-  const { data: jobs = [] } = trpc.jobs.list.useQuery();
+  const { data: projects = [] } = trpc.projects.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const uploadMutation = trpc.invoices.upload.useMutation();
   const deleteMutation = trpc.invoices.delete.useMutation();
 
   const filteredInvoices = invoices.filter((invoice) => {
-    if (jobFilter && invoice.jobId !== parseInt(jobFilter)) return false;
+    if (projectFilter && invoice.projectId !== parseInt(projectFilter)) return false;
     if (contactFilter && invoice.contactId !== parseInt(contactFilter)) return false;
     return true;
   });
@@ -89,13 +89,13 @@ export default function Invoices() {
         mimeType: selectedFile.type || "application/octet-stream",
         fileSize: selectedFile.size,
         base64Data,
-        jobId: selectedJobId ? parseInt(selectedJobId) : undefined,
+        projectId: selectedProjectId ? parseInt(selectedProjectId) : undefined,
         contactId: selectedContactId ? parseInt(selectedContactId) : undefined,
       });
 
       toast.success("Invoice uploaded successfully");
       setSelectedFile(null);
-      setSelectedJobId("");
+      setSelectedProjectId("");
       setSelectedContactId("");
       setIsDialogOpen(false);
       if (fileInputRef.current) {
@@ -347,7 +347,7 @@ export default function Invoices() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredInvoices.map((invoice) => {
-            const linkedJob = jobs.find((j) => j.id === invoice.jobId);
+            const linkedProject = projects.find((p) => p.id === invoice.projectId);
             const linkedContact = contacts.find((c) => c.id === invoice.contactId);
 
             return (
