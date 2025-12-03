@@ -74,21 +74,21 @@ export function PDFPreviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-[#1a1a1a] border-gray-700 max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="bg-[#1a1a1a] border-[#131416] max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-white truncate">{fileName}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Controls */}
-          <div className="flex items-center justify-between gap-4 p-4 bg-gray-900 border-b border-gray-700">
+          <div className="flex items-center justify-between gap-4 p-4 bg-[#131416] border-b border-[#131416]">
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePreviousPage}
                 disabled={currentPage <= 1}
-                className="bg-gray-800 border-gray-700 hover:bg-gray-700"
+                className="bg-[#131416] border-[#131416] hover:bg-[#131416]"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
@@ -102,7 +102,7 @@ export function PDFPreviewModal({
                 size="sm"
                 onClick={handleNextPage}
                 disabled={currentPage >= numPages}
-                className="bg-gray-800 border-gray-700 hover:bg-gray-700"
+                className="bg-[#131416] border-[#131416] hover:bg-[#131416]"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -114,7 +114,7 @@ export function PDFPreviewModal({
                 size="sm"
                 onClick={handleZoomOut}
                 disabled={zoom <= 50}
-                className="bg-gray-800 border-gray-700 hover:bg-gray-700"
+                className="bg-[#131416] border-[#131416] hover:bg-[#131416]"
               >
                 <ZoomOut className="w-4 h-4" />
               </Button>
@@ -128,7 +128,7 @@ export function PDFPreviewModal({
                 size="sm"
                 onClick={handleZoomIn}
                 disabled={zoom >= 300}
-                className="bg-gray-800 border-gray-700 hover:bg-gray-700"
+                className="bg-[#131416] border-[#131416] hover:bg-[#131416]"
               >
                 <ZoomIn className="w-4 h-4" />
               </Button>
@@ -137,7 +137,7 @@ export function PDFPreviewModal({
                 variant="outline"
                 size="sm"
                 onClick={handleDownload}
-                className="bg-gray-800 border-gray-700 hover:bg-gray-700"
+                className="bg-[#131416] border-[#131416] hover:bg-[#131416]"
               >
                 <Download className="w-4 h-4" />
               </Button>
