@@ -89,18 +89,18 @@ export default function Maps() {
   // Form state
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [locationType, setLocationType] = useState<"job" | "contact" | "custom">("custom");
-  const [selectedJobId, setSelectedJobId] = useState<string>("none");
+  const [locationType, setLocationType] = useState<"project" | "contact" | "custom">("custom");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("none");
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
 
   // Queries
   const { data: locations = [], refetch: refetchLocations } = trpc.locations.list.useQuery();
-  const { data: jobs = [] } = trpc.jobs.list.useQuery();
+  const { data: projects = [] } = trpc.projects.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   
   // Stabilize arrays for useEffect dependencies
   const locationsIds = useMemo(() => locations.map(l => l.id).join(','), [locations]);
-  const jobsIds = useMemo(() => jobs.map(j => j.id).join(','), [jobs]);
+  const projectsIds = useMemo(() => projects.map(p => p.id).join(','), [projects]);
   const contactsIds = useMemo(() => contacts.map(c => c.id).join(','), [contacts]);
 
   // Mutations
@@ -144,7 +144,7 @@ export default function Maps() {
     setName("");
     setAddress("");
     setLocationType("custom");
-    setSelectedJobId("none");
+    setSelectedProjectId("none");
     setSelectedContactId("none");
     setSelectedLocation(null);
     setEditingLocation(null);
@@ -161,19 +161,19 @@ export default function Maps() {
     const query = searchQuery.toLowerCase();
     const results: SearchResult[] = [];
 
-    // Search jobs
-    jobs.forEach((job) => {
-      const matchesName = job.title.toLowerCase().includes(query);
-      const matchesLocation = job.location?.toLowerCase().includes(query);
-      if ((matchesName || matchesLocation) && job.latitude && job.longitude) {
+    // Search projects
+    projects.forEach((project) => {
+      const matchesName = (project.name || project.title || '').toLowerCase().includes(query);
+      const matchesLocation = project.location?.toLowerCase().includes(query);
+      if ((matchesName || matchesLocation) && project.latitude && project.longitude) {
         results.push({
-          id: `job-${job.id}`,
-          name: job.title,
-          address: job.location || null,
-          type: "job",
-          latitude: job.latitude,
-          longitude: job.longitude,
-          originalId: job.id,
+          id: `project-${project.id}`,
+          name: project.name || project.title || '',
+          address: project.location || null,
+          type: "project",
+          latitude: project.latitude,
+          longitude: project.longitude,
+          originalId: project.id,
         });
       }
     });
@@ -214,7 +214,7 @@ export default function Maps() {
 
     setSearchResults(results);
     setShowSearchResults(results.length > 0 || searchQuery.trim().length >= 3);
-  }, [searchQuery, jobsIds, contactsIds, locationsIds, jobs, contacts, locations]);
+  }, [searchQuery, projectsIds, contactsIds, locationsIds, projects, contacts, locations]);
 
   const handleMapReady = (map: google.maps.Map) => {
     mapRef.current = map;
@@ -283,7 +283,7 @@ export default function Maps() {
       // Create marker icon based on location type with circular shadow background
       let iconUrl = '';
       
-      if (location.type === 'job') {
+      if (location.type === 'project') {
         // Professional rope access carabiner icon with neon green
         iconUrl = 'data:image/svg+xml;base64,' + btoa(`
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -429,7 +429,7 @@ export default function Maps() {
       longitude: selectedLocation.lng.toString(),
       address: address.trim() || undefined,
       type: locationType,
-      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
+      projectId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
       contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
     });
   };
@@ -446,7 +446,7 @@ export default function Maps() {
       name: name.trim(),
       address: address.trim() || undefined,
       type: locationType,
-      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
+      projectId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
       contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
     });
   };
@@ -505,7 +505,7 @@ export default function Maps() {
     setName(location.name);
     setAddress(location.address || "");
     setLocationType(location.type);
-    setSelectedJobId(location.jobId?.toString() || "none");
+    setSelectedProjectId(location.projectId?.toString() || "none");
     setSelectedContactId(location.contactId?.toString() || "none");
     setIsEditDialogOpen(true);
   };
@@ -544,8 +544,8 @@ export default function Maps() {
     
     let targetLocation: Location | undefined;
     
-    if (focusJobId) {
-      targetLocation = locations.find(loc => loc.jobId === focusJobId);
+    if (focusProjectId) {
+      targetLocation = locations.find(loc => loc.projectId === focusProjectId);
     } else if (focusContactId) {
       targetLocation = locations.find(loc => loc.contactId === focusContactId);
     }
@@ -580,7 +580,7 @@ export default function Maps() {
         }
       }
     }
-  }, [locations, focusJobId, focusContactId]);
+  }, [locations, focusProjectId, focusContactId]);
 
   // Update markers when locations change
   useEffect(() => {
@@ -600,10 +600,10 @@ export default function Maps() {
     }
   }, [locations]);
 
-  const getJobName = (jobId: number | null) => {
-    if (!jobId) return null;
-    const job = jobs.find((j) => j.id === jobId);
-    return job?.title;
+  const getProjectName = (projectId: number | null) => {
+    if (!projectId) return null;
+    const project = projects.find((p) => p.id === projectId);
+    return project?.name || project?.title;
   };
 
   const getContactName = (contactId: number | null) => {
@@ -640,7 +640,7 @@ export default function Maps() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Search jobs, contacts, or locations..."
+            placeholder="Search projects, contacts, or locations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
@@ -694,7 +694,7 @@ export default function Maps() {
                                 : "#9ca3af",
                           }}
                         >
-                          {result.type === "job" ? "Job" : result.type === "contact" ? "Contact" : "Location"}
+                          {result.type === "project" ? "Project" : result.type === "contact" ? "Contact" : "Location"}
                         </span>
                       </div>
                       {result.address && (
@@ -865,8 +865,8 @@ export default function Maps() {
                         </div>
                         <div className="flex flex-col gap-1 text-xs">
                           <span className="text-[#00ff88] uppercase">{location.type}</span>
-                          {getJobName(location.jobId) && (
-                            <span className="text-muted-foreground">Job: {getJobName(location.jobId)}</span>
+                          {getProjectName(location.projectId) && (
+                            <span className="text-muted-foreground">Project: {getProjectName(location.projectId)}</span>
                           )}
                           {getContactName(location.contactId) && (
                             <span className="text-muted-foreground">
@@ -942,7 +942,7 @@ export default function Maps() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="custom">Custom Location</SelectItem>
-                  <SelectItem value="job">Job Site</SelectItem>
+                  <SelectItem value="project">Project Site</SelectItem>
                   <SelectItem value="contact">Contact Location</SelectItem>
                 </SelectContent>
               </Select>
@@ -1041,7 +1041,7 @@ export default function Maps() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="custom">Custom Location</SelectItem>
-                  <SelectItem value="job">Job Site</SelectItem>
+                  <SelectItem value="project">Project Site</SelectItem>
                   <SelectItem value="contact">Contact Location</SelectItem>
                 </SelectContent>
               </Select>
