@@ -3,6 +3,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { generateJobPDFHTML } from "./pdfExport";
 import type { Job, Task } from "../drizzle/schema";
+import { normalizeExportPayload } from "../shared/importNormalizer";
 
 // Schema for imported data
 const importDataSchema = z.object({
@@ -201,8 +202,10 @@ export const exportRouter = router({
 
   // Import user data from JSON
   importUserData: protectedProcedure
-    .input(importDataSchema)
+    .input(z.any())
     .mutation(async ({ input, ctx }) => {
+      const normalizedInput = normalizeExportPayload(input);
+      const parsedInput = importDataSchema.parse(normalizedInput);
       const userId = ctx.user.id;
       const results = {
         jobs: 0,
@@ -214,12 +217,9 @@ export const exportRouter = router({
         reports: 0,
       };
 
-      // Create a map to store old contact name -> new contact id
-      const contactNameToId = new Map<string, number>();
-
       // 1. Import contacts first (jobs may reference them)
-      if (input.contacts && input.contacts.length > 0) {
-        for (const contact of input.contacts) {
+      if (parsedInput.contacts && parsedInput.contacts.length > 0) {
+        for (const contact of parsedInput.contacts) {
           const result = await db.createContact({
             name: contact.name,
             email: contact.email || null,
@@ -230,7 +230,6 @@ export const exportRouter = router({
             notes: contact.notes || null,
             createdBy: userId,
           });
-          contactNameToId.set(contact.name, result[0].insertId);
           results.contacts++;
 
           // Auto-create location for contact if coordinates exist
@@ -250,8 +249,8 @@ export const exportRouter = router({
       }
 
       // 2. Import jobs with their related data
-      if (input.jobs && input.jobs.length > 0) {
-        for (const job of input.jobs) {
+      if (parsedInput.jobs && parsedInput.jobs.length > 0) {
+        for (const job of parsedInput.jobs) {
           const jobResult = await db.createJob({
             title: job.title,
             description: job.description || null,
@@ -341,8 +340,8 @@ export const exportRouter = router({
       }
 
       // 3. Import standalone notes
-      if (input.notes && input.notes.length > 0) {
-        for (const note of input.notes) {
+      if (parsedInput.notes && parsedInput.notes.length > 0) {
+        for (const note of parsedInput.notes) {
           await db.createNote({
             title: note.title,
             content: note.content || null,
@@ -356,8 +355,8 @@ export const exportRouter = router({
       }
 
       // 4. Import custom locations
-      if (input.locations && input.locations.length > 0) {
-        for (const location of input.locations) {
+      if (parsedInput.locations && parsedInput.locations.length > 0) {
+        for (const location of parsedInput.locations) {
           if (location.type === "custom") {
             await db.createLocation({
               name: location.name,
