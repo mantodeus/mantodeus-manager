@@ -43,7 +43,6 @@ function Router() {
           <ProjectJobDetail />
         </DashboardLayout>
       </Route>
-      
       <Route path="/reports">
         <DashboardLayout>
           <Reports />
