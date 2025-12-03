@@ -7,13 +7,13 @@ import { toast } from "sonner";
 
 export default function Reports() {
   const { user } = useAuth();
-  const { data: jobs, isLoading: jobsLoading } = trpc.jobs.list.useQuery();
+  const { data: projects, isLoading: projectsLoading } = trpc.projects.list.useQuery();
 
-  const handleGenerateReport = (jobId: number, jobTitle: string) => {
+  const handleGenerateReport = (projectId: number, projectTitle: string) => {
     toast.info("Report generation feature coming soon");
   };
 
-  if (jobsLoading) {
+  if (projectsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -33,34 +33,34 @@ export default function Reports() {
       <div className="grid gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Job Reports</CardTitle>
-            <CardDescription>Generate comprehensive reports for your jobs</CardDescription>
+            <CardTitle>Project Reports</CardTitle>
+            <CardDescription>Generate comprehensive reports for your projects</CardDescription>
           </CardHeader>
           <CardContent>
-            {jobs && jobs.length === 0 ? (
+            {projects && projects.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
-                No jobs available. Create a job first to generate reports.
+                No projects available. Create a project first to generate reports.
               </p>
             ) : (
               <div className="space-y-3">
-                {jobs?.map((job) => (
+                {projects?.map((project) => (
                   <div
-                    key={job.id}
+                    key={project.id}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors group"
                   >
                     <div className="flex items-center gap-3">
                       <FileText className="h-5 w-5 group-hover:text-accent-foreground text-muted-foreground transition-colors" />
                       <div>
-                        <p className="font-medium group-hover:text-accent-foreground transition-colors">{job.title}</p>
+                        <p className="font-medium group-hover:text-accent-foreground transition-colors">{project.name || project.title}</p>
                         <p className="text-sm group-hover:text-accent-foreground/80 text-muted-foreground transition-colors">
-                          Status: {job.status.replace("_", " ")}
+                          Status: {project.status.replace("_", " ")}
                         </p>
                       </div>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleGenerateReport(job.id, job.title)}
+                      onClick={() => handleGenerateReport(project.id, project.name || project.title)}
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Generate Report
