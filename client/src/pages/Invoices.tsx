@@ -27,9 +27,9 @@ export default function Invoices() {
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedJobId, setSelectedJobId] = useState<string>("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedContactId, setSelectedContactId] = useState<string>("");
-  const [jobFilter, setJobFilter] = useState<string>("");
+  const [projectFilter, setProjectFilter] = useState<string>("");
   const [contactFilter, setContactFilter] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -229,9 +229,9 @@ export default function Invoices() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Link to Job (optional)</label>
+                <label className="block text-sm font-medium mb-2">Link to Project (optional)</label>
                 <Select 
-                  value={selectedJobId || "none"} 
+                  value={selectedProjectId || "none"} 
                   onValueChange={(val) => setSelectedProjectId(val === "none" ? "" : val)}
                 >
                   <SelectTrigger className="bg-[#131416] border-[#131416]">
