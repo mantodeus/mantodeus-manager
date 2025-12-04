@@ -146,7 +146,7 @@ export function generateFileKey(
  */
 export async function storagePut(
   relKey: string,
-  data: Buffer | Uint8Array | string,
+  data: Buffer<ArrayBufferLike> | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<UploadResult> {
   const key = normalizeKey(relKey);
@@ -156,7 +156,7 @@ export async function storagePut(
   try {
     const body = typeof data === "string"
       ? Buffer.from(data, "base64")
-      : (data as Buffer | Uint8Array);
+      : data;
 
     const command = new PutObjectCommand({
       Bucket: config.bucket,
