@@ -218,7 +218,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={handleFileSelect}
             disabled={uploading}
-            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+            accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
             multiple
           />
           <Button disabled={uploading}>
@@ -248,7 +248,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={handleFileSelect}
                 disabled={uploading}
-                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
                 multiple
               />
               <Button variant="outline">

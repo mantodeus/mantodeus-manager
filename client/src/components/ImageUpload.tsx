@@ -113,15 +113,15 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
           <div className="grid gap-2">
             <Label htmlFor="image">Select Image</Label>
             <div className="flex gap-2">
-              <Input
-                id="image"
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                disabled={uploading}
-                className="flex-1"
-              />
+            <Input
+              id="image"
+              type="file"
+              accept="image/*,.heic,.heif"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              disabled={uploading}
+              className="flex-1"
+            />
               <Button disabled={uploading} onClick={() => fileInputRef.current?.click()}>
                 {uploading ? (
                   <>
@@ -136,7 +136,7 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
                 )}
               </Button>
             </div>
-            <p className="text-sm text-muted-foreground">Max file size: 10MB. Supported formats: JPG, PNG, GIF, WebP</p>
+            <p className="text-sm text-muted-foreground">Max file size: 10MB. Supported formats: JPG, PNG, GIF, WebP, HEIC/HEIF (auto-converted)</p>
           </div>
         </div>
       </CardContent>

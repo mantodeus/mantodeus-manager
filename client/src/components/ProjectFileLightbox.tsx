@@ -10,7 +10,7 @@
  * - Download images
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { X, ChevronLeft, ChevronRight, Download, Undo, Pencil, Circle, Eraser, Move, Save } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -38,6 +38,26 @@ interface ProjectFileLightboxProps {
 type Tool = "draw" | "circle" | "erase";
 type Mode = "annotate" | "pan";
 
+// Annotation types for tracking drawings
+interface CircleAnnotation {
+  type: "circle";
+  centerX: number;
+  centerY: number;
+  radius: number;
+  color: string;
+  lineWidth: number;
+}
+
+interface PathAnnotation {
+  type: "path";
+  points: { x: number; y: number }[];
+  color: string;
+  lineWidth: number;
+  isEraser: boolean;
+}
+
+type Annotation = CircleAnnotation | PathAnnotation;
+
 export default function ProjectFileLightbox({ 
   files, 
   initialIndex, 
@@ -62,6 +82,11 @@ export default function ProjectFileLightbox({
   const containerRef = useRef<HTMLDivElement>(null);
   const [circleStart, setCircleStart] = useState<{ x: number; y: number } | null>(null);
   const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
+  
+  // Track all annotations for proper redrawing
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const currentPathRef = useRef<{ x: number; y: number }[]>([]);
+  const currentCircleRef = useRef<{ centerX: number; centerY: number; radius: number } | null>(null);
   
   // Touch gesture state
   const [touchStart, setTouchStart] = useState<{ dist: number; center: { x: number; y: number }; zoom: number; offset: { x: number; y: number } } | null>(null);
@@ -145,6 +170,62 @@ export default function ProjectFileLightbox({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Redraw all annotations on top of the base image
+  const redrawAnnotations = useCallback((ctx: CanvasRenderingContext2D, annotationList: Annotation[]) => {
+    for (const annotation of annotationList) {
+      if (annotation.type === "circle") {
+        ctx.strokeStyle = annotation.color;
+        ctx.lineWidth = annotation.lineWidth;
+        ctx.globalCompositeOperation = "source-over";
+        ctx.beginPath();
+        ctx.arc(annotation.centerX, annotation.centerY, annotation.radius, 0, 2 * Math.PI);
+        ctx.stroke();
+      } else if (annotation.type === "path") {
+        if (annotation.points.length < 2) continue;
+        
+        ctx.strokeStyle = annotation.isEraser ? "#ffffff" : annotation.color;
+        ctx.lineWidth = annotation.lineWidth;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.globalCompositeOperation = annotation.isEraser ? "destination-out" : "source-over";
+        
+        ctx.beginPath();
+        ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
+        for (let i = 1; i < annotation.points.length; i++) {
+          ctx.lineTo(annotation.points[i].x, annotation.points[i].y);
+        }
+        ctx.stroke();
+      }
+    }
+    // Reset composite operation
+    ctx.globalCompositeOperation = "source-over";
+  }, []);
+
+  // Redraw the entire canvas (image + all annotations)
+  const redrawCanvas = useCallback((previewCircle?: { centerX: number; centerY: number; radius: number }) => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !img || !ctx) return;
+
+    // Clear and draw base image
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+
+    // Draw all saved annotations
+    redrawAnnotations(ctx, annotations);
+
+    // Draw preview circle if provided
+    if (previewCircle && previewCircle.radius > 0) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.beginPath();
+      ctx.arc(previewCircle.centerX, previewCircle.centerY, previewCircle.radius, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+  }, [annotations, color, lineWidth, redrawAnnotations]);
+
   const loadImage = () => {
     const canvas = canvasRef.current;
     const img = imgRef.current;
@@ -174,6 +255,9 @@ export default function ProjectFileLightbox({
     const proxyUrl = `/api/image-proxy?key=${encodeURIComponent(currentFile.s3Key)}`;
     img.src = proxyUrl;
     setHasChanges(false);
+    setAnnotations([]); // Reset annotations when loading new image
+    currentPathRef.current = [];
+    currentCircleRef.current = null;
   };
 
   const getMousePos = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -285,6 +369,9 @@ export default function ProjectFileLightbox({
     if (tool === "circle") {
       setCircleStart(pos);
     } else {
+      // Start a new path
+      currentPathRef.current = [pos];
+      
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
       if (!ctx) return;
@@ -319,25 +406,29 @@ export default function ProjectFileLightbox({
     const pos = getMousePos(e);
 
     if (tool === "circle") {
-      // Preview circle while dragging
+      // Preview circle while dragging - redraw canvas with all annotations plus preview
       if (circleStart) {
-        // Redraw image to clear previous preview
-        const img = imgRef.current;
-        if (img) {
-          ctx.drawImage(img, 0, 0);
-        }
-
         const radius = Math.sqrt(
           Math.pow(pos.x - circleStart.x, 2) + Math.pow(pos.y - circleStart.y, 2)
         );
 
-        ctx.strokeStyle = color;
-        ctx.lineWidth = lineWidth;
-        ctx.beginPath();
-        ctx.arc(circleStart.x, circleStart.y, radius, 0, 2 * Math.PI);
-        ctx.stroke();
+        // Store current circle for finalization
+        currentCircleRef.current = {
+          centerX: circleStart.x,
+          centerY: circleStart.y,
+          radius,
+        };
+
+        redrawCanvas({
+          centerX: circleStart.x,
+          centerY: circleStart.y,
+          radius,
+        });
       }
     } else {
+      // Track path points
+      currentPathRef.current.push(pos);
+      
       ctx.strokeStyle = tool === "erase" ? "#ffffff" : color;
       ctx.lineWidth = lineWidth;
       ctx.lineCap = "round";
@@ -367,15 +458,39 @@ export default function ProjectFileLightbox({
 
     if (!isDrawing) return;
 
-    if (tool === "circle" && circleStart) {
-      // Finalize circle
+    if (tool === "circle" && circleStart && currentCircleRef.current) {
+      // Save the circle annotation
+      const circleAnnotation: CircleAnnotation = {
+        type: "circle",
+        centerX: currentCircleRef.current.centerX,
+        centerY: currentCircleRef.current.centerY,
+        radius: currentCircleRef.current.radius,
+        color: color,
+        lineWidth: lineWidth,
+      };
+      setAnnotations(prev => [...prev, circleAnnotation]);
+      currentCircleRef.current = null;
       setCircleStart(null);
+    } else if (tool !== "circle" && currentPathRef.current.length > 1) {
+      // Save the path annotation
+      const pathAnnotation: PathAnnotation = {
+        type: "path",
+        points: [...currentPathRef.current],
+        color: color,
+        lineWidth: lineWidth,
+        isEraser: tool === "erase",
+      };
+      setAnnotations(prev => [...prev, pathAnnotation]);
+      currentPathRef.current = [];
     }
 
     setIsDrawing(false);
   };
 
   const handleReset = () => {
+    setAnnotations([]);
+    currentPathRef.current = [];
+    currentCircleRef.current = null;
     loadImage();
     setHasChanges(false);
     toast.info("Annotations reset");

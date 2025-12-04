@@ -108,7 +108,7 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
             type="file"
             id="image-upload"
             multiple
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             onChange={handleFileSelect}
             className="hidden"
             disabled={isUploading}
