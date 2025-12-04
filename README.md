@@ -91,6 +91,16 @@ OWNER_OPEN_ID=your_owner_open_id
 OWNER_NAME=Your Name
 ```
 
+## Image Upload Pipeline
+
+User-facing photo uploads now follow a two-step optimization process:
+
+1. **Client-side preparation** – Photos are converted to high-quality JPEG with EXIF removed, constrained to 2000px on the long edge, and targeted to 300–800KB before they ever leave the browser. This keeps uploads snappy on mobile connections.
+2. **Server-side processing** – The tRPC upload handlers feed every image through Sharp to auto-orient, strip metadata, and generate three responsive variants (`thumb_300.jpg`, `preview_1200.jpg`, `full.jpg`). Objects are stored under `projects/{projectId}/images/project_<projectId>_<timestamp>/`.
+3. **Signed delivery** – The API returns short-lived signed URLs for each variant. The UI uses thumbs for grids, previews for lightboxes, and fetches the full asset only on explicit download, ensuring fast browsing with correct MIME types.
+
+Legacy proxy endpoints have been removed; all consumers should rely on `projects.files.*` and `images.*` procedures for generating signed URLs.
+
 ## Deployment
 
 ### Option 1: Railway (Recommended for Quick Deployment)

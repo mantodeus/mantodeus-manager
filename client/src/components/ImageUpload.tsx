@@ -11,6 +11,7 @@ import { compressImage } from "@/lib/imageCompression";
 interface ImageUploadProps {
   jobId?: number;
   taskId?: number;
+  projectId?: number;
 }
 
 // Convert file to base64
@@ -28,7 +29,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
+export function ImageUpload({ jobId, taskId, projectId }: ImageUploadProps) {
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
@@ -101,6 +102,7 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
       await uploadImage.mutateAsync({
         jobId,
         taskId,
+        projectId,
         filename: file.name, // Keep original name
         mimeType: compressedFile.type || file.type,
         fileSize: compressedFile.size,

@@ -25,6 +25,11 @@ interface ProjectFile {
   mimeType: string;
   fileSize: number | null;
   uploadedAt: Date;
+  imageUrls?: {
+    thumb: string;
+    preview: string;
+    full: string;
+  } | null;
 }
 
 interface ProjectFileLightboxProps {
@@ -79,6 +84,7 @@ export default function ProjectFileLightbox({
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const objectUrlRef = useRef<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [circleStart, setCircleStart] = useState<{ x: number; y: number } | null>(null);
   const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
@@ -112,10 +118,18 @@ export default function ProjectFileLightbox({
   const currentFile = files[currentIndex];
 
   useEffect(() => {
-    loadImage();
+    void loadImage();
     setZoom(1); // Reset zoom when changing images
     setPanOffset({ x: 0, y: 0 }); // Reset pan when changing images
   }, [currentIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+    };
+  }, []);
 
   // Prevent background scrolling when touching canvas
   useEffect(() => {
@@ -226,38 +240,60 @@ export default function ProjectFileLightbox({
     }
   }, [annotations, color, lineWidth, redrawAnnotations]);
 
-  const loadImage = () => {
+  const loadImage = async () => {
     const canvas = canvasRef.current;
     const img = imgRef.current;
     if (!canvas || !img) return;
 
+    let previewUrl = currentFile.imageUrls?.preview || currentFile.imageUrls?.full;
+    if (!previewUrl) {
+      const fallback = await utils.client.projects.files.getPresignedUrl.query({ fileId: currentFile.id, variant: "preview" });
+      previewUrl = fallback.url;
+    }
+    if (!previewUrl) {
+      toast.error("Preview unavailable for this file");
+      return;
+    }
+
     setIsLoading(true);
 
-    img.onload = () => {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+    try {
+      const response = await fetch(previewUrl);
+      if (!response.ok) {
+        throw new Error("Failed to download preview");
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
 
-      // Set canvas size to match image
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+      objectUrlRef.current = objectUrl;
 
-      // Draw image
-      ctx.drawImage(img, 0, 0);
+      img.onload = () => {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        ctx.drawImage(img, 0, 0);
+        setIsLoading(false);
+      };
+
+      img.onerror = () => {
+        setIsLoading(false);
+        toast.error("Failed to load image");
+      };
+
+      img.src = objectUrl;
+      setHasChanges(false);
+      setAnnotations([]); // Reset annotations when loading new image
+      currentPathRef.current = [];
+      currentCircleRef.current = null;
+    } catch (error) {
+      console.error(error);
       setIsLoading(false);
-    };
-
-    img.onerror = () => {
-      setIsLoading(false);
-      toast.error("Failed to load image");
-    };
-
-    // Use proxy endpoint to avoid CORS taint
-    const proxyUrl = `/api/image-proxy?key=${encodeURIComponent(currentFile.s3Key)}`;
-    img.src = proxyUrl;
-    setHasChanges(false);
-    setAnnotations([]); // Reset annotations when loading new image
-    currentPathRef.current = [];
-    currentCircleRef.current = null;
+      toast.error(error instanceof Error ? error.message : "Failed to load image");
+    }
   };
 
   const getMousePos = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -563,6 +599,35 @@ export default function ProjectFileLightbox({
     );
   };
 
+  const handleDownloadOriginal = async () => {
+    try {
+      let fullUrl = currentFile.imageUrls?.full;
+      if (!fullUrl) {
+        const fallback = await utils.client.projects.files.getPresignedUrl.query({
+          fileId: currentFile.id,
+          variant: "full",
+        });
+        fullUrl = fallback.url;
+      }
+      if (!fullUrl) {
+        toast.error("Original image unavailable");
+        return;
+      }
+
+      const anchor = document.createElement("a");
+      anchor.href = fullUrl;
+      const safeName = currentFile.originalName.replace(/\.[^.]+$/, "") || `project-image-${currentFile.id}`;
+      anchor.download = `${safeName}.jpg`;
+      anchor.target = "_blank";
+      anchor.rel = "noopener";
+      anchor.click();
+      toast.success("Original download started");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to download original image");
+    }
+  };
+
   const goToPrevious = () => {
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : files.length - 1));
   };
@@ -702,6 +767,10 @@ export default function ProjectFileLightbox({
           </Button>
           <Button variant="outline" size="sm" onClick={handleDownload} title="Download">
             <Download className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleDownloadOriginal} title="Download original full-res">
+            <Download className="h-4 w-4" />
+            <span className="sr-only">Download original</span>
           </Button>
         </div>
       </div>

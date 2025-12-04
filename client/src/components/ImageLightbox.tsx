@@ -10,6 +10,11 @@ interface Image {
   fileKey: string;
   filename: string | null;
   caption: string | null;
+  imageUrls?: {
+    thumb: string;
+    preview: string;
+    full: string;
+  } | null;
 }
 
 interface ImageLightboxProps {
@@ -56,6 +61,7 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const objectUrlRef = useRef<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [circleStart, setCircleStart] = useState<{ x: number; y: number } | null>(null);
   const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
@@ -85,10 +91,18 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
   const currentImage = images[currentIndex];
 
   useEffect(() => {
-    loadImage();
+    void loadImage();
     setZoom(1); // Reset zoom when changing images
     setPanOffset({ x: 0, y: 0 }); // Reset pan when changing images
   }, [currentIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+    };
+  }, []);
 
   // Prevent background scrolling when touching canvas
   useEffect(() => {
@@ -183,29 +197,59 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
     }
   }, [annotations, color, lineWidth, redrawAnnotations]);
 
-  const loadImage = () => {
+  const loadImage = async () => {
     const canvas = canvasRef.current;
     const img = imgRef.current;
     if (!canvas || !img) return;
 
-    img.onload = () => {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+    let previewUrl = currentImage.imageUrls?.preview || currentImage.imageUrls?.full;
+    if (!previewUrl) {
+      const fallback = await utils.client.images.getReadUrl.query({ fileKey: currentImage.fileKey });
+      previewUrl = fallback.url;
+    }
+    if (!previewUrl) {
+      toast.error("Preview unavailable for this image");
+      return;
+    }
 
-      // Set canvas size to match image
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+    setIsLoading(true);
+    try {
+      const response = await fetch(previewUrl);
+      if (!response.ok) {
+        throw new Error("Failed to download image preview");
+      }
 
-      // Draw image
-      ctx.drawImage(img, 0, 0);
-    };
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
 
-    // Use proxy endpoint to avoid CORS taint
-    const proxyUrl = `/api/image-proxy?key=${encodeURIComponent(currentImage.fileKey)}`;
-    img.src = proxyUrl;
-    setHasChanges(false);
-    setAnnotations([]); // Reset annotations when loading new image
-    currentPathRef.current = [];
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+      objectUrlRef.current = objectUrl;
+
+      img.onload = () => {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        ctx.drawImage(img, 0, 0);
+        setIsLoading(false);
+      };
+
+      img.onerror = () => {
+        setIsLoading(false);
+        toast.error("Failed to load image");
+      };
+
+      img.src = objectUrl;
+      setHasChanges(false);
+      setAnnotations([]); // Reset annotations when loading new image
+      currentPathRef.current = [];
+    } catch (error) {
+      console.error(error);
+      setIsLoading(false);
+      toast.error(error instanceof Error ? error.message : "Failed to load image");
+    }
   };
 
   const getMousePos = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -513,6 +557,32 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
     );
   };
 
+  const handleDownloadOriginal = async () => {
+    try {
+      let fullUrl = currentImage.imageUrls?.full;
+      if (!fullUrl) {
+        const fallback = await utils.client.images.getReadUrl.query({ fileKey: currentImage.fileKey });
+        fullUrl = fallback.url;
+      }
+      if (!fullUrl) {
+        toast.error("Original image unavailable");
+        return;
+      }
+
+      const anchor = document.createElement("a");
+      anchor.href = fullUrl;
+      const safeName = currentImage.filename?.replace(/\.[^.]+$/, "") || `project-image-${currentImage.id}`;
+      anchor.download = `${safeName}.jpg`;
+      anchor.target = "_blank";
+      anchor.rel = "noopener";
+      anchor.click();
+      toast.success("Original download started");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to download original image");
+    }
+  };
+
   const goToPrevious = () => {
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
   };
@@ -645,8 +715,12 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
               ? "Saving..."
               : "Save"}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleDownload} title="Download">
+          <Button variant="outline" size="sm" onClick={handleDownload} title="Download annotated">
             <Download className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleDownloadOriginal} title="Download original full-res">
+            <Download className="h-4 w-4" />
+            <span className="sr-only">Download original</span>
           </Button>
         </div>
       </div>

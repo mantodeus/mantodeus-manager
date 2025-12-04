@@ -13,16 +13,16 @@
 import imageCompression from 'browser-image-compression';
 
 export interface CompressionOptions {
-  /** Maximum file size in MB (default: 2) */
+  /** Maximum file size in MB (default: 0.8 ~ 800KB) */
   maxSizeMB?: number;
-  /** Maximum width/height in pixels (default: 2560 for 2K) */
+  /** Maximum width/height in pixels (default: 2000px longest edge) */
   maxWidthOrHeight?: number;
   /** Use WebWorker for non-blocking compression (default: true) */
   useWebWorker?: boolean;
-  /** Preserve EXIF orientation (default: true) */
-  preserveExif?: boolean;
-  /** File types to compress (default: image/jpeg, image/png, image/webp) */
+  /** Target output format (default: force JPEG for consistency) */
   fileType?: string;
+  /** Initial quality hint (0-1) */
+  initialQuality?: number;
 }
 
 export interface CompressionResult {
@@ -33,11 +33,15 @@ export interface CompressionResult {
   wasCompressed: boolean;
 }
 
+const TARGET_MIN_BYTES = 300 * 1024; // 300KB
+const TARGET_MAX_BYTES = 800 * 1024; // 800KB
+
 const DEFAULT_OPTIONS: CompressionOptions = {
-  maxSizeMB: 2,
-  maxWidthOrHeight: 2560, // 2K resolution - good balance of quality and size
+  maxSizeMB: TARGET_MAX_BYTES / (1024 * 1024),
+  maxWidthOrHeight: 2000,
   useWebWorker: true,
-  preserveExif: true,
+  fileType: "image/jpeg",
+  initialQuality: 0.82,
 };
 
 /**
@@ -54,8 +58,8 @@ export async function compressImage(
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const originalSize = file.size;
 
-  // Skip compression for already small files (< 500KB)
-  if (originalSize < 500 * 1024) {
+  // Skip compression for tiny files
+  if (originalSize < TARGET_MIN_BYTES) {
     return {
       file,
       originalSize,
@@ -88,19 +92,31 @@ export async function compressImage(
   }
 
   try {
-    const compressedFile = await imageCompression(file, {
+    let quality = opts.initialQuality ?? DEFAULT_OPTIONS.initialQuality!;
+    let compressedFile = await imageCompression(file, {
       maxSizeMB: opts.maxSizeMB!,
       maxWidthOrHeight: opts.maxWidthOrHeight!,
       useWebWorker: opts.useWebWorker!,
-      preserveExif: opts.preserveExif!,
       fileType: opts.fileType,
+      initialQuality: quality,
     });
+
+    while (compressedFile.size > TARGET_MAX_BYTES && quality > 0.6) {
+      quality = parseFloat((quality - 0.05).toFixed(2));
+      compressedFile = await imageCompression(file, {
+        maxSizeMB: opts.maxSizeMB!,
+        maxWidthOrHeight: opts.maxWidthOrHeight!,
+        useWebWorker: opts.useWebWorker!,
+        fileType: opts.fileType,
+        initialQuality: quality,
+      });
+    }
 
     const compressedSize = compressedFile.size;
     const compressionRatio = ((originalSize - compressedSize) / originalSize) * 100;
 
     console.log(
-      `[ImageCompression] ${file.name}: ${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${compressionRatio.toFixed(1)}% smaller)`
+      `[ImageCompression] ${file.name}: ${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${compressionRatio.toFixed(1)}% smaller, q=${quality})`
     );
 
     return {
