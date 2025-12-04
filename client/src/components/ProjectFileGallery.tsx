@@ -37,6 +37,14 @@ interface FileMetadata {
   mimeType: string;
   fileSize: number | null;
   uploadedAt: Date;
+  imageMetadata?: {
+    baseName: string;
+  } | null;
+  imageUrls?: {
+    thumb: string;
+    preview: string;
+    full: string;
+  } | null;
 }
 
 interface ProjectFileGalleryProps {
@@ -62,8 +70,8 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 // Check if file is an image
-function isImageFile(mimeType: string): boolean {
-  return mimeType.startsWith("image/");
+function isImageFile(mimeType: string, imageUrls?: FileMetadata["imageUrls"]): boolean {
+  return mimeType.startsWith("image/") || Boolean(imageUrls);
 }
 
 export function ProjectFileGallery({ projectId, jobId, files, isLoading }: ProjectFileGalleryProps) {
@@ -76,7 +84,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
   const utils = trpc.useUtils();
 
   // Filter image files for the lightbox
-  const imageFiles = files.filter(f => isImageFile(f.mimeType));
+  const imageFiles = files.filter(f => isImageFile(f.mimeType, f.imageUrls));
 
   // Server-side upload mutation (bypasses CORS - no direct S3 access from browser)
   const uploadFile = trpc.projects.files.upload.useMutation({
@@ -305,7 +313,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
       ) : (
         <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {files.map((file) => {
-            const isImage = isImageFile(file.mimeType);
+            const isImage = isImageFile(file.mimeType, file.imageUrls);
             
             return (
               <Card 
@@ -317,13 +325,18 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                   {isImage ? (
                     // Image thumbnail
                     <div className="relative aspect-square">
-                      {/* Use thumbnail version for grid (400px for 2x displays) */}
-                      <img
-                        src={`/api/image-proxy?key=${encodeURIComponent(file.s3Key)}&w=400&q=80`}
-                        alt={file.originalName}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
+                      {file.imageUrls?.thumb ? (
+                        <img
+                          src={file.imageUrls.thumb}
+                          alt={file.originalName}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                          Preview unavailable
+                        </div>
+                      )}
                       {/* Overlay on hover */}
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <Button

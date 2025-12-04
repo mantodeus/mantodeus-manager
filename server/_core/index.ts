@@ -22,67 +22,6 @@ async function startServer() {
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
 
-  // Image proxy endpoint - fetches from S3 with credentials and optional resizing
-  // Supports ?w=width and/or ?h=height for on-demand thumbnails
-  app.get("/api/image-proxy", async (req, res) => {
-    try {
-      const fileKey = req.query.key as string;
-      const width = req.query.w ? parseInt(req.query.w as string, 10) : undefined;
-      const height = req.query.h ? parseInt(req.query.h as string, 10) : undefined;
-      const quality = req.query.q ? parseInt(req.query.q as string, 10) : 85;
-
-      if (!fileKey) {
-        return res.status(400).send("Missing key parameter");
-      }
-
-      // Fetch image from S3 using credentials
-      const { data, contentType } = await storageGet(fileKey);
-
-      // If resize requested and it's an image that can be processed
-      if ((width || height) && contentType.startsWith("image/") && !contentType.includes("gif")) {
-        try {
-          let sharpInstance = sharp(data);
-          
-          // Resize while maintaining aspect ratio
-          sharpInstance = sharpInstance.resize(width || null, height || null, {
-            fit: "inside",
-            withoutEnlargement: true,
-          });
-
-          // Output as WebP for best compression (falls back to JPEG for wide compatibility)
-          const acceptHeader = req.headers.accept || "";
-          if (acceptHeader.includes("image/webp")) {
-            const resizedBuffer = await sharpInstance.webp({ quality }).toBuffer();
-            res.setHeader("Content-Type", "image/webp");
-            res.setHeader("Access-Control-Allow-Origin", "*");
-            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-            res.setHeader("Vary", "Accept");
-            return res.send(resizedBuffer);
-          } else {
-            const resizedBuffer = await sharpInstance.jpeg({ quality, mozjpeg: true }).toBuffer();
-            res.setHeader("Content-Type", "image/jpeg");
-            res.setHeader("Access-Control-Allow-Origin", "*");
-            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-            res.setHeader("Vary", "Accept");
-            return res.send(resizedBuffer);
-          }
-        } catch (resizeError) {
-          console.error("Image resize error, serving original:", resizeError);
-          // Fall through to serve original if resize fails
-        }
-      }
-
-      // Serve original image
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      res.send(data);
-    } catch (error) {
-      console.error("Image proxy error:", error);
-      res.status(500).send("Internal server error");
-    }
-  });
-
   // Generic file proxy endpoint - for PDFs, documents, etc.
   app.get("/api/file-proxy", async (req, res) => {
     try {

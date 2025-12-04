@@ -50,6 +50,13 @@
       "when": 1733072400000,
       "tag": "0006_add_projects_jobs_files",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1764700000000,
+      "tag": "0007_upgrade_image_pipeline",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { TRPCError } from "@trpc/server";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
@@ -16,11 +17,24 @@ import {
 import { exportRouter } from "./exportRouter";
 import { projectsRouter } from "./projectsRouter";
 import { geocodeAddress } from "./_core/geocoding";
+import { shouldProcessImage } from "./_core/imageProcessing";
 import { 
-  processImage, 
-  shouldProcessImage, 
-  isHeicImage,
-} from "./_core/imageProcessing";
+  processAndUploadImageVariants,
+  generateSignedVariantUrls,
+  deleteImageVariants,
+  type ImageVariant,
+} from "./_core/imagePipeline";
+import type { StoredImageMetadata } from "../drizzle/schema";
+
+async function hydrateImageRecord<T extends { imageMetadata: StoredImageMetadata | null }>(
+  image: T
+): Promise<T & { imageUrls: Record<ImageVariant, string> | null }> {
+  const imageUrls = await generateSignedVariantUrls(image.imageMetadata);
+  return {
+    ...image,
+    imageUrls,
+  };
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -244,14 +258,16 @@ export const appRouter = router({
     listByJob: protectedProcedure
       .input(z.object({ jobId: z.number() }))
       .query(async ({ input }) => {
-        return await db.getImagesByJobId(input.jobId);
+        const images = await db.getImagesByJobId(input.jobId);
+        return await Promise.all(images.map((image) => hydrateImageRecord(image)));
       }),
     
     // List images by task
     listByTask: protectedProcedure
       .input(z.object({ taskId: z.number() }))
       .query(async ({ input }) => {
-        return await db.getImagesByTaskId(input.taskId);
+        const images = await db.getImagesByTaskId(input.taskId);
+        return await Promise.all(images.map((image) => hydrateImageRecord(image)));
       }),
 
     // Get a presigned URL for viewing an image (for private S3 buckets)
@@ -281,6 +297,7 @@ export const appRouter = router({
         z.object({
           jobId: z.number().optional(),
           taskId: z.number().optional(),
+          projectId: z.number().optional().nullable(),
           filename: z.string(),
           mimeType: z.string(),
           fileSize: z.number(),
@@ -292,42 +309,27 @@ export const appRouter = router({
         let { filename, mimeType, fileSize, base64Data } = input;
         const { jobId, taskId, caption } = input;
 
+        if (!shouldProcessImage(mimeType, filename)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Only image uploads are supported by this endpoint.",
+          });
+        }
+
         // Convert base64 to buffer for processing
         let buffer: Buffer = Buffer.from(base64Data, "base64");
 
-        // Process image if it's a supported format (optimize quality, convert HEIC)
-        if (shouldProcessImage(mimeType, filename)) {
-          try {
-            console.log(`[Images] Processing image: ${filename} (${mimeType})`);
-            const processed = await processImage(buffer, mimeType, filename, {
-              quality: 92, // High quality, slight optimization
-            });
-            
-            buffer = processed.buffer;
-            mimeType = processed.mimeType;
-            fileSize = processed.processedSize;
-            
-            // Update filename if format was converted (e.g., HEIC -> JPG)
-            if (processed.newFilename) {
-              filename = processed.newFilename;
-              console.log(`[Images] Converted to: ${filename}`);
-            }
-          } catch (error) {
-            console.error("[Images] Processing failed, uploading original:", error);
-            // Continue with original if processing fails
-          }
-        }
-
-        // Generate unique file key with potentially updated filename
-        const fileKey = generateFileKey("uploads", ctx.user.id, filename);
-
-        // Upload to S3 via server (no CORS needed)
-        const { url } = await storagePut(fileKey, buffer, mimeType);
+        const metadata = await processAndUploadImageVariants(buffer, { projectId: input.projectId ?? null });
+        mimeType = metadata.mimeType;
+        fileSize = metadata.variants.full.size;
+        const fileKey = metadata.variants.full.key;
+        const url = metadata.variants.full.url;
 
         // Save metadata to database
         const result = await db.createImage({
           jobId: jobId || null,
           taskId: taskId || null,
+          projectId: input.projectId ?? null,
           fileKey,
           url,
           filename,
@@ -335,9 +337,18 @@ export const appRouter = router({
           fileSize,
           caption: caption || null,
           uploadedBy: ctx.user.id,
+          imageMetadata: metadata,
         });
 
-        return { success: true, id: result[0].insertId, url, fileKey };
+        const image = await db.getImageById(result[0].insertId);
+        if (!image) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Image metadata not found after upload",
+          });
+        }
+
+        return { success: true, image: await hydrateImageRecord(image) };
       }),
 
     // Get a presigned URL for direct browser upload (requires CORS on bucket)
@@ -352,6 +363,12 @@ export const appRouter = router({
       )
       .mutation(async ({ input, ctx }) => {
         const { filename, mimeType } = input;
+        if (shouldProcessImage(mimeType, filename)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Direct uploads are disabled for images. Use the server-side uploader.",
+          });
+        }
         const fileKey = generateFileKey("uploads", ctx.user.id, filename);
 
         const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
@@ -383,6 +400,12 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const { jobId, taskId, fileKey, url, filename, mimeType, fileSize, caption } =
           input;
+        if (shouldProcessImage(mimeType, filename)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Direct uploads are disabled for images. Use the server-side uploader.",
+          });
+        }
 
         const result = await db.createImage({
           jobId: jobId || null,
@@ -414,7 +437,11 @@ export const appRouter = router({
         const image = await db.getImageById(input.id);
         if (image?.fileKey) {
           try {
-            await deleteFromStorage(image.fileKey);
+            if (image.imageMetadata) {
+              await deleteImageVariants(image.imageMetadata);
+            } else {
+              await deleteFromStorage(image.fileKey);
+            }
           } catch (error) {
             console.error("[Images] Failed to delete from S3:", error);
             // Continue with DB delete even if S3 delete fails

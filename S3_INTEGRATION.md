@@ -30,7 +30,7 @@ This bypasses CORS entirely since the S3 request comes from the server, not the 
 
 For viewing files (images, PDFs, documents), we use a **server-side proxy**:
 
-- `/api/image-proxy?key=<fileKey>` - For images (with aggressive caching)
+- Image variants (thumb/preview/full) are fetched via temporary signed URLs from the tRPC API
 - `/api/file-proxy?key=<fileKey>&filename=<name>` - For documents (PDFs, etc.)
 - `/api/file-proxy?key=<fileKey>&filename=<name>&download=true` - For downloads
 
@@ -130,7 +130,6 @@ The storage module provides these main functions:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/image-proxy` | GET | Proxy images from S3 (1 year cache) |
 | `/api/file-proxy` | GET | Proxy files from S3 (1 hour cache) |
 
 ## File Organization
@@ -264,7 +263,7 @@ The same code works in both environments. The key differences:
 
 ### Images Not Loading
 
-- Check browser console for 500 errors on `/api/image-proxy`
+- Check browser console for failed signed URL fetches (thumb/preview/full)
 - Verify the `fileKey` in database is correct
 - Test the proxy URL directly in browser
 - Check server logs for S3 errors
