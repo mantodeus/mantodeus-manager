@@ -2,7 +2,7 @@
  * Project File Gallery Component
  * 
  * Displays and manages files for a project:
- * - File upload with progress
+ * - File upload via server-side upload (bypasses CORS)
  * - File list with previews
  * - View files with presigned URLs
  * - Delete files
@@ -42,14 +42,42 @@ interface ProjectFileGalleryProps {
   isLoading: boolean;
 }
 
+// Convert file to base64
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Remove the data:xxx;base64, prefix
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ProjectFileGallery({ projectId, jobId, files, isLoading }: ProjectFileGalleryProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [viewingFileId, setViewingFileId] = useState<number | null>(null);
   const utils = trpc.useUtils();
 
-  // Mutations
-  const presignUpload = trpc.projects.files.presignUpload.useMutation();
-  const registerFile = trpc.projects.files.register.useMutation();
+  // Server-side upload mutation (bypasses CORS - no direct S3 access from browser)
+  const uploadFile = trpc.projects.files.upload.useMutation({
+    onSuccess: () => {
+      toast.success("File uploaded successfully");
+      if (jobId) {
+        utils.projects.files.listByJob.invalidate({ projectId, jobId });
+      } else {
+        utils.projects.files.listByProject.invalidate({ projectId });
+      }
+    },
+    onError: (error) => {
+      toast.error("Upload failed: " + error.message);
+    },
+  });
+
   const deleteFile = trpc.projects.files.delete.useMutation({
     onSuccess: () => {
       toast.success("File deleted successfully");
@@ -63,9 +91,6 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
       toast.error("Failed to delete file: " + error.message);
     },
   });
-
-  // Get presigned URL for viewing
-  const getPresignedUrl = trpc.projects.files.getPresignedUrl.useMutation();
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -83,68 +108,43 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
     setUploadProgress(0);
 
     try {
-      // 1. Get presigned URL
-      const { uploadUrl, s3Key } = await presignUpload.mutateAsync({
+      // Convert file to base64
+      setUploadProgress(10);
+      const base64Data = await fileToBase64(file);
+      setUploadProgress(50);
+
+      // Upload via server (server uploads to S3, no CORS needed)
+      await uploadFile.mutateAsync({
         projectId,
         jobId: jobId || null,
         filename: file.name,
-        contentType: file.type,
-        fileSize: file.size,
-      });
-
-      setUploadProgress(20);
-
-      // 2. Upload file directly to S3
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: {
-          "Content-Type": file.type,
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Failed to upload file to storage");
-      }
-
-      setUploadProgress(80);
-
-      // 3. Register file in database
-      await registerFile.mutateAsync({
-        projectId,
-        jobId: jobId || null,
-        s3Key,
-        originalName: file.name,
         mimeType: file.type,
-        fileSize: file.size,
+        base64Data,
       });
 
       setUploadProgress(100);
-      toast.success("File uploaded successfully");
-
-      // Refresh file list
-      if (jobId) {
-        utils.projects.files.listByJob.invalidate({ projectId, jobId });
-      } else {
-        utils.projects.files.listByProject.invalidate({ projectId });
-      }
     } catch (error) {
       console.error("Upload error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to upload file");
+      const message = error instanceof Error ? error.message : "Failed to upload file";
+      toast.error(message);
     } finally {
       setUploading(false);
       setUploadProgress(0);
       // Reset input
       e.target.value = "";
     }
-  }, [projectId, jobId, presignUpload, registerFile, utils]);
+  }, [projectId, jobId, uploadFile]);
 
   const handleViewFile = async (file: FileMetadata) => {
     try {
-      const { url } = await getPresignedUrl.mutateAsync({ fileId: file.id });
-      window.open(url, "_blank");
+      setViewingFileId(file.id);
+      // Use utils.client to fetch presigned URL on demand
+      const result = await utils.client.projects.files.getPresignedUrl.query({ fileId: file.id });
+      window.open(result.url, "_blank");
     } catch (error) {
       toast.error("Failed to get file URL");
+    } finally {
+      setViewingFileId(null);
     }
   };
 
@@ -252,10 +252,10 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                     variant="outline"
                     size="sm"
                     onClick={() => handleViewFile(file)}
-                    disabled={getPresignedUrl.isPending}
+                    disabled={viewingFileId === file.id}
                     className="flex-1"
                   >
-                    {getPresignedUrl.isPending ? (
+                    {viewingFileId === file.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
