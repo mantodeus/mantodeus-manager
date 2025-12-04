@@ -23,6 +23,10 @@ import {
 } from "./storage";
 import { nanoid } from "nanoid";
 import type { TrpcContext } from "./_core/context";
+import { 
+  processImage, 
+  shouldProcessImage, 
+} from "./_core/imageProcessing";
 
 // =============================================================================
 // CONSTANTS
@@ -30,12 +34,16 @@ import type { TrpcContext } from "./_core/context";
 
 // Allowed MIME types for file uploads
 const ALLOWED_MIME_TYPES = [
-  // Images
+  // Images (including HEIC/HEIF which will be converted to JPEG)
   "image/jpeg",
   "image/png",
   "image/gif",
   "image/webp",
   "image/svg+xml",
+  "image/heic",
+  "image/heif",
+  "image/heic-sequence",
+  "image/heif-sequence",
   // Documents
   "application/pdf",
   "application/msword",
@@ -384,6 +392,10 @@ export const projectFilesRouter = router({
   /**
    * Server-side upload (for when presigned URLs aren't suitable)
    * Accepts base64-encoded file data and uploads directly to S3
+   * 
+   * For images:
+   * - Optimizes with high quality (92%)
+   * - Converts HEIC/HEIF to JPEG for compatibility
    */
   upload: protectedProcedure
     .input(z.object({
@@ -394,8 +406,10 @@ export const projectFilesRouter = router({
       base64Data: z.string(),
     }))
     .mutation(async ({ input, ctx }) => {
+      let { filename, mimeType } = input;
+      
       // Validate MIME type
-      if (!validateMimeType(input.mimeType)) {
+      if (!validateMimeType(mimeType)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Invalid file type",
@@ -410,15 +424,9 @@ export const projectFilesRouter = router({
         await verifyJobBelongsToProject(input.projectId, input.jobId);
       }
       
-      // Generate S3 key
-      const s3Key = generateProjectFileKey(
-        input.projectId,
-        input.jobId ?? null,
-        input.filename
-      );
-      
-      // Calculate file size from base64
-      const fileSize = Math.ceil((input.base64Data.length * 3) / 4);
+      // Convert base64 to buffer
+      let buffer: Buffer = Buffer.from(input.base64Data, "base64");
+      let fileSize = buffer.length;
       
       // Validate file size
       if (fileSize > MAX_FILE_SIZE) {
@@ -428,16 +436,46 @@ export const projectFilesRouter = router({
         });
       }
       
+      // Process image if it's a supported format (optimize quality, convert HEIC)
+      if (shouldProcessImage(mimeType, filename)) {
+        try {
+          console.log(`[ProjectFiles] Processing image: ${filename} (${mimeType})`);
+          const processed = await processImage(buffer, mimeType, filename, {
+            quality: 92, // High quality, slight optimization
+          });
+          
+          buffer = processed.buffer;
+          mimeType = processed.mimeType;
+          fileSize = processed.processedSize;
+          
+          // Update filename if format was converted (e.g., HEIC -> JPG)
+          if (processed.newFilename) {
+            filename = processed.newFilename;
+            console.log(`[ProjectFiles] Converted to: ${filename}`);
+          }
+        } catch (error) {
+          console.error("[ProjectFiles] Image processing failed, uploading original:", error);
+          // Continue with original if processing fails
+        }
+      }
+      
+      // Generate S3 key with potentially updated filename
+      const s3Key = generateProjectFileKey(
+        input.projectId,
+        input.jobId ?? null,
+        filename
+      );
+      
       // Upload to S3
-      await storagePut(s3Key, input.base64Data, input.mimeType);
+      await storagePut(s3Key, buffer, mimeType);
       
       // Register in database
       const result = await db.createFileMetadata({
         projectId: input.projectId,
         jobId: input.jobId ?? null,
         s3Key,
-        originalName: input.filename,
-        mimeType: input.mimeType,
+        originalName: filename,
+        mimeType,
         fileSize,
         uploadedBy: ctx.user.id,
       });

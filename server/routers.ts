@@ -16,6 +16,11 @@ import {
 import { exportRouter } from "./exportRouter";
 import { projectsRouter } from "./projectsRouter";
 import { geocodeAddress } from "./_core/geocoding";
+import { 
+  processImage, 
+  shouldProcessImage, 
+  isHeicImage,
+} from "./_core/imageProcessing";
 
 export const appRouter = router({
   system: systemRouter,
@@ -284,13 +289,40 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
-        const { jobId, taskId, filename, mimeType, fileSize, base64Data, caption } = input;
+        let { filename, mimeType, fileSize, base64Data } = input;
+        const { jobId, taskId, caption } = input;
 
-        // Generate unique file key
+        // Convert base64 to buffer for processing
+        let buffer: Buffer = Buffer.from(base64Data, "base64");
+
+        // Process image if it's a supported format (optimize quality, convert HEIC)
+        if (shouldProcessImage(mimeType, filename)) {
+          try {
+            console.log(`[Images] Processing image: ${filename} (${mimeType})`);
+            const processed = await processImage(buffer, mimeType, filename, {
+              quality: 92, // High quality, slight optimization
+            });
+            
+            buffer = processed.buffer;
+            mimeType = processed.mimeType;
+            fileSize = processed.processedSize;
+            
+            // Update filename if format was converted (e.g., HEIC -> JPG)
+            if (processed.newFilename) {
+              filename = processed.newFilename;
+              console.log(`[Images] Converted to: ${filename}`);
+            }
+          } catch (error) {
+            console.error("[Images] Processing failed, uploading original:", error);
+            // Continue with original if processing fails
+          }
+        }
+
+        // Generate unique file key with potentially updated filename
         const fileKey = generateFileKey("uploads", ctx.user.id, filename);
 
         // Upload to S3 via server (no CORS needed)
-        const { url } = await storagePut(fileKey, base64Data, mimeType);
+        const { url } = await storagePut(fileKey, buffer, mimeType);
 
         // Save metadata to database
         const result = await db.createImage({
