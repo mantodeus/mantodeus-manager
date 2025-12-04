@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Upload, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ImageLightbox from "./ImageLightbox";
+import { compressImage } from "@/lib/imageCompression";
 
 interface ImageGalleryProps {
   jobId: number;
@@ -26,6 +27,8 @@ function fileToBase64(file: File): Promise<string> {
 export default function ImageGallery({ jobId }: ImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; status: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
   const { data: images = [], isLoading } = trpc.images.listByJob.useQuery({ jobId });
@@ -34,7 +37,6 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
   const uploadImage = trpc.images.upload.useMutation({
     onSuccess: () => {
       utils.images.listByJob.invalidate({ jobId });
-      toast.success("Image uploaded successfully");
     },
     onError: (error) => {
       toast.error(`Upload failed: ${error.message}`);
@@ -56,33 +58,61 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
+    const fileList = Array.from(files);
+    const total = fileList.length;
+    let successCount = 0;
 
     try {
-      for (const file of Array.from(files)) {
-        // Check file size (10MB limit for server-side upload)
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} is too large (max 10MB)`);
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        setUploadProgress({ current: i + 1, total, status: `Compressing ${file.name}...` });
+
+        // Compress image client-side before upload (dramatically reduces size/time)
+        const { file: compressedFile, wasCompressed, compressionRatio } = await compressImage(file, {
+          maxSizeMB: 2,
+          maxWidthOrHeight: 2560, // 2K resolution
+        });
+
+        if (wasCompressed) {
+          console.log(`[Upload] Compressed ${file.name}: ${compressionRatio.toFixed(0)}% smaller`);
+        }
+
+        // Check file size after compression (10MB limit)
+        if (compressedFile.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} is too large even after compression (max 10MB)`);
           continue;
         }
 
+        setUploadProgress({ current: i + 1, total, status: `Uploading ${file.name}...` });
+
         // Convert to base64 and upload via server
-        const base64Data = await fileToBase64(file);
+        const base64Data = await fileToBase64(compressedFile);
         await uploadImage.mutateAsync({
           jobId,
           taskId: undefined,
           filename: file.name,
-          mimeType: file.type,
-          fileSize: file.size,
+          mimeType: compressedFile.type || file.type,
+          fileSize: compressedFile.size,
           base64Data,
           caption: undefined,
         });
+        successCount++;
       }
-      setIsUploading(false);
+      
+      if (successCount > 0) {
+        toast.success(`${successCount} image${successCount > 1 ? 's' : ''} uploaded successfully`);
+      }
     } catch (error) {
       console.error(error);
       const message = error instanceof Error ? error.message : "Failed to upload images";
       toast.error(message);
+    } finally {
       setIsUploading(false);
+      setUploadProgress(null);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -103,10 +133,15 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Images ({images.length})</h3>
-        <div>
+        <div className="flex items-center gap-3">
+          {uploadProgress && (
+            <span className="text-sm text-muted-foreground">
+              {uploadProgress.current}/{uploadProgress.total}: {uploadProgress.status}
+            </span>
+          )}
           <input
             type="file"
-            id="image-upload"
+            ref={fileInputRef}
             multiple
             accept="image/*,.heic,.heif"
             onChange={handleFileSelect}
@@ -114,14 +149,14 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
             disabled={isUploading}
           />
           <Button
-            onClick={() => document.getElementById("image-upload")?.click()}
+            onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
             size="sm"
           >
             {isUploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
+                {uploadProgress ? `${uploadProgress.current}/${uploadProgress.total}` : 'Uploading...'}
               </>
             ) : (
               <>
@@ -145,10 +180,12 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
               className="relative group aspect-square rounded-lg overflow-hidden border bg-muted cursor-pointer"
               onClick={() => setSelectedImageIndex(index)}
             >
+              {/* Use thumbnail version for grid (400px, good for 2x displays) */}
               <img
-                src={`/api/image-proxy?key=${encodeURIComponent(image.fileKey)}`}
+                src={`/api/image-proxy?key=${encodeURIComponent(image.fileKey)}&w=400&q=80`}
                 alt={image.caption || image.filename || "Job image"}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <Button

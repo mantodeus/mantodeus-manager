@@ -9,7 +9,7 @@
  * - Image lightbox with annotation/drawing tools
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import ProjectFileLightbox from "./ProjectFileLightbox";
+import { compressImage } from "@/lib/imageCompression";
 
 interface FileMetadata {
   id: number;
@@ -68,8 +69,10 @@ function isImageFile(mimeType: string): boolean {
 export function ProjectFileGallery({ projectId, jobId, files, isLoading }: ProjectFileGalleryProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<string>("");
   const [viewingFileId, setViewingFileId] = useState<number | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
 
   // Filter image files for the lightbox
@@ -110,33 +113,64 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
 
     setUploading(true);
     setUploadProgress(0);
+    setUploadStatus("");
 
     try {
       const totalFiles = selectedFiles.length;
       let completed = 0;
+      let successCount = 0;
 
       for (const file of Array.from(selectedFiles)) {
-        // Validate file size (50MB)
-        if (file.size > 50 * 1024 * 1024) {
-          toast.error(`${file.name}: File size must be less than 50MB`);
+        let fileToUpload = file;
+        let mimeType = file.type;
+
+        // For images, compress client-side before upload
+        if (file.type.startsWith("image/") && file.type !== "image/gif") {
+          setUploadStatus(`Compressing ${file.name}...`);
+          
+          const { file: compressedFile, wasCompressed, compressionRatio } = await compressImage(file, {
+            maxSizeMB: 2,
+            maxWidthOrHeight: 2560, // 2K resolution
+          });
+
+          if (wasCompressed) {
+            console.log(`[Upload] Compressed ${file.name}: ${compressionRatio.toFixed(0)}% smaller`);
+          }
+
+          fileToUpload = compressedFile;
+          mimeType = compressedFile.type || file.type;
+        }
+
+        // Validate file size after compression (50MB for non-images, 10MB for images)
+        const sizeLimit = file.type.startsWith("image/") ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
+        if (fileToUpload.size > sizeLimit) {
+          const limitMB = sizeLimit / (1024 * 1024);
+          toast.error(`${file.name}: File size must be less than ${limitMB}MB`);
           continue;
         }
 
-        // Convert file to base64
-        const base64Data = await fileToBase64(file);
+        setUploadStatus(`Uploading ${file.name}...`);
         setUploadProgress(Math.round((completed + 0.5) / totalFiles * 100));
+
+        // Convert file to base64
+        const base64Data = await fileToBase64(fileToUpload);
 
         // Upload via server (server uploads to S3, no CORS needed)
         await uploadFile.mutateAsync({
           projectId,
           jobId: jobId || null,
-          filename: file.name,
-          mimeType: file.type,
+          filename: file.name, // Keep original name
+          mimeType,
           base64Data,
         });
 
         completed++;
+        successCount++;
         setUploadProgress(Math.round(completed / totalFiles * 100));
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} file${successCount > 1 ? 's' : ''} uploaded successfully`);
       }
     } catch (error) {
       console.error("Upload error:", error);
@@ -145,8 +179,11 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
     } finally {
       setUploading(false);
       setUploadProgress(0);
+      setUploadStatus("");
       // Reset input
-      e.target.value = "";
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   }, [projectId, jobId, uploadFile]);
 
@@ -211,29 +248,36 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Files</h2>
-        <div className="relative">
-          <input
-            type="file"
-            id="file-upload"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            onChange={handleFileSelect}
-            disabled={uploading}
-            accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
-            multiple
-          />
-          <Button disabled={uploading}>
-            {uploading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Uploading {uploadProgress}%
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                Upload Files
-              </>
-            )}
-          </Button>
+        <div className="flex items-center gap-3">
+          {uploading && uploadStatus && (
+            <span className="text-sm text-muted-foreground max-w-[200px] truncate">
+              {uploadStatus}
+            </span>
+          )}
+          <div className="relative">
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={handleFileSelect}
+              disabled={uploading}
+              accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+              multiple
+            />
+            <Button disabled={uploading}>
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {uploadProgress}%
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Upload Files
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -273,8 +317,9 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                   {isImage ? (
                     // Image thumbnail
                     <div className="relative aspect-square">
+                      {/* Use thumbnail version for grid (400px for 2x displays) */}
                       <img
-                        src={`/api/image-proxy?key=${encodeURIComponent(file.s3Key)}`}
+                        src={`/api/image-proxy?key=${encodeURIComponent(file.s3Key)}&w=400&q=80`}
                         alt={file.originalName}
                         className="w-full h-full object-cover"
                         loading="lazy"
