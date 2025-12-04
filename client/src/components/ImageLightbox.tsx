@@ -495,16 +495,22 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `annotated-${currentImage.filename || "image.jpg"}`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Image downloaded");
-    });
+    // Use JPEG format with 92% quality for good compression
+    // Without this, canvas.toBlob defaults to PNG which can be 6x larger!
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `annotated-${currentImage.filename?.replace(/\.[^.]+$/, '') || "image"}.jpg`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Image downloaded");
+      },
+      "image/jpeg",
+      0.92
+    );
   };
 
   const goToPrevious = () => {
