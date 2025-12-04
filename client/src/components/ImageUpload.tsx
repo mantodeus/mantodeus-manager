@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Upload, Loader2 } from "lucide-react";
+import { compressImage } from "@/lib/imageCompression";
 
 interface ImageUploadProps {
   jobId?: number;
@@ -30,6 +31,7 @@ function fileToBase64(file: File): Promise<string> {
 export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
@@ -49,10 +51,12 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
         fileInputRef.current.value = "";
       }
       setUploading(false);
+      setUploadStatus("");
     },
     onError: (error) => {
       toast.error("Upload failed: " + error.message);
       setUploading(false);
+      setUploadStatus("");
     },
   });
 
@@ -66,25 +70,40 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
       return;
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image size must be less than 10MB");
-      return;
-    }
-
     setUploading(true);
+    setUploadStatus("Compressing...");
 
     try {
+      // Compress image client-side before upload (dramatically reduces size/time)
+      const { file: compressedFile, wasCompressed, compressionRatio } = await compressImage(file, {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 2560, // 2K resolution
+      });
+
+      if (wasCompressed) {
+        console.log(`[Upload] Compressed: ${compressionRatio.toFixed(0)}% smaller`);
+      }
+
+      // Validate file size after compression (max 10MB)
+      if (compressedFile.size > 10 * 1024 * 1024) {
+        toast.error("Image size must be less than 10MB (even after compression)");
+        setUploading(false);
+        setUploadStatus("");
+        return;
+      }
+
+      setUploadStatus("Uploading...");
+
       // Convert file to base64
-      const base64Data = await fileToBase64(file);
+      const base64Data = await fileToBase64(compressedFile);
 
       // Upload via server (server uploads to S3, no CORS needed)
       await uploadImage.mutateAsync({
         jobId,
         taskId,
-        filename: file.name,
-        mimeType: file.type,
-        fileSize: file.size,
+        filename: file.name, // Keep original name
+        mimeType: compressedFile.type || file.type,
+        fileSize: compressedFile.size,
         base64Data,
         caption: caption.trim() || undefined,
       });
@@ -93,6 +112,7 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
       const message = error instanceof Error ? error.message : "Failed to upload image";
       toast.error(message);
       setUploading(false);
+      setUploadStatus("");
     }
   };
 
@@ -126,7 +146,7 @@ export function ImageUpload({ jobId, taskId }: ImageUploadProps) {
                 {uploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
+                    {uploadStatus || "Uploading..."}
                   </>
                 ) : (
                   <>
