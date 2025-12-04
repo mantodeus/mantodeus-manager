@@ -3,9 +3,10 @@
  * 
  * Displays and manages files for a project:
  * - File upload via server-side upload (bypasses CORS)
- * - File list with previews
- * - View files with presigned URLs
+ * - Image thumbnails with click-to-view in lightbox
+ * - Non-image files with icons and view/download buttons
  * - Delete files
+ * - Image lightbox with annotation/drawing tools
  */
 
 import { useState, useCallback } from "react";
@@ -20,9 +21,11 @@ import {
   File, 
   Trash2, 
   ExternalLink,
-  Plus
+  Plus,
+  Eye
 } from "lucide-react";
 import { toast } from "sonner";
+import ProjectFileLightbox from "./ProjectFileLightbox";
 
 interface FileMetadata {
   id: number;
@@ -57,11 +60,20 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+// Check if file is an image
+function isImageFile(mimeType: string): boolean {
+  return mimeType.startsWith("image/");
+}
+
 export function ProjectFileGallery({ projectId, jobId, files, isLoading }: ProjectFileGalleryProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [viewingFileId, setViewingFileId] = useState<number | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const utils = trpc.useUtils();
+
+  // Filter image files for the lightbox
+  const imageFiles = files.filter(f => isImageFile(f.mimeType));
 
   // Server-side upload mutation (bypasses CORS - no direct S3 access from browser)
   const uploadFile = trpc.projects.files.upload.useMutation({
@@ -96,33 +108,36 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
 
-    const file = selectedFiles[0];
-    
-    // Validate file size (50MB)
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error("File size must be less than 50MB");
-      return;
-    }
-
     setUploading(true);
     setUploadProgress(0);
 
     try {
-      // Convert file to base64
-      setUploadProgress(10);
-      const base64Data = await fileToBase64(file);
-      setUploadProgress(50);
+      const totalFiles = selectedFiles.length;
+      let completed = 0;
 
-      // Upload via server (server uploads to S3, no CORS needed)
-      await uploadFile.mutateAsync({
-        projectId,
-        jobId: jobId || null,
-        filename: file.name,
-        mimeType: file.type,
-        base64Data,
-      });
+      for (const file of Array.from(selectedFiles)) {
+        // Validate file size (50MB)
+        if (file.size > 50 * 1024 * 1024) {
+          toast.error(`${file.name}: File size must be less than 50MB`);
+          continue;
+        }
 
-      setUploadProgress(100);
+        // Convert file to base64
+        const base64Data = await fileToBase64(file);
+        setUploadProgress(Math.round((completed + 0.5) / totalFiles * 100));
+
+        // Upload via server (server uploads to S3, no CORS needed)
+        await uploadFile.mutateAsync({
+          projectId,
+          jobId: jobId || null,
+          filename: file.name,
+          mimeType: file.type,
+          base64Data,
+        });
+
+        completed++;
+        setUploadProgress(Math.round(completed / totalFiles * 100));
+      }
     } catch (error) {
       console.error("Upload error:", error);
       const message = error instanceof Error ? error.message : "Failed to upload file";
@@ -136,6 +151,16 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
   }, [projectId, jobId, uploadFile]);
 
   const handleViewFile = async (file: FileMetadata) => {
+    // For images, find the index in the image files array and open lightbox
+    if (isImageFile(file.mimeType)) {
+      const imageIndex = imageFiles.findIndex(f => f.id === file.id);
+      if (imageIndex !== -1) {
+        setSelectedImageIndex(imageIndex);
+      }
+      return;
+    }
+
+    // For non-image files, open in new tab
     try {
       setViewingFileId(file.id);
       // Use utils.client to fetch presigned URL on demand
@@ -148,7 +173,10 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
     }
   };
 
-  const handleDeleteFile = (fileId: number) => {
+  const handleDeleteFile = (fileId: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
     if (confirm("Are you sure you want to delete this file?")) {
       deleteFile.mutate({ fileId });
     }
@@ -191,6 +219,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
             onChange={handleFileSelect}
             disabled={uploading}
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+            multiple
           />
           <Button disabled={uploading}>
             {uploading ? (
@@ -201,7 +230,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
             ) : (
               <>
                 <Plus className="h-4 w-4 mr-2" />
-                Upload File
+                Upload Files
               </>
             )}
           </Button>
@@ -220,6 +249,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                 onChange={handleFileSelect}
                 disabled={uploading}
                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                multiple
               />
               <Button variant="outline">
                 <Upload className="h-4 w-4 mr-2" />
@@ -229,59 +259,119 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {files.map((file) => (
-            <Card key={file.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  {getFileIcon(file.mimeType)}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate" title={file.originalName}>
-                      {file.originalName}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatFileSize(file.fileSize)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(file.uploadedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewFile(file)}
-                    disabled={viewingFileId === file.id}
-                    className="flex-1"
-                  >
-                    {viewingFileId === file.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        View
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteFile(file.id)}
-                    disabled={deleteFile.isPending}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    {deleteFile.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {files.map((file) => {
+            const isImage = isImageFile(file.mimeType);
+            
+            return (
+              <Card 
+                key={file.id} 
+                className={`group overflow-hidden transition-shadow hover:shadow-md ${isImage ? 'cursor-pointer' : ''}`}
+                onClick={() => isImage && handleViewFile(file)}
+              >
+                <CardContent className="p-0">
+                  {isImage ? (
+                    // Image thumbnail
+                    <div className="relative aspect-square">
+                      <img
+                        src={`/api/image-proxy?key=${encodeURIComponent(file.s3Key)}`}
+                        alt={file.originalName}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      {/* Overlay on hover */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewFile(file);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={(e) => handleDeleteFile(file.id, e)}
+                          disabled={deleteFile.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {/* File name at bottom */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 truncate">
+                        {file.originalName}
+                      </div>
+                    </div>
+                  ) : (
+                    // Non-image file card
+                    <div className="p-4">
+                      <div className="flex items-start gap-3">
+                        {getFileIcon(file.mimeType)}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate text-sm" title={file.originalName}>
+                            {file.originalName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(file.fileSize)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(file.uploadedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewFile(file)}
+                          disabled={viewingFileId === file.id}
+                          className="flex-1"
+                        >
+                          {viewingFileId === file.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <ExternalLink className="h-4 w-4 mr-1" />
+                              View
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDeleteFile(file.id, e)}
+                          disabled={deleteFile.isPending}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          {deleteFile.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
+      )}
+
+      {/* Image Lightbox */}
+      {selectedImageIndex !== null && imageFiles.length > 0 && (
+        <ProjectFileLightbox
+          files={imageFiles}
+          initialIndex={selectedImageIndex}
+          onClose={() => setSelectedImageIndex(null)}
+          projectId={projectId}
+          jobId={jobId}
+        />
       )}
     </div>
   );
