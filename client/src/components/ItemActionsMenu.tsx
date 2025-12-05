@@ -99,10 +99,17 @@ export function ItemActionsMenu({
             size="icon"
             className={`${sizeClasses[size]} ${triggerClassName || ""}`}
             disabled={disabled}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            {...(enableContextMenu ? contextMenuHandlers : {})}
+            {...(enableContextMenu ? {
+              ...contextMenuHandlers,
+              onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+                contextMenuHandlers.onClick?.(e);
+              }
+            } : {
+              onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+              }
+            })}
           >
             <MoreVertical className={iconSizes[size]} />
             <span className="sr-only">More actions</span>
