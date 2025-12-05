@@ -194,4 +194,20 @@
       max-width: 1280px; /* Standard content width */
     }
   }
+
+  /* App loading screen animation */
+  @keyframes logo-bounce {
+    0%, 100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    50% {
+      transform: translateY(-8px);
+      opacity: 0.85;
+    }
+  }
+
+  .logo-loading {
+    animation: logo-bounce 1.5s ease-in-out infinite;
+  }
 }
