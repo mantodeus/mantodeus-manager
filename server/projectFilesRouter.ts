@@ -27,6 +27,13 @@ import {
   processImage, 
   shouldProcessImage, 
 } from "./_core/imageProcessing";
+import { 
+  processAndUploadImageVariants,
+  generateSignedVariantUrls,
+  deleteImageVariants,
+  type ImageVariant,
+} from "./_core/imagePipeline";
+import type { StoredImageMetadata } from "../drizzle/schema";
 
 // =============================================================================
 // CONSTANTS
@@ -86,6 +93,16 @@ function generateProjectFileKey(
   const jobPart = jobId ? `jobs/${jobId}` : "_project";
   
   return `projects/${projectId}/${jobPart}/${timestamp}-${uuid}-${sanitizedFileName}`;
+}
+
+async function hydrateFileWithSignedUrls<T extends { imageMetadata: StoredImageMetadata | null }>(
+  file: T
+): Promise<T & { imageUrls: Record<ImageVariant, string> | null }> {
+  const imageUrls = await generateSignedVariantUrls(file.imageMetadata);
+  return {
+    ...file,
+    imageUrls,
+  };
 }
 
 /**
@@ -181,9 +198,11 @@ const registerFileSchema = z.object({
   fileSize: z.number().optional(),
 });
 
+const imageVariantEnum = z.enum(["thumb", "preview", "full"]);
+
 const getPresignedUrlSchema = z.union([
-  z.object({ fileId: z.number() }),
-  z.object({ s3Key: z.string() }),
+  z.object({ fileId: z.number(), variant: imageVariantEnum.optional() }),
+  z.object({ s3Key: z.string(), variant: imageVariantEnum.optional() }),
 ]);
 
 // =============================================================================
@@ -206,6 +225,13 @@ export const projectFilesRouter = router({
     .mutation(async ({ input, ctx }) => {
       // Verify project access
       await requireProjectAccess(ctx.user, input.projectId);
+
+      if (shouldProcessImage(input.contentType, input.filename)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Direct uploads are disabled for images. Please use the server-side uploader.",
+        });
+      }
       
       // Verify job belongs to project if jobId is provided
       if (input.jobId) {
@@ -245,6 +271,13 @@ export const projectFilesRouter = router({
     .mutation(async ({ input, ctx }) => {
       // Verify project access
       await requireProjectAccess(ctx.user, input.projectId);
+
+      if (shouldProcessImage(input.mimeType, input.originalName)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Direct uploads are not supported for images. Please use the server-side uploader.",
+        });
+      }
       
       // Verify job belongs to project if jobId is provided
       if (input.jobId) {
@@ -283,10 +316,16 @@ export const projectFilesRouter = router({
       
       // Fetch and return the created record
       const file = await db.getFileMetadataById(result[0].insertId);
+      if (!file) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "File metadata not found after registration",
+        });
+      }
       
       return {
         success: true,
-        file,
+        file: await hydrateFileWithSignedUrls(file),
         alreadyRegistered: false,
       };
     }),
@@ -303,6 +342,7 @@ export const projectFilesRouter = router({
     .input(getPresignedUrlSchema)
     .query(async ({ input, ctx }) => {
       let file;
+      const requestedVariant = "variant" in input ? input.variant : undefined;
       
       if ("fileId" in input) {
         file = await db.getFileMetadataById(input.fileId);
@@ -324,14 +364,18 @@ export const projectFilesRouter = router({
       
       // Verify project access
       await requireProjectAccess(ctx.user, file.projectId);
+      const targetKey =
+        requestedVariant && file.imageMetadata?.variants?.[requestedVariant]
+          ? file.imageMetadata.variants[requestedVariant].key
+          : file.s3Key;
       
       // Generate presigned read URL
-      const url = await createPresignedReadUrl(file.s3Key, DOWNLOAD_URL_EXPIRY_SECONDS);
+      const url = await createPresignedReadUrl(targetKey, DOWNLOAD_URL_EXPIRY_SECONDS);
       
       return {
         url,
         expiresIn: DOWNLOAD_URL_EXPIRY_SECONDS,
-        file,
+        file: await hydrateFileWithSignedUrls(file),
       };
     }),
 
@@ -342,7 +386,8 @@ export const projectFilesRouter = router({
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input, ctx }) => {
       await requireProjectAccess(ctx.user, input.projectId);
-      return await db.getFilesByProjectId(input.projectId);
+      const files = await db.getFilesByProjectId(input.projectId);
+      return await Promise.all(files.map((file) => hydrateFileWithSignedUrls(file)));
     }),
 
   /**
@@ -353,7 +398,8 @@ export const projectFilesRouter = router({
     .query(async ({ input, ctx }) => {
       await requireProjectAccess(ctx.user, input.projectId);
       await verifyJobBelongsToProject(input.projectId, input.jobId);
-      return await db.getFilesByJobId(input.projectId, input.jobId);
+      const files = await db.getFilesByJobId(input.projectId, input.jobId);
+      return await Promise.all(files.map((file) => hydrateFileWithSignedUrls(file)));
     }),
 
   /**
@@ -376,7 +422,11 @@ export const projectFilesRouter = router({
       
       // Delete from S3
       try {
-        await deleteFromStorage(file.s3Key);
+        if (file.imageMetadata) {
+          await deleteImageVariants(file.imageMetadata);
+        } else {
+          await deleteFromStorage(file.s3Key);
+        }
       } catch (error) {
         console.error("[ProjectFiles] Failed to delete from S3:", error);
         // Continue with DB delete even if S3 delete fails
@@ -435,39 +485,27 @@ export const projectFilesRouter = router({
           message: `File size exceeds maximum of ${MAX_FILE_SIZE / (1024 * 1024)}MB`,
         });
       }
+      const isImageUpload = shouldProcessImage(mimeType, filename);
+      let imageMetadata: StoredImageMetadata | null = null;
+      let s3Key: string;
       
-      // Process image if it's a supported format (optimize quality, convert HEIC)
-      if (shouldProcessImage(mimeType, filename)) {
-        try {
-          console.log(`[ProjectFiles] Processing image: ${filename} (${mimeType})`);
-          const processed = await processImage(buffer, mimeType, filename, {
-            quality: 92, // High quality, slight optimization
-          });
-          
-          buffer = processed.buffer;
-          mimeType = processed.mimeType;
-          fileSize = processed.processedSize;
-          
-          // Update filename if format was converted (e.g., HEIC -> JPG)
-          if (processed.newFilename) {
-            filename = processed.newFilename;
-            console.log(`[ProjectFiles] Converted to: ${filename}`);
-          }
-        } catch (error) {
-          console.error("[ProjectFiles] Image processing failed, uploading original:", error);
-          // Continue with original if processing fails
-        }
+      if (isImageUpload) {
+        const metadata = await processAndUploadImageVariants(buffer, { projectId: input.projectId });
+        imageMetadata = metadata;
+        mimeType = metadata.mimeType;
+        fileSize = metadata.variants.full.size;
+        s3Key = metadata.variants.full.key;
+      } else {
+        // Generate S3 key with potentially updated filename
+        s3Key = generateProjectFileKey(
+          input.projectId,
+          input.jobId ?? null,
+          filename
+        );
+        
+        // Upload to S3
+        await storagePut(s3Key, buffer, mimeType);
       }
-      
-      // Generate S3 key with potentially updated filename
-      const s3Key = generateProjectFileKey(
-        input.projectId,
-        input.jobId ?? null,
-        filename
-      );
-      
-      // Upload to S3
-      await storagePut(s3Key, buffer, mimeType);
       
       // Register in database
       const result = await db.createFileMetadata({
@@ -478,13 +516,20 @@ export const projectFilesRouter = router({
         mimeType,
         fileSize,
         uploadedBy: ctx.user.id,
+        imageMetadata,
       });
       
       const file = await db.getFileMetadataById(result[0].insertId);
+      if (!file) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "File metadata not found after upload",
+        });
+      }
       
       return {
         success: true,
-        file,
+        file: await hydrateFileWithSignedUrls(file),
       };
     }),
 });

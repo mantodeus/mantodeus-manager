@@ -8,6 +8,7 @@ import { compressImage } from "@/lib/imageCompression";
 
 interface ImageGalleryProps {
   jobId: number;
+  projectId?: number;
 }
 
 // Convert file to base64
@@ -24,7 +25,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export default function ImageGallery({ jobId }: ImageGalleryProps) {
+export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; status: string } | null>(null);
@@ -87,9 +88,10 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
 
         // Convert to base64 and upload via server
         const base64Data = await fileToBase64(compressedFile);
-        await uploadImage.mutateAsync({
+      await uploadImage.mutateAsync({
           jobId,
           taskId: undefined,
+        projectId: projectId ?? null,
           filename: file.name,
           mimeType: compressedFile.type || file.type,
           fileSize: compressedFile.size,
@@ -181,12 +183,18 @@ export default function ImageGallery({ jobId }: ImageGalleryProps) {
               onClick={() => setSelectedImageIndex(index)}
             >
               {/* Use thumbnail version for grid (400px, good for 2x displays) */}
-              <img
-                src={`/api/image-proxy?key=${encodeURIComponent(image.fileKey)}&w=400&q=80`}
-                alt={image.caption || image.filename || "Job image"}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
+              {image.imageUrls?.thumb ? (
+                <img
+                  src={image.imageUrls.thumb}
+                  alt={image.caption || image.filename || "Job image"}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                  Preview unavailable
+                </div>
+              )}
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <Button
                   variant="destructive"

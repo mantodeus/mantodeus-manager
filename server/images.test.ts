@@ -64,11 +64,8 @@ describe("Image Gallery", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.id).toBeDefined();
-    expect(result.url).toBeDefined();
-    expect(result.url).toContain("https://");
-    
-    testImageId = result.id;
+    expect(result.image).toBeDefined();
+    testImageId = result.image.id;
   });
 
   it("should list images by job ID", async () => {
@@ -144,12 +141,12 @@ describe("Image Gallery", () => {
     });
 
     // Delete the image
-    const deleteResult = await caller.images.delete({ id: uploadResult.id });
+    const deleteResult = await caller.images.delete({ id: uploadResult.image.id });
     expect(deleteResult.success).toBe(true);
 
     // Verify it's deleted
     const images = await caller.images.listByJob({ jobId: testJobId });
-    const deletedImage = images.find(img => img.id === uploadResult.id);
+    const deletedImage = images.find(img => img.id === uploadResult.image.id);
     expect(deletedImage).toBeUndefined();
   });
 
@@ -169,7 +166,7 @@ describe("Image Gallery", () => {
     });
 
     const images = await caller.images.listByJob({ jobId: testJobId });
-    const uploadedImage = images.find(img => img.id === result.id);
+    const uploadedImage = images.find(img => img.id === result.image.id);
 
     expect(uploadedImage).toBeDefined();
     expect(uploadedImage?.filename).toBe("metadata-test.png");

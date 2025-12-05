@@ -499,7 +499,7 @@
 ## Phase 57: Fix Image Save Function
 - [x] Investigate why Save button doesn't work in ImageLightbox
 - [x] Debug the save mutation and canvas-to-blob conversion (found CORS taint issue)
-- [x] Fix CORS issue by creating image proxy endpoint at /api/image-proxy
+- [x] Fix CORS issue by introducing dedicated image proxy (superseded by signed URLs)
 - [x] Update ImageLightbox to use proxy URL instead of direct S3 URL
 - [x] Add comprehensive error handling to handleSave function
 - [x] Test saving annotated images (successfully creates new image)
