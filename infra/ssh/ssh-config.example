@@ -1,0 +1,53 @@
+# SSH Configuration for Mantodeus Manager Deployment
+# 
+# Copy this to ~/.ssh/config and update with your actual values
+# 
+# Usage:
+#   ssh mantodeus-server
+#   ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
+
+Host mantodeus-server
+    # Replace with your actual Infomaniak server hostname or IP
+    HostName your-server.infomaniak.com
+    
+    # Replace with your actual username
+    User your-username
+    
+    # Path to your SSH private key
+    IdentityFile ~/.ssh/mantodeus_deploy_key
+    
+    # Security settings
+    IdentitiesOnly yes
+    
+    # Connection settings
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    
+    # Compression for faster transfers
+    Compression yes
+    
+    # Forward agent (optional, for git operations)
+    # ForwardAgent yes
+    
+    # Port (usually 22, but some hosts use different ports)
+    Port 22
+    
+    # Strict host key checking (set to 'no' only for first connection)
+    StrictHostKeyChecking ask
+    
+    # Log level (useful for debugging)
+    # LogLevel DEBUG
+
+# Example usage in scripts:
+# 
+# Deploy:
+#   ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"
+# 
+# Check status:
+#   ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
+# 
+# Restart:
+#   ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh"
+# 
+# View logs:
+#   ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && tail -f logs/mantodeus-manager-out.log"
