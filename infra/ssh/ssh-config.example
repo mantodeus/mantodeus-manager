@@ -1,0 +1,20 @@
+# Mantodeus Manager - SSH Configuration
+# Copy this to ~/.ssh/config and customize as needed
+#
+# Usage:
+#   cp infra/ssh/ssh-config.example ~/.ssh/config
+#   chmod 600 ~/.ssh/config
+#
+
+Host mantodeus-server
+    HostName 57-105224.ssh.hosting-ik.com
+    User M4S5mQQMRhu_mantodeus
+    Port 22
+    IdentityFile ~/.ssh/mantodeus_deploy_key
+    IdentitiesOnly yes
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    ConnectTimeout 10
+
+# Alternative: Direct connection without alias
+# ssh M4S5mQQMRhu_mantodeus@57-105224.ssh.hosting-ik.com
