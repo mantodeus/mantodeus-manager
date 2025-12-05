@@ -1,0 +1,173 @@
+#!/bin/bash
+#
+# Mantodeus Manager - Deployment Script
+# Full deployment with backup, build, restart, and health check
+#
+# Usage:
+#   ./deploy.sh [--dry-run] [--no-backup] [--skip-health-check]
+#
+# Output: JSON format for programmatic parsing
+#
+
+set -euo pipefail
+
+# Configuration
+PROJECT_DIR="/srv/customer/sites/manager.mantodeus.com"
+PM2_APP_NAME="mantodeus-manager"
+BACKUP_DIR="${PROJECT_DIR}/backups"
+HEALTH_CHECK_URL="http://localhost:3000/api/trpc/system.health"
+HEALTH_CHECK_RETRIES=5
+HEALTH_CHECK_DELAY=3
+
+# Flags
+DRY_RUN=false
+NO_BACKUP=false
+SKIP_HEALTH_CHECK=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    --no-backup)
+      NO_BACKUP=true
+      shift
+      ;;
+    --skip-health-check)
+      SKIP_HEALTH_CHECK=true
+      shift
+      ;;
+    *)
+      echo "{\"error\":\"Unknown option: $1\"}" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# Safety check: Don't run as root
+if [ "$(id -u)" -eq 0 ]; then
+  echo "{\"error\":\"This script should NOT be run as root\"}" >&2
+  exit 1
+fi
+
+# Output JSON helper
+json_output() {
+  echo "$1"
+}
+
+# Error handler
+error_exit() {
+  json_output "{\"status\":\"error\",\"error\":\"$1\"}"
+  exit 1
+}
+
+# Check if project directory exists
+if [ ! -d "$PROJECT_DIR" ]; then
+  error_exit "Project directory not found: $PROJECT_DIR"
+fi
+
+cd "$PROJECT_DIR" || error_exit "Failed to change to project directory"
+
+# Create backup directory if it doesn't exist
+if [ "$NO_BACKUP" = false ]; then
+  mkdir -p "$BACKUP_DIR"
+fi
+
+# Generate backup filename
+BACKUP_FILE="${BACKUP_DIR}/backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+
+# Step 1: Create backup
+if [ "$NO_BACKUP" = false ]; then
+  if [ "$DRY_RUN" = true ]; then
+    json_output "{\"step\":\"backup\",\"status\":\"dry-run\",\"backup_file\":\"$BACKUP_FILE\"}"
+  else
+    json_output "{\"step\":\"backup\",\"status\":\"creating\",\"backup_file\":\"$BACKUP_FILE\"}"
+    
+    # Backup: dist/, node_modules/, package-lock.json, .env (if exists)
+    tar -czf "$BACKUP_FILE" \
+      dist/ node_modules/ package-lock.json .env 2>/dev/null || true
+    
+    # Keep only last 5 backups
+    ls -t "$BACKUP_DIR"/backup-*.tar.gz 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null || true
+    
+    json_output "{\"step\":\"backup\",\"status\":\"success\",\"backup_file\":\"$BACKUP_FILE\"}"
+  fi
+fi
+
+# Step 2: Git pull
+if [ "$DRY_RUN" = true ]; then
+  json_output "{\"step\":\"git_pull\",\"status\":\"dry-run\"}"
+else
+  json_output "{\"step\":\"git_pull\",\"status\":\"pulling\"}"
+  if git pull origin main; then
+    json_output "{\"step\":\"git_pull\",\"status\":\"success\"}"
+  else
+    error_exit "Git pull failed"
+  fi
+fi
+
+# Step 3: Install dependencies
+if [ "$DRY_RUN" = true ]; then
+  json_output "{\"step\":\"install\",\"status\":\"dry-run\"}"
+else
+  json_output "{\"step\":\"install\",\"status\":\"installing\"}"
+  if npm install --include=dev; then
+    json_output "{\"step\":\"install\",\"status\":\"success\"}"
+  else
+    error_exit "npm install failed"
+  fi
+fi
+
+# Step 4: Build
+if [ "$DRY_RUN" = true ]; then
+  json_output "{\"step\":\"build\",\"status\":\"dry-run\"}"
+else
+  json_output "{\"step\":\"build\",\"status\":\"building\"}"
+  if npm run build; then
+    json_output "{\"step\":\"build\",\"status\":\"success\"}"
+  else
+    error_exit "Build failed"
+  fi
+fi
+
+# Step 5: Restart PM2
+if [ "$DRY_RUN" = true ]; then
+  json_output "{\"step\":\"restart\",\"status\":\"dry-run\"}"
+else
+  json_output "{\"step\":\"restart\",\"status\":\"restarting\"}"
+  if pm2 restart "$PM2_APP_NAME"; then
+    json_output "{\"step\":\"restart\",\"status\":\"success\"}"
+  else
+    error_exit "PM2 restart failed"
+  fi
+fi
+
+# Step 6: Health check
+if [ "$SKIP_HEALTH_CHECK" = false ]; then
+  if [ "$DRY_RUN" = true ]; then
+    json_output "{\"step\":\"health_check\",\"status\":\"dry-run\"}"
+  else
+    json_output "{\"step\":\"health_check\",\"status\":\"checking\"}"
+    
+    HEALTH_OK=false
+    for i in $(seq 1 $HEALTH_CHECK_RETRIES); do
+      sleep $HEALTH_CHECK_DELAY
+      if curl -sf "${HEALTH_CHECK_URL}?input=%7B%22timestamp%22%3A$(date +%s)%7D" > /dev/null 2>&1; then
+        HEALTH_OK=true
+        break
+      fi
+      json_output "{\"step\":\"health_check\",\"status\":\"retrying\",\"attempt\":$i,\"max_attempts\":$HEALTH_CHECK_RETRIES}"
+    done
+    
+    if [ "$HEALTH_OK" = true ]; then
+      json_output "{\"step\":\"health_check\",\"status\":\"healthy\"}"
+    else
+      error_exit "Health check failed after $HEALTH_CHECK_RETRIES attempts"
+    fi
+  fi
+fi
+
+# Success
+json_output "{\"status\":\"success\",\"git_pull\":\"success\",\"build\":\"success\",\"restart\":\"success\",\"health\":\"healthy\"}"
