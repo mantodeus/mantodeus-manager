@@ -884,8 +884,14 @@ export async function createFileMetadata(file: InsertFileMetadata) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(fileMetadata).values(file);
-  return result;
+  try {
+    const result = await db.insert(fileMetadata).values(file);
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to create file metadata:", error);
+    console.error("[Database] File data:", JSON.stringify(file, null, 2));
+    throw error;
+  }
 }
 
 export async function getFileMetadataById(fileId: number) {
