@@ -1,10 +1,12 @@
 import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Upload, Trash2, Loader2 } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ImageLightbox from "./ImageLightbox";
 import { compressImage } from "@/lib/imageCompression";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 interface ImageGalleryProps {
   jobId: number;
@@ -28,6 +30,8 @@ function fileToBase64(file: File): Promise<string> {
 export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; status: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -118,9 +122,18 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
     }
   };
 
-  const handleDelete = async (imageId: number) => {
-    if (!confirm("Are you sure you want to delete this image?")) return;
-    await deleteMutation.mutateAsync({ id: imageId });
+  const handleItemAction = async (action: ItemAction, imageId: number) => {
+    if (action === "delete") {
+      setImageToDelete(imageId);
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const confirmDeleteImage = async () => {
+    if (imageToDelete !== null) {
+      await deleteMutation.mutateAsync({ id: imageToDelete });
+      setImageToDelete(null);
+    }
   };
 
   if (isLoading) {
@@ -196,16 +209,11 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
                 </div>
               )}
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(image.id);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <ItemActionsMenu
+                  onAction={(action) => handleItemAction(action, image.id)}
+                  actions={["delete"]}
+                  triggerClassName="bg-background hover:bg-background"
+                />
               </div>
               {image.caption && (
                 <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 truncate">
@@ -223,6 +231,24 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
           initialIndex={selectedImageIndex}
           onClose={() => setSelectedImageIndex(null)}
           jobId={jobId}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {imageToDelete !== null && (
+        <DeleteConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            setDeleteDialogOpen(open);
+            if (!open) {
+              setImageToDelete(null);
+            }
+          }}
+          onConfirm={confirmDeleteImage}
+          title="Delete Image"
+          description="This action cannot be undone. This image will be permanently deleted from storage."
+          confirmLabel="Delete Image"
+          isDeleting={deleteMutation.isPending}
         />
       )}
     </div>

@@ -22,11 +22,10 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { MapPin, Trash2, Search, X, Users } from "lucide-react";
+import { MapPin, Search, X, Users } from "lucide-react";
 import { MapView } from "@/components/Map";
-import { ContextMenu, ContextMenuAction } from "@/components/ContextMenu";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
-import { useContextMenu } from "@/hooks/useContextMenu";
 import { useLocation } from "wouter";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 
@@ -66,9 +65,6 @@ export default function Maps() {
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; locationId: number } | null>(null);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,14 +85,15 @@ export default function Maps() {
   // Form state
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [locationType, setLocationType] = useState<"project" | "contact" | "custom">("custom");
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("none");
+  const [locationType, setLocationType] = useState<"job" | "contact" | "custom">("custom");
+  const [selectedJobId, setSelectedJobId] = useState<string>("none");
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
 
   // Queries
   const { data: locations = [], refetch: refetchLocations } = trpc.locations.list.useQuery();
   const { data: projects = [] } = trpc.projects.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: jobs = [] } = trpc.jobs.list.useQuery();
   
   // Stabilize arrays for useEffect dependencies
   const locationsIds = useMemo(() => locations.map(l => l.id).join(','), [locations]);
@@ -144,7 +141,7 @@ export default function Maps() {
     setName("");
     setAddress("");
     setLocationType("custom");
-    setSelectedProjectId("none");
+    setSelectedJobId("none");
     setSelectedContactId("none");
     setSelectedLocation(null);
     setEditingLocation(null);
@@ -161,22 +158,8 @@ export default function Maps() {
     const query = searchQuery.toLowerCase();
     const results: SearchResult[] = [];
 
-    // Search projects
-    projects.forEach((project) => {
-      const matchesName = (project.name || project.title || '').toLowerCase().includes(query);
-      const matchesLocation = project.location?.toLowerCase().includes(query);
-      if ((matchesName || matchesLocation) && project.latitude && project.longitude) {
-        results.push({
-          id: `project-${project.id}`,
-          name: project.name || project.title || '',
-          address: project.location || null,
-          type: "project",
-          latitude: project.latitude,
-          longitude: project.longitude,
-          originalId: project.id,
-        });
-      }
-    });
+    // Search projects (projects don't have locations, skip for now)
+    // Projects are not location entities in this system
 
     // Search contacts
     contacts.forEach((contact) => {
@@ -283,7 +266,7 @@ export default function Maps() {
       // Create marker icon based on location type with circular shadow background
       let iconUrl = '';
       
-      if (location.type === 'project') {
+      if (location.type === 'job') {
         // Professional rope access carabiner icon with neon green
         iconUrl = 'data:image/svg+xml;base64,' + btoa(`
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -429,7 +412,7 @@ export default function Maps() {
       longitude: selectedLocation.lng.toString(),
       address: address.trim() || undefined,
       type: locationType,
-      projectId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
+      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
       contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
     });
   };
@@ -446,7 +429,7 @@ export default function Maps() {
       name: name.trim(),
       address: address.trim() || undefined,
       type: locationType,
-      projectId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
+      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
       contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
     });
   };
@@ -505,12 +488,12 @@ export default function Maps() {
     setName(location.name);
     setAddress(location.address || "");
     setLocationType(location.type);
-    setSelectedProjectId(location.projectId?.toString() || "none");
+    setSelectedJobId(location.jobId?.toString() || "none");
     setSelectedContactId(location.contactId?.toString() || "none");
     setIsEditDialogOpen(true);
   };
 
-  const handleContextMenuAction = (action: ContextMenuAction, locationId: number) => {
+  const handleItemAction = (action: ItemAction, locationId: number) => {
     const location = locations.find((l) => l.id === locationId);
     if (!location) return;
 
@@ -544,8 +527,8 @@ export default function Maps() {
     
     let targetLocation: Location | undefined;
     
-    if (focusProjectId) {
-      targetLocation = locations.find(loc => loc.projectId === focusProjectId);
+    if (focusJobId) {
+      targetLocation = locations.find(loc => loc.jobId === focusJobId);
     } else if (focusContactId) {
       targetLocation = locations.find(loc => loc.contactId === focusContactId);
     }
@@ -580,7 +563,7 @@ export default function Maps() {
         }
       }
     }
-  }, [locations, focusProjectId, focusContactId]);
+  }, [locations, focusJobId, focusContactId]);
 
   // Update markers when locations change
   useEffect(() => {
@@ -600,10 +583,10 @@ export default function Maps() {
     }
   }, [locations]);
 
-  const getProjectName = (projectId: number | null) => {
-    if (!projectId) return null;
-    const project = projects.find((p) => p.id === projectId);
-    return project?.name || project?.title;
+  const getJobName = (jobId: number | null) => {
+    if (!jobId) return null;
+    const job = jobs.find((j) => j.id === jobId);
+    return job?.title;
   };
 
   const getContactName = (contactId: number | null) => {
@@ -694,7 +677,7 @@ export default function Maps() {
                                 : "#9ca3af",
                           }}
                         >
-                          {result.type === "project" ? "Project" : result.type === "contact" ? "Contact" : "Location"}
+                          {result.type === "job" ? "Job" : result.type === "contact" ? "Contact" : "Location"}
                         </span>
                       </div>
                       {result.address && (
@@ -788,36 +771,12 @@ export default function Maps() {
           ) : (
             <div className="space-y-3 max-h-[550px] overflow-y-auto">
               {locations.map((location) => {
-                const handleContextMenuTrigger = (e: React.MouseEvent) => {
-                  e.preventDefault();
-                  setContextMenu({ x: e.clientX, y: e.clientY, locationId: location.id });
-                };
-
-                let touchTimer: NodeJS.Timeout | null = null;
-                const handleTouchStart = (e: React.TouchEvent) => {
-                  touchTimer = setTimeout(() => {
-                    const touch = e.touches[0];
-                    if (touch) {
-                      if (navigator.vibrate) navigator.vibrate(50);
-                      setContextMenu({ x: touch.clientX, y: touch.clientY, locationId: location.id });
-                    }
-                  }, 500);
-                };
-
-                const handleTouchEnd = () => {
-                  if (touchTimer) clearTimeout(touchTimer);
-                };
-
                 return (
                   <Card
                     key={location.id}
                     className={`p-4 transition-all ${
                       selectedIds.has(location.id) ? "ring-2 ring-[#00ff88]" : ""
                     }`}
-                    onContextMenu={handleContextMenuTrigger}
-                    onTouchStart={handleTouchStart}
-                    onTouchEnd={handleTouchEnd}
-                    onTouchMove={handleTouchEnd}
                   >
                     <div className="flex items-start gap-3">
                       {isMultiSelectMode && (
@@ -850,23 +809,18 @@ export default function Maps() {
                             </div>
                           </div>
                           {!isMultiSelectMode && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteLocation(location.id);
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <ItemActionsMenu
+                              onAction={(action) => handleItemAction(action, location.id)}
+                              actions={["edit", "delete", "select"]}
+                              triggerClassName="text-muted-foreground hover:text-foreground"
+                              size="sm"
+                            />
                           )}
                         </div>
                         <div className="flex flex-col gap-1 text-xs">
                           <span className="text-[#00ff88] uppercase">{location.type}</span>
-                          {getProjectName(location.projectId) && (
-                            <span className="text-muted-foreground">Project: {getProjectName(location.projectId)}</span>
+                          {getJobName(location.jobId) && (
+                            <span className="text-muted-foreground">Job: {getJobName(location.jobId)}</span>
                           )}
                           {getContactName(location.contactId) && (
                             <span className="text-muted-foreground">
@@ -883,16 +837,6 @@ export default function Maps() {
           )}
         </div>
       </div>
-
-      {/* Context Menu */}
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onAction={(action) => handleContextMenuAction(action, contextMenu.locationId)}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
 
       {/* Multi-Select Bar */}
       <MultiSelectBar
@@ -942,7 +886,7 @@ export default function Maps() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="custom">Custom Location</SelectItem>
-                  <SelectItem value="project">Project Site</SelectItem>
+                  <SelectItem value="job">Job Site</SelectItem>
                   <SelectItem value="contact">Contact Location</SelectItem>
                 </SelectContent>
               </Select>
@@ -1041,7 +985,7 @@ export default function Maps() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="custom">Custom Location</SelectItem>
-                  <SelectItem value="project">Project Site</SelectItem>
+                  <SelectItem value="job">Job Site</SelectItem>
                   <SelectItem value="contact">Contact Location</SelectItem>
                 </SelectContent>
               </Select>
