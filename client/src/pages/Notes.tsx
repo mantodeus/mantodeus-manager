@@ -55,13 +55,14 @@ export default function Notes() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("none");
+  const [selectedJobId, setSelectedJobId] = useState<string>("none");
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
 
   // Queries
   const { data: notes = [], refetch: refetchNotes } = trpc.notes.list.useQuery();
   const { data: projects = [] } = trpc.projects.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: jobs = [] } = trpc.jobs.list.useQuery();
 
   // Mutations
   const createNoteMutation = trpc.notes.create.useMutation({
@@ -102,7 +103,7 @@ export default function Notes() {
     setTitle("");
     setContent("");
     setTags("");
-      setSelectedProjectId("none");
+    setSelectedJobId("none");
     setSelectedContactId("none");
     setEditingNote(null);
   };
@@ -117,7 +118,7 @@ export default function Notes() {
       title: title.trim(),
       content: content.trim() || undefined,
       tags: tags.trim() || undefined,
-      projectId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
+      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
       contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
     });
   };
@@ -134,7 +135,7 @@ export default function Notes() {
       title: title.trim(),
       content: content.trim() || undefined,
       tags: tags.trim() || undefined,
-      projectId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
+      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
       contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
     });
   };
@@ -191,7 +192,7 @@ export default function Notes() {
     setTitle(note.title);
     setContent(note.content || "");
     setTags(note.tags || "");
-    setSelectedProjectId(note.projectId?.toString() || "none");
+    setSelectedJobId(note.jobId?.toString() || "none");
     setSelectedContactId(note.contactId?.toString() || "none");
     setIsEditDialogOpen(true);
   };
@@ -203,17 +204,17 @@ export default function Notes() {
       note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.tags?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesProject = filterProject === "all" || note.projectId?.toString() === filterProject;
+    const matchesJob = filterJob === "all" || note.jobId?.toString() === filterJob;
     const matchesContact =
       filterContact === "all" || note.contactId?.toString() === filterContact;
 
-    return matchesSearch && matchesProject && matchesContact;
+    return matchesSearch && matchesJob && matchesContact;
   });
 
-  const getProjectName = (projectId: number | null) => {
-    if (!projectId) return null;
-    const project = projects.find((p) => p.id === projectId);
-    return project?.name || project?.title;
+  const getJobName = (jobId: number | null) => {
+    if (!jobId) return null;
+    const job = jobs.find((j) => j.id === jobId);
+    return job?.title;
   };
 
   const getContactName = (contactId: number | null) => {
@@ -262,18 +263,18 @@ export default function Notes() {
             className="pl-10"
           />
         </div>
-        <Select value={filterProject} onValueChange={setFilterProject}>
+        <Select value={filterJob} onValueChange={setFilterJob}>
             <SelectTrigger>
-              <SelectValue placeholder="Filter by project" />
+              <SelectValue placeholder="Filter by job" />
             </SelectTrigger>
             <SelectContent>
-            <SelectItem value="all">All Projects</SelectItem>
-            {projects.length === 0 ? (
-              <div className="px-2 py-1.5 text-sm text-muted-foreground">No projects available</div>
+            <SelectItem value="all">All Jobs</SelectItem>
+            {jobs.length === 0 ? (
+              <div className="px-2 py-1.5 text-sm text-muted-foreground">No jobs available</div>
             ) : (
-              projects.map((project) => (
-                <SelectItem key={project.id} value={project.id.toString()}>
-                  {project.name || project.title}
+              jobs.map((job) => (
+                <SelectItem key={job.id} value={job.id.toString()}>
+                  {job.title}
                 </SelectItem>
               ))
             )}
@@ -303,11 +304,11 @@ export default function Notes() {
         <Card className="p-12 text-center">
           <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <p className="text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
-            {searchQuery || filterProject !== "all" || filterContact !== "all"
+            {searchQuery || filterJob !== "all" || filterContact !== "all"
               ? "No notes found matching your filters"
               : "No notes yet"}
           </p>
-          {!searchQuery && filterProject === "all" && filterContact === "all" && (
+          {!searchQuery && filterJob === "all" && filterContact === "all" && (
             <Button
               onClick={() => setIsCreateDialogOpen(true)}
               variant="outline"
@@ -379,10 +380,10 @@ export default function Notes() {
               )}
 
               <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                {getProjectName(note.projectId) && (
+                {getJobName(note.jobId) && (
                   <div className="flex items-center gap-1">
-                    <span className="text-[#00ff88]">Project:</span>
-                    <span>{getProjectName(note.projectId)}</span>
+                    <span className="text-[#00ff88]">Job:</span>
+                    <span>{getJobName(note.jobId)}</span>
                   </div>
                 )}
                 {getContactName(note.contactId) && (
@@ -535,16 +536,16 @@ export default function Notes() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-project">Link to Project</Label>
-                <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <Label htmlFor="edit-job">Link to Job</Label>
+                <Select value={selectedJobId} onValueChange={setSelectedJobId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select project (optional)" />
+                    <SelectValue placeholder="Select job (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id.toString()}>
-                        {project.name || project.title}
+                    {jobs.map((job) => (
+                      <SelectItem key={job.id} value={job.id.toString()}>
+                        {job.title}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -30,6 +30,10 @@ export default function Calendar() {
     setLocation(`/projects/${projectId}`);
   };
 
+  const handleJobClick = (jobId: number) => {
+    setLocation(`/jobs/${jobId}`);
+  };
+
   const dateRange = useMemo(() => {
     const date = new Date(currentDate);
     
