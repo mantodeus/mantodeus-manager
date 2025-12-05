@@ -28,9 +28,9 @@ export default function Invoices() {
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [selectedContactId, setSelectedContactId] = useState<string>("");
-  const [projectFilter, setProjectFilter] = useState<string>("");
+  const [jobFilter, setJobFilter] = useState<string>("");
   const [contactFilter, setContactFilter] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -40,11 +40,12 @@ export default function Invoices() {
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: projects = [] } = trpc.projects.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: jobs = [] } = trpc.jobs.list.useQuery();
   const uploadMutation = trpc.invoices.upload.useMutation();
   const deleteMutation = trpc.invoices.delete.useMutation();
 
   const filteredInvoices = invoices.filter((invoice) => {
-    if (projectFilter && invoice.projectId !== parseInt(projectFilter)) return false;
+    if (jobFilter && invoice.jobId !== parseInt(jobFilter)) return false;
     if (contactFilter && invoice.contactId !== parseInt(contactFilter)) return false;
     return true;
   });
@@ -90,13 +91,13 @@ export default function Invoices() {
         mimeType: selectedFile.type || "application/octet-stream",
         fileSize: selectedFile.size,
         base64Data,
-        projectId: selectedProjectId ? parseInt(selectedProjectId) : undefined,
+        jobId: selectedJobId ? parseInt(selectedJobId) : undefined,
         contactId: selectedContactId ? parseInt(selectedContactId) : undefined,
       });
 
       toast.success("Invoice uploaded successfully");
       setSelectedFile(null);
-      setSelectedProjectId("");
+      setSelectedJobId("");
       setSelectedContactId("");
       setIsDialogOpen(false);
       if (fileInputRef.current) {
@@ -232,20 +233,20 @@ export default function Invoices() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Link to Project (optional)</label>
+                <label className="block text-sm font-medium mb-2">Link to Job (optional)</label>
                 <Select 
-                  value={selectedProjectId || "none"} 
-                  onValueChange={(val) => setSelectedProjectId(val === "none" ? "" : val)}
+                  value={selectedJobId || "none"} 
+                  onValueChange={(val) => setSelectedJobId(val === "none" ? "" : val)}
                 >
                   <SelectTrigger className="bg-[#0D0E10] border-[#0D0E10]">
-                    <SelectValue placeholder="Select a project..." />
+                    <SelectValue placeholder="Select a job..." />
                   </SelectTrigger>
                   <SelectContent className="bg-[#0D0E10] border-[#0D0E10]">
                     <SelectItem value="none">None</SelectItem>
-                    {projects && projects.length > 0 ? (
-                      projects.map((project) => (
-                        <SelectItem key={project.id} value={String(project.id)}>
-                          {project.name || project.title}
+                    {jobs && jobs.length > 0 ? (
+                      jobs.map((job) => (
+                        <SelectItem key={job.id} value={String(job.id)}>
+                          {job.title}
                         </SelectItem>
                       ))
                     ) : (
@@ -297,8 +298,8 @@ export default function Invoices() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Filter by Project</label>
-          <Select value={projectFilter || "all"} onValueChange={(val) => setProjectFilter(val === "all" ? "" : val)}>
+          <label className="block text-sm font-medium mb-2">Filter by Job</label>
+          <Select value={jobFilter || "all"} onValueChange={(val) => setJobFilter(val === "all" ? "" : val)}>
             <SelectTrigger className="bg-[#0D0E10] border-[#0D0E10]">
               <SelectValue placeholder="All projects" />
             </SelectTrigger>
@@ -350,7 +351,7 @@ export default function Invoices() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredInvoices.map((invoice) => {
-            const linkedProject = projects.find((p) => p.id === invoice.projectId);
+            const linkedJob = jobs.find((j) => j.id === invoice.jobId);
             const linkedContact = contacts.find((c) => c.id === invoice.contactId);
 
             return (

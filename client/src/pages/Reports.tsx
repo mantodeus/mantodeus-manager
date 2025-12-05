@@ -51,7 +51,7 @@ export default function Reports() {
                     <div className="flex items-center gap-3">
                       <FileText className="h-5 w-5 group-hover:text-accent-foreground text-muted-foreground transition-colors" />
                       <div>
-                        <p className="font-medium group-hover:text-accent-foreground transition-colors">{project.name || project.title}</p>
+                        <p className="font-medium group-hover:text-accent-foreground transition-colors">{project.name || project.name}</p>
                         <p className="text-sm group-hover:text-accent-foreground/80 text-muted-foreground transition-colors">
                           Status: {project.status.replace("_", " ")}
                         </p>
@@ -60,7 +60,7 @@ export default function Reports() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleGenerateReport(project.id, project.name || project.title)}
+                      onClick={() => handleGenerateReport(project.id, project.name || project.name)}
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Generate Report
