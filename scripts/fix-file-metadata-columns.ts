@@ -6,12 +6,22 @@
  * instead of 'projectId' and 'jobId', and fixes them if needed.
  * 
  * Run with: npx tsx scripts/fix-file-metadata-columns.ts
+ * 
+ * The script will read DATABASE_URL from environment variables.
+ * If DATABASE_URL is not set, it will try to load from .env file.
  */
 
 import mysql from "mysql2/promise";
-import dotenv from "dotenv";
 
-dotenv.config();
+// Try to load dotenv if DATABASE_URL is not set
+if (!process.env.DATABASE_URL) {
+  try {
+    const dotenv = await import("dotenv");
+    dotenv.config();
+  } catch (e) {
+    // dotenv not available, continue
+  }
+}
 
 async function checkAndFixColumns() {
   const connectionString = process.env.DATABASE_URL;
