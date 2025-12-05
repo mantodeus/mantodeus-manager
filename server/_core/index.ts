@@ -10,8 +10,48 @@ import { storageGet } from "../storage";
 import crypto from "crypto";
 import { exec } from "child_process";
 import sharp from "sharp";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Track if server has started successfully (for error handling)
+let serverStarted = false;
+
+// Set up uncaught exception handler early to catch module-load-time errors
+// (e.g., Supabase initialization errors)
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  console.error("Stack:", error.stack);
+  
+  // Exit with delay to prevent rapid restart loops
+  // This gives time for logs to be written
+  setTimeout(() => {
+    console.error("Exiting due to uncaught exception...");
+    process.exit(1);
+  }, serverStarted ? 5000 : 2000); // Shorter delay if server hasn't started
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  // Log but don't exit immediately for unhandled rejections
+  // They're often recoverable, but log for debugging
+});
 
 async function startServer() {
+  // Verify build output exists in production
+  if (process.env.NODE_ENV === "production") {
+    const distIndexPath = path.resolve(__dirname, "../index.js");
+    if (!fs.existsSync(distIndexPath)) {
+      throw new Error(
+        `Production build not found at ${distIndexPath}. ` +
+        `Please run 'npm run build' before starting the server.`
+      );
+    }
+  }
+
   const app = express();
   const server = createServer(app);
 
@@ -142,7 +182,50 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on port ${port}`);
+    serverStarted = true; // Mark server as started successfully
   });
+
+  // Handle server errors (e.g., port already in use)
+  server.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code === "EADDRINUSE") {
+      console.error(`Port ${port} is already in use. Please stop the other process or use a different port.`);
+    } else {
+      console.error("Server error:", error);
+    }
+    // Don't exit immediately - let the error handlers manage it
+  });
+
+  // Graceful shutdown handling
+  const gracefulShutdown = (signal: string) => {
+    console.log(`\n${signal} received, shutting down gracefully...`);
+    server.close(() => {
+      console.log("Server closed");
+      process.exit(0);
+    });
+    
+    // Force close after 10 seconds
+    setTimeout(() => {
+      console.error("Forced shutdown after timeout");
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 }
 
-startServer().catch(console.error);
+// Improved error handling to prevent restart loops
+startServer().catch((error) => {
+  console.error("Failed to start server:", error);
+  console.error("Error details:", {
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
+  
+  // Wait 5 seconds before exiting to prevent rapid restart loops
+  // This gives time for logs to be written and prevents hammering the system
+  setTimeout(() => {
+    console.error("Exiting after startup failure...");
+    process.exit(1);
+  }, 5000);
+});
