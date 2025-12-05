@@ -1,4 +1,4 @@
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, gte, lte, or, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   // User types
@@ -334,8 +334,6 @@ export async function getTasksInDateRange(startDate: Date, endDate: Date) {
 export async function getCalendarEvents(startDate: Date, endDate: Date) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
-  const { and, gte, lte, or, isNull, eq } = await import('drizzle-orm');
   
   // Get individual job dates from jobDates table
   const individualJobDatesPromise = db.select({

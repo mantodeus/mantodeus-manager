@@ -45,7 +45,7 @@ export default function Notes() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterJob, setFilterJob] = useState<string>("all");
+  const [filterProject, setFilterProject] = useState<string>("all");
   const [filterContact, setFilterContact] = useState<string>("all");
   
   // Multi-select state
@@ -475,16 +475,16 @@ export default function Notes() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="job">Link to Job</Label>
-                <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                <Label htmlFor="project">Link to Project</Label>
+                <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select job (optional)" />
+                    <SelectValue placeholder="Select project (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    {jobs.map((job) => (
-                      <SelectItem key={job.id} value={job.id.toString()}>
-                        {job.title}
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id.toString()}>
+                        {project.name || project.title}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -300,16 +300,16 @@ export default function Invoices() {
               <SelectValue placeholder="All projects" />
             </SelectTrigger>
             <SelectContent className="bg-[#0D0E10] border-[#0D0E10]">
-              <SelectItem value="all">All jobs</SelectItem>
-              {jobs && jobs.length > 0 ? (
-                jobs.map((job) => (
-                  <SelectItem key={job.id} value={String(job.id)}>
-                    {job.title}
+              <SelectItem value="all">All projects</SelectItem>
+              {projects && projects.length > 0 ? (
+                projects.map((project) => (
+                  <SelectItem key={project.id} value={String(project.id)}>
+                    {project.name || project.title}
                   </SelectItem>
                 ))
               ) : (
-                <SelectItem value="no-jobs" disabled>
-                  No jobs available
+                <SelectItem value="no-projects" disabled>
+                  No projects available
                 </SelectItem>
               )}
             </SelectContent>
@@ -376,12 +376,12 @@ export default function Invoices() {
                 </div>
 
                 <div className="space-y-2 text-sm text-gray-400">
-                  {linkedJob && (
+                  {linkedProject && (
                     <div className="flex items-center justify-between text-xs">
                       <span>
-                        <span className="text-gray-500">Job:</span> {linkedJob.title}
+                        <span className="text-gray-500">Project:</span> {linkedProject.name || linkedProject.title}
                       </span>
-                      <a href={`/jobs/${linkedJob.id}`}>
+                      <a href={`/projects/${linkedProject.id}`}>
                         <Button variant="ghost" size="sm" className="h-6 px-2 text-[#00ff88] hover:text-[#00dd77]">
                           <ExternalLink className="h-3 w-3" />
                         </Button>
