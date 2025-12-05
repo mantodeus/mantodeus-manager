@@ -85,11 +85,13 @@ export function ItemActionsMenu({
         <Button
           variant="ghost"
           size="icon"
-          className={`${sizeClasses[size]} ${triggerClassName || ""}`}
+          className={`${sizeClasses[size]} ${triggerClassName || ""} opacity-70 hover:opacity-100`}
           disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
           }}
+          aria-label="More actions"
+          title="More actions"
         >
           <MoreVertical className={iconSizes[size]} />
           <span className="sr-only">More actions</span>

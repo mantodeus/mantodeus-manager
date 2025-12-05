@@ -190,7 +190,7 @@ export default function Projects() {
                             <ItemActionsMenu
                               onAction={(action) => handleItemAction(action, project.id)}
                               actions={["edit", "delete", "select"]}
-                              triggerClassName="text-muted-foreground hover:text-foreground"
+                              triggerClassName="text-muted-foreground hover:text-foreground ml-1"
                             />
                           )}
                         </div>
