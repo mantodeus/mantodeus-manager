@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import ProjectFileLightbox from "./ProjectFileLightbox";
 import { compressImage } from "@/lib/imageCompression";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 interface FileMetadata {
   id: number;
@@ -78,6 +79,8 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<string>("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<number | null>(null);
   const [viewingFileId, setViewingFileId] = useState<number | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -220,9 +223,15 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
 
   const handleItemAction = (action: ItemAction, fileId: number) => {
     if (action === "delete") {
-      if (confirm("Are you sure you want to delete this file?")) {
-        deleteFile.mutate({ fileId });
-      }
+      setFileToDelete(fileId);
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const confirmDeleteFile = () => {
+    if (fileToDelete !== null) {
+      deleteFile.mutate({ fileId: fileToDelete });
+      setFileToDelete(null);
     }
   };
 
@@ -420,6 +429,24 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
           onClose={() => setSelectedImageIndex(null)}
           projectId={projectId}
           jobId={jobId}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {fileToDelete !== null && (
+        <DeleteConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            setDeleteDialogOpen(open);
+            if (!open) {
+              setFileToDelete(null);
+            }
+          }}
+          onConfirm={confirmDeleteFile}
+          title="Delete File"
+          description="This action cannot be undone. This file will be permanently deleted from storage."
+          confirmLabel="Delete File"
+          isDeleting={deleteFile.isPending}
         />
       )}
     </div>
