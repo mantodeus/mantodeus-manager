@@ -6,9 +6,9 @@
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <link rel="icon" type="image/png" href="%VITE_APP_LOGO%" />
-    <link rel="apple-touch-icon" href="%VITE_APP_LOGO%" />
-    <title>%VITE_APP_TITLE%</title>
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <title>Mantodeus Manager</title>
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
@@ -35,9 +35,9 @@
     <script>
       // Load analytics only if configured
       (function() {
-        var endpoint = '%VITE_ANALYTICS_ENDPOINT%';
-        var websiteId = '%VITE_ANALYTICS_WEBSITE_ID%';
-        if (endpoint && websiteId && !endpoint.includes('VITE_')) {
+        var endpoint = '';
+        var websiteId = '';
+        if (endpoint && websiteId) {
           var script = document.createElement('script');
           script.defer = true;
           script.src = endpoint + '/umami';
