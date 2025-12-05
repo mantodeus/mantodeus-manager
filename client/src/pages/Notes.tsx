@@ -22,11 +22,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Tag, Trash2, FileText, Edit } from "lucide-react";
+import { Plus, Search, Tag, FileText, Edit } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ContextMenu, ContextMenuAction } from "@/components/ContextMenu";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
-import { useContextMenu } from "@/hooks/useContextMenu";
 type Note = {
   id: number;
   title: string;
@@ -51,9 +50,6 @@ export default function Notes() {
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; noteId: number } | null>(null);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -162,7 +158,7 @@ export default function Notes() {
     }
   };
 
-  const handleContextMenuAction = (action: ContextMenuAction, noteId: number) => {
+  const handleItemAction = (action: ItemAction, noteId: number) => {
     const note = notes.find((n) => n.id === noteId);
     if (!note) return;
 
@@ -332,26 +328,6 @@ export default function Notes() {
               }
             };
 
-            const handleContextMenuTrigger = (e: React.MouseEvent) => {
-              e.preventDefault();
-              setContextMenu({ x: e.clientX, y: e.clientY, noteId: note.id });
-            };
-
-            let touchTimer: NodeJS.Timeout | null = null;
-            const handleTouchStart = (e: React.TouchEvent) => {
-              touchTimer = setTimeout(() => {
-                const touch = e.touches[0];
-                if (touch) {
-                  if (navigator.vibrate) navigator.vibrate(50);
-                  setContextMenu({ x: touch.clientX, y: touch.clientY, noteId: note.id });
-                }
-              }, 500);
-            };
-
-            const handleTouchEnd = () => {
-              if (touchTimer) clearTimeout(touchTimer);
-            };
-
             return (
               <Card
                 key={note.id}
@@ -359,10 +335,6 @@ export default function Notes() {
                   selectedIds.has(note.id) ? "ring-2 ring-[#00ff88]" : ""
                 } ${!isMultiSelectMode ? "cursor-pointer" : ""}`}
                 onClick={handleCardClick}
-                onContextMenu={handleContextMenuTrigger}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-                onTouchMove={handleTouchEnd}
               >
                 <div className="flex items-start gap-3 mb-3">
                   {isMultiSelectMode && (
@@ -382,17 +354,11 @@ export default function Notes() {
                     </h3>
                   </div>
                   {!isMultiSelectMode && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteNote(note.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <ItemActionsMenu
+                      onAction={(action) => handleItemAction(action, note.id)}
+                      actions={["edit", "delete", "select"]}
+                      triggerClassName="text-muted-foreground hover:text-foreground"
+                    />
                   )}
                 </div>
 
@@ -622,16 +588,6 @@ export default function Notes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Context Menu */}
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onAction={(action) => handleContextMenuAction(action, contextMenu.noteId)}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
 
       {/* Multi-Select Bar */}
       <MultiSelectBar

@@ -4,9 +4,10 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Trash2, Upload, ExternalLink, Eye, Download } from "lucide-react";
+import { FileText, Plus, Upload, ExternalLink, Eye, Download } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 
 // Convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -111,14 +112,16 @@ export default function Invoices() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("Are you sure you want to delete this invoice?")) {
-      try {
-        await deleteMutation.mutateAsync({ id });
-        toast.success("Invoice deleted successfully");
-        refetch();
-      } catch (error) {
-        toast.error("Failed to delete invoice");
+  const handleItemAction = async (action: ItemAction, id: number) => {
+    if (action === "delete") {
+      if (confirm("Are you sure you want to delete this invoice?")) {
+        try {
+          await deleteMutation.mutateAsync({ id });
+          toast.success("Invoice deleted successfully");
+          refetch();
+        } catch (error) {
+          toast.error("Failed to delete invoice");
+        }
       }
     }
   };
@@ -366,12 +369,12 @@ export default function Invoices() {
                   </div>
                   <div className="flex items-center gap-1">
                     <InvoiceViewButton fileKey={invoice.fileKey} filename={invoice.filename} />
-                    <button
-                      onClick={() => handleDelete(invoice.id)}
-                      className="text-red-500 hover:text-red-400 transition-colors flex-shrink-0 p-1.5"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <ItemActionsMenu
+                      onAction={(action) => handleItemAction(action, invoice.id)}
+                      actions={["delete"]}
+                      triggerClassName="text-muted-foreground hover:text-foreground"
+                      size="sm"
+                    />
                   </div>
                 </div>
 

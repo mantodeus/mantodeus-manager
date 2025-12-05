@@ -7,7 +7,7 @@ import { Plus, MapPin, Calendar, Loader2, User } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { CreateJobDialog } from "@/components/CreateJobDialog";
-import { ContextMenu, ContextMenuAction } from "@/components/ContextMenu";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { toast } from "sonner";
 
@@ -21,9 +21,6 @@ export default function Jobs() {
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; jobId: number } | null>(null);
 
   const deleteJobMutation = trpc.jobs.delete.useMutation({
     onSuccess: () => {
@@ -57,9 +54,7 @@ export default function Jobs() {
     return new Date(date).toLocaleDateString();
   };
 
-  const handleContextMenuAction = (action: ContextMenuAction, jobId: number) => {
-    setContextMenu(null);
-    
+  const handleItemAction = (action: ItemAction, jobId: number) => {
     switch (action) {
       case "edit":
         navigate(`/jobs/${jobId}`);
@@ -143,50 +138,6 @@ export default function Jobs() {
               <div
                 key={job.id}
                 className="relative no-select"
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenu({ x: e.clientX, y: e.clientY, jobId: job.id });
-                }}
-                onTouchStart={(e) => {
-                  const touch = e.touches[0];
-                  const touchStartTime = Date.now();
-                  const touchStartX = touch!.clientX;
-                  const touchStartY = touch!.clientY;
-                  
-                  const longPressTimer = setTimeout(() => {
-                    if (navigator.vibrate) {
-                      navigator.vibrate(50);
-                    }
-                    setContextMenu({ 
-                      x: touchStartX, 
-                      y: touchStartY, 
-                      jobId: job.id 
-                    });
-                  }, 500);
-                  
-                  const cleanup = () => {
-                    clearTimeout(longPressTimer);
-                    document.removeEventListener('touchend', handleTouchEnd);
-                    document.removeEventListener('touchmove', handleTouchMove);
-                  };
-                  
-                  const handleTouchEnd = () => {
-                    cleanup();
-                  };
-                  
-                  const handleTouchMove = (moveEvent: TouchEvent) => {
-                    const touch = moveEvent.touches[0];
-                    const deltaX = Math.abs(touch!.clientX - touchStartX);
-                    const deltaY = Math.abs(touch!.clientY - touchStartY);
-                    
-                    if (deltaX > 10 || deltaY > 10) {
-                      cleanup();
-                    }
-                  };
-                  
-                  document.addEventListener('touchend', handleTouchEnd, { once: true });
-                  document.addEventListener('touchmove', handleTouchMove);
-                }}
                 onClick={(e) => {
                   if (isMultiSelectMode) {
                     e.preventDefault();
@@ -213,9 +164,18 @@ export default function Jobs() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-xl">{job.title}</CardTitle>
-                        <Badge className={getStatusColor(job.status)}>
-                          {job.status.replace("_", " ")}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(job.status)}>
+                            {job.status.replace("_", " ")}
+                          </Badge>
+                          {!isMultiSelectMode && (
+                            <ItemActionsMenu
+                              onAction={(action) => handleItemAction(action, job.id)}
+                              actions={["edit", "delete", "select"]}
+                              triggerClassName="text-muted-foreground hover:text-foreground"
+                            />
+                          )}
+                        </div>
                       </div>
                       {job.description && (
                         <CardDescription className="line-clamp-2">{job.description}</CardDescription>
@@ -245,15 +205,6 @@ export default function Jobs() {
             );
           })}
         </div>
-      )}
-
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={() => setContextMenu(null)}
-          onAction={(action) => handleContextMenuAction(action, contextMenu.jobId)}
-        />
       )}
 
       {isMultiSelectMode && (

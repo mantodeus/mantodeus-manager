@@ -19,7 +19,6 @@ import {
   FileText, 
   Image as ImageIcon, 
   File, 
-  Trash2, 
   ExternalLink,
   Plus,
   Eye
@@ -27,6 +26,7 @@ import {
 import { toast } from "sonner";
 import ProjectFileLightbox from "./ProjectFileLightbox";
 import { compressImage } from "@/lib/imageCompression";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 
 interface FileMetadata {
   id: number;
@@ -218,12 +218,11 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
     }
   };
 
-  const handleDeleteFile = (fileId: number, e?: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation();
-    }
-    if (confirm("Are you sure you want to delete this file?")) {
-      deleteFile.mutate({ fileId });
+  const handleItemAction = (action: ItemAction, fileId: number) => {
+    if (action === "delete") {
+      if (confirm("Are you sure you want to delete this file?")) {
+        deleteFile.mutate({ fileId });
+      }
     }
   };
 
@@ -350,14 +349,12 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={(e) => handleDeleteFile(file.id, e)}
+                        <ItemActionsMenu
+                          onAction={(action) => handleItemAction(action, file.id)}
+                          actions={["delete"]}
+                          triggerClassName="bg-background hover:bg-background"
                           disabled={deleteFile.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
                       {/* File name at bottom */}
                       <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 truncate">
@@ -398,19 +395,13 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                             </>
                           )}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleDeleteFile(file.id, e)}
+                        <ItemActionsMenu
+                          onAction={(action) => handleItemAction(action, file.id)}
+                          actions={["delete"]}
+                          triggerClassName="text-muted-foreground hover:text-foreground"
                           disabled={deleteFile.isPending}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          {deleteFile.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                          size="sm"
+                        />
                       </div>
                     </div>
                   )}

@@ -22,11 +22,10 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { MapPin, Trash2, Search, X, Users } from "lucide-react";
+import { MapPin, Search, X, Users } from "lucide-react";
 import { MapView } from "@/components/Map";
-import { ContextMenu, ContextMenuAction } from "@/components/ContextMenu";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
-import { useContextMenu } from "@/hooks/useContextMenu";
 import { useLocation } from "wouter";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 
@@ -66,9 +65,6 @@ export default function Maps() {
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; locationId: number } | null>(null);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -510,7 +506,7 @@ export default function Maps() {
     setIsEditDialogOpen(true);
   };
 
-  const handleContextMenuAction = (action: ContextMenuAction, locationId: number) => {
+  const handleItemAction = (action: ItemAction, locationId: number) => {
     const location = locations.find((l) => l.id === locationId);
     if (!location) return;
 
@@ -788,36 +784,12 @@ export default function Maps() {
           ) : (
             <div className="space-y-3 max-h-[550px] overflow-y-auto">
               {locations.map((location) => {
-                const handleContextMenuTrigger = (e: React.MouseEvent) => {
-                  e.preventDefault();
-                  setContextMenu({ x: e.clientX, y: e.clientY, locationId: location.id });
-                };
-
-                let touchTimer: NodeJS.Timeout | null = null;
-                const handleTouchStart = (e: React.TouchEvent) => {
-                  touchTimer = setTimeout(() => {
-                    const touch = e.touches[0];
-                    if (touch) {
-                      if (navigator.vibrate) navigator.vibrate(50);
-                      setContextMenu({ x: touch.clientX, y: touch.clientY, locationId: location.id });
-                    }
-                  }, 500);
-                };
-
-                const handleTouchEnd = () => {
-                  if (touchTimer) clearTimeout(touchTimer);
-                };
-
                 return (
                   <Card
                     key={location.id}
                     className={`p-4 transition-all ${
                       selectedIds.has(location.id) ? "ring-2 ring-[#00ff88]" : ""
                     }`}
-                    onContextMenu={handleContextMenuTrigger}
-                    onTouchStart={handleTouchStart}
-                    onTouchEnd={handleTouchEnd}
-                    onTouchMove={handleTouchEnd}
                   >
                     <div className="flex items-start gap-3">
                       {isMultiSelectMode && (
@@ -850,17 +822,12 @@ export default function Maps() {
                             </div>
                           </div>
                           {!isMultiSelectMode && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteLocation(location.id);
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <ItemActionsMenu
+                              onAction={(action) => handleItemAction(action, location.id)}
+                              actions={["edit", "delete", "select"]}
+                              triggerClassName="text-muted-foreground hover:text-foreground"
+                              size="sm"
+                            />
                           )}
                         </div>
                         <div className="flex flex-col gap-1 text-xs">
@@ -883,16 +850,6 @@ export default function Maps() {
           )}
         </div>
       </div>
-
-      {/* Context Menu */}
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onAction={(action) => handleContextMenuAction(action, contextMenu.locationId)}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
 
       {/* Multi-Select Bar */}
       <MultiSelectBar

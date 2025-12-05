@@ -16,7 +16,7 @@ import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen } from "lucide-r
 import { Link } from "wouter";
 import { useState } from "react";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";
-import { ContextMenu, ContextMenuAction } from "@/components/ContextMenu";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { toast } from "sonner";
 
@@ -27,9 +27,6 @@ export default function Projects() {
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; projectId: number } | null>(null);
 
   const archiveProjectMutation = trpc.projects.archive.useMutation({
     onSuccess: () => {
@@ -71,9 +68,7 @@ export default function Projects() {
     return new Date(date).toLocaleDateString();
   };
 
-  const handleContextMenuAction = (action: ContextMenuAction, projectId: number) => {
-    setContextMenu(null);
-    
+  const handleItemAction = (action: ItemAction, projectId: number) => {
     switch (action) {
       case "edit":
         window.location.href = `/projects/${projectId}`;
@@ -158,10 +153,6 @@ export default function Projects() {
               <div
                 key={project.id}
                 className="relative no-select"
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenu({ x: e.clientX, y: e.clientY, projectId: project.id });
-                }}
                 onClick={(e) => {
                   if (isMultiSelectMode) {
                     e.preventDefault();
@@ -191,9 +182,18 @@ export default function Projects() {
                           <Building2 className="h-5 w-5 text-muted-foreground" />
                           <CardTitle className="text-xl">{project.name}</CardTitle>
                         </div>
-                        <Badge className={getStatusColor(project.status)}>
-                          {project.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(project.status)}>
+                            {project.status}
+                          </Badge>
+                          {!isMultiSelectMode && (
+                            <ItemActionsMenu
+                              onAction={(action) => handleItemAction(action, project.id)}
+                              actions={["edit", "delete", "select"]}
+                              triggerClassName="text-muted-foreground hover:text-foreground"
+                            />
+                          )}
+                        </div>
                       </div>
                       {project.client && (
                         <CardDescription>Client: {project.client}</CardDescription>
@@ -220,15 +220,6 @@ export default function Projects() {
             );
           })}
         </div>
-      )}
-
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={() => setContextMenu(null)}
-          onAction={(action) => handleContextMenuAction(action, contextMenu.projectId)}
-        />
       )}
 
       {isMultiSelectMode && (

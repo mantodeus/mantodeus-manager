@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Upload, Trash2, Loader2 } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ImageLightbox from "./ImageLightbox";
 import { compressImage } from "@/lib/imageCompression";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 
 interface ImageGalleryProps {
   jobId: number;
@@ -118,9 +119,11 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
     }
   };
 
-  const handleDelete = async (imageId: number) => {
-    if (!confirm("Are you sure you want to delete this image?")) return;
-    await deleteMutation.mutateAsync({ id: imageId });
+  const handleItemAction = async (action: ItemAction, imageId: number) => {
+    if (action === "delete") {
+      if (!confirm("Are you sure you want to delete this image?")) return;
+      await deleteMutation.mutateAsync({ id: imageId });
+    }
   };
 
   if (isLoading) {
@@ -196,16 +199,11 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
                 </div>
               )}
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(image.id);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <ItemActionsMenu
+                  onAction={(action) => handleItemAction(action, image.id)}
+                  actions={["delete"]}
+                  triggerClassName="bg-background hover:bg-background"
+                />
               </div>
               {image.caption && (
                 <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 truncate">
