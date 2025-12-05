@@ -19,6 +19,7 @@ import { CreateProjectJobDialog } from "@/components/CreateProjectJobDialog";
 import { EditProjectDialog } from "@/components/EditProjectDialog";
 import { ProjectJobList } from "@/components/ProjectJobList";
 import { ProjectFileGallery } from "@/components/ProjectFileGallery";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
 
 export default function ProjectDetail() {
@@ -27,6 +28,8 @@ export default function ProjectDetail() {
   const projectId = params?.id ? parseInt(params.id) : 0;
   const [createJobDialogOpen, setCreateJobDialogOpen] = useState(false);
   const [editProjectDialogOpen, setEditProjectDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
 
   const { data: project, isLoading: projectLoading } = trpc.projects.getById.useQuery({ id: projectId });
   const { data: jobs, isLoading: jobsLoading } = trpc.projects.jobs.list.useQuery({ projectId });
@@ -62,9 +65,11 @@ export default function ProjectDetail() {
   };
 
   const handleDeleteProject = () => {
-    if (confirm("Are you sure you want to permanently delete this project? This will also delete all jobs and files. This action cannot be undone.")) {
-      deleteProject.mutate({ id: projectId });
-    }
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteProject = () => {
+    deleteProject.mutate({ id: projectId });
   };
 
   const getStatusColor = (status: string) => {
@@ -269,6 +274,20 @@ export default function ProjectDetail() {
           Delete Project
         </Button>
       </div>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDeleteProject}
+        title="Permanently Delete Project"
+        description="This action cannot be undone. This will permanently delete the project and remove all associated data from our servers."
+        warning={`This will delete ${jobs?.length || 0} job${(jobs?.length || 0) !== 1 ? 's' : ''} and ${files?.length || 0} file${(files?.length || 0) !== 1 ? 's' : ''} associated with this project.`}
+        requireTypeToConfirm={project.name}
+        confirmValue={deleteConfirmValue}
+        onConfirmValueChange={setDeleteConfirmValue}
+        confirmLabel="Delete Project Permanently"
+        isDeleting={deleteProject.isPending}
+      />
 
       <CreateProjectJobDialog 
         open={createJobDialogOpen} 

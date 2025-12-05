@@ -5,11 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Mail, MapPin, Phone, Plus, Trash2, Map } from "lucide-react";
+import { Mail, MapPin, Phone, Plus, Map } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ContextMenu, ContextMenuAction } from "@/components/ContextMenu";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
-import { useContextMenu } from "@/hooks/useContextMenu";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -22,9 +21,6 @@ export default function Contacts() {
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; contactId: number } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -128,7 +124,7 @@ export default function Contacts() {
     }
   };
 
-  const handleContextMenuAction = (action: ContextMenuAction, contactId: number) => {
+  const handleItemAction = (action: ItemAction, contactId: number) => {
     const contact = contacts.find((c) => c.id === contactId);
     if (!contact) return;
 
@@ -264,36 +260,13 @@ export default function Contacts() {
               }
             };
 
-            const handleContextMenuTrigger = (e: React.MouseEvent) => {
-              e.preventDefault();
-              setContextMenu({ x: e.clientX, y: e.clientY, contactId: contact.id });
-            };
-
-            let touchTimer: NodeJS.Timeout | null = null;
-            const handleTouchStart = (e: React.TouchEvent) => {
-              touchTimer = setTimeout(() => {
-                const touch = e.touches[0];
-                if (touch) {
-                  if (navigator.vibrate) navigator.vibrate(50);
-                  setContextMenu({ x: touch.clientX, y: touch.clientY, contactId: contact.id });
-                }
-              }, 500);
-            };
-
-            const handleTouchEnd = () => {
-              if (touchTimer) clearTimeout(touchTimer);
-            };
-
             return (
               <Card
                 key={contact.id}
                 className={`bg-[#0D0E10] border-[#0D0E10] p-4 hover:border-[#0D0E10] transition-all ${
                   selectedIds.has(contact.id) ? "ring-2 ring-[#0D0E10]" : ""
                 }`}
-                onContextMenu={handleContextMenuTrigger}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-                onTouchMove={handleTouchEnd}
+                onClick={handleCardClick}
               >
                 <div className="flex items-start gap-3 mb-3">
                   {isMultiSelectMode && (
@@ -318,6 +291,7 @@ export default function Contacts() {
                         if (!contact.latitude || !contact.longitude) {
                           e.preventDefault();
                         }
+                        e.stopPropagation();
                       }}
                     >
                       <MapPin className="w-3 h-3" />
@@ -326,17 +300,11 @@ export default function Contacts() {
                   )}
                 </div>
                 {!isMultiSelectMode && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(contact.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <ItemActionsMenu
+                    onAction={(action) => handleItemAction(action, contact.id)}
+                    actions={["edit", "delete", "select"]}
+                    triggerClassName="text-muted-foreground hover:text-foreground"
+                  />
                 )}
               </div>
 
@@ -377,16 +345,6 @@ export default function Contacts() {
             );
           })}
         </div>
-      )}
-
-      {/* Context Menu */}
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onAction={(action) => handleContextMenuAction(action, contextMenu.contactId)}
-          onClose={() => setContextMenu(null)}
-        />
       )}
 
       {/* Multi-Select Bar */}

@@ -17,6 +17,7 @@ import { Link, useRoute, useLocation } from "wouter";
 import { useState } from "react";
 import { EditProjectJobDialog } from "@/components/EditProjectJobDialog";
 import { ProjectFileGallery } from "@/components/ProjectFileGallery";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
 
 export default function ProjectJobDetail() {
@@ -25,6 +26,8 @@ export default function ProjectJobDetail() {
   const projectId = params?.projectId ? parseInt(params.projectId) : 0;
   const jobId = params?.jobId ? parseInt(params.jobId) : 0;
   const [editJobDialogOpen, setEditJobDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
 
   const { data: project, isLoading: projectLoading } = trpc.projects.getById.useQuery({ id: projectId });
   const { data: job, isLoading: jobLoading } = trpc.projects.jobs.get.useQuery({ projectId, jobId });
@@ -44,9 +47,11 @@ export default function ProjectJobDetail() {
   });
 
   const handleDeleteJob = () => {
-    if (confirm("Are you sure you want to delete this job? This will also delete all associated files.")) {
-      deleteJob.mutate({ projectId, jobId });
-    }
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteJob = () => {
+    deleteJob.mutate({ projectId, jobId });
   };
 
   const getStatusColor = (status: string) => {
@@ -252,6 +257,22 @@ export default function ProjectJobDetail() {
           Delete Job
         </Button>
       </div>
+
+      {job && (
+        <DeleteConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={confirmDeleteJob}
+          title="Permanently Delete Job"
+          description="This action cannot be undone. This will permanently delete the job and remove all associated data from our servers."
+          warning={`This will delete ${files?.length || 0} file${(files?.length || 0) !== 1 ? 's' : ''} associated with this job.`}
+          requireTypeToConfirm={job.title}
+          confirmValue={deleteConfirmValue}
+          onConfirmValueChange={setDeleteConfirmValue}
+          confirmLabel="Delete Job Permanently"
+          isDeleting={deleteJob.isPending}
+        />
+      )}
 
       {job && (
         <EditProjectJobDialog 
