@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import ImageLightbox from "./ImageLightbox";
 import { compressImage } from "@/lib/imageCompression";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 interface ImageGalleryProps {
   jobId: number;
@@ -29,6 +30,8 @@ function fileToBase64(file: File): Promise<string> {
 export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; status: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -121,8 +124,15 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
 
   const handleItemAction = async (action: ItemAction, imageId: number) => {
     if (action === "delete") {
-      if (!confirm("Are you sure you want to delete this image?")) return;
-      await deleteMutation.mutateAsync({ id: imageId });
+      setImageToDelete(imageId);
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const confirmDeleteImage = async () => {
+    if (imageToDelete !== null) {
+      await deleteMutation.mutateAsync({ id: imageToDelete });
+      setImageToDelete(null);
     }
   };
 
@@ -221,6 +231,24 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
           initialIndex={selectedImageIndex}
           onClose={() => setSelectedImageIndex(null)}
           jobId={jobId}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {imageToDelete !== null && (
+        <DeleteConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            setDeleteDialogOpen(open);
+            if (!open) {
+              setImageToDelete(null);
+            }
+          }}
+          onConfirm={confirmDeleteImage}
+          title="Delete Image"
+          description="This action cannot be undone. This image will be permanently deleted from storage."
+          confirmLabel="Delete Image"
+          isDeleting={deleteMutation.isPending}
         />
       )}
     </div>
