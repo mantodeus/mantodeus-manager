@@ -2,8 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, Circle, Clock, AlertCircle, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 
 interface Task {
   id: number;
@@ -92,9 +93,11 @@ export function TaskList({ tasks, jobId }: TaskListProps) {
     updateTask.mutate({ id: taskId, status: newStatus });
   };
 
-  const handleDeleteTask = (taskId: number) => {
-    if (confirm("Are you sure you want to delete this task?")) {
-      deleteTask.mutate({ id: taskId });
+  const handleItemAction = (action: ItemAction, taskId: number) => {
+    if (action === "delete") {
+      if (confirm("Are you sure you want to delete this task?")) {
+        deleteTask.mutate({ id: taskId });
+      }
     }
   };
 
@@ -166,14 +169,12 @@ export function TaskList({ tasks, jobId }: TaskListProps) {
                     )}
                   </>
                 )}
-                <Button
+                <ItemActionsMenu
+                  onAction={(action) => handleItemAction(action, task.id)}
+                  actions={["delete"]}
+                  triggerClassName="text-muted-foreground hover:text-foreground"
                   size="sm"
-                  variant="ghost"
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                />
               </div>
             </div>
           </CardContent>
