@@ -1,0 +1,292 @@
+# Cursor AI Rules for Mantodeus Manager Backend
+
+## Project Overview
+This is a full-stack TypeScript application with:
+- **Backend**: Express + tRPC + Drizzle ORM + MySQL
+- **Frontend**: React + Vite + Tailwind + tRPC Client
+- **Auth**: Supabase (email/password)
+- **Storage**: AWS S3
+- **Database**: MySQL/MariaDB
+
+## Code Style & Patterns
+
+### TypeScript
+- Use strict TypeScript with full type safety
+- Prefer type inference where possible, but be explicit for public APIs
+- Use `type` for type aliases, `interface` only when extending/merging is needed
+- Always use proper types from Drizzle schema: `typeof table.$inferSelect` and `typeof table.$inferInsert`
+
+### Backend Structure
+
+#### tRPC Routers
+- **Location**: `server/routers.ts` (main) or `server/*Router.ts` (feature modules)
+- **Pattern**: Use `router()` to create nested routers, `protectedProcedure` for auth-required endpoints
+- **Naming**: Use RESTful conventions: `list`, `getById`, `create`, `update`, `delete`
+- **Input Validation**: Always use Zod schemas for input validation
+- **Error Handling**: Use `TRPCError` with appropriate codes (`BAD_REQUEST`, `UNAUTHORIZED`, `NOT_FOUND`, `INTERNAL_SERVER_ERROR`)
+
+**Example Pattern:**
+```typescript
+export const myRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    return await db.getAllMyEntities(ctx.user.id);
+  }),
+  
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const entity = await db.getMyEntityById(input.id);
+      if (!entity) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Entity not found" });
+      }
+      return entity;
+    }),
+  
+  create: protectedProcedure
+    .input(z.object({ name: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.createMyEntity({ ...input, createdBy: ctx.user.id });
+      return { success: true, id: result[0].insertId };
+    }),
+});
+```
+
+#### Database Queries (`server/db.ts`)
+- **Pattern**: Export async functions that use Drizzle ORM
+- **Naming**: `getAllX`, `getXById`, `createX`, `updateX`, `deleteX`, `getXByY`
+- **Error Handling**: Let errors bubble up (don't catch unless transforming)
+- **Type Safety**: Always use Drizzle types: `InsertX`, `X` (from schema)
+
+**Example Pattern:**
+```typescript
+export async function createMyEntity(data: InsertMyEntity) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(myTable).values(data);
+}
+
+export async function getMyEntityById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(myTable).where(eq(myTable.id, id)).limit(1);
+  return result[0];
+}
+```
+
+#### Database Schema (`drizzle/schema.ts`)
+- **Pattern**: Use Drizzle's MySQL table definitions
+- **Naming**: Tables use plural (`users`, `projects`), types use singular (`User`, `Project`)
+- **Timestamps**: Always include `createdAt` and `updatedAt` with `.defaultNow()` and `.onUpdateNow()`
+- **Foreign Keys**: Use `.references(() => table.id)` for relationships
+- **Indexes**: Add indexes for frequently queried fields (status, createdBy, foreign keys)
+
+**Example Pattern:**
+```typescript
+export const myTable = mysqlTable("my_table", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  createdBy: int("createdBy").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("my_table_createdBy_idx").on(table.createdBy),
+]);
+
+export type MyEntity = typeof myTable.$inferSelect;
+export type InsertMyEntity = typeof myTable.$inferInsert;
+```
+
+### Shared Services (`server/_core/`)
+
+#### Geocoding (`server/_core/geocoding.ts`)
+- **Pattern**: Use `geocodeAddress(address: string)` to get coordinates
+- **Returns**: `{ latitude: string, longitude: string } | null`
+- **Usage**: Call before creating/updating entities with addresses
+
+#### Storage (`server/storage.ts`)
+- **Pattern**: Use S3 for file storage
+- **Functions**: `storagePut()`, `storageGet()`, `createPresignedUploadUrl()`, `createPresignedReadUrl()`, `deleteFromStorage()`
+- **File Keys**: Use `generateFileKey(prefix, userId, filename)` for consistent naming
+
+#### Image Processing (`server/_core/imagePipeline.ts`)
+- **Pattern**: Use `processAndUploadImageVariants()` for images
+- **Returns**: `StoredImageMetadata` with variants (thumb, preview, full)
+- **Usage**: Call in image upload mutations, store metadata in DB
+
+### Error Handling
+
+#### tRPC Errors
+- Use `TRPCError` with appropriate codes:
+  - `BAD_REQUEST`: Invalid input (400)
+  - `UNAUTHORIZED`: Not authenticated (401)
+  - `FORBIDDEN`: Not authorized (403)
+  - `NOT_FOUND`: Resource not found (404)
+  - `INTERNAL_SERVER_ERROR`: Server errors (500)
+- Always provide descriptive error messages
+
+#### Database Errors
+- Let Drizzle errors bubble up naturally
+- Only catch if you need to transform or log specific errors
+- Use `getDb()` which returns `null` if DB unavailable (handle gracefully)
+
+### Authentication & Authorization
+
+#### Context (`server/_core/context.ts`)
+- `ctx.user` is available in `protectedProcedure`
+- `ctx.user.id` is the user's database ID (not Supabase ID)
+- `ctx.user.role` is `"user"` or `"admin"`
+
+#### Access Control
+- **Ownership-based**: Users can only access their own resources (`createdBy === ctx.user.id`)
+- **Admin override**: Admins can access all resources (`ctx.user.role === "admin"`)
+- **Future**: RBAC with `project_members` table (deferred)
+
+### Common Patterns
+
+#### Geocoding Integration
+When creating/updating entities with addresses:
+```typescript
+let latitude: string | undefined;
+let longitude: string | undefined;
+if (input.address) {
+  const geocodeResult = await geocodeAddress(input.address);
+  if (geocodeResult) {
+    latitude = geocodeResult.latitude;
+    longitude = geocodeResult.longitude;
+  }
+}
+```
+
+#### Auto-create Map Markers
+When creating entities with coordinates:
+```typescript
+if (latitude && longitude) {
+  await db.createLocation({
+    name: input.name,
+    latitude,
+    longitude,
+    address: input.address,
+    type: "job", // or "contact", "custom"
+    jobId: id, // or undefined
+    contactId: undefined, // or id
+    createdBy: ctx.user.id,
+  });
+}
+```
+
+#### File Upload Pattern
+For images (server-side upload):
+```typescript
+const metadata = await processAndUploadImageVariants(buffer, { projectId });
+const result = await db.createImage({
+  fileKey: metadata.variants.full.key,
+  url: metadata.variants.full.url,
+  filename,
+  mimeType: metadata.mimeType,
+  fileSize: metadata.variants.full.size,
+  imageMetadata: metadata,
+  uploadedBy: ctx.user.id,
+});
+```
+
+For other files (direct upload):
+```typescript
+const fileKey = generateFileKey("prefix", ctx.user.id, filename);
+const { uploadUrl, publicUrl } = await createPresignedUploadUrl(fileKey, mimeType);
+// Client uploads directly, then calls confirmUpload mutation
+```
+
+### Project Structure
+
+#### Current Organization
+- `server/routers.ts` - Main router aggregating all feature routers
+- `server/db.ts` - All database query functions
+- `server/_core/` - Core infrastructure (auth, storage, utilities)
+- `server/*Router.ts` - Feature-specific routers (e.g., `projectsRouter.ts`)
+- `drizzle/schema.ts` - Database schema definitions
+- `shared/` - Shared types and constants
+
+#### Recommended (Future Refactor)
+- `server/modules/{feature}/router.ts` - Feature router
+- `server/modules/{feature}/db.ts` - Feature DB queries
+- `server/services/` - Shared services (geocoding, storage, etc.)
+
+### Testing
+
+#### Test Files (`server/*.test.ts`)
+- Use Vitest for testing
+- Test database functions and tRPC procedures
+- Pattern: `describe("feature", () => { it("should do X", async () => { ... }) })`
+
+### Environment Variables
+
+#### Required (`server/_core/env.ts`)
+- `DATABASE_URL` - MySQL connection string
+- `SUPABASE_URL` - Supabase project URL
+- `SUPABASE_ANON_KEY` - Supabase anonymous key
+- `AWS_ACCESS_KEY_ID` - S3 access key
+- `AWS_SECRET_ACCESS_KEY` - S3 secret key
+- `AWS_S3_BUCKET` - S3 bucket name
+- `GOOGLE_MAPS_API_KEY` - Geocoding API key
+- `PORT` - Server port (default: 3000)
+
+### Code Generation Preferences
+
+#### When Creating New Features
+1. **Database Schema**: Add table to `drizzle/schema.ts` with proper types
+2. **DB Functions**: Add CRUD functions to `server/db.ts`
+3. **tRPC Router**: Create router in `server/routers.ts` or separate `*Router.ts` file
+4. **Zod Schemas**: Define input validation schemas
+5. **Error Handling**: Use TRPCError with appropriate codes
+6. **Type Safety**: Use Drizzle inferred types throughout
+
+#### When Modifying Existing Code
+- Follow existing patterns in the file
+- Maintain consistency with naming conventions
+- Update related types if schema changes
+- Add indexes for new query patterns
+
+### Performance Considerations
+- Add database indexes for frequently queried fields
+- Use pagination for list queries (when implemented)
+- Batch database operations when possible
+- Use presigned URLs for S3 to reduce server load
+- Cache geocoding results if appropriate
+
+### Security Best Practices
+- Always validate input with Zod schemas
+- Use `protectedProcedure` for authenticated endpoints
+- Check ownership before allowing updates/deletes
+- Sanitize file uploads (check mime types, file sizes)
+- Use parameterized queries (Drizzle handles this)
+- Never expose sensitive env vars to client
+
+## Common Tasks
+
+### Adding a New Entity Type
+1. Add table to `drizzle/schema.ts`
+2. Add DB functions to `server/db.ts`
+3. Add tRPC router procedures
+4. Add Zod schemas for validation
+5. Run migration: `npm run db:push`
+
+### Adding a New tRPC Endpoint
+1. Define Zod input schema
+2. Add procedure to appropriate router
+3. Call DB function
+4. Handle errors appropriately
+5. Return consistent response format
+
+### Debugging Tips
+- Check `server/_core/env.ts` for env var access
+- Use `console.log` for debugging (remove before commit)
+- Check database connection with `getDb()`
+- Verify Supabase auth with `ctx.user`
+- Check S3 credentials and bucket permissions
+
+## Notes
+- This project uses a Projects → Jobs hierarchy (new structure)
+- Legacy `jobs` table exists for backward compatibility
+- Image processing creates multiple variants (thumb, preview, full)
+- Geocoding is automatic when addresses are provided
+- File uploads support both server-side and direct S3 upload

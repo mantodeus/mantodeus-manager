@@ -310,35 +310,35 @@ export default function Contacts() {
                     >
                       {contact.name}
                     </h3>
-                  {contact.address && (
-                    <a 
-                      href={contact.latitude && contact.longitude ? `/maps?contactId=${contact.id}` : '#'}
-                      className={`text-gray-400 text-sm flex items-center gap-1 mt-1 ${contact.latitude && contact.longitude ? 'hover:text-[#00ff88] cursor-pointer transition-colors' : ''}`}
+                    {contact.address && (
+                      <a 
+                        href={contact.latitude && contact.longitude ? `/maps?contactId=${contact.id}` : '#'}
+                        className={`text-gray-400 text-sm flex items-center gap-1 mt-1 ${contact.latitude && contact.longitude ? 'hover:text-[#00ff88] cursor-pointer transition-colors' : ''}`}
+                        onClick={(e) => {
+                          if (!contact.latitude || !contact.longitude) {
+                            e.preventDefault();
+                          }
+                        }}
+                      >
+                        <MapPin className="w-3 h-3" />
+                        {contact.address}
+                      </a>
+                    )}
+                  </div>
+                  {!isMultiSelectMode && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
                       onClick={(e) => {
-                        if (!contact.latitude || !contact.longitude) {
-                          e.preventDefault();
-                        }
+                        e.stopPropagation();
+                        handleDelete(contact.id);
                       }}
                     >
-                      <MapPin className="w-3 h-3" />
-                      {contact.address}
-                    </a>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
-                {!isMultiSelectMode && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(contact.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
 
               <div className="space-y-2 text-sm text-gray-400">
                 {contact.email && (

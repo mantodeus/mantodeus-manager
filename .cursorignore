@@ -1,0 +1,87 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.pnpm/
+
+# Build outputs
+dist/
+build/
+*.dist
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+*.bak
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+sandbox.txt
+upload/
+Downloads/
+screenshots/
+page_texts/
+
+# Deployment artifacts
+mantodeus-manager.zip
+
+# Git
+.git/
+
+# Documentation that changes frequently (keep important docs indexed)
+# Uncomment if you want to exclude docs:
+# docs/*.md
+# *.md
+
+# Test snapshots (if they're large)
+# __snapshots__/
+
+# Large JSON files (if any)
+# tmp-legacy*.json
