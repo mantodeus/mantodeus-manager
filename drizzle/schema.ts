@@ -1,5 +1,32 @@
 import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, json, index } from "drizzle-orm/mysql-core";
 
+// =============================================================================
+// Shared Image Metadata Types
+// =============================================================================
+
+export type ImageVariantRecord = {
+  /** S3 object key for this variant */
+  key: string;
+  /** Non-signed URL (mainly useful for debugging) */
+  url: string;
+  width: number;
+  height: number;
+  /** File size in bytes */
+  size: number;
+};
+
+export type StoredImageMetadata = {
+  /** project_<projectId>_<timestamp> */
+  baseName: string;
+  mimeType: string;
+  variants: {
+    thumb: ImageVariantRecord;
+    preview: ImageVariantRecord;
+    full: ImageVariantRecord;
+  };
+  createdAt: string;
+};
+
 /**
  * Core user table backing auth flow.
  * Extend this file with additional tables as your product grows.
@@ -125,6 +152,8 @@ export const fileMetadata = mysqlTable("file_metadata", {
   fileSize: int("fileSize"),
   uploadedBy: int("uploadedBy").notNull().references(() => users.id),
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+  /** Optional responsive image metadata when the file is an image */
+  imageMetadata: json("imageMetadata").$type<StoredImageMetadata | null>(),
 }, (table) => [
   index("file_metadata_projectId_idx").on(table.projectId),
   index("file_metadata_jobId_idx").on(table.jobId),
@@ -206,6 +235,7 @@ export const images = mysqlTable("images", {
   id: int("id").autoincrement().primaryKey(),
   jobId: int("jobId").references(() => jobs.id),
   taskId: int("taskId").references(() => tasks.id),
+  projectId: int("projectId").references(() => projects.id, { onDelete: "set null" }),
   fileKey: varchar("fileKey", { length: 500 }).notNull(),
   url: text("url").notNull(),
   filename: varchar("filename", { length: 255 }),
@@ -214,6 +244,8 @@ export const images = mysqlTable("images", {
   caption: text("caption"),
   uploadedBy: int("uploadedBy").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  /** Responsive image metadata for the 3 generated variants */
+  imageMetadata: json("imageMetadata").$type<StoredImageMetadata | null>(),
 });
 
 export type Image = typeof images.$inferSelect;
