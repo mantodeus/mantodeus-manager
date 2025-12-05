@@ -1,3 +1,4 @@
+#!/usr/bin/env npx tsx
 /**
  * Diagnostic script to check and fix file_metadata column name typos
  * 
@@ -8,7 +9,7 @@
  */
 
 import mysql from "mysql2/promise";
-import * as dotenv from "dotenv";
+import dotenv from "dotenv";
 
 dotenv.config();
 
