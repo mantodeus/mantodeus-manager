@@ -59,7 +59,9 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
   const [address, setAddress] = useState(project.address || "");
   const [status, setStatus] = useState<ProjectStatus>(project.status);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: contacts = [] } = trpc.contacts.list.useQuery(undefined, {
+    enabled: open,
+  });
 
   // Reset form when project changes
   useEffect(() => {
@@ -179,7 +181,9 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
                       {contact.name}
                     </SelectItem>
                   ))}
-                <SelectItem value="add-new">Create new contact</SelectItem>
+                <SelectItem value="add-new" className="border-t border-border mt-1 pt-1 text-primary font-medium">
+                  + New Client
+                </SelectItem>
                 </SelectContent>
               </Select>
             </div>
