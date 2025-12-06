@@ -18,7 +18,14 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // Log error to console for debugging
+    console.error("[ErrorBoundary] Caught error:", error);
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Log additional error info
+    console.error("[ErrorBoundary] Error details:", errorInfo);
   }
 
   render() {
@@ -32,6 +39,13 @@ class ErrorBoundary extends Component<Props, State> {
             />
 
             <h2 className="text-xl mb-4">An unexpected error occurred.</h2>
+
+            {this.state.error?.message && (
+              <div className="p-4 w-full rounded bg-destructive/10 border border-destructive/20 mb-4">
+                <p className="text-sm font-medium text-destructive mb-2">Error Message:</p>
+                <p className="text-sm text-destructive">{this.state.error.message}</p>
+              </div>
+            )}
 
             <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
               <pre className="text-sm text-muted-foreground whitespace-break-spaces">
