@@ -26,6 +26,7 @@ export default function Projects() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { data: projects, isLoading } = trpc.projects.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const utils = trpc.useUtils();
   const contactMap = useMemo(() => {
     return new Map(contacts.map((contact) => [contact.id, contact]));
   }, [contacts]);
@@ -74,7 +75,7 @@ export default function Projects() {
   const archiveProjectMutation = trpc.projects.archive.useMutation({
     onSuccess: () => {
       toast.success("Project archived successfully");
-      trpc.useUtils().projects.list.invalidate();
+      utils.projects.list.invalidate();
     },
     onError: (error) => {
       toast.error(`Failed to archive project: ${error.message}`);
@@ -84,7 +85,7 @@ export default function Projects() {
   const deleteProjectMutation = trpc.projects.delete.useMutation({
     onSuccess: () => {
       toast.success("Project deleted successfully");
-      trpc.useUtils().projects.list.invalidate();
+      utils.projects.list.invalidate();
     },
     onError: (error) => {
       toast.error(`Failed to delete project: ${error.message}`);
