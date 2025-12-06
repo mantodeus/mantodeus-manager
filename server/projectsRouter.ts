@@ -36,11 +36,13 @@ const geoSchema = z.object({
 const createProjectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
   client: z.string().optional(),
+  clientId: z.number().int().positive().optional().nullable(),
   description: z.string().optional(),
   startDate: z.date().optional(),
   endDate: z.date().optional(),
   address: z.string().optional(),
   geo: geoSchema,
+  scheduledDates: z.array(z.date()).optional(),
   status: projectStatusSchema.default("planned"),
 });
 
@@ -48,13 +50,39 @@ const updateProjectSchema = z.object({
   id: z.number(),
   name: z.string().min(1).optional(),
   client: z.string().optional(),
+  clientId: z.number().int().positive().optional().nullable(),
   description: z.string().optional(),
   startDate: z.date().optional(),
   endDate: z.date().optional(),
   address: z.string().optional(),
   geo: geoSchema,
+  scheduledDates: z.array(z.date()).optional(),
   status: projectStatusSchema.optional(),
 });
+
+function normalizeDateList(dates?: Date[]) {
+  if (!dates || dates.length === 0) {
+    return {
+      serialized: null as string[] | null,
+      first: undefined as Date | undefined,
+      last: undefined as Date | undefined,
+    };
+  }
+
+  const normalized = [...dates]
+    .map((date) => {
+      const copy = new Date(date);
+      copy.setUTCHours(0, 0, 0, 0);
+      return copy;
+    })
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  return {
+    serialized: normalized.map((date) => date.toISOString()),
+    first: normalized[0],
+    last: normalized[normalized.length - 1],
+  };
+}
 
 // Job input schemas
 const createJobSchema = z.object({
@@ -281,14 +309,20 @@ export const projectsRouter = router({
   create: protectedProcedure
     .input(createProjectSchema)
     .mutation(async ({ input, ctx }) => {
+      const { serialized: scheduledDates, first, last } = normalizeDateList(input.scheduledDates);
+      const startDate = input.startDate ?? first ?? null;
+      const endDate = input.endDate ?? last ?? null;
+
       const result = await db.createProject({
         name: input.name,
-        client: input.client || null,
+        client: input.client?.trim() || null,
+        clientId: input.clientId ?? null,
         description: input.description || null,
-        startDate: input.startDate || null,
-        endDate: input.endDate || null,
+        startDate,
+        endDate,
         address: input.address || null,
         geo: input.geo || null,
+        scheduledDates,
         status: input.status,
         createdBy: ctx.user.id,
       });
@@ -309,12 +343,24 @@ export const projectsRouter = router({
       // Convert optional fields
       const updateData: Parameters<typeof db.updateProject>[1] = {};
       if (updates.name !== undefined) updateData.name = updates.name;
-      if (updates.client !== undefined) updateData.client = updates.client || null;
+      if (updates.client !== undefined) updateData.client = updates.client?.trim() || null;
+      if (updates.clientId !== undefined) updateData.clientId = updates.clientId ?? null;
       if (updates.description !== undefined) updateData.description = updates.description || null;
       if (updates.startDate !== undefined) updateData.startDate = updates.startDate || null;
       if (updates.endDate !== undefined) updateData.endDate = updates.endDate || null;
       if (updates.address !== undefined) updateData.address = updates.address || null;
       if (updates.geo !== undefined) updateData.geo = updates.geo || null;
+      if (updates.scheduledDates !== undefined) {
+        const { serialized, first, last } = normalizeDateList(updates.scheduledDates);
+        updateData.scheduledDates = serialized;
+
+        if (updates.startDate === undefined) {
+          updateData.startDate = first ?? null;
+        }
+        if (updates.endDate === undefined) {
+          updateData.endDate = last ?? null;
+        }
+      }
       if (updates.status !== undefined) updateData.status = updates.status;
       
       await db.updateProject(id, updateData);

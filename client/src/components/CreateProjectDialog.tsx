@@ -10,7 +10,7 @@
  * - Status
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,18 +38,29 @@ import { DatePicker } from "@/components/DatePicker";
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  prefillClientId?: number | null;
+  onPrefillConsumed?: () => void;
+  onRequestAddContact?: () => void;
 }
 
 type ProjectStatus = "planned" | "active" | "completed" | "archived";
 
-export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogProps) {
+export function CreateProjectDialog({
+  open,
+  onOpenChange,
+  prefillClientId,
+  onPrefillConsumed,
+  onRequestAddContact,
+}: CreateProjectDialogProps) {
   const [name, setName] = useState("");
-  const [client, setClient] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [clientId, setClientId] = useState<number | null>(null);
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
   const [status, setStatus] = useState<ProjectStatus>("planned");
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
 
+  const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const utils = trpc.useUtils();
   const createProject = trpc.projects.create.useMutation({
     onSuccess: () => {
@@ -65,11 +76,40 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 
   const resetForm = () => {
     setName("");
-    setClient("");
+    setClientName("");
+    setClientId(null);
     setDescription("");
     setAddress("");
     setStatus("planned");
     setSelectedDates([]);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    if (!prefillClientId) return;
+    if (!contacts.length) return;
+    const match = contacts.find((contact) => contact.id === prefillClientId);
+    if (!match) return;
+    setClientId(match.id);
+    setClientName((current) => current || match.name);
+    onPrefillConsumed?.();
+  }, [prefillClientId, contacts, open, onPrefillConsumed]);
+
+  const handleClientSelect = (value: string) => {
+    if (value === "none") {
+      setClientId(null);
+      return;
+    }
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) {
+      setClientId(null);
+      return;
+    }
+    setClientId(parsed);
+    const selectedContact = contacts.find((contact) => contact.id === parsed);
+    if (selectedContact && !clientName) {
+      setClientName(selectedContact.name);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -84,15 +124,19 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
     const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
     const startDate = hasSelectedDates ? sortedDates[0] : undefined;
     const endDate = hasSelectedDates ? sortedDates[sortedDates.length - 1] : undefined;
+    const scheduledDates = selectedDates.length > 0 ? selectedDates : undefined;
+    const normalizedClientName = clientName.trim();
 
     createProject.mutate({
       name: name.trim(),
-      client: client.trim() || undefined,
+      client: normalizedClientName || undefined,
+      clientId: clientId ?? undefined,
       description: description.trim() || undefined,
       address: address.trim() || undefined,
       status,
       startDate,
       endDate,
+      scheduledDates,
     });
   };
 
@@ -119,12 +163,44 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
             </div>
             <div className="grid gap-2">
               <Label htmlFor="client">Client</Label>
+              <Select value={clientId?.toString() ?? "none"} onValueChange={handleClientSelect}>
+                <SelectTrigger id="client">
+                  <SelectValue placeholder={contacts.length ? "Select a client" : "No contacts yet"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No client</SelectItem>
+                  {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id.toString()}>
+                      {contact.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="link"
+                className="justify-start px-0 h-auto text-sm"
+                onClick={() => {
+                  if (onRequestAddContact) {
+                    onRequestAddContact();
+                    onOpenChange(false);
+                  }
+                }}
+              >
+                Can't find the client? Add new contact
+              </Button>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="client-name">Client Display Name</Label>
               <Input
-                id="client"
-                value={client}
-                onChange={(e) => setClient(e.target.value)}
+                id="client-name"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
                 placeholder="e.g., Acme Corporation"
               />
+              <p className="text-xs text-muted-foreground">
+                Used for labeling in project lists. Defaults to the linked contact name.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
