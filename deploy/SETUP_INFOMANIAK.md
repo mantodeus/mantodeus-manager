@@ -71,7 +71,7 @@ npx pm2 list
 ps aux | grep deploy.js
 
 # Check health
-curl http://localhost:3000/health
+curl http://localhost:9000/health
 ```
 
 ## Step 6: Watch Logs

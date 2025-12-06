@@ -9,7 +9,7 @@
    # On your server, check if webhook server is running
    pm2 list | grep github-webhook
    # or
-   curl http://localhost:3000/health
+   curl http://localhost:9000/health
    ```
 
 2. **Configuration is Correct**
@@ -19,7 +19,7 @@
      - `secret`: Matches GitHub webhook secret
 
 3. **GitHub Webhook is Configured**
-   - Payload URL: `https://your-domain.com:3000/github-webhook`
+   - Payload URL: `https://your-domain.com:9000/github-webhook`
    - Secret matches `deploy.config.json`
    - Events: "Just the push event"
 
@@ -52,7 +52,7 @@
 
 ```bash
 # On your server, test the endpoint directly
-curl -X POST http://localhost:3000/github-webhook \
+curl -X POST http://localhost:9000/github-webhook \
   -H "Content-Type: application/json" \
   -H "X-GitHub-Event: push" \
   -H "X-Hub-Signature-256: sha256=test" \
@@ -127,7 +127,7 @@ Note: This will fail signature verification, but you can see if the server is re
 
 4. **Test health endpoint:**
    ```bash
-   curl http://localhost:3000/health
+   curl http://localhost:9000/health
    ```
 
 5. **Manually test deployment commands:**

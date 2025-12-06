@@ -21,7 +21,7 @@ try {
     secret: process.env.WEBHOOK_SECRET || 'YOUR_WEBHOOK_SECRET',
     appPath: process.env.APP_PATH || '/path/to/your/app',
     pm2AppName: process.env.PM2_APP_NAME || 'mantodeus',
-    port: process.env.WEBHOOK_PORT || 3000,
+    port: process.env.WEBHOOK_PORT || 9000,
     usePnpm: process.env.USE_PNPM === 'true' || false,
     logFile: process.env.LOG_FILE || path.join(__dirname, 'deploy.log')
   };
