@@ -9,14 +9,17 @@ import { Mail, MapPin, Phone, Plus, Map } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 
 export default function Contacts() {
   const { user } = useAuth();
+  const [location, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [returnTo, setReturnTo] = useState<string | null>(null);
   
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -46,6 +49,7 @@ export default function Contacts() {
     }
 
     try {
+      let newlyCreatedId: number | null = null;
       if (editingId) {
         await updateMutation.mutateAsync({
           id: editingId,
@@ -57,19 +61,28 @@ export default function Contacts() {
         });
         toast.success("Contact updated successfully");
       } else {
-        await createMutation.mutateAsync({
+        const result = await createMutation.mutateAsync({
           name: formData.name,
           email: formData.email || undefined,
           phone: formData.phone || undefined,
           address: formData.address || undefined,
           notes: formData.notes || undefined,
         });
+        newlyCreatedId = result?.id ?? null;
         toast.success("Contact created successfully");
       }
       setFormData({ name: "", email: "", phone: "", address: "", notes: "" });
       setEditingId(null);
       setIsDialogOpen(false);
       refetch();
+      if (!editingId && newlyCreatedId && returnTo) {
+        const redirectUrl = new URL(returnTo, window.location.origin);
+        redirectUrl.searchParams.set("prefillClientId", newlyCreatedId.toString());
+        if (!redirectUrl.searchParams.has("openCreateProject")) {
+          redirectUrl.searchParams.set("openCreateProject", "1");
+        }
+        setLocation(`${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`);
+      }
     } catch (error) {
       toast.error(editingId ? "Failed to update contact" : "Failed to create contact");
     }
@@ -141,6 +154,26 @@ export default function Contacts() {
         break;
     }
   };
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const returnParam = url.searchParams.get("returnTo");
+    if (returnParam) {
+      setReturnTo(returnParam);
+    }
+    const focusParam = url.searchParams.get("contactId");
+    if (focusParam && contacts.length > 0) {
+      const contactId = parseInt(focusParam, 10);
+      const focusContact = contacts.find((contact) => contact.id === contactId);
+      if (focusContact) {
+        handleEdit(focusContact);
+      }
+      url.searchParams.delete("contactId");
+      const nextSearch = url.searchParams.toString();
+      const nextHref = nextSearch ? `${url.pathname}?${nextSearch}${url.hash}` : `${url.pathname}${url.hash}`;
+      window.history.replaceState(null, "", nextHref);
+    }
+  }, [location, contacts]);
 
   const toggleSelection = (contactId: number) => {
     const newSelected = new Set(selectedIds);

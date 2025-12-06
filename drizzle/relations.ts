@@ -33,6 +33,10 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     fields: [projects.createdBy],
     references: [users.id],
   }),
+  clientContact: one(contacts, {
+    fields: [projects.clientId],
+    references: [contacts.id],
+  }),
   jobs: many(projectJobs),
   files: many(fileMetadata),
 }));

@@ -14,17 +14,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, MapPin, Calendar, Plus, Loader2, FileText, Trash2, Building2, Briefcase, Archive, Edit } from "lucide-react";
 import { Link, useRoute, useLocation } from "wouter";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CreateProjectJobDialog } from "@/components/CreateProjectJobDialog";
 import { EditProjectDialog } from "@/components/EditProjectDialog";
 import { ProjectJobList } from "@/components/ProjectJobList";
 import { ProjectFileGallery } from "@/components/ProjectFileGallery";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
+import { formatProjectSchedule } from "@/lib/dateFormat";
 
 export default function ProjectDetail() {
   const [, params] = useRoute("/projects/:id");
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const projectId = params?.id ? parseInt(params.id) : 0;
   const [createJobDialogOpen, setCreateJobDialogOpen] = useState(false);
   const [editProjectDialogOpen, setEditProjectDialogOpen] = useState(false);
@@ -34,7 +35,31 @@ export default function ProjectDetail() {
   const { data: project, isLoading: projectLoading } = trpc.projects.getById.useQuery({ id: projectId });
   const { data: jobs, isLoading: jobsLoading } = trpc.projects.jobs.list.useQuery({ projectId });
   const { data: files, isLoading: filesLoading } = trpc.projects.files.listByProject.useQuery({ projectId });
+  const clientContactId = project?.clientId ?? 0;
+  const { data: clientContact } = trpc.contacts.getById.useQuery(
+    { id: clientContactId },
+    { enabled: Boolean(project?.clientId) }
+  );
   const utils = trpc.useUtils();
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("openEditProject") === "1") {
+      setEditProjectDialogOpen(true);
+      url.searchParams.delete("openEditProject");
+      const nextSearch = url.searchParams.toString();
+      const nextHref = nextSearch ? `${url.pathname}?${nextSearch}${url.hash}` : `${url.pathname}${url.hash}`;
+      window.history.replaceState(null, "", nextHref);
+    }
+  }, [location]);
+
+  const scheduleInfo = project
+    ? formatProjectSchedule({
+        dates: project.scheduledDates,
+        start: project.startDate,
+        end: project.endDate,
+      })
+    : null;
   
   const archiveProject = trpc.projects.archive.useMutation({
     onSuccess: () => {
@@ -70,6 +95,34 @@ export default function ProjectDetail() {
 
   const confirmDeleteProject = () => {
     deleteProject.mutate({ id: projectId });
+  };
+
+  const handleDateClick = () => {
+    if (!project || !scheduleInfo?.primaryDate) return;
+    const url = new URL("/calendar", window.location.origin);
+    url.searchParams.set("focusDate", scheduleInfo.primaryDate.toISOString());
+    url.searchParams.set("highlightProjectId", project.id.toString());
+    navigate(url.pathname + url.search);
+  };
+
+  const handleAddressClick = () => {
+    if (!project?.address) return;
+    if (clientContact?.latitude && clientContact.longitude) {
+      navigate(`/maps?contactId=${clientContact.id}`);
+      return;
+    }
+    navigate(`/maps?address=${encodeURIComponent(project.address)}`);
+  };
+
+  const handleContactClick = () => {
+    if (!clientContact) return;
+    navigate(`/contacts?contactId=${clientContact.id}`);
+  };
+
+  const handleRequestAddContact = () => {
+    if (!project) return;
+    const returnToPath = `/projects/${project.id}?openEditProject=1`;
+    navigate(`/contacts?returnTo=${encodeURIComponent(returnToPath)}`);
   };
 
   const getStatusColor = (status: string) => {
@@ -143,8 +196,21 @@ export default function ProjectDetail() {
                 <Building2 className="h-6 w-6 text-muted-foreground" />
                 <CardTitle className="text-3xl">{project.name}</CardTitle>
               </div>
-              {project.client && (
-                <CardDescription className="text-lg">Client: {project.client}</CardDescription>
+              {(clientContact || project.client) && (
+                <CardDescription className="text-lg">
+                  Client:{" "}
+                  {clientContact ? (
+                    <button
+                      type="button"
+                      className="underline decoration-dotted hover:text-primary transition-colors"
+                      onClick={handleContactClick}
+                    >
+                      {clientContact.name}
+                    </button>
+                  ) : (
+                    project.client
+                  )}
+                </CardDescription>
               )}
               {project.description && (
                 <CardDescription className="mt-2">{project.description}</CardDescription>
@@ -155,15 +221,28 @@ export default function ProjectDetail() {
         </CardHeader>
         <CardContent className="space-y-4">
           {project.address && (
-            <div className="flex items-center text-muted-foreground">
+            <button
+              type="button"
+              className="flex items-center text-muted-foreground hover:text-primary transition-colors"
+              onClick={handleAddressClick}
+            >
               <MapPin className="h-5 w-5 mr-2" />
-              {project.address}
-            </div>
+              <span className="underline decoration-dotted">{project.address}</span>
+            </button>
           )}
-          <div className="flex items-center text-muted-foreground">
+          <button
+            type="button"
+            className={`flex items-center transition-colors ${
+              scheduleInfo?.primaryDate
+                ? "text-muted-foreground hover:text-primary"
+                : "text-muted-foreground opacity-70 cursor-default"
+            }`}
+            disabled={!scheduleInfo?.primaryDate}
+            onClick={handleDateClick}
+          >
             <Calendar className="h-5 w-5 mr-2" />
-            {formatDate(project.startDate)} - {formatDate(project.endDate)}
-          </div>
+            <span>{scheduleInfo?.label ?? "Not scheduled"}</span>
+          </button>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center">
               <Briefcase className="h-4 w-4 mr-1" />
@@ -199,7 +278,19 @@ export default function ProjectDetail() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Client</label>
-                  <p className="mt-1">{project.client || "Not specified"}</p>
+                  <p className="mt-1">
+                    {clientContact ? (
+                      <button
+                        type="button"
+                        className="underline decoration-dotted hover:text-primary transition-colors"
+                        onClick={handleContactClick}
+                      >
+                        {clientContact.name}
+                      </button>
+                    ) : (
+                      project.client || "Not specified"
+                    )}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Start Date</label>
@@ -298,7 +389,8 @@ export default function ProjectDetail() {
         <EditProjectDialog 
           open={editProjectDialogOpen} 
           onOpenChange={setEditProjectDialogOpen} 
-          project={project} 
+          project={project}
+          onRequestAddContact={handleRequestAddContact}
         />
       )}
     </div>
