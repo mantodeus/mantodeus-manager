@@ -1,142 +1,69 @@
 # Cursor AI Prompts for Mantodeus Manager Deployment
 
-This document provides natural-language prompts that Cursor AI can use to manage the Mantodeus Manager application on Infomaniak servers.
+This document contains natural-language prompts you can use with Cursor AI to deploy and manage your application.
 
-## 🎯 How to Use
+## 🚀 Deployment Commands
 
-Simply copy and paste these prompts into Cursor AI. The AI will execute the corresponding SSH commands and interpret the JSON output.
-
----
-
-## 📦 Deployment
-
-### Deploy the application
+### Basic Deployment
 
 **Prompt:**
 ```
-Deploy the Mantodeus Manager application to production. Pull latest code from GitHub, install dependencies, build, and restart the service.
+Deploy the Mantodeus Manager application to production.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"
 ```
 
-**Expected Output:**
-```json
-{
-  "status": "success",
-  "git_pull": "success",
-  "build": "success",
-  "restart": "success",
-  "health": "healthy"
-}
-```
-
 ---
-
-### Preview deployment without making changes
 
 **Prompt:**
 ```
-Show me what would happen if I deployed now, but don't actually make any changes.
+Deploy the application with a dry run first to test the deployment process.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --dry-run"
 ```
 
 ---
 
-### Deploy without restarting the service
-
 **Prompt:**
 ```
-Build the latest code but don't restart the application yet.
+Deploy the application without creating a backup.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --skip-restart"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --no-backup"
 ```
 
 ---
 
-## 🔄 Restart & Rollback
-
-### Restart the application safely
-
 **Prompt:**
 ```
-Restart the Mantodeus Manager application with health checks.
+Deploy the application but skip the health check at the end.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh"
-```
-
-**Expected Output:**
-```json
-{
-  "status": "success",
-  "status_before": "online",
-  "status_after": "online",
-  "health": "healthy"
-}
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --skip-health-check"
 ```
 
 ---
 
-### Rollback to previous version
+## 📊 Status and Monitoring
 
-**Prompt:**
-```
-The application is broken. Roll back to the previous working version.
-```
-
-**Command:**
-```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --rollback"
-```
-
-**Expected Output:**
-```json
-{
-  "status": "success",
-  "action": "rollback",
-  "rollback": "success",
-  "rollback_from": "backup-20251205-143000.tar.gz"
-}
-```
-
----
-
-### Force restart without health checks
-
-**Prompt:**
-```
-Force restart the application immediately without waiting for health checks.
-```
-
-**Command:**
-```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --force"
-```
-
----
-
-## 📊 Status & Health
-
-### Check application status
+### Check Application Status
 
 **Prompt:**
 ```
 What's the current status of the Mantodeus Manager application?
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
 ```
@@ -144,434 +71,437 @@ ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/de
 **Expected Output:**
 ```json
 {
-  "timestamp": "2025-12-05T14:30:00Z",
   "status": "online",
+  "pm2_status": "online",
   "health": "healthy",
-  "uptime_human": "2d 5h 30m 15s",
+  "uptime_human": "2d 5h 30m",
   "memory_mb": "245.67",
   "cpu_percent": "1.2",
-  "restart_count": "0",
   "git_commit": "a1b2c3d",
-  "git_branch": "main",
-  "build_exists": "true"
+  "git_branch": "main"
 }
 ```
 
 ---
 
-### Is the application healthy?
-
 **Prompt:**
 ```
-Is the application running properly? Give me a quick health check.
+Show me the application uptime and resource usage.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh" | jq -r '.health'
-```
-
-**Expected Output:**
-```
-healthy
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
 ```
 
 ---
 
-### How much memory is the app using?
-
 **Prompt:**
 ```
-How much memory is the Mantodeus Manager using right now?
+Check if the application is healthy and responding.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh" | jq -r '.memory_mb + " MB"'
-```
-
-**Expected Output:**
-```
-245.67 MB
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
 ```
 
 ---
 
-### How long has the app been running?
-
 **Prompt:**
 ```
-How long has the application been running since the last restart?
+What Git commit is currently deployed?
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh" | jq -r '.uptime_human'
-```
-
-**Expected Output:**
-```
-2d 5h 30m 15s
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
 ```
 
 ---
 
-## 📝 Logs
+## 🔄 Restart Commands
 
-### Show me the latest logs
+### Safe Restart
 
 **Prompt:**
 ```
-Show me the last 50 lines of application logs.
+Restart the Mantodeus Manager application safely.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "tail -50 /srv/customer/sites/manager.mantodeus.com/logs/mantodeus-manager-out.log"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh"
 ```
 
 ---
 
-### Show me error logs
-
 **Prompt:**
 ```
-Show me recent error logs to help debug issues.
+Restart the application and create a backup before doing so.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "tail -50 /srv/customer/sites/manager.mantodeus.com/logs/mantodeus-manager-error.log"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh"
 ```
 
 ---
 
-### Monitor logs in real-time
+### Rollback
 
 **Prompt:**
 ```
-Show me live logs as they happen.
+The deployment broke production. Rollback immediately.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "tail -f /srv/customer/sites/manager.mantodeus.com/logs/mantodeus-manager-out.log"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --rollback"
+```
+
+---
+
+**Prompt:**
+```
+Rollback to the previous version of the application.
+```
+
+**Command Executed:**
+```bash
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --rollback"
+```
+
+---
+
+**Prompt:**
+```
+Rollback to backup file backup-20251205-143000.tar.gz.
+```
+
+**Command Executed:**
+```bash
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --backup-file=backup-20251205-143000.tar.gz"
+```
+
+---
+
+## 📝 Logs and Debugging
+
+### View Logs
+
+**Prompt:**
+```
+Show me the last 50 lines of the application logs.
+```
+
+**Command Executed:**
+```bash
+ssh mantodeus-server "pm2 logs mantodeus-manager --lines 50"
+```
+
+---
+
+**Prompt:**
+```
+Show me the error logs from the application.
+```
+
+**Command Executed:**
+```bash
+ssh mantodeus-server "pm2 logs mantodeus-manager --err --lines 100"
+```
+
+---
+
+**Prompt:**
+```
+Show me the webhook listener logs.
+```
+
+**Command Executed:**
+```bash
+ssh mantodeus-server "cat /srv/customer/sites/manager.mantodeus.com/logs/webhook.log | tail -50"
+```
+
+---
+
+**Prompt:**
+```
+What errors are in the application logs?
+```
+
+**Command Executed:**
+```bash
+ssh mantodeus-server "pm2 logs mantodeus-manager --err --lines 100"
 ```
 
 ---
 
 ## 🔧 Environment Variables
 
-### Check environment variable sync
+### Update Environment Variables
 
 **Prompt:**
 ```
-Check if all required environment variables are set properly.
+Update the DATABASE_URL environment variable to mysql://user:pass@host/db.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/env/env-sync.sh --check-only"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/env/env-update.sh DATABASE_URL 'mysql://user:pass@host/db'"
 ```
 
 ---
 
-### Sync environment variables
-
 **Prompt:**
 ```
-Make sure .env has all the variables from .env.example.
+Sync the .env file with .env.example to add any missing variables.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/env/env-sync.sh"
 ```
 
 ---
 
-### Update an environment variable
+## 🔐 SSH and Connection
+
+### Test SSH Connection
 
 **Prompt:**
 ```
-Update the DATABASE_URL environment variable to [new-value].
+Test the SSH connection to the server.
 ```
 
-**Command:**
-```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/env/env-update.sh DATABASE_URL 'new-value'"
-```
-
-**Note:** After updating environment variables, restart the application:
-```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh"
-```
-
----
-
-## 🔍 Diagnostics
-
-### Run full diagnostics
-
-**Prompt:**
-```
-Run a complete diagnostic check on the server and application.
-```
-
-**Commands:**
-```bash
-# Check SSH connection
-./infra/ssh/ssh-check.sh mantodeus-server
-
-# Check application status
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
-
-# Check environment variables
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/env/env-sync.sh --check-only"
-
-# Check recent logs
-ssh mantodeus-server "tail -100 /srv/customer/sites/manager.mantodeus.com/logs/mantodeus-manager-error.log"
-```
-
----
-
-### Test SSH connection
-
-**Prompt:**
-```
-Test if I can connect to the server via SSH.
-```
-
-**Command:**
+**Command Executed:**
 ```bash
 ./infra/ssh/ssh-check.sh mantodeus-server
 ```
 
-**Expected Output:**
-```json
-{
-  "connection_status": "success",
-  "connection_time_seconds": "2",
-  "project_dir_exists": "true",
-  "infra_scripts_exist": "true"
-}
+---
+
+**Prompt:**
+```
+Verify that I can connect to the production server.
+```
+
+**Command Executed:**
+```bash
+./infra/ssh/ssh-check.sh mantodeus-server
+```
+
+---
+
+## 🧪 Testing
+
+### Run Tests
+
+**Prompt:**
+```
+Run the deployment simulation tests.
+```
+
+**Command Executed:**
+```bash
+./infra/tests/run-deploy-sim.sh
+```
+
+---
+
+**Prompt:**
+```
+Test the deployment scripts without actually deploying.
+```
+
+**Command Executed:**
+```bash
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --dry-run"
 ```
 
 ---
 
 ## 🚨 Emergency Procedures
 
-### Application is down - quick recovery
+### Emergency Rollback
 
 **Prompt:**
 ```
-The application is down! Perform emergency recovery steps.
+Emergency! The application is broken. Rollback to the last working version immediately.
 ```
 
-**Commands:**
+**Command Executed:**
 ```bash
-# 1. Check status
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --rollback"
+```
 
-# 2. Check error logs
-ssh mantodeus-server "tail -100 /srv/customer/sites/manager.mantodeus.com/logs/mantodeus-manager-error.log"
+---
 
-# 3. Try restart
+**Prompt:**
+```
+The application crashed. Restart it immediately.
+```
+
+**Command Executed:**
+```bash
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh"
-
-# 4. If restart fails, rollback
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --rollback"
 ```
 
 ---
-
-### Deployment failed - rollback
 
 **Prompt:**
 ```
-The last deployment broke the application. Rollback to the previous version immediately.
+Stop the application immediately.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --rollback"
+ssh mantodeus-server "pm2 stop mantodeus-manager"
 ```
 
 ---
-
-### Application is slow - check resources
 
 **Prompt:**
 ```
-The application is running slow. Check resource usage.
+Start the application.
 ```
 
-**Commands:**
+**Command Executed:**
 ```bash
-# Check application memory/CPU
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh" | jq '{memory_mb, cpu_percent, restart_count}'
-
-# Check system load
-ssh mantodeus-server "uptime"
-
-# Check disk space
-ssh mantodeus-server "df -h /srv/customer/sites/manager.mantodeus.com"
+ssh mantodeus-server "pm2 start mantodeus-manager"
 ```
 
 ---
 
-## 📈 Monitoring
+## 📦 Backup Management
 
-### Get deployment history
+### List Backups
 
 **Prompt:**
 ```
-Show me the recent Git commits deployed to production.
+Show me all available backups.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && git log --oneline -10"
+ssh mantodeus-server "ls -lh /srv/customer/sites/manager.mantodeus.com/backups/"
 ```
 
 ---
-
-### Check current deployed version
 
 **Prompt:**
 ```
-What version (Git commit) is currently deployed?
+What backups are available for rollback?
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh" | jq -r '.git_commit + " (" + .git_branch + ")"'
-```
-
-**Expected Output:**
-```
-a1b2c3d (main)
+ssh mantodeus-server "ls -lt /srv/customer/sites/manager.mantodeus.com/backups/ | head -10"
 ```
 
 ---
 
-### Check restart count
+## 🔄 Git Operations
+
+### Check Git Status
 
 **Prompt:**
 ```
-How many times has the application restarted? (High restart count indicates issues)
+What's the Git status on the server?
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh" | jq -r '.restart_count'
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && git status"
 ```
 
 ---
-
-## 🔐 Security
-
-### Check SSH key status
 
 **Prompt:**
 ```
-Verify that my SSH key is properly configured and working.
+Show me the last 5 Git commits on the server.
 ```
 
-**Command:**
+**Command Executed:**
 ```bash
-./infra/ssh/ssh-check.sh mantodeus-server
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && git log --oneline -5"
 ```
 
 ---
 
-### Rotate webhook secret
+## 🌐 Webhook Management
+
+### Check Webhook Status
 
 **Prompt:**
 ```
-Generate a new webhook secret and update it on the server.
+Is the webhook listener running?
 ```
 
-**Commands:**
+**Command Executed:**
 ```bash
-# 1. Generate new secret
-NEW_SECRET=$(openssl rand -hex 32)
-echo "New webhook secret: $NEW_SECRET"
-
-# 2. Update on server
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/env/env-update.sh WEBHOOK_SECRET '$NEW_SECRET'"
-
-# 3. Restart webhook listener
-ssh mantodeus-server "pm2 restart webhook-listener"
-
-# 4. Update in GitHub repository settings
-echo "Don't forget to update the webhook secret in GitHub repository settings!"
+ssh mantodeus-server "pm2 status webhook-listener"
 ```
 
 ---
 
-## 💡 Tips for Cursor AI
-
-### Interpreting JSON Output
-
-When you receive JSON output, extract relevant information:
-
-```javascript
-// Check if deployment succeeded
-if (output.status === "success") {
-  console.log("✅ Deployment successful!");
-}
-
-// Check application health
-if (output.health === "healthy") {
-  console.log("✅ Application is healthy");
-} else {
-  console.log("⚠️ Application health issue:", output.health);
-}
-
-// Alert on high restarts
-if (parseInt(output.restart_count) > 5) {
-  console.log("⚠️ High restart count detected:", output.restart_count);
-}
+**Prompt:**
+```
+Show me the webhook listener logs.
 ```
 
-### Chaining Commands
-
-For complex operations, chain commands:
-
+**Command Executed:**
 ```bash
-# Deploy and verify
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh && sleep 5 && ./infra/deploy/status.sh"
+ssh mantodeus-server "cat /srv/customer/sites/manager.mantodeus.com/logs/webhook.log | tail -50"
 ```
 
-### Error Handling
+---
 
-Always check command exit codes:
+## 💡 Tips for Using These Prompts
 
-```bash
-if ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"; then
-  echo "✅ Deployment successful"
-else
-  echo "❌ Deployment failed, checking logs..."
-  ssh mantodeus-server "tail -50 /srv/customer/sites/manager.mantodeus.com/logs/mantodeus-manager-error.log"
-fi
-```
+1. **Be Specific**: The more specific your prompt, the better Cursor AI can understand your intent.
+
+2. **Use Context**: Mention "production" or "server" to ensure Cursor AI uses the correct commands.
+
+3. **Ask for Status**: Before deploying, ask for status to understand the current state.
+
+4. **Use Dry-Run**: For testing, always mention "dry run" or "test" to avoid actual deployments.
+
+5. **Emergency Keywords**: Use words like "emergency", "immediately", or "broken" for urgent actions.
+
+---
+
+## 🎯 Common Workflows
+
+### Standard Deployment Workflow
+
+**Prompt Sequence:**
+1. "Check the current status of the application"
+2. "Deploy the application to production"
+3. "Verify the deployment was successful"
+
+### Emergency Rollback Workflow
+
+**Prompt Sequence:**
+1. "The application is broken. Rollback immediately"
+2. "Check if the application is healthy now"
+3. "Show me the error logs"
+
+### Update Environment Variable Workflow
+
+**Prompt Sequence:**
+1. "Update the DATABASE_URL environment variable to [new value]"
+2. "Restart the application"
+3. "Check if the application is healthy"
 
 ---
 
 ## 📚 Additional Resources
 
-- [Infrastructure README](./README.md) - Complete infrastructure documentation
-- [Delete Safeguards](../DELETE_SAFEGUARDS.md) - Safety features and rollback procedures
-- [Deployment Guide](../DEPLOYMENT.md) - Manual deployment instructions
+- **[README.md](./README.md)** - Complete infrastructure documentation
+- **[SAFEGUARDS.md](./SAFEGUARDS.md)** - Safety features and procedures
 
 ---
 
-## 🆘 Getting Help
-
-If Cursor AI encounters issues:
-
-1. **Check connection:** `./infra/ssh/ssh-check.sh`
-2. **View status:** `ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"`
-3. **Check logs:** `ssh mantodeus-server "tail -100 /srv/customer/sites/manager.mantodeus.com/logs/mantodeus-manager-error.log"`
-4. **Rollback if needed:** `ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --rollback"`
+**Happy deploying with Cursor AI!** 🚀

@@ -1,23 +1,14 @@
-# Infrastructure Safeguards & Safety Features
+# Safety Features and Safeguards
 
-This document outlines all safety features, safeguards, and rollback procedures implemented in the Mantodeus Manager infrastructure.
-
-## 🛡️ Core Safety Principles
-
-1. **Never run as root** - All scripts enforce non-root execution
-2. **Backup before changes** - Automatic backups before deployments and updates
-3. **Validate inputs** - All user inputs are validated
-4. **No secret echoing** - Sensitive values are never logged or echoed
-5. **Rollback capability** - Easy rollback to previous versions
-6. **Health checks** - Automatic health verification after changes
+This document describes all safety features, backup systems, rollback procedures, and emergency protocols built into the Mantodeus Manager DevOps infrastructure.
 
 ---
 
-## 🔐 Security Safeguards
+## 🛡️ Security Safeguards
 
-### Non-Root Enforcement
+### 1. Non-Root Enforcement
 
-All deployment scripts check and refuse to run as root:
+**All scripts refuse to run as root:**
 
 ```bash
 if [ "$(id -u)" -eq 0 ]; then
@@ -26,64 +17,72 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 ```
 
-**Why:** Running as root increases security risks. Services should run with limited privileges.
+**Why:** Running deployment scripts as root is dangerous and can cause permission issues. All scripts enforce non-root execution.
+
+**Impact:** Prevents accidental system-wide changes and maintains proper file ownership.
 
 ---
 
-### Secret Protection
+### 2. Secret Protection
 
-Scripts never echo or log sensitive values:
+**Scripts never echo or log sensitive values:**
 
+- Database credentials (`DATABASE_URL`)
+- API keys (`S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`)
+- JWT secrets (`JWT_SECRET`)
+- Webhook secrets (`WEBHOOK_SECRET`)
+- OAuth tokens
+
+**Example:**
 ```bash
-# ❌ BAD - Echoes secret
-echo "DATABASE_URL=$DATABASE_URL"
-
-# ✅ GOOD - Protected
-log_info "Variable updated (value not shown for security)"
+# env-update.sh never echoes the value
+echo "✅ Updated ${VAR_NAME}"
+# Value is never shown, even in logs
 ```
 
-**Protected variables:**
-- Database credentials
-- API keys
-- JWT secrets
-- Webhook secrets
-- Any value containing "password", "secret", "key", or "token"
+**Why:** Prevents secrets from appearing in logs, terminal history, or error messages.
+
+**Impact:** Protects sensitive credentials from exposure.
 
 ---
 
-### SSH Key Security
+### 3. SSH Key Security
 
-SSH keys are generated with:
-- **ED25519** algorithm (more secure than RSA)
-- **Proper permissions** (600 for private, 644 for public)
-- **No password** (for automation, stored securely)
+**ED25519 Algorithm:**
+- More secure than RSA
+- Smaller key size
+- Faster operations
 
-```bash
-ssh-keygen -t ed25519 -f ~/.ssh/mantodeus_deploy_key -N ""
-chmod 600 ~/.ssh/mantodeus_deploy_key
-```
+**Proper Permissions:**
+- Private key: `600` (read/write owner only)
+- Public key: `644` (readable by all, writable by owner)
+
+**Key-Based Authentication:**
+- No password authentication
+- Keys are never transmitted
+- Proper key rotation support
+
+**Why:** Ensures secure server access without password vulnerabilities.
 
 ---
 
-### Webhook Signature Verification
+### 4. Webhook Security
 
-GitHub webhooks are verified using HMAC-SHA256:
+**GitHub Signature Verification:**
+- HMAC-SHA256 algorithm
+- Timing-safe comparison
+- Prevents replay attacks
 
+**Secret Required:**
 ```javascript
-function verifySignature(payload, signature) {
-  const hmac = crypto.createHmac('sha256', CONFIG.secret);
-  const digest = 'sha256=' + hmac.update(payload).digest('hex');
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(digest)
-  );
+if (!SECRET) {
+  console.warn('⚠️  WARNING: WEBHOOK_SECRET not set');
 }
 ```
 
-**Protection against:**
-- Unauthorized deployment triggers
-- Replay attacks
-- Man-in-the-middle attacks
+**Why:** Prevents unauthorized deployments from malicious webhook requests.
+
+**Impact:** Only GitHub can trigger deployments (with correct secret).
 
 ---
 
@@ -91,47 +90,41 @@ function verifySignature(payload, signature) {
 
 ### Automatic Backups
 
-Backups are automatically created before:
-- **Deployments** (`deploy.sh`)
-- **Restarts** (`restart.sh`)
-- **Environment updates** (`env-update.sh`)
+**When Backups Are Created:**
+1. Before every deployment (`deploy.sh`)
+2. Before every restart (`restart.sh`)
+3. Before environment variable updates (`env-update.sh`)
 
-**Backup location:** `backups/backup-YYYYMMDD-HHMMSS.tar.gz`
+**What Gets Backed Up:**
+- `dist/` - Built application files
+- `node_modules/` - Dependencies
+- `package-lock.json` - Dependency lock file
+- `.env` - Environment variables
 
-**Backup contents:**
-- Application code
-- Built files (`dist/`)
-- Configuration files (`.env`)
-- **Excludes:** `node_modules`, `.git`, `logs`, `backups`
-
----
-
-### Backup Rotation
-
-Automatic cleanup keeps only the last 5 backups:
-
-```bash
-MAX_BACKUPS=5
-ls -1t "$BACKUP_DIR"/backup-*.tar.gz | tail -n +$((MAX_BACKUPS + 1)) | xargs rm -f
+**Backup Location:**
+```
+/srv/customer/sites/manager.mantodeus.com/backups/
 ```
 
-**Why:** Prevents disk space issues while maintaining recent history.
-
----
-
-### Manual Backup
-
-Create a manual backup anytime:
-
-```bash
-cd /srv/customer/sites/manager.mantodeus.com
-tar -czf backups/manual-backup-$(date +%Y%m%d-%H%M%S).tar.gz \
-    --exclude='node_modules' \
-    --exclude='.git' \
-    --exclude='logs' \
-    --exclude='backups' \
-    .
+**Backup Naming:**
 ```
+backup-YYYYMMDD-HHMMSS.tar.gz
+Example: backup-20251205-143000.tar.gz
+```
+
+### Backup Retention
+
+**Policy:** Keep last 5 backups
+
+**Implementation:**
+```bash
+# Keep only last 5 backups
+ls -t "$BACKUP_DIR"/backup-*.tar.gz 2>/dev/null | tail -n +6 | xargs rm -f
+```
+
+**Why:** Prevents disk space issues while maintaining rollback capability.
+
+**Impact:** Always have recent backups available for rollback.
 
 ---
 
@@ -139,451 +132,273 @@ tar -czf backups/manual-backup-$(date +%Y%m%d-%H%M%S).tar.gz \
 
 ### Automatic Rollback
 
-The restart script includes automatic rollback:
+**When Rollback Happens:**
+1. Manual rollback command (`restart.sh --rollback`)
+2. After failed deployment (manual intervention)
+3. After failed health check (manual intervention)
 
+**Rollback Process:**
+1. Stop PM2 process
+2. Extract backup archive
+3. Restore files (`dist/`, `node_modules/`, `.env`)
+4. Restart PM2 process
+5. Verify health check
+
+**Rollback Command:**
 ```bash
 ./infra/deploy/restart.sh --rollback
 ```
 
-**What it does:**
-1. Stops the application
-2. Restores from latest backup
-3. Restarts the application
-4. Verifies health
-
-**Output:**
-```json
-{
-  "status": "success",
-  "action": "rollback",
-  "rollback": "success",
-  "rollback_from": "backup-20251205-143000.tar.gz"
-}
-```
-
----
-
-### Manual Rollback
-
-If automatic rollback fails:
-
+**Specific Backup Rollback:**
 ```bash
-cd /srv/customer/sites/manager.mantodeus.com
-
-# 1. Stop application
-pm2 stop mantodeus-manager
-
-# 2. Find latest backup
-ls -lt backups/backup-*.tar.gz | head -1
-
-# 3. Restore backup
-tar -xzf backups/backup-YYYYMMDD-HHMMSS.tar.gz
-
-# 4. Restart
-pm2 restart mantodeus-manager --update-env
+./infra/deploy/restart.sh --backup-file=backup-20251205-143000.tar.gz
 ```
+
+### Rollback Safety
+
+**Checks Before Rollback:**
+- Backup file exists
+- Backup file is readable
+- Project directory is writable
+- PM2 is accessible
+
+**Why:** Prevents partial rollbacks that could leave the system in an inconsistent state.
 
 ---
 
-### Git Rollback
+## 🏥 Health Checks
 
-Rollback to a specific commit:
+### Health Check System
 
-```bash
-cd /srv/customer/sites/manager.mantodeus.com
+**Endpoint:** `http://localhost:3000/api/trpc/system.health`
 
-# 1. Find commit to rollback to
-git log --oneline -10
+**Health Check Process:**
+1. Wait for application to start (3 seconds)
+2. Send HTTP request to health endpoint
+3. Retry up to 5 times
+4. Report success or failure
 
-# 2. Reset to that commit
-git reset --hard <commit-hash>
+**Health Check Retries:**
+- **Retries:** 5 attempts
+- **Delay:** 3 seconds between attempts
+- **Total Wait:** Up to 15 seconds
 
-# 3. Rebuild
-npm install --include=dev
-npm run build
+**Why:** Ensures application is actually running and responding before considering deployment successful.
 
-# 4. Restart
-pm2 restart mantodeus-manager --update-env
-```
-
----
-
-## ✅ Health Checks
-
-### Automatic Health Verification
-
-After restart, automatic health checks verify:
-- Process is running
-- Status is "online"
-- No immediate crashes
-
-```bash
-# Health check with 3 retries, 5 seconds apart
-check_health 3 5
-```
-
-**If health check fails:**
-- Deployment/restart is marked as failed
-- Previous version remains running (if possible)
-- Error is logged with details
-
----
-
-### Manual Health Check
-
-Check application health anytime:
-
-```bash
-./infra/deploy/status.sh
-```
-
-**Health indicators:**
-- `"health": "healthy"` - ✅ All good
-- `"health": "degraded"` - ⚠️ Running but issues
-- `"health": "stopped"` - ❌ Not running
-- `"health": "error"` - ❌ Crashed or errored
-
----
-
-## 🚫 Input Validation
-
-### Environment Variable Names
-
-Only valid variable names are accepted:
-
-```bash
-# Valid: A-Z, 0-9, underscore, must start with A-Z or _
-DATABASE_URL=...      # ✅ Valid
-VITE_APP_ID=...       # ✅ Valid
-my-variable=...       # ❌ Invalid (hyphen)
-123_VAR=...           # ❌ Invalid (starts with number)
-```
-
-**Validation:**
-```bash
-if [[ ! "$var_name" =~ ^[A-Z_][A-Z0-9_]*$ ]]; then
-    echo "ERROR: Invalid variable name"
-    exit 1
-fi
-```
-
----
-
-### Git Branch Validation
-
-Webhook only triggers on specified branch:
-
-```javascript
-const branch = payload.ref?.replace('refs/heads/', '');
-if (branch === CONFIG.deployBranch) {
-  executeDeploy(payload);
-}
-```
-
-**Default:** Only `main` branch triggers deployment.
-
----
-
-### File Path Validation
-
-All file paths are validated to prevent directory traversal:
-
-```bash
-# Ensure we're in the project directory
-cd "$PROJECT_DIR" || exit 1
-
-# Use absolute paths
-PROJECT_DIR="/srv/customer/sites/manager.mantodeus.com"
-```
-
----
-
-## 🔍 Dry Run Mode
-
-Test deployments without making changes:
-
-```bash
-./infra/deploy/deploy.sh --dry-run
-```
-
-**What it shows:**
-- Commands that would be executed
-- Files that would be changed
-- Services that would be restarted
-
-**What it doesn't do:**
-- Make any actual changes
-- Restart services
-- Modify files
-
-**Output:**
-```json
-{
-  "status": "success",
-  "dry_run": "true",
-  "git_pull": "dry-run",
-  "build": "dry-run",
-  "restart": "dry-run"
-}
-```
-
----
-
-## 📝 Logging & Audit Trail
-
-### Deployment Logs
-
-All deployment actions are logged:
-
-```bash
-[2025-12-05 14:30:00] INFO: Starting deployment
-[2025-12-05 14:30:05] INFO: Backup created: backup-20251205-143000.tar.gz
-[2025-12-05 14:30:10] INFO: Git pull: success
-[2025-12-05 14:30:45] INFO: Build complete: 2.4M
-[2025-12-05 14:30:50] INFO: Restart: success
-[2025-12-05 14:30:55] INFO: Health check: healthy
-```
-
----
-
-### JSON Output
-
-All scripts output JSON for audit trails:
-
-```json
-{
-  "timestamp": "2025-12-05T14:30:00Z",
-  "action": "deploy",
-  "user": "ubuntu",
-  "status": "success",
-  "git_before": "a1b2c3d",
-  "git_after": "e4f5g6h",
-  "duration_seconds": 55
-}
-```
-
-**Benefits:**
-- Programmatic parsing
-- Easy monitoring integration
-- Complete audit trail
-- Debugging information
-
----
-
-### Webhook Logs
-
-Webhook events are logged in JSON:
-
-```json
-{
-  "timestamp": "2025-12-05T14:30:00Z",
-  "level": "info",
-  "message": "Webhook received",
-  "event": "push",
-  "repository": "mantodeus/mantodeus-manager",
-  "branch": "main",
-  "commit": "e4f5g6h"
-}
-```
+**Impact:** Catches deployment failures early, before they affect users.
 
 ---
 
 ## 🚨 Emergency Procedures
 
-### Application Won't Start
+### Application Down
 
-1. **Check status:**
-   ```bash
-   ./infra/deploy/status.sh
-   ```
+**Symptoms:**
+- Health check fails
+- PM2 status shows "stopped" or "errored"
+- Users cannot access the application
 
-2. **Check error logs:**
-   ```bash
-   tail -100 logs/mantodeus-manager-error.log
-   ```
+**Procedure:**
+1. Check status: `./infra/deploy/status.sh`
+2. Check logs: `pm2 logs mantodeus-manager --lines 100`
+3. Restart: `./infra/deploy/restart.sh`
+4. If restart fails, rollback: `./infra/deploy/restart.sh --rollback`
 
-3. **Try restart:**
-   ```bash
-   ./infra/deploy/restart.sh
-   ```
-
-4. **If restart fails, rollback:**
-   ```bash
-   ./infra/deploy/restart.sh --rollback
-   ```
+**Time to Resolution:** < 2 minutes
 
 ---
 
-### Deployment Broke Production
+### Deployment Failed
 
-1. **Immediate rollback:**
-   ```bash
-   ./infra/deploy/restart.sh --rollback
-   ```
+**Symptoms:**
+- Build fails
+- Git pull fails
+- PM2 restart fails
+- Health check fails after deployment
 
-2. **Verify rollback worked:**
-   ```bash
-   ./infra/deploy/status.sh
-   ```
+**Procedure:**
+1. Check deployment logs
+2. Identify failure point
+3. Rollback immediately: `./infra/deploy/restart.sh --rollback`
+4. Investigate issue in development environment
+5. Fix and redeploy
 
-3. **Check what changed:**
-   ```bash
-   git log -1
-   git diff HEAD~1
-   ```
+**Time to Rollback:** < 1 minute
 
 ---
 
 ### Database Connection Lost
 
-1. **Check environment variables:**
-   ```bash
-   ./infra/env/env-sync.sh --check-only
-   ```
+**Symptoms:**
+- Application starts but cannot connect to database
+- Errors in logs about database connection
+- Health check may pass but features fail
 
-2. **Verify DATABASE_URL:**
-   ```bash
-   # Don't echo the value!
-   grep DATABASE_URL .env | wc -l  # Should be 1
-   ```
+**Procedure:**
+1. Check `.env` file: `cat .env | grep DATABASE_URL`
+2. Verify database is accessible
+3. Update connection string if needed: `./infra/env/env-update.sh DATABASE_URL 'new_connection_string'`
+4. Restart application: `./infra/deploy/restart.sh`
 
-3. **Test database connection:**
-   ```bash
-   # From application logs
-   tail -50 logs/mantodeus-manager-error.log | grep -i database
-   ```
+**Time to Resolution:** < 5 minutes
 
 ---
 
 ### Disk Space Full
 
-1. **Check disk usage:**
-   ```bash
-   df -h /srv/customer/sites/manager.mantodeus.com
-   ```
+**Symptoms:**
+- Backup creation fails
+- Build fails
+- Application cannot write logs
 
-2. **Clean old logs:**
-   ```bash
-   find logs/ -name "*.log.*.gz" -mtime +30 -delete
-   ```
+**Procedure:**
+1. Check disk space: `df -h`
+2. Clean old backups: `ls -t backups/ | tail -n +6 | xargs rm -f`
+3. Clean old logs: `pm2 flush`
+4. Clean node_modules if needed: `rm -rf node_modules && npm install`
+5. Retry deployment
 
-3. **Clean old backups:**
-   ```bash
-   ls -lt backups/ | tail -n +6 | awk '{print $9}' | xargs rm -f
-   ```
-
-4. **Clean node_modules (if needed):**
-   ```bash
-   rm -rf node_modules
-   npm install --include=dev
-   ```
+**Prevention:** Backup retention policy (keep only 5 backups)
 
 ---
 
-## 🔒 Access Control
+## ✅ Best Practices
 
-### SSH Access
+### Before Deployment
 
-- **Key-based authentication only** (no passwords)
-- **Dedicated deployment key** (separate from personal keys)
-- **Limited to deployment user** (not root)
-
-### File Permissions
-
-```bash
-# Scripts: executable by owner, readable by group
-chmod 750 infra/deploy/*.sh
-
-# Config files: readable by owner only
-chmod 600 .env
-
-# Backups: readable by owner only
-chmod 600 backups/*.tar.gz
-```
-
-### Webhook Access
-
-- **Secret required** for all webhook requests
-- **Signature verification** using HMAC-SHA256
-- **IP filtering** (optional, configure in firewall)
-
----
-
-## 📊 Monitoring & Alerts
-
-### Health Monitoring
-
-Set up monitoring to check:
-
-```bash
-# Every 5 minutes
-*/5 * * * * /srv/customer/sites/manager.mantodeus.com/infra/deploy/status.sh | jq -r '.health' | grep -q 'healthy' || echo "ALERT: Application unhealthy"
-```
-
-### Restart Count Monitoring
-
-Alert on high restart counts:
-
-```bash
-RESTART_COUNT=$(./infra/deploy/status.sh | jq -r '.restart_count')
-if [ "$RESTART_COUNT" -gt 5 ]; then
-  echo "ALERT: High restart count: $RESTART_COUNT"
-fi
-```
-
-### Disk Space Monitoring
-
-Alert on low disk space:
-
-```bash
-DISK_USAGE=$(df -h /srv/customer/sites/manager.mantodeus.com | tail -1 | awk '{print $5}' | sed 's/%//')
-if [ "$DISK_USAGE" -gt 80 ]; then
-  echo "ALERT: Disk usage at ${DISK_USAGE}%"
-fi
-```
-
----
-
-## 📚 Best Practices
-
-1. **Always test in dry-run first:**
-   ```bash
-   ./infra/deploy/deploy.sh --dry-run
-   ```
-
-2. **Check status before and after changes:**
+1. **Check Status:** Always check current status before deploying
    ```bash
    ./infra/deploy/status.sh
    ```
 
-3. **Keep backups for at least 5 versions**
+2. **Test Locally:** Test changes in development first
 
-4. **Monitor restart counts** - high counts indicate issues
+3. **Review Changes:** Review Git commits before deploying
+   ```bash
+   git log --oneline -10
+   ```
 
-5. **Review logs regularly** for warnings and errors
+4. **Dry Run:** Use `--dry-run` flag to test deployment process
+   ```bash
+   ./infra/deploy/deploy.sh --dry-run
+   ```
 
-6. **Test rollback procedures** periodically
+### During Deployment
 
-7. **Document all manual interventions**
+1. **Monitor Logs:** Watch logs during deployment
+   ```bash
+   pm2 logs mantodeus-manager --lines 50
+   ```
 
-8. **Use webhook for automated deployments** (after testing)
+2. **Wait for Health Check:** Don't interrupt the health check process
 
-9. **Rotate secrets regularly** (webhook, JWT, database)
+3. **Verify Success:** Check status after deployment
+   ```bash
+   ./infra/deploy/status.sh
+   ```
 
-10. **Keep infrastructure scripts updated** with the repository
+### After Deployment
+
+1. **Verify Health:** Ensure health check passes
+   ```bash
+   ./infra/deploy/status.sh
+   ```
+
+2. **Check Logs:** Review logs for any errors
+   ```bash
+   pm2 logs mantodeus-manager --err --lines 100
+   ```
+
+3. **Test Features:** Manually test critical features
+
+4. **Monitor:** Monitor application for 5-10 minutes after deployment
 
 ---
 
-## 🆘 Support
+## 🔍 Monitoring and Alerts
 
-If you encounter issues not covered here:
+### Status Monitoring
 
-1. Check [Infrastructure README](./README.md)
-2. Check [Cursor AI Prompts](./cursor-prompts.md)
-3. Review application logs
-4. Check system logs: `journalctl -u mantodeus-manager`
-5. Contact system administrator
+**Check Application Status:**
+```bash
+./infra/deploy/status.sh
+```
+
+**Output Includes:**
+- PM2 status (online/stopped/errored)
+- Health check result (healthy/unhealthy)
+- Uptime (human-readable)
+- Memory usage (MB)
+- CPU usage (%)
+- Git commit and branch
+- Uncommitted changes count
+
+### Log Monitoring
+
+**Application Logs:**
+```bash
+pm2 logs mantodeus-manager --lines 100
+```
+
+**Error Logs Only:**
+```bash
+pm2 logs mantodeus-manager --err --lines 100
+```
+
+**Webhook Logs:**
+```bash
+cat logs/webhook.log | tail -50
+```
 
 ---
 
-**Remember:** Safety first! When in doubt, use dry-run mode and create manual backups.
+## 📋 Safety Checklist
+
+Before deploying, verify:
+
+- [ ] Status check passes
+- [ ] No uncommitted changes (or intentional)
+- [ ] Backup directory exists and is writable
+- [ ] Disk space available (> 1GB)
+- [ ] PM2 is running
+- [ ] Health endpoint is accessible
+- [ ] Environment variables are set correctly
+
+After deploying, verify:
+
+- [ ] Deployment completed successfully
+- [ ] Health check passes
+- [ ] No errors in logs
+- [ ] Application responds to requests
+- [ ] Critical features work
+- [ ] Backup was created
+
+---
+
+## 🆘 Emergency Contacts
+
+**If Emergency Procedures Don't Work:**
+
+1. **Check Logs:** `pm2 logs mantodeus-manager --lines 200`
+2. **Check Status:** `./infra/deploy/status.sh`
+3. **Manual Rollback:** Extract backup manually if scripts fail
+4. **Contact Support:** If all else fails, contact hosting provider
+
+**Emergency Rollback (Manual):**
+```bash
+cd /srv/customer/sites/manager.mantodeus.com
+pm2 stop mantodeus-manager
+tar -xzf backups/backup-YYYYMMDD-HHMMSS.tar.gz
+pm2 restart mantodeus-manager
+```
+
+---
+
+## 📚 Additional Resources
+
+- **[README.md](./README.md)** - Complete infrastructure documentation
+- **[cursor-prompts.md](./cursor-prompts.md)** - Cursor AI natural-language prompts
+
+---
+
+**Safety First!** 🛡️

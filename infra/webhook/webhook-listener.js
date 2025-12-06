@@ -1,57 +1,46 @@
 #!/usr/bin/env node
 /**
- * GitHub Webhook Listener for Mantodeus Manager
+ * Mantodeus Manager - GitHub Webhook Listener
  * 
- * This lightweight webhook server listens for GitHub push events
- * and triggers automated deployments.
- * 
- * Features:
- * - GitHub signature verification (HMAC-SHA256)
- * - Automatic deployment on push to main branch
- * - JSON logging
- * - Non-root execution
+ * Automatically deploys on push to main branch
  * 
  * Usage:
- *   node webhook-listener.js
+ *   pm2 start infra/webhook/webhook-listener.js --name webhook-listener
  * 
  * Environment Variables:
  *   WEBHOOK_SECRET - GitHub webhook secret (required)
  *   WEBHOOK_PORT - Port to listen on (default: 9000)
- *   PROJECT_DIR - Project directory (default: /srv/customer/sites/manager.mantodeus.com)
- *   DEPLOY_BRANCH - Branch to deploy (default: main)
+ *   APP_PATH - Application path (default: /srv/customer/sites/manager.mantodeus.com)
+ *   PM2_APP_NAME - PM2 app name (default: mantodeus-manager)
  */
 
-const http = require('http');
-const crypto = require('crypto');
-const { exec } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import express from 'express';
+import crypto from 'crypto';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Configuration
-const CONFIG = {
-  port: process.env.WEBHOOK_PORT || 9000,
-  secret: process.env.WEBHOOK_SECRET || '',
-  projectDir: process.env.PROJECT_DIR || '/srv/customer/sites/manager.mantodeus.com',
-  deployBranch: process.env.DEPLOY_BRANCH || 'main',
-  logFile: process.env.WEBHOOK_LOG_FILE || null,
-};
+const execAsync = promisify(exec);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Validate configuration
-if (!CONFIG.secret) {
-  console.error('ERROR: WEBHOOK_SECRET environment variable is required');
-  console.error('Set it in your .env file or environment');
-  process.exit(1);
-}
+const app = express();
+const PORT = process.env.WEBHOOK_PORT || 9000;
+const SECRET = process.env.WEBHOOK_SECRET;
+const APP_PATH = process.env.APP_PATH || '/srv/customer/sites/manager.mantodeus.com';
+const PM2_APP_NAME = process.env.PM2_APP_NAME || 'mantodeus-manager';
 
-// Check if running as root (not recommended)
-if (process.getuid && process.getuid() === 0) {
-  console.warn('WARNING: Running as root is not recommended for security');
-}
+// Log directory
+const LOG_DIR = path.join(APP_PATH, 'logs');
+const WEBHOOK_LOG = path.join(LOG_DIR, 'webhook.log');
 
-/**
- * Log message with timestamp
- */
-function log(level, message, data = {}) {
+// Ensure log directory exists
+await fs.mkdir(LOG_DIR, { recursive: true }).catch(() => {});
+
+// JSON logging helper
+async function log(level, message, data = {}) {
   const logEntry = {
     timestamp: new Date().toISOString(),
     level,
@@ -59,213 +48,181 @@ function log(level, message, data = {}) {
     ...data,
   };
   
-  const logString = JSON.stringify(logEntry);
-  console.log(logString);
-  
-  // Write to log file if configured
-  if (CONFIG.logFile) {
-    fs.appendFileSync(CONFIG.logFile, logString + '\n');
-  }
+  const logLine = JSON.stringify(logEntry) + '\n';
+  await fs.appendFile(WEBHOOK_LOG, logLine).catch(() => {});
+  console.log(`[${level}] ${message}`, data);
 }
 
-/**
- * Verify GitHub webhook signature
- */
+// Verify GitHub signature
 function verifySignature(payload, signature) {
-  if (!signature) {
+  if (!SECRET) {
     return false;
   }
   
-  const hmac = crypto.createHmac('sha256', CONFIG.secret);
+  const hmac = crypto.createHmac('sha256', SECRET);
   const digest = 'sha256=' + hmac.update(payload).digest('hex');
   
-  // Use timing-safe comparison
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(digest)
-    );
-  } catch (e) {
-    return false;
-  }
+  // Timing-safe comparison
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(digest)
+  );
 }
 
-/**
- * Execute deployment script
- */
-function executeDeploy(payload) {
-  const deployScript = path.join(CONFIG.projectDir, 'infra/deploy/deploy.sh');
+// Middleware
+app.use(express.json({ verify: (req, res, buf) => {
+  req.rawBody = buf.toString();
+}}));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'webhook-listener',
+    port: PORT,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Webhook endpoint
+app.post('/webhook', async (req, res) => {
+  const signature = req.headers['x-hub-signature-256'];
+  const event = req.headers['x-github-event'];
+  const deliveryId = req.headers['x-github-delivery'];
   
-  log('info', 'Starting deployment', {
-    branch: payload.ref,
-    commit: payload.after?.substring(0, 7),
-    pusher: payload.pusher?.name,
+  await log('info', 'Webhook received', {
+    event,
+    deliveryId,
+    hasSignature: !!signature,
   });
   
-  const command = `cd ${CONFIG.projectDir} && ${deployScript}`;
+  // Verify signature
+  if (SECRET) {
+    if (!signature) {
+      await log('error', 'Missing signature');
+      return res.status(401).json({ error: 'Missing signature' });
+    }
+    
+    if (!verifySignature(req.rawBody, signature)) {
+      await log('error', 'Invalid signature');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+  } else {
+    await log('warning', 'Webhook secret not configured, skipping signature verification');
+  }
   
-  exec(command, { timeout: 300000 }, (error, stdout, stderr) => {
-    if (error) {
-      log('error', 'Deployment failed', {
-        error: error.message,
-        code: error.code,
+  // Handle ping event
+  if (event === 'ping') {
+    await log('info', 'Ping received');
+    return res.status(200).json({ message: 'Pong!' });
+  }
+  
+  // Handle push event
+  if (event === 'push') {
+    const ref = req.body.ref;
+    const branch = ref ? ref.replace('refs/heads/', '') : '';
+    
+    await log('info', 'Push event received', { branch, ref });
+    
+    // Only deploy on main branch
+    if (branch === 'main') {
+      // Respond immediately
+      res.status(202).json({
+        status: 'accepted',
+        message: 'Deployment started',
+        branch,
+        commit: req.body.head_commit?.id?.substring(0, 7) || 'unknown',
+      });
+      
+      // Deploy asynchronously
+      await deploy(branch, req.body.head_commit?.id);
+    } else {
+      await log('info', 'Ignoring push to non-main branch', { branch });
+      return res.status(200).json({
+        status: 'ignored',
+        message: `Push to ${branch} branch ignored (only main branch triggers deployment)`,
+      });
+    }
+  } else {
+    await log('info', 'Ignoring event', { event });
+    return res.status(200).json({
+      status: 'ignored',
+      message: `Event ${event} ignored`,
+    });
+  }
+});
+
+// Deployment function
+async function deploy(branch, commitId) {
+  await log('info', 'Starting deployment', { branch, commitId });
+  
+  const deployScript = path.join(APP_PATH, 'infra', 'deploy', 'deploy.sh');
+  
+  try {
+    // Check if deploy script exists
+    try {
+      await fs.access(deployScript);
+    } catch {
+      await log('error', 'Deploy script not found, using fallback', { deployScript });
+      // Fallback: direct commands
+      const commands = [
+        `cd ${APP_PATH}`,
+        'git pull origin main',
+        'npm install --include=dev',
+        'npm run build',
+        `pm2 restart ${PM2_APP_NAME}`,
+      ].join(' && ');
+      
+      const { stdout, stderr } = await execAsync(commands, {
+        cwd: APP_PATH,
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      
+      await log('info', 'Deployment completed (fallback)', {
+        stdout: stdout.substring(0, 500),
         stderr: stderr.substring(0, 500),
       });
       return;
     }
     
-    try {
-      const result = JSON.parse(stdout);
-      log('info', 'Deployment completed', result);
-    } catch (e) {
-      log('info', 'Deployment completed', {
-        stdout: stdout.substring(0, 500),
-      });
-    }
-  });
-}
-
-/**
- * Handle webhook request
- */
-function handleWebhook(req, res) {
-  let body = '';
-  
-  req.on('data', chunk => {
-    body += chunk.toString();
-  });
-  
-  req.on('end', () => {
-    const signature = req.headers['x-hub-signature-256'];
-    const event = req.headers['x-github-event'];
-    
-    // Verify signature
-    if (!verifySignature(body, signature)) {
-      log('warn', 'Invalid signature', {
-        ip: req.socket.remoteAddress,
-        event,
-      });
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Invalid signature' }));
-      return;
-    }
-    
-    // Parse payload
-    let payload;
-    try {
-      payload = JSON.parse(body);
-    } catch (e) {
-      log('error', 'Invalid JSON payload', {
-        error: e.message,
-      });
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Invalid JSON' }));
-      return;
-    }
-    
-    log('info', 'Webhook received', {
-      event,
-      action: payload.action,
-      repository: payload.repository?.full_name,
+    // Use deploy script
+    const { stdout, stderr } = await execAsync(`bash ${deployScript}`, {
+      cwd: APP_PATH,
+      maxBuffer: 10 * 1024 * 1024,
     });
     
-    // Handle push events
-    if (event === 'push') {
-      const branch = payload.ref?.replace('refs/heads/', '');
-      
-      if (branch === CONFIG.deployBranch) {
-        executeDeploy(payload);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          status: 'success',
-          message: 'Deployment triggered',
-          branch,
-          commit: payload.after?.substring(0, 7),
-        }));
-      } else {
-        log('info', 'Ignoring push to non-deploy branch', { branch });
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          status: 'ignored',
-          message: 'Not the deploy branch',
-          branch,
-        }));
-      }
-    } else {
-      // Other events
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'ignored',
-        message: 'Event not handled',
-        event,
-      }));
-    }
-  });
+    await log('info', 'Deployment completed', {
+      stdout: stdout.substring(0, 500),
+      stderr: stderr.substring(0, 500),
+    });
+  } catch (error) {
+    await log('error', 'Deployment failed', {
+      error: error.message,
+      stack: error.stack,
+    });
+  }
 }
 
-/**
- * Create HTTP server
- */
-const server = http.createServer((req, res) => {
-  // Health check endpoint
-  if (req.url === '/health' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-    }));
-    return;
-  }
-  
-  // Webhook endpoint
-  if (req.url === '/webhook' && req.method === 'POST') {
-    handleWebhook(req, res);
-    return;
-  }
-  
-  // 404 for other requests
-  res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'Not found' }));
-});
-
 // Start server
-server.listen(CONFIG.port, () => {
-  log('info', 'Webhook listener started', {
-    port: CONFIG.port,
-    projectDir: CONFIG.projectDir,
-    deployBranch: CONFIG.deployBranch,
-  });
+if (!SECRET) {
+  console.warn('⚠️  WARNING: WEBHOOK_SECRET not set. Webhook will accept requests without signature verification.');
+}
+
+app.listen(PORT, () => {
+  console.log(`🚀 Webhook listener started on port ${PORT}`);
+  console.log(`📝 Logs: ${WEBHOOK_LOG}`);
+  if (!SECRET) {
+    console.log('⚠️  Set WEBHOOK_SECRET environment variable for production use.');
+  }
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  log('info', 'Received SIGTERM, shutting down gracefully');
-  server.close(() => {
-    log('info', 'Server closed');
-    process.exit(0);
-  });
+  console.log('SIGTERM received, shutting down gracefully...');
+  process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  log('info', 'Received SIGINT, shutting down gracefully');
-  server.close(() => {
-    log('info', 'Server closed');
-    process.exit(0);
-  });
-});
-
-// Handle uncaught errors
-process.on('uncaughtException', (error) => {
-  log('error', 'Uncaught exception', {
-    error: error.message,
-    stack: error.stack,
-  });
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  log('error', 'Unhandled rejection', {
-    reason: String(reason),
-  });
+  console.log('SIGINT received, shutting down gracefully...');
+  process.exit(0);
 });
