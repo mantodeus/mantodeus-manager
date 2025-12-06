@@ -153,7 +153,7 @@ export default function JobDetail() {
           {contact && (
             <div className="flex items-center text-muted-foreground">
               <User className="h-5 w-5 mr-2" />
-              <Link href={`/contacts?contactId=${contact.id}`}>
+              <Link href={`/contacts/${contact.id}?back=${encodeURIComponent("/jobs")}&backLabel=Jobs`}>
                 <span className="hover:text-primary transition-colors cursor-pointer">
                   {contact.name}
                 </span>

@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
@@ -23,6 +23,8 @@ import { toast } from "sonner";
 export default function Projects() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { data: projects, isLoading } = trpc.projects.list.useQuery();
+  const { data: contacts } = trpc.contacts.list.useQuery();
+  const [, navigate] = useLocation();
 
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -112,6 +114,16 @@ export default function Projects() {
     setSelectedIds(newSelected);
   };
 
+  const getContactLinkForClient = (clientName?: string | null) => {
+    if (!clientName || !contacts) return null;
+    const normalized = clientName.trim().toLowerCase();
+    const match = contacts.find((contact) => contact.name.trim().toLowerCase() === normalized);
+    if (!match) return null;
+    const backParam = encodeURIComponent("/projects");
+    const labelParam = encodeURIComponent("Projects");
+    return `/contacts/${match.id}?back=${backParam}&backLabel=${labelParam}`;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -148,6 +160,7 @@ export default function Projects() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects?.map((project) => {
             const isSelected = selectedIds.has(project.id);
+            const contactLink = getContactLinkForClient(project.client);
             
             return (
               <div
@@ -196,7 +209,24 @@ export default function Projects() {
                         </div>
                       </div>
                       {project.client && (
-                        <CardDescription>Client: {project.client}</CardDescription>
+                        <CardDescription>
+                          Client:{" "}
+                          {contactLink ? (
+                            <button
+                              type="button"
+                              className="text-primary hover:underline"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                navigate(contactLink);
+                              }}
+                            >
+                              {project.client}
+                            </button>
+                          ) : (
+                            project.client
+                          )}
+                        </CardDescription>
                       )}
                       {project.description && (
                         <CardDescription className="line-clamp-2">{project.description}</CardDescription>

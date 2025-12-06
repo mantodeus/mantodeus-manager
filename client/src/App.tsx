@@ -14,6 +14,7 @@ import ProjectJobDetail from "./pages/ProjectJobDetail";
 import Reports from "./pages/Reports";
 import Calendar from "./components/Calendar";
 import Contacts from "./pages/Contacts";
+import ContactDetail from "./pages/ContactDetail";
 import Invoices from "./pages/Invoices";
 import Notes from "./pages/Notes";
 import Maps from "./pages/Maps";
@@ -87,6 +88,11 @@ function Router() {
       <Route path="/calendar">
         <DashboardLayout>
           <Calendar />
+        </DashboardLayout>
+      </Route>
+      <Route path="/contacts/:id">
+        <DashboardLayout>
+          <ContactDetail />
         </DashboardLayout>
       </Route>
       <Route path="/contacts">

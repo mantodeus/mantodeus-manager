@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, MapPin, Calendar, Plus, Loader2, FileText, Trash2, Building2, Briefcase, Archive, Edit } from "lucide-react";
 import { Link, useRoute, useLocation } from "wouter";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CreateProjectJobDialog } from "@/components/CreateProjectJobDialog";
 import { EditProjectDialog } from "@/components/EditProjectDialog";
 import { ProjectJobList } from "@/components/ProjectJobList";
@@ -32,6 +32,9 @@ export default function ProjectDetail() {
   const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
 
   const { data: project, isLoading: projectLoading } = trpc.projects.getById.useQuery({ id: projectId });
+  const { data: contacts } = trpc.contacts.list.useQuery(undefined, {
+    enabled: !!project?.client,
+  });
   const { data: jobs, isLoading: jobsLoading } = trpc.projects.jobs.list.useQuery({ projectId });
   const { data: files, isLoading: filesLoading } = trpc.projects.files.listByProject.useQuery({ projectId });
   const utils = trpc.useUtils();
@@ -92,6 +95,26 @@ export default function ProjectDetail() {
     return new Date(date).toLocaleDateString();
   };
 
+  const matchingClientContact = useMemo(() => {
+    if (!project?.client || !contacts) return null;
+    const target = project.client.trim().toLowerCase();
+    return contacts.find((contact) => contact.name.trim().toLowerCase() === target) || null;
+  }, [project?.client, contacts]);
+
+  const clientContactLink = matchingClientContact
+    ? `/contacts/${matchingClientContact.id}?back=${encodeURIComponent(`/projects/${projectId}`)}&backLabel=Projects`
+    : null;
+
+  const renderClientLabel = (label?: string | null) => {
+    if (!label) return null;
+    if (!clientContactLink) return <>{label}</>;
+    return (
+      <Link href={clientContactLink}>
+        <span className="text-primary hover:underline cursor-pointer">{label}</span>
+      </Link>
+    );
+  };
+
   if (projectLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -144,7 +167,9 @@ export default function ProjectDetail() {
                 <CardTitle className="text-3xl">{project.name}</CardTitle>
               </div>
               {project.client && (
-                <CardDescription className="text-lg">Client: {project.client}</CardDescription>
+                <CardDescription className="text-lg">
+                  Client: {renderClientLabel(project.client)}
+                </CardDescription>
               )}
               {project.description && (
                 <CardDescription className="mt-2">{project.description}</CardDescription>
@@ -199,7 +224,11 @@ export default function ProjectDetail() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Client</label>
-                  <p className="mt-1">{project.client || "Not specified"}</p>
+                  <p className="mt-1">
+                    {project.client
+                      ? renderClientLabel(project.client)
+                      : "Not specified"}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Start Date</label>

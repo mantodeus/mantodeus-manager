@@ -111,9 +111,9 @@ export default function Contacts() {
     const count = selectedIds.size;
     if (confirm(`Are you sure you want to delete ${count} contact${count > 1 ? 's' : ''}?`)) {
       try {
-        selectedIds.forEach(async (id) => {
-          await deleteMutation.mutateAsync({ id });
-        });
+        await Promise.all(
+          Array.from(selectedIds).map((id) => deleteMutation.mutateAsync({ id }))
+        );
         toast.success(`${count} contact${count > 1 ? 's' : ''} deleted successfully`);
         setSelectedIds(new Set());
         setIsMultiSelectMode(false);

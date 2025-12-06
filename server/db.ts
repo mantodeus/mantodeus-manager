@@ -462,6 +462,14 @@ export async function updateContact(id: number, data: Partial<InsertContact>) {
 export async function deleteContact(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  // Remove relational references before deleting the contact to avoid FK errors
+  await db.delete(jobContacts).where(eq(jobContacts.contactId, id));
+  await db.update(jobs).set({ contactId: null }).where(eq(jobs.contactId, id));
+  await db.update(notes).set({ contactId: null }).where(eq(notes.contactId, id));
+  await db.update(invoices).set({ contactId: null }).where(eq(invoices.contactId, id));
+  await db.delete(locations).where(eq(locations.contactId, id));
+
   return db.delete(contacts).where(eq(contacts.id, id));
 }
 
