@@ -113,6 +113,25 @@
   --sidebar-ring: oklch(0.85 0.25 155);
 }
 
+/* App loading screen animations - defined globally */
+@keyframes logo-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-16px);
+  }
+}
+
+@keyframes logo-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -193,5 +212,10 @@
       padding-right: 2rem;
       max-width: 1280px; /* Standard content width */
     }
+  }
+
+  /* App loading screen animation class */
+  .logo-loading {
+    animation: logo-fade-in 0.5s ease-out, logo-bounce 1.5s ease-in-out 0.5s infinite;
   }
 }
