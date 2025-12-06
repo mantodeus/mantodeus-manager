@@ -94,6 +94,7 @@ function DialogContent({
   children,
   showCloseButton = true,
   onEscapeKeyDown,
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
@@ -118,6 +119,14 @@ function DialogContent({
     [isComposing, onEscapeKeyDown]
   );
 
+  const handleOpenAutoFocus = React.useCallback(
+    (event: Event) => {
+      event.preventDefault();
+      onOpenAutoFocus?.(event);
+    },
+    [onOpenAutoFocus]
+  );
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -128,6 +137,7 @@ function DialogContent({
           className
         )}
         onEscapeKeyDown={handleEscapeKeyDown}
+        onOpenAutoFocus={handleOpenAutoFocus}
         {...props}
       >
         {children}
