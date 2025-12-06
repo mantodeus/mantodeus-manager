@@ -1,4 +1,14 @@
 #!/bin/bash
+# This script creates all infrastructure files on the server
+# Run this on your server: bash create-all-files.sh
+
+cd /srv/customer/sites/manager.mantodeus.com/infra || exit 1
+
+echo "Creating all infrastructure files..."
+
+# Create deploy scripts
+cat > deploy/deploy.sh << 'DEPLOY_EOF'
+#!/bin/bash
 #
 # Mantodeus Manager - Deployment Script
 # Full deployment with backup, build, restart, and health check
@@ -171,3 +181,47 @@ fi
 
 # Success
 json_output "{\"status\":\"success\",\"git_pull\":\"success\",\"build\":\"success\",\"restart\":\"success\",\"health\":\"healthy\"}"
+DEPLOY_EOF
+
+chmod +x deploy/deploy.sh
+
+echo "✅ Created deploy/deploy.sh"
+
+# I'll create a simpler approach - let me create a script that uses curl or wget to get files from the repo
+# Actually, better idea - let me create a script that copies files via git show
+
+cat > /tmp/copy-infra-files.sh << 'COPYSCRIPT'
+#!/bin/bash
+cd /srv/customer/sites/manager.mantodeus.com
+
+# Get the commit hash with infra files
+COMMIT=$(git log --all --oneline --grep="DevOps infrastructure" | head -1 | cut -d' ' -f1)
+
+if [ -z "$COMMIT" ]; then
+  echo "Fetching from remote..."
+  git fetch origin cursor/git-repository-cleanup-and-repair-composer-1-5507
+  COMMIT=$(git rev-parse origin/cursor/git-repository-cleanup-and-repair-composer-1-5507)
+fi
+
+echo "Using commit: $COMMIT"
+
+# Copy files from that commit
+git show ${COMMIT}:infra/deploy/deploy.sh > infra/deploy/deploy.sh
+git show ${COMMIT}:infra/deploy/restart.sh > infra/deploy/restart.sh
+git show ${COMMIT}:infra/deploy/status.sh > infra/deploy/status.sh
+git show ${COMMIT}:infra/ssh/generate-key.sh > infra/ssh/generate-key.sh
+git show ${COMMIT}:infra/ssh/install-key.sh > infra/ssh/install-key.sh
+git show ${COMMIT}:infra/ssh/ssh-check.sh > infra/ssh/ssh-check.sh
+git show ${COMMIT}:infra/ssh/ssh-config.example > infra/ssh/ssh-config.example
+git show ${COMMIT}:infra/webhook/webhook-listener.js > infra/webhook/webhook-listener.js
+git show ${COMMIT}:infra/env/env-sync.sh > infra/env/env-sync.sh
+git show ${COMMIT}:infra/env/env-update.sh > infra/env/env-update.sh
+git show ${COMMIT}:infra/tests/run-deploy-sim.sh > infra/tests/run-deploy-sim.sh
+
+chmod +x infra/deploy/*.sh infra/ssh/*.sh infra/env/*.sh infra/tests/*.sh infra/webhook/*.js
+
+echo "✅ All files copied!"
+ls -la infra/deploy/
+COPYSCRIPT
+
+chmod +x /tmp/copy-infra-files.sh

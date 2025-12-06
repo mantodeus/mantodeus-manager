@@ -1,107 +1,136 @@
-# Mantodeus Manager - Infrastructure & DevOps
+# Mantodeus Manager - DevOps Infrastructure
 
-This directory contains all infrastructure scripts and configuration for deploying and managing the Mantodeus Manager application on Infomaniak servers.
+Complete DevOps infrastructure for deploying and managing Mantodeus Manager on Infomaniak hosting using Cursor AI.
+
+## 🚀 Quick Start
+
+### 1. Generate SSH Key (Local Machine)
+
+```bash
+cd infra/ssh
+./generate-key.sh mckay@mantodeus.com
+```
+
+This creates:
+- `~/.ssh/mantodeus_deploy_key` (private key)
+- `~/.ssh/mantodeus_deploy_key.pub` (public key)
+
+### 2. Install SSH Key on Server
+
+```bash
+./install-key.sh M4S5mQQMRhu_mantodeus@57-105224.ssh.hosting-ik.com
+```
+
+### 3. Configure SSH (Local Machine)
+
+```bash
+cp infra/ssh/ssh-config.example ~/.ssh/config
+chmod 600 ~/.ssh/config
+```
+
+The config is already configured with:
+- **Host**: `mantodeus-server`
+- **HostName**: `57-105224.ssh.hosting-ik.com`
+- **User**: `M4S5mQQMRhu_mantodeus`
+- **Port**: `22`
+
+### 4. Test SSH Connection
+
+```bash
+./infra/ssh/ssh-check.sh mantodeus-server
+```
+
+Expected output:
+```json
+{
+  "connection_status": "success",
+  "connection_time_seconds": "2",
+  "project_dir_exists": "true",
+  "infra_scripts_exist": "true"
+}
+```
+
+### 5. Deploy Application
+
+```bash
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"
+```
+
+---
 
 ## 📁 Directory Structure
 
 ```
 infra/
-├── deploy/          # Deployment scripts
-│   ├── deploy.sh    # Main deployment script
-│   ├── restart.sh   # Safe restart with rollback
-│   └── status.sh    # Health check and status
-├── ssh/             # SSH configuration and key management
-│   ├── ssh-config.example    # SSH config template
-│   ├── generate-key.sh       # Generate SSH key pair
-│   ├── install-key.sh        # Install key on server
-│   └── ssh-check.sh          # Test SSH connection
-├── webhook/         # GitHub webhook automation
-│   └── webhook-listener.js   # Webhook server
-├── env/             # Environment variable management
-│   ├── env-sync.sh   # Sync .env with .env.example
-│   └── env-update.sh # Update environment variables
-├── tests/           # Testing and verification
-│   └── run-deploy-sim.sh # Deployment simulation
-└── README.md        # This file
+├── README.md                    # This file
+├── cursor-prompts.md            # Cursor AI natural-language prompts
+├── SAFEGUARDS.md                # Safety features and procedures
+├── deploy/
+│   ├── deploy.sh                # Main deployment script
+│   ├── restart.sh               # Safe restart with rollback
+│   └── status.sh                # Health check and status
+├── ssh/
+│   ├── ssh-config.example       # SSH configuration template
+│   ├── generate-key.sh         # Generate SSH key pair
+│   ├── install-key.sh           # Install key on server
+│   └── ssh-check.sh             # Test SSH connection
+├── webhook/
+│   └── webhook-listener.js      # GitHub webhook server
+├── env/
+│   ├── env-sync.sh              # Sync .env with .env.example
+│   └── env-update.sh            # Update environment variables
+└── tests/
+    └── run-deploy-sim.sh        # Deployment simulation tests
 ```
 
-## 🚀 Quick Start
+---
 
-### 1. Setup SSH Access
-
-```bash
-# Generate SSH key
-cd infra/ssh
-./generate-key.sh your-email@example.com
-
-# Install key on server
-./install-key.sh username@your-server.infomaniak.com
-
-# Test connection
-./ssh-check.sh mantodeus-server
-```
-
-### 2. Configure SSH Config
-
-```bash
-# Copy example config
-cp infra/ssh/ssh-config.example ~/.ssh/config
-
-# Edit with your details
-nano ~/.ssh/config
-```
-
-### 3. Deploy Application
-
-```bash
-# From your local machine
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"
-
-# Or directly on server
-cd /srv/customer/sites/manager.mantodeus.com
-./infra/deploy/deploy.sh
-```
-
-## 📝 Common Commands
+## 🔧 Common Commands
 
 ### Deployment
 
 ```bash
-# Full deployment (pull, build, restart)
+# Full deployment (backup, build, restart, health check)
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"
 
-# Dry run (see what would happen)
+# Dry-run (test without deploying)
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --dry-run"
 
-# Deploy without restart
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --skip-restart"
+# Deploy without backup
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --no-backup"
+
+# Deploy without health check
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --skip-health-check"
 ```
 
 ### Restart
 
 ```bash
-# Safe restart with health check
+# Safe restart (creates backup automatically)
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh"
 
-# Rollback to previous version
+# Rollback to latest backup
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --rollback"
 
-# Force restart without health check
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --force"
+# Rollback to specific backup
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --backup-file=backup-20251205-143000.tar.gz"
 ```
 
-### Status & Health
+### Status Check
 
 ```bash
-# Get full status (JSON output)
+# Check application status
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
-
-# Get status with more logs
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh --logs 100"
-
-# Pretty print with jq
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh" | jq '.'
 ```
+
+Output includes:
+- PM2 status
+- Health check result
+- Uptime
+- Memory usage
+- CPU usage
+- Git commit and branch
+- Uncommitted changes
 
 ### Environment Variables
 
@@ -109,210 +138,274 @@ ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/de
 # Sync .env with .env.example
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/env/env-sync.sh"
 
-# Check only (don't modify)
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/env/env-sync.sh --check-only"
-
 # Update a variable
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/env/env-update.sh DATABASE_URL 'mysql://...'"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/env/env-update.sh DATABASE_URL 'mysql://user:pass@host/db'"
 ```
 
-### Logs
+---
 
+## 🤖 Using with Cursor AI
+
+See `cursor-prompts.md` for 30+ natural-language prompts you can use with Cursor AI.
+
+**Example:**
+```
+Deploy the Mantodeus Manager application to production.
+```
+
+Cursor AI will execute:
 ```bash
-# View output logs
-ssh mantodeus-server "tail -f /srv/customer/sites/manager.mantodeus.com/logs/mantodeus-manager-out.log"
-
-# View error logs
-ssh mantodeus-server "tail -f /srv/customer/sites/manager.mantodeus.com/logs/mantodeus-manager-error.log"
-
-# View last 100 lines
-ssh mantodeus-server "tail -100 /srv/customer/sites/manager.mantodeus.com/logs/mantodeus-manager-out.log"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"
 ```
+
+---
 
 ## 🔐 Security Features
 
-### Non-Root Execution
-All scripts enforce non-root execution for security.
+### Non-Root Enforcement
+All scripts refuse to run as root:
+```bash
+if [ "$(id -u)" -eq 0 ]; then
+    echo "ERROR: This script should NOT be run as root"
+    exit 1
+fi
+```
 
 ### Secret Protection
-- Scripts never echo sensitive values
-- Environment variables are handled securely
-- Backups are created before modifications
+Scripts never echo or log sensitive values:
+- Database credentials
+- API keys
+- JWT secrets
+- Webhook secrets
 
 ### SSH Key Security
-- ED25519 keys (more secure than RSA)
+- ED25519 algorithm (more secure than RSA)
+- Proper permissions (600 for private, 644 for public)
 - Key-based authentication only
-- Proper file permissions (600 for private keys)
 
 ### Webhook Security
 - GitHub signature verification (HMAC-SHA256)
 - Timing-safe comparison
 - Secret validation required
 
-## 🔄 Automated Deployment (Webhook)
+### Automatic Backups
+- Created before all deployments
+- Last 5 backups retained
+- Automatic rotation
 
-### Setup GitHub Webhook
+---
 
-1. **Generate webhook secret:**
-   ```bash
-   openssl rand -hex 32
-   ```
+## 📊 Script Output Format
 
-2. **Add to server .env:**
-   ```bash
-   WEBHOOK_SECRET=your_generated_secret
-   WEBHOOK_PORT=9000
-   ```
+All scripts output JSON for programmatic parsing:
 
-3. **Start webhook listener:**
-   ```bash
-   cd /srv/customer/sites/manager.mantodeus.com
-   pm2 start infra/webhook/webhook-listener.js --name webhook-listener
-   pm2 save
-   ```
-
-4. **Configure GitHub:**
-   - Go to repository Settings → Webhooks
-   - Add webhook: `https://your-server.com:9000/webhook`
-   - Content type: `application/json`
-   - Secret: (your generated secret)
-   - Events: `push`
-
-### Test Webhook
-
-```bash
-# Health check
-curl https://your-server.com:9000/health
-
-# View webhook logs
-pm2 logs webhook-listener
-```
-
-## 📊 JSON Output
-
-All deployment scripts output JSON for programmatic parsing:
-
+### deploy.sh Output
 ```json
 {
   "status": "success",
-  "timestamp": "2025-12-05T14:30:00Z",
   "git_pull": "success",
   "build": "success",
   "restart": "success",
-  "health": "healthy",
-  "duration_seconds": 45
+  "health": "healthy"
 }
 ```
 
-### Parse with jq
+### status.sh Output
+```json
+{
+  "status": "online",
+  "pm2_status": "online",
+  "health": "healthy",
+  "uptime_seconds": 172800,
+  "uptime_human": "2d 0h 0m",
+  "memory_mb": "245.67",
+  "cpu_percent": "1.2",
+  "restarts": 0,
+  "git_commit": "a1b2c3d",
+  "git_branch": "main",
+  "git_uncommitted_changes": 0
+}
+```
+
+### restart.sh Output
+```json
+{
+  "status": "success",
+  "action": "restart",
+  "restart": "success",
+  "health": "healthy",
+  "backup_file": "backup-20251205-143000.tar.gz"
+}
+```
+
+---
+
+## 🔄 Automated Deployment (Webhook)
+
+### Setup on Server
 
 ```bash
-# Get status
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh" | jq '.status'
+# 1. Generate webhook secret
+openssl rand -hex 32
 
-# Get memory usage
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh" | jq '.memory_mb'
+# 2. Add to .env
+echo "WEBHOOK_SECRET=your_generated_secret" >> .env
+echo "WEBHOOK_PORT=9000" >> .env
 
-# Check if healthy
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh" | jq -r '.health'
+# 3. Start webhook listener
+pm2 start infra/webhook/webhook-listener.js --name webhook-listener
+pm2 save
 ```
+
+### Setup on GitHub
+
+1. Go to Repository Settings → Webhooks
+2. Click "Add webhook"
+3. **Payload URL**: `https://manager.mantodeus.com:9000/webhook`
+4. **Content type**: `application/json`
+5. **Secret**: (paste your generated secret)
+6. **Events**: Select "Just the push event"
+7. Click "Add webhook"
+
+Now every push to `main` will automatically deploy!
+
+---
+
+## 🛡️ Safety Features
+
+See `SAFEGUARDS.md` for detailed information about:
+- Backup system
+- Rollback procedures
+- Emergency procedures
+- Best practices
+
+---
 
 ## 🧪 Testing
 
-### Deployment Simulation
+Run deployment simulation tests:
 
 ```bash
-# Run deployment simulation (no actual changes)
-cd infra/tests
-./run-deploy-sim.sh
+./infra/tests/run-deploy-sim.sh
 ```
 
-### SSH Connection Test
+Tests include:
+- Script existence
+- Script permissions
+- Syntax validation
+- Required commands
+- Project directory checks
+- Dry-run tests
+
+---
+
+## 📝 Configuration
+
+### Server Configuration
+
+- **Project Directory**: `/srv/customer/sites/manager.mantodeus.com`
+- **PM2 App Name**: `mantodeus-manager`
+- **Application Port**: `3000`
+- **Health Check Endpoint**: `http://localhost:3000/api/trpc/system.health`
+
+### SSH Configuration
+
+- **Host**: `mantodeus-server`
+- **HostName**: `57-105224.ssh.hosting-ik.com`
+- **User**: `M4S5mQQMRhu_mantodeus`
+- **Port**: `22`
+- **Key**: `~/.ssh/mantodeus_deploy_key`
+
+---
+
+## 🐛 Troubleshooting
+
+### SSH Connection Failed
 
 ```bash
-# Test SSH connection
-cd infra/ssh
-./ssh-check.sh mantodeus-server
-```
-
-## 🔧 Troubleshooting
-
-### Deployment Fails
-
-```bash
-# Check status
-./infra/deploy/status.sh
-
-# View logs
-tail -100 logs/mantodeus-manager-error.log
-
-# Rollback
-./infra/deploy/restart.sh --rollback
-```
-
-### SSH Connection Issues
-
-```bash
-# Test connection with diagnostics
+# Test connection
 ./infra/ssh/ssh-check.sh mantodeus-server
 
-# Check SSH key
-ls -la ~/.ssh/mantodeus_deploy_key*
+# Check SSH config
+cat ~/.ssh/config
 
-# Test with verbose output
-ssh -v mantodeus-server
+# Test direct connection
+ssh M4S5mQQMRhu_mantodeus@57-105224.ssh.hosting-ik.com
 ```
 
-### Environment Variable Issues
+### Deployment Failed
 
 ```bash
-# Check sync status
-./infra/env/env-sync.sh --check-only
+# Check logs
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && pm2 logs mantodeus-manager --lines 50"
 
-# Sync variables
-./infra/env/env-sync.sh
+# Check status
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
+
+# Rollback
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/restart.sh --rollback"
 ```
+
+### Health Check Failed
+
+```bash
+# Check if application is running
+ssh mantodeus-server "pm2 status mantodeus-manager"
+
+# Check application logs
+ssh mantodeus-server "pm2 logs mantodeus-manager --lines 100"
+
+# Manual health check
+ssh mantodeus-server "curl http://localhost:3000/api/trpc/system.health?input=%7B%22timestamp%22%3A$(date +%s)%7D"
+```
+
+### Webhook Not Working
+
+```bash
+# Check webhook listener status
+ssh mantodeus-server "pm2 status webhook-listener"
+
+# Check webhook logs
+ssh mantodeus-server "cat /srv/customer/sites/manager.mantodeus.com/logs/webhook.log | tail -20"
+
+# Test webhook manually
+curl -X POST https://manager.mantodeus.com:9000/webhook \
+  -H "Content-Type: application/json" \
+  -H "X-GitHub-Event: ping" \
+  -d '{}'
+```
+
+---
 
 ## 📚 Additional Documentation
 
-- [Cursor AI Prompts](./cursor-prompts.md) - Natural language commands for Cursor AI
-- [Delete Safeguards](../DELETE_SAFEGUARDS.md) - Safety features and rollback procedures
-- [Deployment Guide](../DEPLOYMENT.md) - Full deployment documentation
+- **[cursor-prompts.md](./cursor-prompts.md)** - Natural-language prompts for Cursor AI
+- **[SAFEGUARDS.md](./SAFEGUARDS.md)** - Safety features and emergency procedures
 
-## 🆘 Support
+---
 
-If you encounter issues:
+## ✅ Checklist
 
-1. Check logs: `./infra/deploy/status.sh`
-2. Test SSH: `./infra/ssh/ssh-check.sh`
-3. Run diagnostics: `./infra/tests/run-deploy-sim.sh`
-4. Review documentation in this directory
+After merging this infrastructure:
 
-## 🔄 Maintenance
+- [ ] Generate SSH key: `./infra/ssh/generate-key.sh mckay@mantodeus.com`
+- [ ] Install SSH key: `./infra/ssh/install-key.sh M4S5mQQMRhu_mantodeus@57-105224.ssh.hosting-ik.com`
+- [ ] Configure SSH: `cp infra/ssh/ssh-config.example ~/.ssh/config`
+- [ ] Test connection: `./infra/ssh/ssh-check.sh mantodeus-server`
+- [ ] Copy scripts to server: `scp -r infra mantodeus-server:/srv/customer/sites/manager.mantodeus.com/`
+- [ ] Test deployment: `ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --dry-run"`
+- [ ] (Optional) Setup webhook for automated deployments
 
-### Update Scripts
+---
 
-Scripts are version-controlled in the repository. To update:
+## 🎉 Success!
 
-```bash
-git pull origin main
-# Scripts are automatically updated
-```
+Your DevOps infrastructure is ready! You can now:
 
-### Backup Management
+- ✅ Deploy with one command
+- ✅ Monitor application status
+- ✅ Rollback on failures
+- ✅ Use Cursor AI for natural-language deployments
+- ✅ Automate deployments with GitHub webhooks
 
-Backups are automatically created and rotated:
-- Location: `backups/`
-- Retention: Last 5 backups
-- Created before: deployments, restarts, env updates
-
-### Log Rotation
-
-Logs are automatically rotated:
-- Trigger: Files > 10MB
-- Compression: gzip
-- Retention: 30 days
-
-## 📝 License
-
-Part of Mantodeus Manager project.
+**Happy deploying!** 🚀

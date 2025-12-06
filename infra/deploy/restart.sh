@@ -1,244 +1,148 @@
 #!/bin/bash
-################################################################################
+#
 # Mantodeus Manager - Safe Restart Script
-################################################################################
-# This script safely restarts the application with automatic rollback on failure
+# Restarts the application with automatic rollback on failure
 #
 # Usage:
-#   ./restart.sh [--rollback] [--force]
+#   ./restart.sh [--rollback] [--backup-file=backup-YYYYMMDD-HHMMSS.tar.gz]
 #
-# Options:
-#   --rollback  Restore from latest backup
-#   --force     Skip health checks
+# Output: JSON format for programmatic parsing
 #
-# Output: JSON to stdout
-################################################################################
 
 set -euo pipefail
 
 # Configuration
-PROJECT_DIR="${PROJECT_DIR:-/srv/customer/sites/manager.mantodeus.com}"
-APP_NAME="mantodeus-manager"
+PROJECT_DIR="/srv/customer/sites/manager.mantodeus.com"
+PM2_APP_NAME="mantodeus-manager"
 BACKUP_DIR="${PROJECT_DIR}/backups"
-HEALTH_CHECK_RETRIES=3
-HEALTH_CHECK_DELAY=5
+HEALTH_CHECK_URL="http://localhost:3000/api/trpc/system.health"
+HEALTH_CHECK_RETRIES=5
+HEALTH_CHECK_DELAY=3
 
-# Colors
-if [ -t 1 ]; then
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
-    YELLOW='\033[1;33m'
-    NC='\033[0m'
-else
-    RED=''
-    GREEN=''
-    YELLOW=''
-    NC=''
-fi
+# Flags
+ROLLBACK=false
+BACKUP_FILE=""
 
 # Parse arguments
-ROLLBACK=false
-FORCE=false
-
 while [[ $# -gt 0 ]]; do
-    case $1 in
-        --rollback)
-            ROLLBACK=true
-            shift
-            ;;
-        --force)
-            FORCE=true
-            shift
-            ;;
-        *)
-            echo "Unknown option: $1"
-            exit 1
-            ;;
-    esac
+  case $1 in
+    --rollback)
+      ROLLBACK=true
+      shift
+      ;;
+    --backup-file=*)
+      BACKUP_FILE="${1#*=}"
+      ROLLBACK=true
+      shift
+      ;;
+    *)
+      echo "{\"error\":\"Unknown option: $1\"}" >&2
+      exit 1
+      ;;
+  esac
 done
 
-# JSON output
-JSON_OUTPUT='{}'
+# Safety check: Don't run as root
+if [ "$(id -u)" -eq 0 ]; then
+  echo "{\"error\":\"This script should NOT be run as root\"}" >&2
+  exit 1
+fi
 
-add_json() {
-    JSON_OUTPUT=$(echo "$JSON_OUTPUT" | jq --arg k "$1" --arg v "$2" '. + {($k): $v}')
+# Output JSON helper
+json_output() {
+  echo "$1"
 }
 
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $*" >&2
+# Error handler
+error_exit() {
+  json_output "{\"status\":\"error\",\"error\":\"$1\"}"
+  exit 1
 }
 
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $*" >&2
+# Check if project directory exists
+if [ ! -d "$PROJECT_DIR" ]; then
+  error_exit "Project directory not found: $PROJECT_DIR"
+fi
+
+cd "$PROJECT_DIR" || error_exit "Failed to change to project directory"
+
+# Rollback function
+rollback() {
+  local backup_file="$1"
+  
+  if [ ! -f "$backup_file" ]; then
+    error_exit "Backup file not found: $backup_file"
+  fi
+  
+  json_output "{\"action\":\"rollback\",\"status\":\"starting\",\"backup_file\":\"$backup_file\"}"
+  
+  # Stop PM2
+  pm2 stop "$PM2_APP_NAME" || true
+  
+  # Extract backup
+  tar -xzf "$backup_file" || error_exit "Failed to extract backup"
+  
+  # Restart PM2
+  pm2 restart "$PM2_APP_NAME" || error_exit "Failed to restart PM2 after rollback"
+  
+  json_output "{\"action\":\"rollback\",\"status\":\"success\",\"backup_file\":\"$backup_file\"}"
 }
 
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $*" >&2
-}
-
-# Function to get current PM2 status
-get_pm2_status() {
-    if command -v pm2 &> /dev/null && pm2 describe "$APP_NAME" &> /dev/null; then
-        pm2 jlist | jq -r ".[] | select(.name==\"$APP_NAME\") | .pm2_env.status"
-    else
-        echo "unknown"
+# If rollback requested
+if [ "$ROLLBACK" = true ]; then
+  if [ -z "$BACKUP_FILE" ]; then
+    # Find latest backup
+    LATEST_BACKUP=$(ls -t "$BACKUP_DIR"/backup-*.tar.gz 2>/dev/null | head -n 1)
+    if [ -z "$LATEST_BACKUP" ]; then
+      error_exit "No backup file found for rollback"
     fi
-}
-
-# Function to check application health
-check_health() {
-    local retries=$1
-    local delay=$2
-    
-    for i in $(seq 1 $retries); do
-        log_info "Health check attempt $i/$retries..."
-        
-        local status=$(get_pm2_status)
-        
-        if [ "$status" = "online" ]; then
-            log_info "Application is healthy"
-            return 0
-        fi
-        
-        if [ $i -lt $retries ]; then
-            log_warn "Application not healthy, waiting ${delay}s..."
-            sleep $delay
-        fi
-    done
-    
-    log_error "Application failed health check after $retries attempts"
-    return 1
-}
-
-# Function to rollback from backup
-rollback_from_backup() {
-    log_info "Rolling back from backup..."
-    
-    local latest_backup=$(ls -1t "$BACKUP_DIR"/backup-*.tar.gz 2>/dev/null | head -1)
-    
-    if [ -z "$latest_backup" ]; then
-        log_error "No backup found for rollback"
-        add_json "rollback" "no-backup"
-        return 1
+    BACKUP_FILE="$LATEST_BACKUP"
+  else
+    # Use provided backup file (ensure it's absolute path)
+    if [[ ! "$BACKUP_FILE" = /* ]]; then
+      BACKUP_FILE="${BACKUP_DIR}/${BACKUP_FILE}"
     fi
-    
-    log_info "Restoring from: $latest_backup"
-    
-    # Stop application
-    if command -v pm2 &> /dev/null; then
-        pm2 stop "$APP_NAME" 2>/dev/null || true
-    fi
-    
-    # Restore backup
-    cd "$PROJECT_DIR"
-    tar -xzf "$latest_backup" --exclude='logs' --exclude='backups'
-    
-    # Restart application
-    if command -v pm2 &> /dev/null; then
-        pm2 restart "$APP_NAME" --update-env || pm2 start ecosystem.config.js
-    fi
-    
-    log_info "Rollback complete"
-    add_json "rollback" "success"
-    add_json "rollback_from" "$latest_backup"
-    
-    return 0
-}
+  fi
+  
+  rollback "$BACKUP_FILE"
+  exit 0
+fi
 
-# Function to restart application
-restart_app() {
-    log_info "Restarting application..."
-    
-    local before_status=$(get_pm2_status)
-    add_json "status_before" "$before_status"
-    
-    if command -v pm2 &> /dev/null; then
-        log_info "Using PM2 to restart..."
-        
-        # Graceful restart
-        pm2 restart "$APP_NAME" --update-env || {
-            log_warn "PM2 restart failed, trying to start..."
-            pm2 start ecosystem.config.js
-        }
-        
-        add_json "restart_method" "pm2"
-    elif systemctl is-active --quiet "$APP_NAME" 2>/dev/null; then
-        log_info "Using systemd to restart..."
-        systemctl restart "$APP_NAME"
-        add_json "restart_method" "systemd"
-    else
-        log_error "No process manager found (PM2 or systemd)"
-        add_json "status" "error"
-        add_json "error" "No process manager available"
-        echo "$JSON_OUTPUT"
-        exit 1
-    fi
-    
-    # Wait for restart
-    sleep 2
-    
-    local after_status=$(get_pm2_status)
-    add_json "status_after" "$after_status"
-    
-    log_info "Restart initiated"
-}
+# Normal restart with backup
+mkdir -p "$BACKUP_DIR"
+BACKUP_FILE="${BACKUP_DIR}/backup-$(date +%Y%m%d-%H%M%S).tar.gz"
 
-# Main function
-main() {
-    local start_time=$(date +%s)
-    
-    log_info "========================================="
-    log_info "Mantodeus Manager Restart"
-    log_info "========================================="
-    
-    add_json "timestamp" "$(date -Iseconds)"
-    add_json "project_dir" "$PROJECT_DIR"
-    
-    # Handle rollback
-    if [ "$ROLLBACK" = true ]; then
-        log_info "Rollback requested"
-        if rollback_from_backup; then
-            add_json "status" "success"
-            add_json "action" "rollback"
-        else
-            add_json "status" "error"
-            add_json "action" "rollback"
-            echo "$JSON_OUTPUT"
-            exit 1
-        fi
-    else
-        # Normal restart
-        restart_app
-        
-        # Health check (unless forced)
-        if [ "$FORCE" = false ]; then
-            if check_health $HEALTH_CHECK_RETRIES $HEALTH_CHECK_DELAY; then
-                add_json "health" "healthy"
-                add_json "status" "success"
-            else
-                log_error "Application failed to start properly"
-                log_warn "Consider running with --rollback to restore previous version"
-                add_json "health" "unhealthy"
-                add_json "status" "error"
-                echo "$JSON_OUTPUT"
-                exit 1
-            fi
-        else
-            log_warn "Health check skipped (--force)"
-            add_json "health" "skipped"
-            add_json "status" "success"
-        fi
-    fi
-    
-    local end_time=$(date +%s)
-    local duration=$((end_time - start_time))
-    add_json "duration_seconds" "$duration"
-    
-    log_info "========================================="
-    log_info "Restart completed in ${duration}s"
-    log_info "========================================="
-    
-    echo "$JSON_OUTPUT" | jq '.'
-}
+json_output "{\"action\":\"restart\",\"status\":\"creating_backup\"}"
 
-main "$@"
+# Create backup before restart
+tar -czf "$BACKUP_FILE" \
+  dist/ node_modules/ package-lock.json .env 2>/dev/null || true
+
+json_output "{\"action\":\"restart\",\"status\":\"restarting\"}"
+
+# Restart PM2
+if pm2 restart "$PM2_APP_NAME"; then
+  json_output "{\"action\":\"restart\",\"status\":\"restarted\"}"
+else
+  json_output "{\"action\":\"restart\",\"status\":\"failed\",\"rollback_available\":\"$BACKUP_FILE\"}"
+  error_exit "PM2 restart failed. Use --rollback to restore from backup."
+fi
+
+# Health check
+json_output "{\"action\":\"restart\",\"status\":\"checking_health\"}"
+
+HEALTH_OK=false
+for i in $(seq 1 $HEALTH_CHECK_RETRIES); do
+  sleep $HEALTH_CHECK_DELAY
+  if curl -sf "${HEALTH_CHECK_URL}?input=%7B%22timestamp%22%3A$(date +%s)%7D" > /dev/null 2>&1; then
+    HEALTH_OK=true
+    break
+  fi
+done
+
+if [ "$HEALTH_OK" = true ]; then
+  json_output "{\"status\":\"success\",\"action\":\"restart\",\"restart\":\"success\",\"health\":\"healthy\",\"backup_file\":\"$BACKUP_FILE\"}"
+else
+  json_output "{\"status\":\"warning\",\"action\":\"restart\",\"restart\":\"success\",\"health\":\"unhealthy\",\"rollback_available\":\"$BACKUP_FILE\"}"
+  error_exit "Application restarted but health check failed. Consider rolling back."
+fi
