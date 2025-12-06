@@ -122,6 +122,13 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
   };
 
   const handleClientSelect = (value: string) => {
+    if (value === "add-new") {
+      if (onRequestAddContact) {
+        onRequestAddContact();
+        onOpenChange(false);
+      }
+      return;
+    }
     if (value === "none") {
       setClientId(null);
       return;
@@ -172,21 +179,9 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
                       {contact.name}
                     </SelectItem>
                   ))}
+                <SelectItem value="add-new">Create new contact</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                type="button"
-                variant="link"
-                className="justify-start px-0 h-auto text-sm"
-                onClick={() => {
-                  if (onRequestAddContact) {
-                    onRequestAddContact();
-                    onOpenChange(false);
-                  }
-                }}
-              >
-                Need a new contact? Create it first
-              </Button>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="client-name">Client Display Name</Label>
