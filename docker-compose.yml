@@ -10,13 +10,12 @@ services:
       - PORT=3000
       - DATABASE_URL=mysql://mantodeus:mantodeus_password@db:3306/mantodeus_manager
       - JWT_SECRET=${JWT_SECRET:-change_this_secret_in_production}
-      - OAUTH_SERVER_URL=https://api.manus.im
-      - VITE_OAUTH_PORTAL_URL=https://portal.manus.im
-      - VITE_APP_ID=${VITE_APP_ID}
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - OWNER_SUPABASE_ID=${OWNER_SUPABASE_ID}
       - VITE_APP_TITLE=Mantodeus Manager
       - VITE_APP_LOGO=/mantodeus-logo.png
-      - OWNER_OPEN_ID=${OWNER_OPEN_ID}
-      - OWNER_NAME=${OWNER_NAME}
       - S3_ENDPOINT=${S3_ENDPOINT}
       - S3_REGION=${S3_REGION:-us-east-1}
       - S3_BUCKET=${S3_BUCKET}

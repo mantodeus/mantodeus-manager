@@ -68,13 +68,12 @@ Make sure your Infomaniak environment variables include:
 ```
 DATABASE_URL=mysql://user:password@host:3306/database
 JWT_SECRET=your_secret_key
-OAUTH_SERVER_URL=https://api.manus.im
-VITE_OAUTH_PORTAL_URL=https://portal.manus.im
-VITE_APP_ID=your_app_id
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+OWNER_SUPABASE_ID=the_owner_supabase_uuid
 VITE_APP_TITLE=Mantodeus Manager
 VITE_APP_LOGO=/mantodeus-logo.png
-OWNER_OPEN_ID=your_owner_id
-OWNER_NAME=Your Name
 ```
 
 ### S3 Storage (Optional)

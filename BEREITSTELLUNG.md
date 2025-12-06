@@ -29,13 +29,12 @@ Railway bietet kostenloses Hosting mit automatischer Bereitstellung:
    NODE_ENV=production
    PORT=3000
    JWT_SECRET=[generiert automatisch]
-   OAUTH_SERVER_URL=https://api.manus.im
-   VITE_OAUTH_PORTAL_URL=https://portal.manus.im
-   VITE_APP_ID=[Ihre App ID]
+   VITE_SUPABASE_URL=https://ihr-projekt.supabase.co
+   VITE_SUPABASE_ANON_KEY=[Supabase Anon Key]
+   SUPABASE_SERVICE_ROLE_KEY=[Supabase Service Role Key]
+   OWNER_SUPABASE_ID=[Owner Supabase UUID]
    VITE_APP_TITLE=Mantodeus Manager
    VITE_APP_LOGO=/mantodeus-logo.png
-   OWNER_OPEN_ID=[Ihre Owner ID]
-   OWNER_NAME=[Ihr Name]
    ```
 6. **Bereitstellen**: Railway baut und startet automatisch
 
@@ -179,13 +178,12 @@ Für alle Bereitstellungsoptionen benötigen Sie:
 # Pflicht
 DATABASE_URL=mysql://user:password@host:3306/database
 JWT_SECRET=ein_zufälliger_geheimer_schlüssel
-OAUTH_SERVER_URL=https://api.manus.im
-VITE_OAUTH_PORTAL_URL=https://portal.manus.im
-VITE_APP_ID=ihre_app_id
+VITE_SUPABASE_URL=https://ihr-projekt.supabase.co
+VITE_SUPABASE_ANON_KEY=ihr_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=ihr_service_role_key
+OWNER_SUPABASE_ID=owner_supabase_uuid
 
 # Optional (aber empfohlen)
-OWNER_OPEN_ID=ihre_owner_id
-OWNER_NAME=Ihr Name
 S3_ENDPOINT=ihr_s3_endpoint
 S3_BUCKET=ihr_bucket_name
 S3_ACCESS_KEY_ID=ihr_access_key

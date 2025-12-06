@@ -80,10 +80,11 @@ DATABASE_URL=mysql://mantodeus_user:your_secure_password@localhost:3306/mantodeu
 # JWT Secret (generate a random string)
 JWT_SECRET=your_random_jwt_secret_here
 
-# OAuth Configuration (if using Manus OAuth)
-OAUTH_SERVER_URL=https://api.manus.im
-VITE_OAUTH_PORTAL_URL=https://portal.manus.im
-VITE_APP_ID=your_app_id
+# Supabase Authentication
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+OWNER_SUPABASE_ID=the_supabase_owner_uuid
 
 # Application Configuration
 VITE_APP_TITLE=Mantodeus Manager
@@ -95,10 +96,6 @@ S3_REGION=us-east-1
 S3_BUCKET=mantodeus-manager-files
 S3_ACCESS_KEY_ID=your_access_key
 S3_SECRET_ACCESS_KEY=your_secret_key
-
-# Owner Information
-OWNER_OPEN_ID=your_owner_open_id
-OWNER_NAME=Your Name
 
 # Server Configuration
 PORT=3000
@@ -175,17 +172,12 @@ sudo certbot --nginx -d your-domain.com
    - Main site: `yoursite.com` (WordPress)
    - App: `app.yoursite.com` (Mantodeus Manager on separate server)
 
-3. **Alternative - Use Manus Hosting**: Deploy with Manus and configure custom domain:
-   - Deploy via Manus Publish button
-   - In Manus Settings → Domains, add your custom domain
-   - Update DNS records as instructed
-   - Your app will be accessible at your custom domain
-
 ## Post-Deployment Configuration
 
 ### 1. Create Admin User
 
-After deployment, log in with your OAuth credentials. The first user with the `OWNER_OPEN_ID` will automatically be assigned admin role.
+After deployment, log in via Supabase. The first user whose Supabase ID
+matches `OWNER_SUPABASE_ID` is automatically granted the owner/admin role.
 
 ### 2. Configure S3 Storage
 

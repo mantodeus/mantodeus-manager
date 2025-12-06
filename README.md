@@ -68,10 +68,11 @@ DATABASE_URL=mysql://user:password@localhost:3306/mantodeus_manager
 # JWT Secret
 JWT_SECRET=your_random_jwt_secret_here
 
-# OAuth Configuration
-OAUTH_SERVER_URL=https://api.manus.im
-VITE_OAUTH_PORTAL_URL=https://portal.manus.im
-VITE_APP_ID=your_app_id
+# Supabase Auth
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+OWNER_SUPABASE_ID=the_supabase_owner_uuid
 
 # Application
 VITE_APP_TITLE=Mantodeus Manager
@@ -85,10 +86,6 @@ S3_REGION=us-east-1
 S3_BUCKET=mantodeus-manager-files
 S3_ACCESS_KEY_ID=your_access_key
 S3_SECRET_ACCESS_KEY=your_secret_key
-
-# Owner
-OWNER_OPEN_ID=your_owner_open_id
-OWNER_NAME=Your Name
 ```
 
 ## Image Upload Pipeline
