@@ -45,6 +45,8 @@ interface CreateProjectDialogProps {
 
 type ProjectStatus = "planned" | "active" | "completed" | "archived";
 
+const CREATE_NEW_CLIENT_VALUE = "__create_new_client__";
+
 export function CreateProjectDialog({
   open,
   onOpenChange,
@@ -60,7 +62,10 @@ export function CreateProjectDialog({
   const [status, setStatus] = useState<ProjectStatus>("planned");
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
 
-  const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const shouldLoadContacts = open || Boolean(prefillClientId);
+  const { data: contacts = [] } = trpc.contacts.list.useQuery(undefined, {
+    enabled: shouldLoadContacts,
+  });
   const utils = trpc.useUtils();
   const createProject = trpc.projects.create.useMutation({
     onSuccess: () => {
@@ -96,6 +101,13 @@ export function CreateProjectDialog({
   }, [prefillClientId, contacts, open, onPrefillConsumed]);
 
   const handleClientSelect = (value: string) => {
+    if (value === CREATE_NEW_CLIENT_VALUE) {
+      if (onRequestAddContact) {
+        onRequestAddContact();
+        onOpenChange(false);
+      }
+      return;
+    }
     if (value === "none") {
       setClientId(null);
       return;
@@ -174,21 +186,14 @@ export function CreateProjectDialog({
                       {contact.name}
                     </SelectItem>
                   ))}
+                  <SelectItem
+                    value={CREATE_NEW_CLIENT_VALUE}
+                    className="border-t border-border mt-1 pt-1 text-primary font-medium"
+                  >
+                    + New Client
+                  </SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                type="button"
-                variant="link"
-                className="justify-start px-0 h-auto text-sm"
-                onClick={() => {
-                  if (onRequestAddContact) {
-                    onRequestAddContact();
-                    onOpenChange(false);
-                  }
-                }}
-              >
-                Can't find the client? Add new contact
-              </Button>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="client-name">Client Display Name</Label>
