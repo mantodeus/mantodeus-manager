@@ -6,11 +6,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { Briefcase, Calendar, Loader2, Trash2, Users } from "lucide-react";
-import { Link } from "wouter";
+import { Briefcase, Calendar, Users } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 
 interface ProjectJob {
   id: number;
@@ -32,6 +32,7 @@ interface ProjectJobListProps {
 
 export function ProjectJobList({ jobs, projectId }: ProjectJobListProps) {
   const utils = trpc.useUtils();
+  const [, navigate] = useLocation();
   
   const deleteJob = trpc.projects.jobs.delete.useMutation({
     onSuccess: () => {
@@ -67,11 +68,16 @@ export function ProjectJobList({ jobs, projectId }: ProjectJobListProps) {
     return new Date(date).toLocaleDateString();
   };
 
-  const handleDeleteJob = (e: React.MouseEvent, jobId: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (confirm("Are you sure you want to delete this job?")) {
-      deleteJob.mutate({ projectId, jobId });
+  const handleItemAction = (action: ItemAction, jobId: number) => {
+    switch (action) {
+      case "edit":
+        navigate(`/projects/${projectId}/jobs/${jobId}`);
+        break;
+      case "delete":
+        if (confirm("Are you sure you want to delete this job?")) {
+          deleteJob.mutate({ projectId, jobId });
+        }
+        break;
     }
   };
 
@@ -101,19 +107,12 @@ export function ProjectJobList({ jobs, projectId }: ProjectJobListProps) {
                   <Badge className={getStatusColor(job.status)}>
                     {formatStatus(job.status)}
                   </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => handleDeleteJob(e, job.id)}
+                  <ItemActionsMenu
+                    onAction={(action) => handleItemAction(action, job.id)}
+                    actions={["edit", "delete"]}
+                    triggerClassName="text-muted-foreground hover:text-foreground"
                     disabled={deleteJob.isPending}
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                  >
-                    {deleteJob.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
+                  />
                 </div>
               </div>
               {job.category && (

@@ -138,3 +138,8 @@ server/db.sqlite.ts
 *openrc.txt
 clouds.yamlcore
 *.core
+
+# Shell history files
+.bash_history
+.lesshst
+.zsh_history

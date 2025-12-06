@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
-import { useLocation } from "wouter";
 import { APP_TITLE, APP_LOGO } from "@/const";
 import { Loader2 } from "lucide-react";
 
@@ -14,27 +13,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [, setLocation] = useLocation();
 
-  useEffect(() => {
-    // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setLocation("/");
-      }
-    });
-
-    // Listen for auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        setLocation("/");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [setLocation]);
+  // Auth state changes are handled by App.tsx Router
+  // No redirects needed here - let the app handle routing
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +47,7 @@ export default function Login() {
         if (signInError) throw signInError;
       }
 
-      // Redirect will happen via auth state change listener
+      // Routing will be handled automatically by App.tsx Router based on auth state
     } catch (err: any) {
       console.error("[Login] Authentication error:", err);
       // Provide more specific error messages
