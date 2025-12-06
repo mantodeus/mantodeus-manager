@@ -13,7 +13,7 @@ This webhook server automatically deploys your application when you push to GitH
   "secret": "your-random-secret-string-here",
   "appPath": "/var/www/mantodeus-manager",
   "pm2AppName": "mantodeus-manager",
-  "port": 3000,
+  "port": 9000,
   "usePnpm": false,
   "logFile": "./deploy.log"
 }
@@ -24,7 +24,7 @@ This webhook server automatically deploys your application when you push to GitH
 - `appPath`: Full path to your Node.js application directory
 - `pm2AppName`: The name of your PM2 process (check with `pm2 list`)
 - `usePnpm`: Set to `true` if you use pnpm, `false` for npm
-- `port`: Port for the webhook server (default: 3000)
+- `port`: Port for the webhook server (default: 9000)
 
 ### Step 2: Install Dependencies
 
@@ -84,7 +84,7 @@ sudo systemctl start github-webhook
 1. Go to your GitHub repository
 2. Navigate to **Settings** → **Webhooks** → **Add webhook**
 3. Configure:
-   - **Payload URL**: `https://your-domain.com:3000/github-webhook`
+   - **Payload URL**: `https://your-domain.com:9000/github-webhook`
    - **Content type**: `application/json`
    - **Secret**: Same value as in `deploy.config.json`
    - **Which events**: Select "Just the push event"
@@ -128,7 +128,7 @@ server {
     ssl_certificate_key /path/to/key.pem;
 
     location /github-webhook {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:9000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -146,7 +146,7 @@ Only allow GitHub IP ranges (optional but recommended):
 # GitHub publishes their IP ranges at: https://api.github.com/meta
 
 # Example: Allow only GitHub IPs
-sudo ufw allow from 140.82.112.0/20 to any port 3000
+sudo ufw allow from 140.82.112.0/20 to any port 9000
 ```
 
 ### 3. Strong Secret
@@ -179,7 +179,7 @@ pm2 logs github-webhook
 The server includes a health check endpoint:
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:9000/health
 ```
 
 Response:
@@ -210,7 +210,7 @@ Response:
 
 3. **Verify webhook server is running:**
    ```bash
-   curl http://localhost:3000/health
+   curl http://localhost:9000/health
    ```
 
 ### Deployment Fails
@@ -253,7 +253,7 @@ You can also configure using environment variables instead of `deploy.config.jso
 export WEBHOOK_SECRET="your-secret"
 export APP_PATH="/var/www/mantodeus-manager"
 export PM2_APP_NAME="mantodeus-manager"
-export WEBHOOK_PORT=3000
+export WEBHOOK_PORT=9000
 export USE_PNPM=false
 export LOG_FILE="./deploy.log"
 ```

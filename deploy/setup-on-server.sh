@@ -78,6 +78,6 @@ echo "   # or"
 echo "   tail -f deploy/deploy.log"
 echo ""
 echo "🏥 Health check:"
-echo "   curl http://localhost:3000/health"
+echo "   curl http://localhost:9000/health"
 echo ""
 
