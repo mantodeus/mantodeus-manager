@@ -24,13 +24,13 @@ function Router() {
   const { user, loading } = useAuth();
   const [location, setLocation] = useLocation();
 
-  // Show loading screen during initial auth check
-  if (loading) {
-    return <AppLoadingScreen />;
-  }
-
   // Handle routing based on auth state - no redirects, just set location
+  // Note: useEffect must be called unconditionally (before any early returns)
+  // to comply with React's Rules of Hooks
   useEffect(() => {
+    // Don't redirect while still loading
+    if (loading) return;
+    
     if (!user) {
       // Not authenticated - ensure we're on login page
       if (location !== "/login") {
@@ -42,7 +42,12 @@ function Router() {
         setLocation("/projects");
       }
     }
-  }, [user, location, setLocation]);
+  }, [user, loading, location, setLocation]);
+
+  // Show loading screen during initial auth check
+  if (loading) {
+    return <AppLoadingScreen />;
+  }
 
   // Show loading screen briefly while routing
   if (!user && location !== "/login") {
