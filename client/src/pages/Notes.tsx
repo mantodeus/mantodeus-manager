@@ -60,7 +60,6 @@ export default function Notes() {
 
   // Queries
   const { data: notes = [], refetch: refetchNotes } = trpc.notes.list.useQuery();
-  const { data: projects = [] } = trpc.projects.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
 
@@ -449,11 +448,17 @@ export default function Notes() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    {jobs.map((job) => (
-                      <SelectItem key={job.id} value={job.id.toString()}>
-                        {job.title}
+                    {jobs && jobs.length > 0 ? (
+                      jobs.map((job) => (
+                        <SelectItem key={job.id} value={job.id.toString()}>
+                          {job.title}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-jobs" disabled>
+                        No jobs available
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -543,11 +548,17 @@ export default function Notes() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    {jobs.map((job) => (
-                      <SelectItem key={job.id} value={job.id.toString()}>
-                        {job.title}
+                    {jobs && jobs.length > 0 ? (
+                      jobs.map((job) => (
+                        <SelectItem key={job.id} value={job.id.toString()}>
+                          {job.title}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-jobs" disabled>
+                        No jobs available
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
               </div>
