@@ -33,41 +33,52 @@ interface Project {
   id: number;
   name: string;
   client: string | null;
+  clientId: number | null;
   description: string | null;
   address: string | null;
   status: "planned" | "active" | "completed" | "archived";
   startDate: Date | null;
   endDate: Date | null;
+  scheduledDates: string[] | null;
 }
 
 interface EditProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project: Project;
+  onRequestAddContact?: () => void;
 }
 
 type ProjectStatus = "planned" | "active" | "completed" | "archived";
 
-export function EditProjectDialog({ open, onOpenChange, project }: EditProjectDialogProps) {
+export function EditProjectDialog({ open, onOpenChange, project, onRequestAddContact }: EditProjectDialogProps) {
   const [name, setName] = useState(project.name);
   const [client, setClient] = useState(project.client || "");
+  const [clientId, setClientId] = useState<number | null>(project.clientId);
   const [description, setDescription] = useState(project.description || "");
   const [address, setAddress] = useState(project.address || "");
   const [status, setStatus] = useState<ProjectStatus>(project.status);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const { data: contacts = [] } = trpc.contacts.list.useQuery();
 
   // Reset form when project changes
   useEffect(() => {
     setName(project.name);
     setClient(project.client || "");
+    setClientId(project.clientId);
     setDescription(project.description || "");
     setAddress(project.address || "");
     setStatus(project.status);
-    
-    const dates: Date[] = [];
-    if (project.startDate) dates.push(new Date(project.startDate));
-    if (project.endDate) dates.push(new Date(project.endDate));
-    setSelectedDates(dates);
+
+    const explicitDates = project.scheduledDates?.map((date) => new Date(date)) ?? [];
+    if (explicitDates.length > 0) {
+      setSelectedDates(explicitDates);
+    } else {
+      const dates: Date[] = [];
+      if (project.startDate) dates.push(new Date(project.startDate));
+      if (project.endDate) dates.push(new Date(project.endDate));
+      setSelectedDates(dates);
+    }
   }, [project]);
 
   const utils = trpc.useUtils();
@@ -100,12 +111,31 @@ export function EditProjectDialog({ open, onOpenChange, project }: EditProjectDi
       id: project.id,
       name: name.trim(),
       client: client.trim() || undefined,
+      clientId: clientId ?? null,
       description: description.trim() || undefined,
       address: address.trim() || undefined,
       status,
       startDate,
       endDate,
+      scheduledDates: selectedDates,
     });
+  };
+
+  const handleClientSelect = (value: string) => {
+    if (value === "none") {
+      setClientId(null);
+      return;
+    }
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) {
+      setClientId(null);
+      return;
+    }
+    setClientId(parsed);
+    const selectedContact = contacts.find((contact) => contact.id === parsed);
+    if (selectedContact && !client) {
+      setClient(selectedContact.name);
+    }
   };
 
   return (
@@ -131,12 +161,44 @@ export function EditProjectDialog({ open, onOpenChange, project }: EditProjectDi
             </div>
             <div className="grid gap-2">
               <Label htmlFor="client">Client</Label>
+              <Select value={clientId?.toString() ?? "none"} onValueChange={handleClientSelect}>
+                <SelectTrigger id="client">
+                  <SelectValue placeholder={contacts.length ? "Select a client" : "No contacts yet"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No client</SelectItem>
+                  {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id.toString()}>
+                      {contact.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="link"
+                className="justify-start px-0 h-auto text-sm"
+                onClick={() => {
+                  if (onRequestAddContact) {
+                    onRequestAddContact();
+                    onOpenChange(false);
+                  }
+                }}
+              >
+                Need a new contact? Create it first
+              </Button>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="client-name">Client Display Name</Label>
               <Input
-                id="client"
+                id="client-name"
                 value={client}
                 onChange={(e) => setClient(e.target.value)}
                 placeholder="e.g., Acme Corporation"
               />
+              <p className="text-xs text-muted-foreground">
+                Shown on the project overview. Defaults to the linked contact name.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>

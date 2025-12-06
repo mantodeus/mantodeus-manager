@@ -81,6 +81,15 @@ export function ProjectJobList({ jobs, projectId }: ProjectJobListProps) {
     }
   };
 
+  const handleDateClick = (job: ProjectJob) => {
+    const date = job.startTime ? new Date(job.startTime) : job.endTime ? new Date(job.endTime) : null;
+    if (!date) return;
+    const url = new URL("/calendar", window.location.origin);
+    url.searchParams.set("focusDate", date.toISOString());
+    url.searchParams.set("highlightJobId", job.id.toString());
+    navigate(url.pathname + url.search);
+  };
+
   if (jobs.length === 0) {
     return (
       <Card>
@@ -94,7 +103,11 @@ export function ProjectJobList({ jobs, projectId }: ProjectJobListProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {jobs.map((job) => (
+      {jobs.map((job) => {
+        const startLabel = formatDate(job.startTime);
+        const endLabel = formatDate(job.endTime);
+        const dateLabel = startLabel && endLabel ? `${startLabel} - ${endLabel}` : startLabel || endLabel;
+        return (
         <Link key={job.id} href={`/projects/${projectId}/jobs/${job.id}`}>
           <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
             <CardHeader>
@@ -127,11 +140,19 @@ export function ProjectJobList({ jobs, projectId }: ProjectJobListProps) {
               )}
             </CardHeader>
             <CardContent className="space-y-2">
-              {(job.startTime || job.endTime) && (
-                <div className="flex items-center text-sm text-muted-foreground">
+              {dateLabel && (
+                <button
+                  type="button"
+                  className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors w-full text-left"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleDateClick(job);
+                  }}
+                >
                   <Calendar className="h-4 w-4 mr-2" />
-                  {formatDate(job.startTime)} - {formatDate(job.endTime)}
-                </div>
+                  <span>{dateLabel}</span>
+                </button>
               )}
               {job.assignedUsers && job.assignedUsers.length > 0 && (
                 <div className="flex items-center text-sm text-muted-foreground">
@@ -142,7 +163,8 @@ export function ProjectJobList({ jobs, projectId }: ProjectJobListProps) {
             </CardContent>
           </Card>
         </Link>
-      ))}
+      );
+      })}
     </div>
   );
 }
