@@ -17,6 +17,7 @@ export default function Jobs() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { data: jobs, isLoading } = trpc.jobs.list.useQuery();
   const { data: contacts } = trpc.contacts.list.useQuery();
+  const utils = trpc.useUtils();
 
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -25,7 +26,7 @@ export default function Jobs() {
   const deleteJobMutation = trpc.jobs.delete.useMutation({
     onSuccess: () => {
       toast.success("Job deleted successfully");
-      trpc.useUtils().jobs.list.invalidate();
+      utils.jobs.list.invalidate();
     },
     onError: (error) => {
       toast.error(`Failed to delete job: ${error.message}`);
