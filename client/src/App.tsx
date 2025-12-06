@@ -1,10 +1,12 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import DashboardLayout from "./components/DashboardLayout";
+import { AppLoadingScreen } from "./components/AppLoadingScreen";
+import { useAuth } from "@/_core/hooks/useAuth";
 // Project-based pages
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -16,8 +18,37 @@ import Invoices from "./pages/Invoices";
 import Notes from "./pages/Notes";
 import Maps from "./pages/Maps";
 import Login from "./pages/Login";
+import { useEffect } from "react";
 
 function Router() {
+  const { user, loading } = useAuth();
+  const [location, setLocation] = useLocation();
+
+  // Show loading screen during initial auth check
+  if (loading) {
+    return <AppLoadingScreen />;
+  }
+
+  // Handle routing based on auth state - no redirects, just set location
+  useEffect(() => {
+    if (!user) {
+      // Not authenticated - ensure we're on login page
+      if (location !== "/login") {
+        setLocation("/login");
+      }
+    } else {
+      // Authenticated - if on login page, go to projects
+      if (location === "/login") {
+        setLocation("/projects");
+      }
+    }
+  }, [user, location, setLocation]);
+
+  // Show loading screen briefly while routing
+  if (!user && location !== "/login") {
+    return <AppLoadingScreen />;
+  }
+
   return (
     <Switch>
       <Route path="/login" component={Login} />
