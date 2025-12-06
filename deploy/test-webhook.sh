@@ -7,9 +7,9 @@ echo ""
 
 # Check if server is running
 echo "1. Checking if webhook server is running..."
-if curl -s http://localhost:3000/health > /dev/null 2>&1; then
+if curl -s http://localhost:9000/health > /dev/null 2>&1; then
     echo "   ✅ Webhook server is running"
-    curl -s http://localhost:3000/health | jq '.' 2>/dev/null || curl -s http://localhost:3000/health
+    curl -s http://localhost:9000/health | jq '.' 2>/dev/null || curl -s http://localhost:9000/health
 else
     echo "   ❌ Webhook server is NOT running"
     echo "   Start it with: pm2 start deploy.js --name github-webhook"

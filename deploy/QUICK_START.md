@@ -9,7 +9,7 @@ Make sure you've updated `deploy.config.json` on your **server** with:
   "secret": "your-secret-here",
   "appPath": "/var/www/mantodeus-manager",  // ← UPDATE THIS
   "pm2AppName": "mantodeus-manager",        // ← UPDATE THIS (check with: pm2 list)
-  "port": 3000,
+  "port": 9000,
   "usePnpm": false,
   "logFile": "./deploy.log"
 }
@@ -32,7 +32,7 @@ pm2 save
 ### 3. Verify It's Running
 ```bash
 # Check health
-curl http://localhost:3000/health
+curl http://localhost:9000/health
 
 # Or check PM2
 pm2 status github-webhook
@@ -95,7 +95,7 @@ pm2 logs github-webhook
 - ✅ Check webhook server is running: `pm2 status github-webhook`
 - ✅ Check GitHub webhook URL is correct
 - ✅ Verify secret matches in both places
-- ✅ Check firewall allows port 3000
+- ✅ Check firewall allows port 9000
 
 **If deployment fails:**
 - ✅ Check `appPath` is correct

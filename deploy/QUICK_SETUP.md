@@ -35,7 +35,7 @@ Edit `deploy/deploy.config.json`:
   "secret": "mc3t3iyEMTp62ncTB2wnY2H9xvbj/kpn1RIXZ/yq1f8",
   "appPath": "/home/client/sites/manager.mantodeus.com",
   "pm2AppName": "your-pm2-app-name",
-  "port": 3000,
+  "port": 9000,
   "usePnpm": false,
   "logFile": "./deploy.log"
 }
@@ -65,7 +65,7 @@ pm2 save
 pm2 status github-webhook
 
 # Check health
-curl http://localhost:3000/health
+curl http://localhost:9000/health
 
 # Watch logs
 pm2 logs github-webhook --lines 0
@@ -90,7 +90,7 @@ pm2 logs github-webhook --lines 0
 
 **If webhook server won't start:**
 - Check Node.js version: `node --version` (needs 18+)
-- Check if port 3000 is available: `netstat -tuln | grep 3000`
+- Check if port 9000 is available: `netstat -tuln | grep 9000`
 - Check logs: `pm2 logs github-webhook`
 
 **If paths are wrong:**
