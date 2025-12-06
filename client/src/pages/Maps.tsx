@@ -51,16 +51,19 @@ export default function Maps() {
   const markersRef = useRef<Map<number, google.maps.Marker>>(new Map());
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const clustererRef = useRef<MarkerClusterer | null>(null);
+  const addressFocusMarkerRef = useRef<google.maps.Marker | null>(null);
   
   // Parse URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   const focusJobId = urlParams.get('jobId') ? parseInt(urlParams.get('jobId')!) : null;
   const focusContactId = urlParams.get('contactId') ? parseInt(urlParams.get('contactId')!) : null;
+  const focusAddress = urlParams.get('address');
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -201,6 +204,7 @@ export default function Maps() {
 
   const handleMapReady = (map: google.maps.Map) => {
     mapRef.current = map;
+    setMapReady(true);
 
     let longPressTimer: NodeJS.Timeout | null = null;
     let longPressLatLng: google.maps.LatLng | null = null;
@@ -564,6 +568,43 @@ export default function Maps() {
       }
     }
   }, [locations, focusJobId, focusContactId]);
+
+  useEffect(() => {
+    if (!focusAddress || !mapReady || !mapRef.current) return;
+    (async () => {
+      try {
+        const result = await geocodeMutation.mutateAsync({ address: focusAddress });
+        if (!result?.latitude || !result.longitude) {
+          toast.error("Unable to locate that address on the map");
+          return;
+        }
+        const lat = parseFloat(result.latitude);
+        const lng = parseFloat(result.longitude);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+          toast.error("Invalid coordinates returned for that address");
+          return;
+        }
+        mapRef.current?.setCenter({ lat, lng });
+        mapRef.current?.setZoom(15);
+        if (addressFocusMarkerRef.current) {
+          addressFocusMarkerRef.current.setMap(null);
+        }
+        addressFocusMarkerRef.current = new google.maps.Marker({
+          map: mapRef.current,
+          position: { lat, lng },
+          title: result.formattedAddress || focusAddress,
+        });
+        const url = new URL(window.location.href);
+        url.searchParams.delete("address");
+        const nextSearch = url.searchParams.toString();
+        const nextHref = nextSearch ? `${url.pathname}?${nextSearch}${url.hash}` : `${url.pathname}${url.hash}`;
+        window.history.replaceState(null, "", nextHref);
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to locate that address");
+      }
+    })();
+  }, [focusAddress, mapReady, geocodeMutation]);
 
   // Update markers when locations change
   useEffect(() => {

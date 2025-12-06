@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,36 @@ export default function Calendar() {
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [highlightJobId, setHighlightJobId] = useState<number | null>(null);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const focusDateParam = url.searchParams.get('focusDate');
+    const highlightParam = url.searchParams.get('highlightJobId');
+
+    if (focusDateParam) {
+      const parsedDate = new Date(focusDateParam);
+      if (!Number.isNaN(parsedDate.getTime())) {
+        setCurrentDate(parsedDate);
+        setSelectedDate(parsedDate);
+        setViewMode('monthly');
+      }
+    }
+
+    if (highlightParam) {
+      const parsedHighlight = parseInt(highlightParam, 10);
+      if (!Number.isNaN(parsedHighlight)) {
+        setHighlightJobId(parsedHighlight);
+      }
+    }
+
+    if (focusDateParam || highlightParam) {
+      url.searchParams.delete('focusDate');
+      url.searchParams.delete('highlightJobId');
+      const nextSearch = url.searchParams.toString();
+      const nextHref = nextSearch ? `${url.pathname}?${nextSearch}${url.hash}` : `${url.pathname}${url.hash}`;
+      window.history.replaceState(null, '', nextHref);
+    }
+  }, [location]);
 
   const handleProjectClick = (projectId: number) => {
     setLocation(`/projects/${projectId}`);
@@ -153,7 +183,11 @@ export default function Calendar() {
             {dayEvents.slice(0, 1).map(event => (
               <div
                 key={event.id}
-                className={`px-1.5 py-0.5 rounded text-xs truncate font-light`}
+                className={`px-1.5 py-0.5 rounded text-xs truncate font-light ${
+                  highlightJobId && event.type === 'job' && event.id === highlightJobId
+                    ? 'ring-2 ring-primary/70 ring-offset-1 ring-offset-background'
+                    : ''
+                }`}
                 style={{
                   backgroundColor: event.type === 'job' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(168, 85, 247, 0.2)',
                   color: event.type === 'job' ? '#10b981' : '#e9d5ff'
@@ -210,7 +244,11 @@ export default function Calendar() {
             {dayEvents.map(event => (
               <div
                 key={event.id}
-                className={`p-1.5 rounded text-xs font-light`}
+                className={`p-1.5 rounded text-xs font-light ${
+                  highlightJobId && event.type === 'job' && event.id === highlightJobId
+                    ? 'ring-2 ring-primary/70 ring-offset-1 ring-offset-background'
+                    : ''
+                }`}
                 style={{ backgroundColor: event.type === 'job' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(168, 85, 247, 0.2)',
                   color: event.type === 'job' ? '#10b981' : '#e9d5ff'
                 }}
@@ -250,7 +288,11 @@ export default function Calendar() {
             {dayEvents.map(event => (
               <Card 
                 key={event.id} 
-                className="text-sm"
+                className={`text-sm ${
+                  highlightJobId && event.type === 'job' && event.id === highlightJobId
+                    ? 'ring-2 ring-primary/70'
+                    : ''
+                }`}
               >
                 <CardContent className="p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -392,7 +434,11 @@ export default function Calendar() {
                 {getEventsForDate(selectedDate).map(event => (
                   <div 
                     key={event.id} 
-                    className={`p-2.5 border rounded-lg text-xs ${event.type === 'job' ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+                className={`p-2.5 border rounded-lg text-xs ${
+                  event.type === 'job' ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''
+                } ${
+                  highlightJobId && event.type === 'job' && event.id === highlightJobId ? 'ring-2 ring-primary/70' : ''
+                }`}
                     onClick={() => event.type === 'job' && handleJobClick(event.id)}
                   >
                     <h4 className="font-medium">{event.title}</h4>

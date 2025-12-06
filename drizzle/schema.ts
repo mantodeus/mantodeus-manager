@@ -77,12 +77,15 @@ export const projects = mysqlTable("projects", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   client: varchar("client", { length: 255 }),
+  clientId: int("clientId").references(() => contacts.id, { onDelete: "set null" }),
   description: text("description"),
   startDate: timestamp("startDate"),
   endDate: timestamp("endDate"),
   address: text("address"),
   /** Geographic coordinates stored as JSON: { lat: number, lng: number } */
   geo: json("geo").$type<{ lat: number; lng: number } | null>(),
+  /** Optional list of explicitly selected schedule dates */
+  scheduledDates: json("scheduledDates").$type<string[] | null>(),
   status: mysqlEnum("status", ["planned", "active", "completed", "archived"]).default("planned").notNull(),
   createdBy: int("createdBy").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -90,6 +93,7 @@ export const projects = mysqlTable("projects", {
 }, (table) => [
   index("projects_status_idx").on(table.status),
   index("projects_createdBy_idx").on(table.createdBy),
+  index("projects_clientId_idx").on(table.clientId),
 ]);
 
 export type Project = typeof projects.$inferSelect;
