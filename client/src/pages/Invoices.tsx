@@ -38,7 +38,6 @@ export default function Invoices() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
-  const { data: projects = [] } = trpc.projects.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
   const uploadMutation = trpc.invoices.upload.useMutation();
@@ -250,8 +249,8 @@ export default function Invoices() {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="no-projects" disabled>
-                        No projects available
+                      <SelectItem value="no-jobs" disabled>
+                        No jobs available
                       </SelectItem>
                     )}
                   </SelectContent>
@@ -301,7 +300,7 @@ export default function Invoices() {
           <label className="block text-sm font-medium mb-2">Filter by Job</label>
           <Select value={jobFilter || "all"} onValueChange={(val) => setJobFilter(val === "all" ? "" : val)}>
             <SelectTrigger className="bg-[#0D0E10] border-[#0D0E10]">
-              <SelectValue placeholder="All projects" />
+              <SelectValue placeholder="All jobs" />
             </SelectTrigger>
             <SelectContent className="bg-[#0D0E10] border-[#0D0E10]">
               <SelectItem value="all">All jobs</SelectItem>
