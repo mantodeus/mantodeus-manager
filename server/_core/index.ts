@@ -9,8 +9,6 @@ import { serveStatic, setupVite } from "./vite";
 import { storageGet } from "../storage";
 import crypto from "crypto";
 import { exec } from "child_process";
-import sharp from "sharp";
-import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -41,15 +39,9 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 async function startServer() {
-  // Verify build output exists in production
+  // Log environment info for debugging
   if (process.env.NODE_ENV === "production") {
-    const distIndexPath = path.resolve(__dirname, "../index.js");
-    if (!fs.existsSync(distIndexPath)) {
-      throw new Error(
-        `Production build not found at ${distIndexPath}. ` +
-        `Please run 'npm run build' before starting the server.`
-      );
-    }
+    console.log(`Starting production server from: ${__dirname}`);
   }
 
   const app = express();
