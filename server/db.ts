@@ -14,6 +14,7 @@ import {
   InsertInvoice, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate 
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { ensureFileMetadataSchema } from "./_core/schemaGuards";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -28,6 +29,19 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+async function requireDbConnection() {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+  return db;
+}
+
+async function getFileMetadataDb() {
+  await ensureFileMetadataSchema();
+  return requireDbConnection();
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -881,8 +895,7 @@ export async function deleteProjectJob(jobId: number) {
 // ===== FILE METADATA QUERIES =====
 
 export async function createFileMetadata(file: InsertFileMetadata) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await getFileMetadataDb();
   
   try {
     const result = await db.insert(fileMetadata).values(file);
@@ -895,24 +908,21 @@ export async function createFileMetadata(file: InsertFileMetadata) {
 }
 
 export async function getFileMetadataById(fileId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await getFileMetadataDb();
   
   const result = await db.select().from(fileMetadata).where(eq(fileMetadata.id, fileId)).limit(1);
   return result.length > 0 ? result[0] : null;
 }
 
 export async function getFileMetadataByS3Key(s3Key: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await getFileMetadataDb();
   
   const result = await db.select().from(fileMetadata).where(eq(fileMetadata.s3Key, s3Key)).limit(1);
   return result.length > 0 ? result[0] : null;
 }
 
 export async function getFilesByProjectId(projectId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await getFileMetadataDb();
   
   return await db.select().from(fileMetadata)
     .where(eq(fileMetadata.projectId, projectId))
@@ -920,8 +930,7 @@ export async function getFilesByProjectId(projectId: number) {
 }
 
 export async function getFilesByJobId(projectId: number, jobId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await getFileMetadataDb();
   
   return await db.select().from(fileMetadata)
     .where(and(
@@ -932,15 +941,13 @@ export async function getFilesByJobId(projectId: number, jobId: number) {
 }
 
 export async function deleteFileMetadata(fileId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await getFileMetadataDb();
   
   return await db.delete(fileMetadata).where(eq(fileMetadata.id, fileId));
 }
 
 export async function deleteFileMetadataByS3Key(s3Key: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await getFileMetadataDb();
   
   return await db.delete(fileMetadata).where(eq(fileMetadata.s3Key, s3Key));
 }
