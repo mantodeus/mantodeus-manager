@@ -17,6 +17,28 @@ This happens when `VITE_OAUTH_PORTAL_URL` or `VITE_APP_ID` are not set, causing 
 
 You MUST set these in your Infomaniak dashboard:
 
+### 0. Supabase Auth (REQUIRED FOR SERVER STARTUP)
+
+These values come from your Supabase project. Without them the backend
+throws an error before it even starts, which is exactly what Infomaniak
+reports as the "starting error".
+
+```bash
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+OWNER_SUPABASE_ID=the_supabase_uuid_of_the_owner_account
+```
+
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are required for the web
+  app build, so you likely already have them set.
+- `SUPABASE_SERVICE_ROLE_KEY` is **server-only** and missing it makes
+  `server/_core/supabase.ts` throw, which stops the process on Infomaniak.
+- `OWNER_SUPABASE_ID` is used for elevated admin actions (set it to the UUID
+  of the owner user inside Supabase; find it under Supabase → Auth → Users).
+- You can copy the **Service Role secret** inside Supabase →
+  **Project Settings → API**. Treat it like a password.
+
 ### 1. OAuth Configuration (REQUIRED)
 
 ```bash
@@ -108,21 +130,25 @@ For each variable above, add:
 Set these in order of importance:
 
 ### Priority 1 (CRITICAL - App won't work without these):
-1. ✅ `VITE_OAUTH_PORTAL_URL=https://portal.manus.im`
-2. ✅ `VITE_APP_ID=your_actual_app_id`
-3. ✅ `OAUTH_SERVER_URL=https://api.manus.im`
-4. ✅ `DATABASE_URL=mysql://...`
-5. ✅ `JWT_SECRET=your_random_secret`
+1. ✅ `VITE_SUPABASE_URL=https://your-project.supabase.co`
+2. ✅ `VITE_SUPABASE_ANON_KEY=your_supabase_anon_key`
+3. ✅ `SUPABASE_SERVICE_ROLE_KEY=service_role_secret`
+4. ✅ `VITE_OAUTH_PORTAL_URL=https://portal.manus.im`
+5. ✅ `VITE_APP_ID=your_actual_app_id`
+6. ✅ `OAUTH_SERVER_URL=https://api.manus.im`
+7. ✅ `DATABASE_URL=mysql://...`
+8. ✅ `JWT_SECRET=your_random_secret`
 
 ### Priority 2 (RECOMMENDED):
-6. ✅ `NODE_ENV=production`
-7. ✅ `PORT=3000`
-8. ✅ `VITE_APP_TITLE=Mantodeus Manager`
+9. ✅ `OWNER_SUPABASE_ID=owner_supabase_uuid`
+10. ✅ `NODE_ENV=production`
+11. ✅ `PORT=3000`
+12. ✅ `VITE_APP_TITLE=Mantodeus Manager`
 
 ### Priority 3 (OPTIONAL):
-9. ⚪ `OWNER_OPEN_ID=...`
-10. ⚪ `OWNER_NAME=...`
-11. ⚪ S3 variables (only if you need file uploads)
+13. ⚪ `OWNER_OPEN_ID=...`
+14. ⚪ `OWNER_NAME=...`
+15. ⚪ S3 variables (only if you need file uploads)
 
 ---
 
@@ -132,6 +158,10 @@ Copy this and fill in your actual values:
 
 ```bash
 # CRITICAL - Replace with your actual values
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+OWNER_SUPABASE_ID=YOUR_OWNER_SUPABASE_UUID
 VITE_OAUTH_PORTAL_URL=https://portal.manus.im
 VITE_APP_ID=YOUR_ACTUAL_APP_ID_HERE
 OAUTH_SERVER_URL=https://api.manus.im
@@ -159,6 +189,15 @@ S3_SECRET_ACCESS_KEY=your_secret_key
 ---
 
 ## ⚠️ Common Mistakes
+
+### Mistake 0: Missing Supabase service role key
+```
+❌ SUPABASE_SERVICE_ROLE_KEY=   (left blank)
+✅ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+*Symptom*: Infomaniak shows "Starting..." then "Error" because the
+backend crashes immediately. Check `server/_core/supabase.ts` for the
+exact error message.
 
 ### Mistake 1: Not Setting VITE_APP_ID
 ```
