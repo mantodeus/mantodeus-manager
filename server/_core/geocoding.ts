@@ -28,7 +28,9 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
         };
       }>;
       status: string;
-    }>(`/maps/api/geocode/json?address=${encodeURIComponent(address)}`);
+    }>(`/maps/api/geocode/json`, {
+      address: address,
+    });
 
     if (response.status === "OK" && response.results && response.results.length > 0) {
       const result = response.results[0];
