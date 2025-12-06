@@ -14,7 +14,7 @@ import {
   InsertInvoice, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate 
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
-import { ensureFileMetadataSchema } from "./_core/schemaGuards";
+import { ensureFileMetadataSchema, ensureProjectsSchema } from "./_core/schemaGuards";
 
 type ProjectClientContact = Pick<Contact, "id" | "name" | "address" | "latitude" | "longitude">;
 export type ProjectWithClient = Project & { clientContact: ProjectClientContact | null };
@@ -816,6 +816,7 @@ export async function createProject(project: InsertProject) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureProjectsSchema();
   const result = await db.insert(projects).values(project);
   return result;
 }
@@ -824,6 +825,7 @@ export async function getProjectById(projectId: number): Promise<ProjectWithClie
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureProjectsSchema();
   const result = await db
     .select({
       project: projects,
@@ -845,6 +847,7 @@ export async function getProjectsByUser(userId: number): Promise<ProjectWithClie
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureProjectsSchema();
   const rows = await db
     .select({
       project: projects,
@@ -862,6 +865,7 @@ export async function getAllProjects(): Promise<ProjectWithClient[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureProjectsSchema();
   const rows = await db
     .select({
       project: projects,
@@ -878,6 +882,7 @@ export async function updateProject(projectId: number, updates: Partial<InsertPr
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureProjectsSchema();
   return await db.update(projects).set(updates).where(eq(projects.id, projectId));
 }
 
@@ -885,6 +890,7 @@ export async function deleteProject(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureProjectsSchema();
   // Note: ON DELETE CASCADE will automatically delete related project_jobs and file_metadata
   return await db.delete(projects).where(eq(projects.id, projectId));
 }
@@ -893,6 +899,7 @@ export async function archiveProject(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureProjectsSchema();
   return await db.update(projects)
     .set({ status: "archived" })
     .where(eq(projects.id, projectId));
