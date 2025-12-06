@@ -4,9 +4,43 @@ import { execSync } from 'child_process';
 import { existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { config } from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Load environment variables from .env file
+// Vite will also read these, but we want to verify they exist before building
+const envPath = join(__dirname, '.env');
+if (existsSync(envPath)) {
+  config({ path: envPath });
+  console.log('✅ Loaded environment variables from .env\n');
+} else {
+  console.log('⚠️  No .env file found - using environment variables from system\n');
+}
+
+// Verify critical environment variables for client build
+const requiredViteVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'];
+const missingVars = requiredViteVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error('❌ FATAL: Missing required environment variables for client build:');
+  missingVars.forEach(varName => {
+    const value = process.env[varName];
+    console.error(`   - ${varName}: ${value ? `set (${value.substring(0, 10)}...)` : 'MISSING'}`);
+  });
+  console.error('\n💡 These variables must be available during the build process.');
+  console.error('💡 Vite embeds environment variables at BUILD TIME, not runtime.');
+  console.error('💡 Options:');
+  console.error('   1. Ensure .env file exists in project root with these variables');
+  console.error('   2. Set them as environment variables before running npm run build');
+  console.error('   3. Check your deployment configuration\n');
+  process.exit(1);
+} else {
+  console.log('✅ All required Vite environment variables are set');
+  console.log(`   VITE_SUPABASE_URL: ${process.env.VITE_SUPABASE_URL ? '✓' : '✗'}`);
+  console.log(`   VITE_SUPABASE_ANON_KEY: ${process.env.VITE_SUPABASE_ANON_KEY ? '✓' : '✗'}\n`);
+}
 
 console.log('🔨 Starting Mantodeus Manager build process...\n');
 
