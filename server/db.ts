@@ -5,7 +5,7 @@ import {
   InsertUser, users, 
   // New project-based types
   projects, projectJobs, fileMetadata,
-  type Project, type InsertProject,
+  type Project, type InsertProject, type Contact,
   type ProjectJob, type InsertProjectJob,
   type FileMetadata, type InsertFileMetadata,
   // Legacy types (kept for backward compatibility)
@@ -15,6 +15,24 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { ensureFileMetadataSchema } from "./_core/schemaGuards";
+
+type ProjectClientContact = Pick<Contact, "id" | "name" | "address" | "latitude" | "longitude">;
+export type ProjectWithClient = Project & { clientContact: ProjectClientContact | null };
+
+const clientContactSelection = {
+  id: contacts.id,
+  name: contacts.name,
+  address: contacts.address,
+  latitude: contacts.latitude,
+  longitude: contacts.longitude,
+};
+
+function mapProjectWithClient(row: { project: Project; clientContact: ProjectClientContact | null }): ProjectWithClient {
+  return {
+    ...row.project,
+    clientContact: row.clientContact,
+  };
+}
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -802,28 +820,58 @@ export async function createProject(project: InsertProject) {
   return result;
 }
 
-export async function getProjectById(projectId: number) {
+export async function getProjectById(projectId: number): Promise<ProjectWithClient | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-  return result.length > 0 ? result[0] : null;
+  const result = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(eq(projects.id, projectId))
+    .limit(1);
+
+  if (result.length === 0) {
+    return null;
+  }
+
+  return mapProjectWithClient(result[0]);
 }
 
-export async function getProjectsByUser(userId: number) {
+export async function getProjectsByUser(userId: number): Promise<ProjectWithClient[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return await db.select().from(projects)
+  const rows = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
     .where(eq(projects.createdBy, userId))
     .orderBy(desc(projects.createdAt));
+
+  return rows.map(mapProjectWithClient);
 }
 
-export async function getAllProjects() {
+export async function getAllProjects(): Promise<ProjectWithClient[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return await db.select().from(projects).orderBy(desc(projects.createdAt));
+  const rows = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .orderBy(desc(projects.createdAt));
+
+  return rows.map(mapProjectWithClient);
 }
 
 export async function updateProject(projectId: number, updates: Partial<InsertProject>) {

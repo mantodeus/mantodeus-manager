@@ -35,11 +35,7 @@ export default function ProjectDetail() {
   const { data: project, isLoading: projectLoading } = trpc.projects.getById.useQuery({ id: projectId });
   const { data: jobs, isLoading: jobsLoading } = trpc.projects.jobs.list.useQuery({ projectId });
   const { data: files, isLoading: filesLoading } = trpc.projects.files.listByProject.useQuery({ projectId });
-  const clientContactId = project?.clientId ?? 0;
-  const { data: clientContact } = trpc.contacts.getById.useQuery(
-    { id: clientContactId },
-    { enabled: Boolean(project?.clientId) }
-  );
+  const clientContact = project?.clientContact ?? null;
   const utils = trpc.useUtils();
 
   useEffect(() => {

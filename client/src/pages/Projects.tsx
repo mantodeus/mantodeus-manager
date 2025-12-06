@@ -11,25 +11,23 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
 
+type ProjectListItem = RouterOutputs["projects"]["list"][number];
+
 export default function Projects() {
   const [location, setLocation] = useLocation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { data: projects, isLoading } = trpc.projects.list.useQuery();
-  const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const utils = trpc.useUtils();
-  const contactMap = useMemo(() => {
-    return new Map(contacts.map((contact) => [contact.id, contact]));
-  }, [contacts]);
   const [prefillClientId, setPrefillClientId] = useState<number | null>(null);
 
   // Multi-select state
@@ -156,14 +154,14 @@ export default function Projects() {
     setSelectedIds(newSelected);
   };
 
-  const getScheduleInfo = (project: any) =>
+  const getScheduleInfo = (project: ProjectListItem) =>
     formatProjectSchedule({
       dates: project.scheduledDates,
       start: project.startDate,
       end: project.endDate,
     });
 
-  const handleDateClick = (project: any) => {
+  const handleDateClick = (project: ProjectListItem) => {
     const { primaryDate } = getScheduleInfo(project);
     if (!primaryDate) return;
     const url = new URL("/calendar", window.location.origin);
@@ -172,13 +170,10 @@ export default function Projects() {
     setLocation(url.pathname + url.search);
   };
 
-  const handleAddressClick = (project: any) => {
-    if (project.clientId) {
-      const contact = contactMap.get(project.clientId);
-      if (contact?.latitude && contact?.longitude) {
-        setLocation(`/maps?contactId=${project.clientId}`);
-        return;
-      }
+  const handleAddressClick = (project: ProjectListItem) => {
+    if (project.clientId && project.clientContact?.latitude && project.clientContact.longitude) {
+      setLocation(`/maps?contactId=${project.clientId}`);
+      return;
     }
     if (project.address) {
       setLocation(`/maps?address=${encodeURIComponent(project.address)}`);
@@ -189,8 +184,8 @@ export default function Projects() {
     setLocation(`/contacts?contactId=${contactId}`);
   };
 
-  const resolveClientDisplay = (project: any) => {
-    const contact = project.clientId ? contactMap.get(project.clientId) : null;
+  const resolveClientDisplay = (project: ProjectListItem) => {
+    const contact = project.clientContact ?? null;
     const label = contact?.name || project.client || null;
     return { contact, label };
   };
