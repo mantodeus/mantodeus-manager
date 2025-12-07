@@ -1,6 +1,43 @@
 export type DateInput = Date | string | null | undefined;
 
+type ScheduleDatesInput =
+  | DateInput[]
+  | string
+  | {
+      serialized?: DateInput[] | null | undefined;
+    }
+  | null
+  | undefined;
+
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function coerceDateList(value: ScheduleDatesInput): DateInput[] {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  if (value && typeof value === "object" && "serialized" in value) {
+    const serialized = (value as { serialized?: DateInput[] | null | undefined }).serialized;
+    if (Array.isArray(serialized)) {
+      return serialized;
+    }
+  }
+
+  return [];
+}
 
 export function normalizeDate(value: DateInput): Date | null {
   if (!value) return null;
@@ -71,15 +108,13 @@ function buildSegment(start: Date, end: Date): string {
 }
 
 export function formatProjectSchedule(options: {
-  dates?: (Date | string)[] | null;
+  dates?: ScheduleDatesInput;
   start?: DateInput;
   end?: DateInput;
 }): { label: string; primaryDate: Date | null } {
-  const normalizedDates = options.dates
-    ? options.dates
-        .map((value) => normalizeDate(value))
-        .filter((value): value is Date => Boolean(value))
-    : [];
+  const normalizedDates = coerceDateList(options.dates)
+    .map((value) => normalizeDate(value))
+    .filter((value): value is Date => Boolean(value));
 
   if (normalizedDates.length > 0) {
     const segments = formatDateSegments(normalizedDates);
