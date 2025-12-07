@@ -11,6 +11,7 @@ import crypto from "crypto";
 import { exec } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
+import { ENV } from "./env";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,6 +43,11 @@ async function startServer() {
   // Log environment info for debugging
   if (process.env.NODE_ENV === "production") {
     console.log(`Starting production server from: ${__dirname}`);
+  }
+
+  if (ENV.isUiDevMode) {
+    process.env.VITE_DEV_MODE = process.env.VITE_DEV_MODE ?? "ui";
+    console.log("[DEV_MODE] UI mock mode enabled");
   }
 
   const app = express();

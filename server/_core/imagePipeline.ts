@@ -6,8 +6,14 @@
  * registering uploads or issuing signed URLs.
  */
 import sharp from "sharp";
-import { getPublicUrl, storagePut, deleteMultipleFromStorage, createPresignedReadUrl } from "../storage";
+import {
+  getPublicUrl,
+  storagePut,
+  deleteMultipleFromStorage,
+  createPresignedReadUrl,
+} from "../storage";
 import type { StoredImageMetadata, ImageVariantRecord } from "../../drizzle/schema";
+import { ENV } from "./env";
 
 export type ImageVariant = "thumb" | "preview" | "full";
 
@@ -24,6 +30,12 @@ const VARIANT_CONFIG: Record<ImageVariant, { max: number; filename: string }> = 
 };
 
 const VARIANT_KEYS = Object.keys(VARIANT_CONFIG) as ImageVariant[];
+const isUiDevMode = ENV.isUiDevMode;
+const MOCK_IMAGE_URLS: Record<ImageVariant, string> = {
+  thumb: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&w=300",
+  preview: "https://images.unsplash.com/photo-1505739775417-85f6c92fb3ab?auto=format&w=800",
+  full: "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&w=1600",
+};
 
 function normalizeImageMetadata(
   metadata: StoredImageMetadata | string | null | undefined
@@ -110,6 +122,39 @@ export async function processAndUploadImageVariants(
   buffer: Buffer,
   { projectId, keyPrefix }: ImagePipelineOptions
 ): Promise<StoredImageMetadata> {
+  if (isUiDevMode) {
+    const baseName = buildBaseName(projectId);
+    const baseDir = buildBaseDirectory(baseName, projectId, keyPrefix);
+    return {
+      baseName,
+      mimeType: "image/jpeg",
+      createdAt: new Date().toISOString(),
+      variants: {
+        thumb: {
+          key: `${baseDir}/${VARIANT_CONFIG.thumb.filename}`,
+          url: MOCK_IMAGE_URLS.thumb,
+          width: 300,
+          height: 300,
+          size: 0,
+        },
+        preview: {
+          key: `${baseDir}/${VARIANT_CONFIG.preview.filename}`,
+          url: MOCK_IMAGE_URLS.preview,
+          width: 800,
+          height: 600,
+          size: 0,
+        },
+        full: {
+          key: `${baseDir}/${VARIANT_CONFIG.full.filename}`,
+          url: MOCK_IMAGE_URLS.full,
+          width: 1600,
+          height: 900,
+          size: 0,
+        },
+      },
+    };
+  }
+
   const baseName = buildBaseName(projectId);
   const baseDir = buildBaseDirectory(baseName, projectId, keyPrefix);
 
@@ -136,6 +181,7 @@ export async function processAndUploadImageVariants(
 export async function deleteImageVariants(
   metadata: StoredImageMetadata | string | null | undefined
 ): Promise<void> {
+  if (isUiDevMode) return;
   const normalized = normalizeImageMetadata(metadata);
   if (!normalized) return;
   const keys = VARIANT_KEYS.map((variant) => normalized.variants[variant].key);
@@ -146,6 +192,9 @@ export async function generateSignedVariantUrls(
   metadata: StoredImageMetadata | string | null | undefined,
   expiresInSeconds = 60 * 60
 ): Promise<Record<ImageVariant, string> | null> {
+  if (isUiDevMode) {
+    return { ...MOCK_IMAGE_URLS };
+  }
   const normalized = normalizeImageMetadata(metadata);
   if (!normalized) return null;
   const entries = await Promise.all(

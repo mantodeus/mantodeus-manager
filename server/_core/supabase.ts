@@ -6,30 +6,77 @@ import { ForbiddenError } from "@shared/_core/errors";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { UI_DEV_USER } from "../dev/mockData";
 
-// Validate Supabase configuration
-if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
-  console.error("[Supabase] Missing configuration:");
-  console.error("  VITE_SUPABASE_URL:", ENV.supabaseUrl ? "✓" : "✗");
-  console.error("  SUPABASE_SERVICE_ROLE_KEY:", ENV.supabaseServiceRoleKey ? "✓" : "✗");
-  throw new Error("Supabase configuration is missing. Please set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.");
-}
+const isUiDevMode = ENV.isUiDevMode;
 
-// Create Supabase client for server-side operations
-export const supabaseAdmin = createClient(
-  ENV.supabaseUrl,
-  ENV.supabaseServiceRoleKey,
-  {
+type SupabaseServerClient = ReturnType<typeof createClient>;
+
+function createRealSupabaseAdmin(): SupabaseServerClient {
+  if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
+    console.error("[Supabase] Missing configuration:");
+    console.error("  VITE_SUPABASE_URL:", ENV.supabaseUrl ? "✓" : "✗");
+    console.error(
+      "  SUPABASE_SERVICE_ROLE_KEY:",
+      ENV.supabaseServiceRoleKey ? "✓" : "✗"
+    );
+    throw new Error(
+      "Supabase configuration is missing. Please set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables."
+    );
+  }
+
+  return createClient(ENV.supabaseUrl, ENV.supabaseServiceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-  }
-);
+  });
+}
 
-// Create Supabase client for client-side operations (public)
+function createMockSupabaseAdmin(): SupabaseServerClient {
+  return {
+    auth: {
+      async getUser() {
+        return {
+          data: {
+            user: {
+              id: UI_DEV_USER.supabaseId,
+              email: UI_DEV_USER.email,
+              user_metadata: {
+                name: UI_DEV_USER.name,
+                full_name: UI_DEV_USER.name,
+              },
+            },
+          },
+          error: null,
+        };
+      },
+    },
+  } as unknown as SupabaseServerClient;
+}
+
+export const supabaseAdmin = isUiDevMode
+  ? createMockSupabaseAdmin()
+  : createRealSupabaseAdmin();
+
 export function createSupabaseClient(accessToken?: string) {
-  const client = createClient(ENV.supabaseUrl, ENV.supabaseAnonKey, {
+  if (isUiDevMode) {
+    return {
+      auth: {
+        async signOut() {
+          return { error: null };
+        },
+        async signInWithPassword() {
+          return { data: { session: null }, error: null };
+        },
+        async signUp() {
+          return { data: { user: null }, error: null };
+        },
+      },
+    } as unknown as SupabaseServerClient;
+  }
+
+  return createClient(ENV.supabaseUrl, ENV.supabaseAnonKey, {
     global: {
       headers: accessToken
         ? {
@@ -38,7 +85,6 @@ export function createSupabaseClient(accessToken?: string) {
         : {},
     },
   });
-  return client;
 }
 
 export type SessionPayload = {
@@ -68,6 +114,14 @@ class SupabaseAuthService {
    * Verify the Supabase session and get user info
    */
   async verifySession(accessToken: string | null): Promise<SessionPayload | null> {
+    if (isUiDevMode) {
+      return {
+        userId: UI_DEV_USER.supabaseId,
+        email: UI_DEV_USER.email ?? undefined,
+        name: UI_DEV_USER.name ?? undefined,
+      };
+    }
+
     if (!accessToken) {
       return null;
     }
@@ -99,6 +153,10 @@ class SupabaseAuthService {
    * Authenticate a request and return the user
    */
   async authenticateRequest(req: Request): Promise<User> {
+    if (isUiDevMode) {
+      return UI_DEV_USER;
+    }
+
     const accessToken = this.getAccessToken(req);
     const session = await this.verifySession(accessToken);
 
@@ -142,6 +200,14 @@ class SupabaseAuthService {
    * Get user info from Supabase
    */
   async getUserInfo(accessToken: string) {
+    if (isUiDevMode) {
+      return {
+        id: UI_DEV_USER.supabaseId,
+        email: UI_DEV_USER.email,
+        name: UI_DEV_USER.name,
+      };
+    }
+
     const {
       data: { user },
       error,
