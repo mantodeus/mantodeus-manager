@@ -345,8 +345,10 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                           Preview unavailable
                         </div>
                       )}
-                      {/* Overlay on hover */}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      {/* Overlay on hover (desktop only, non-blocking on touch) */}
+                      <div
+                        className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+                      >
                         <Button
                           variant="secondary"
                           size="sm"
@@ -358,10 +360,13 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
+                      </div>
+                      {/* Always-visible action menu for touch users */}
+                      <div className="absolute top-2 right-2 z-20">
                         <ItemActionsMenu
                           onAction={(action) => handleItemAction(action, file.id)}
                           actions={["delete"]}
-                          triggerClassName="bg-background hover:bg-background"
+                          triggerClassName="bg-background/90 hover:bg-background shadow-sm"
                           disabled={deleteFile.isPending}
                         />
                       </div>

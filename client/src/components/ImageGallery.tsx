@@ -208,11 +208,15 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
                   Preview unavailable
                 </div>
               )}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-black/40 opacity-0 transition-opacity pointer-events-none group-hover:opacity-100"
+                aria-hidden="true"
+              />
+              <div className="absolute top-2 right-2 z-10">
                 <ItemActionsMenu
                   onAction={(action) => handleItemAction(action, image.id)}
                   actions={["delete"]}
-                  triggerClassName="bg-background hover:bg-background"
+                  triggerClassName="bg-background/90 hover:bg-background shadow-sm"
                 />
               </div>
               {image.caption && (
