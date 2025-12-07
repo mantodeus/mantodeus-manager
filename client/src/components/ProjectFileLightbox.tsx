@@ -245,24 +245,53 @@ export default function ProjectFileLightbox({
     const img = imgRef.current;
     if (!canvas || !img) return;
 
-    let previewUrl = currentFile.imageUrls?.preview || currentFile.imageUrls?.full;
-    if (!previewUrl) {
-      const fallback = await utils.client.projects.files.getPresignedUrl.query({ fileId: currentFile.id, variant: "preview" });
-      previewUrl = fallback.url;
-    }
-    if (!previewUrl) {
-      toast.error("Preview unavailable for this file");
-      return;
-    }
+    const downloadImageBlob = async (url: string) => {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Failed to download preview (status ${response.status})`);
+      }
+      return await response.blob();
+    };
+
+    const getPreviewBlob = async () => {
+      const cachedUrls = [currentFile.imageUrls?.preview, currentFile.imageUrls?.full].filter(
+        Boolean
+      ) as string[];
+
+      for (const url of cachedUrls) {
+        try {
+          return await downloadImageBlob(url);
+        } catch (error) {
+          console.warn("[ProjectFileLightbox] Cached preview URL failed, requesting fresh URL", error);
+        }
+      }
+
+      try {
+        const freshPreview = await utils.client.projects.files.getPresignedUrl.query({
+          fileId: currentFile.id,
+          variant: "preview",
+        });
+        if (freshPreview.url) {
+          return await downloadImageBlob(freshPreview.url);
+        }
+      } catch (error) {
+        console.warn("[ProjectFileLightbox] Preview variant fetch failed, falling back to full", error);
+      }
+
+      const freshFull = await utils.client.projects.files.getPresignedUrl.query({
+        fileId: currentFile.id,
+        variant: "full",
+      });
+      if (!freshFull.url) {
+        throw new Error("Preview unavailable for this file");
+      }
+      return await downloadImageBlob(freshFull.url);
+    };
 
     setIsLoading(true);
 
     try {
-      const response = await fetch(previewUrl);
-      if (!response.ok) {
-        throw new Error("Failed to download preview");
-      }
-      const blob = await response.blob();
+      const blob = await getPreviewBlob();
       const objectUrl = URL.createObjectURL(blob);
 
       if (objectUrlRef.current) {

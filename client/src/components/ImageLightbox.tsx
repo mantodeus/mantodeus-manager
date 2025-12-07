@@ -203,24 +203,37 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
     const img = imgRef.current;
     if (!canvas || !img) return;
 
-    let previewUrl = currentImage.imageUrls?.preview || currentImage.imageUrls?.full;
-    if (!previewUrl) {
-      const fallback = await utils.client.images.getReadUrl.query({ fileKey: currentImage.fileKey });
-      previewUrl = fallback.url;
-    }
-    if (!previewUrl) {
-      toast.error("Preview unavailable for this image");
-      return;
-    }
+    const downloadImageBlob = async (url: string) => {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Failed to download image preview (status ${response.status})`);
+      }
+      return await response.blob();
+    };
+
+    const getPreviewBlob = async () => {
+      const cachedUrls = [currentImage.imageUrls?.preview, currentImage.imageUrls?.full].filter(
+        Boolean
+      ) as string[];
+
+      for (const url of cachedUrls) {
+        try {
+          return await downloadImageBlob(url);
+        } catch (error) {
+          console.warn("[ImageLightbox] Cached preview URL failed, retrying with fresh URL", error);
+        }
+      }
+
+      const fresh = await utils.client.images.getReadUrl.query({ fileKey: currentImage.fileKey });
+      if (!fresh.url) {
+        throw new Error("Preview unavailable for this image");
+      }
+      return await downloadImageBlob(fresh.url);
+    };
 
     setIsLoading(true);
     try {
-      const response = await fetch(previewUrl);
-      if (!response.ok) {
-        throw new Error("Failed to download image preview");
-      }
-
-      const blob = await response.blob();
+      const blob = await getPreviewBlob();
       const objectUrl = URL.createObjectURL(blob);
 
       if (objectUrlRef.current) {
