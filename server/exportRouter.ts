@@ -1,6 +1,6 @@
 import { protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
-import * as db from "./db";
+import { db } from "./_core/dbAdapter";
 import { generateJobPDFHTML } from "./pdfExport";
 import type { Job, Task } from "../drizzle/schema";
 import { normalizeExportPayload } from "../shared/importNormalizer";

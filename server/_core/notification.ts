@@ -66,6 +66,11 @@ const validatePayload = (input: NotificationPayload): NotificationPayload => {
 export async function notifyOwner(
   payload: NotificationPayload
 ): Promise<boolean> {
+  if (ENV.isUiDevMode) {
+    console.log("[DEV_MODE] notifyOwner stub:", payload.title);
+    return true;
+  }
+
   const { title, content } = validatePayload(payload);
 
   if (!ENV.forgeApiUrl) {

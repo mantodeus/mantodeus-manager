@@ -58,8 +58,25 @@ export type PresignedUrlResult = {
 // ============================================================================
 
 let s3Client: S3Client | null = null;
+const isUiDevMode = ENV.isUiDevMode;
+const MOCK_STORAGE_BASE_URL = "https://mock-storage.local";
+type MockObject = {
+  data: Buffer;
+  contentType: string;
+  updatedAt: Date;
+};
+const mockStorage = new Map<string, MockObject>();
 
 function getS3Config(): S3Config {
+  if (isUiDevMode) {
+    return {
+      endpoint: MOCK_STORAGE_BASE_URL,
+      region: "mock-region",
+      bucket: "mock-bucket",
+      accessKeyId: "mock-access",
+      secretAccessKey: "mock-secret",
+    };
+  }
   const { s3Endpoint, s3Region, s3Bucket, s3AccessKeyId, s3SecretAccessKey } = ENV;
 
   if (!s3Endpoint || !s3Region || !s3Bucket || !s3AccessKeyId || !s3SecretAccessKey) {
@@ -117,6 +134,9 @@ function normalizeKey(relKey: string): string {
  * Note: For private buckets, use createPresignedReadUrl instead
  */
 export function getPublicUrl(key: string): string {
+  if (isUiDevMode) {
+    return `${MOCK_STORAGE_BASE_URL}/${normalizeKey(key)}`;
+  }
   const { endpoint, bucket } = getS3Config();
   const normalized = normalizeKey(key);
   return `${endpoint}/${bucket}/${encodeURI(normalized)}`;
@@ -149,6 +169,26 @@ export async function storagePut(
   data: Buffer<ArrayBufferLike> | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<UploadResult> {
+  if (isUiDevMode) {
+    const key = normalizeKey(relKey);
+    const body =
+      typeof data === "string"
+        ? Buffer.from(data, "base64")
+        : Buffer.isBuffer(data)
+        ? Buffer.from(data)
+        : Buffer.from(data);
+    mockStorage.set(key, {
+      data: body,
+      contentType,
+      updatedAt: new Date(),
+    });
+    return {
+      key,
+      url: `${MOCK_STORAGE_BASE_URL}/${encodeURI(key)}`,
+      size: body.length,
+    };
+  }
+
   const key = normalizeKey(relKey);
   const client = getS3Client();
   const config = getS3Config();
@@ -188,6 +228,15 @@ export async function createPresignedUploadUrl(
   contentType: string,
   expiresInSeconds = 15 * 60
 ): Promise<PresignedUrlResult> {
+  if (isUiDevMode) {
+    const key = normalizeKey(relKey);
+    return {
+      uploadUrl: `${MOCK_STORAGE_BASE_URL}/upload/${encodeURI(key)}`,
+      key,
+      publicUrl: `${MOCK_STORAGE_BASE_URL}/${encodeURI(key)}`,
+    };
+  }
+
   const key = normalizeKey(relKey);
   const client = getS3Client();
   const config = getS3Config();
@@ -225,6 +274,19 @@ export async function createPresignedUploadUrl(
 export async function storageGet(
   relKey: string
 ): Promise<{ data: Buffer; contentType: string; size: number }> {
+  if (isUiDevMode) {
+    const key = normalizeKey(relKey);
+    const entry = mockStorage.get(key);
+    if (!entry) {
+      throw new Error(`Mock storage missing key: ${key}`);
+    }
+    return {
+      data: entry.data,
+      contentType: entry.contentType,
+      size: entry.data.length,
+    };
+  }
+
   const key = normalizeKey(relKey);
   const client = getS3Client();
   const config = getS3Config();
@@ -268,6 +330,12 @@ export async function createPresignedReadUrl(
   relKey: string,
   expiresInSeconds = 60 * 60 // 1 hour default
 ): Promise<string> {
+  if (isUiDevMode) {
+    return `${MOCK_STORAGE_BASE_URL}/${encodeURI(
+      normalizeKey(relKey)
+    )}?expires=${expiresInSeconds}`;
+  }
+
   const key = normalizeKey(relKey);
   const client = getS3Client();
   const config = getS3Config();
@@ -292,6 +360,10 @@ export async function createPresignedReadUrl(
  * Check if a file exists in S3
  */
 export async function storageExists(relKey: string): Promise<boolean> {
+  if (isUiDevMode) {
+    return mockStorage.has(normalizeKey(relKey));
+  }
+
   const key = normalizeKey(relKey);
   const client = getS3Client();
   const config = getS3Config();
@@ -316,6 +388,18 @@ export async function storageExists(relKey: string): Promise<boolean> {
  * Get metadata for a file in S3
  */
 export async function storageHead(relKey: string): Promise<FileMetadata | null> {
+  if (isUiDevMode) {
+    const key = normalizeKey(relKey);
+    const entry = mockStorage.get(key);
+    if (!entry) return null;
+    return {
+      key,
+      size: entry.data.length,
+      lastModified: entry.updatedAt,
+      contentType: entry.contentType,
+    };
+  }
+
   const key = normalizeKey(relKey);
   const client = getS3Client();
   const config = getS3Config();
@@ -353,6 +437,18 @@ export async function storageList(
   prefix: string,
   maxKeys = 1000
 ): Promise<FileMetadata[]> {
+  if (isUiDevMode) {
+    const normalizedPrefix = normalizeKey(prefix);
+    return Array.from(mockStorage.entries())
+      .filter(([key]) => key.startsWith(normalizedPrefix))
+      .slice(0, maxKeys)
+      .map(([key, entry]) => ({
+        key,
+        size: entry.data.length,
+        lastModified: entry.updatedAt,
+      }));
+  }
+
   const normalizedPrefix = normalizeKey(prefix);
   const client = getS3Client();
   const config = getS3Config();
@@ -404,6 +500,11 @@ export async function listJobFiles(jobId: number): Promise<FileMetadata[]> {
  * Delete a file from S3
  */
 export async function deleteFromStorage(relKey: string): Promise<void> {
+  if (isUiDevMode) {
+    mockStorage.delete(normalizeKey(relKey));
+    return;
+  }
+
   const key = normalizeKey(relKey);
   const client = getS3Client();
   const config = getS3Config();
@@ -426,6 +527,11 @@ export async function deleteFromStorage(relKey: string): Promise<void> {
  * Delete multiple files from S3
  */
 export async function deleteMultipleFromStorage(keys: string[]): Promise<void> {
+  if (isUiDevMode) {
+    keys.forEach((key) => mockStorage.delete(normalizeKey(key)));
+    return;
+  }
+
   // S3 batch delete requires different import, so we'll do sequential deletes
   await Promise.all(keys.map((key) => deleteFromStorage(key)));
 }
@@ -441,6 +547,25 @@ export async function storageCopy(
   sourceKey: string,
   destKey: string
 ): Promise<UploadResult> {
+  if (isUiDevMode) {
+    const source = mockStorage.get(normalizeKey(sourceKey));
+    if (!source) {
+      throw new Error(`Mock storage key not found: ${sourceKey}`);
+    }
+    const dataCopy = Buffer.from(source.data);
+    const normalizedDest = normalizeKey(destKey);
+    mockStorage.set(normalizedDest, {
+      data: dataCopy,
+      contentType: source.contentType,
+      updatedAt: new Date(),
+    });
+    return {
+      key: normalizedDest,
+      url: `${MOCK_STORAGE_BASE_URL}/${encodeURI(normalizedDest)}`,
+      size: dataCopy.length,
+    };
+  }
+
   // Get the source file
   const { data, contentType } = await storageGet(sourceKey);
   

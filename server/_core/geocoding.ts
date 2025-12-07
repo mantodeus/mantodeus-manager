@@ -1,4 +1,5 @@
 import { makeRequest } from "./map";
+import { ENV } from "./env";
 
 export interface GeocodeResult {
   latitude: string;
@@ -14,6 +15,14 @@ export interface GeocodeResult {
 export async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
   if (!address || address.trim() === "") {
     return null;
+  }
+
+  if (ENV.isUiDevMode) {
+    return {
+      latitude: "37.7749",
+      longitude: "-122.4194",
+      formattedAddress: address,
+    };
   }
 
   try {
