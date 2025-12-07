@@ -23,6 +23,46 @@ const VARIANT_CONFIG: Record<ImageVariant, { max: number; filename: string }> = 
   full: { max: 2000, filename: "full.jpg" },
 };
 
+const VARIANT_KEYS = Object.keys(VARIANT_CONFIG) as ImageVariant[];
+
+function normalizeImageMetadata(
+  metadata: StoredImageMetadata | string | null | undefined
+): StoredImageMetadata | null {
+  if (!metadata) return null;
+
+  let parsed: unknown = metadata;
+
+  if (typeof metadata === "string") {
+    try {
+      parsed = JSON.parse(metadata);
+    } catch (error) {
+      console.warn("[ImagePipeline] Failed to parse stored image metadata:", error);
+      return null;
+    }
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    return null;
+  }
+
+  const candidate = parsed as Partial<StoredImageMetadata>;
+  const variants = candidate.variants as Partial<Record<ImageVariant, ImageVariantRecord>> | undefined;
+  if (!variants) {
+    return null;
+  }
+
+  const hasAllVariants = VARIANT_KEYS.every((variant) => {
+    const record = variants[variant];
+    return Boolean(record && typeof record.key === "string");
+  });
+
+  if (!hasAllVariants) {
+    return null;
+  }
+
+  return candidate as StoredImageMetadata;
+}
+
 function buildBaseName(projectId: number | null): string {
   const idPart = typeof projectId === "number" && projectId > 0 ? projectId : "legacy";
   return `project_${idPart}_${Date.now()}`;
@@ -93,20 +133,24 @@ export async function processAndUploadImageVariants(
   };
 }
 
-export async function deleteImageVariants(metadata: StoredImageMetadata | null | undefined): Promise<void> {
-  if (!metadata) return;
-  const keys = Object.values(metadata.variants).map((variant) => variant.key);
+export async function deleteImageVariants(
+  metadata: StoredImageMetadata | string | null | undefined
+): Promise<void> {
+  const normalized = normalizeImageMetadata(metadata);
+  if (!normalized) return;
+  const keys = VARIANT_KEYS.map((variant) => normalized.variants[variant].key);
   await deleteMultipleFromStorage(keys);
 }
 
 export async function generateSignedVariantUrls(
-  metadata: StoredImageMetadata | null | undefined,
+  metadata: StoredImageMetadata | string | null | undefined,
   expiresInSeconds = 60 * 60
 ): Promise<Record<ImageVariant, string> | null> {
-  if (!metadata) return null;
+  const normalized = normalizeImageMetadata(metadata);
+  if (!normalized) return null;
   const entries = await Promise.all(
-    (Object.keys(metadata.variants) as ImageVariant[]).map(async (variant) => {
-      const variantKey = metadata.variants[variant].key;
+    VARIANT_KEYS.map(async (variant) => {
+      const variantKey = normalized.variants[variant].key;
       const url = await createPresignedReadUrl(variantKey, expiresInSeconds);
       return [variant, url] as const;
     })
