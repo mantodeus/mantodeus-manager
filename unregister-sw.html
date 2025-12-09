@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Unregister Service Worker</title>
+</head>
+<body>
+    <h1>Unregister Service Worker</h1>
+    <button onclick="unregisterSW()">Unregister All Service Workers</button>
+    <div id="status"></div>
+    
+    <script>
+        async function unregisterSW() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<p>Unregistering service workers...</p>';
+            
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                console.log(`Found ${registrations.length} service worker(s)`);
+                
+                for (const registration of registrations) {
+                    const success = await registration.unregister();
+                    console.log(`Unregistered: ${success}`);
+                    statusDiv.innerHTML += `<p>Unregistered service worker: ${success ? 'Success' : 'Failed'}</p>`;
+                }
+                
+                if (registrations.length === 0) {
+                    statusDiv.innerHTML += '<p>No service workers found.</p>';
+                } else {
+                    statusDiv.innerHTML += '<p><strong>Done! Now close this tab and refresh your app.</strong></p>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                unregisterSW();
+            }, 500);
+        });
+    </script>
+</body>
+</html>
+

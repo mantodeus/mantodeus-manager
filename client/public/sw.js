@@ -1,6 +1,6 @@
 // Service Worker for Mantodeus Manager PWA
 // Version number - increment this to force update
-const VERSION = 'v3.0.0'; // Updated for S3 refactor
+const VERSION = 'v3.0.1'; // Fixed: Skip Vite paths (@fs, @vite, @id)
 const CACHE_NAME = `mantodeus-${VERSION}`;
 const RUNTIME_CACHE = `mantodeus-runtime-${VERSION}`;
 
@@ -54,6 +54,20 @@ self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests (including S3 uploads)
   if (url.origin !== location.origin) {
     return;
+  }
+
+  // Skip Vite-specific paths - these should always go directly to Vite dev server
+  // /@fs/ - Vite's file system access for files outside project root
+  // /@vite/ - Vite's internal HMR and module resolution
+  // /node_modules/ - Vite's node_modules access
+  // /@id/ - Vite's virtual module IDs
+  if (url.pathname.startsWith('/@fs/') || 
+      url.pathname.startsWith('/@vite/') || 
+      url.pathname.startsWith('/@id/') ||
+      url.pathname.startsWith('/node_modules/') ||
+      url.pathname.includes('?import') ||
+      url.pathname.includes('&import')) {
+    return; // Let Vite handle these directly, no service worker interception
   }
 
   // Never cache POST, PUT, DELETE, PATCH requests (mutations)

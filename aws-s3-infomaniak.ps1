@@ -22,3 +22,7 @@ $fullCommand = "aws $awsCmd $args --profile $profile --endpoint-url $endpoint"
 Write-Host "Running: $fullCommand" -ForegroundColor Cyan
 Invoke-Expression $fullCommand
 
+
+
+
+

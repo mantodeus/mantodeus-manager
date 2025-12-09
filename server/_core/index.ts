@@ -1,4 +1,6 @@
-import "dotenv/config";
+// IMPORTANT: Load environment variables FIRST before any other imports
+import "./load-env.js";
+
 import express from "express";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -173,18 +175,21 @@ async function startServer() {
   const port = parseInt(process.env.PORT || "3000");
 
   server.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+    console.log(`✅ Server running on port ${port}`);
+    console.log(`🌐 Open http://localhost:${port} in your browser`);
     serverStarted = true; // Mark server as started successfully
   });
 
   // Handle server errors (e.g., port already in use)
   server.on("error", (error: NodeJS.ErrnoException) => {
     if (error.code === "EADDRINUSE") {
-      console.error(`Port ${port} is already in use. Please stop the other process or use a different port.`);
+      console.error(`❌ Port ${port} is already in use.`);
+      console.error(`   Kill the process using: netstat -ano | findstr :${port}`);
+      console.error(`   Or change PORT in .env.local`);
     } else {
-      console.error("Server error:", error);
+      console.error("❌ Server error:", error);
     }
-    // Don't exit immediately - let the error handlers manage it
+    process.exit(1);
   });
 
   // Graceful shutdown handling
@@ -208,7 +213,7 @@ async function startServer() {
 
 // Improved error handling to prevent restart loops
 startServer().catch((error) => {
-  console.error("Failed to start server:", error);
+  console.error("❌ Failed to start server:");
   console.error("Error details:", {
     message: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,

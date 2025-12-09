@@ -9,38 +9,8 @@ import { getLoginUrl } from "./const";
 import { supabase } from "./lib/supabase";
 import "./index.css";
 
-// Handle Supabase session and sync with server
-supabase.auth.onAuthStateChange(async (event, session) => {
-  console.log("[Auth] Auth state changed:", event, session ? "has session" : "no session");
-  
-  if (session?.access_token && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) {
-    console.log("[Auth] Syncing session with server...");
-    // Send access token to server to set as cookie
-    try {
-      const response = await fetch("/api/auth/callback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ access_token: session.access_token }),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        console.error("[Auth] Callback failed:", response.status, errorData);
-        // Don't throw - allow login to continue even if callback fails
-        // The user can still use the app, just might need to refresh
-      } else {
-        const data = await response.json();
-        console.log("[Auth] Session synced successfully:", data);
-      }
-    } catch (error) {
-      console.error("[Auth] Failed to sync session with server:", error);
-      // Don't block login - this is a background sync
-    }
-  }
-});
+// Don't auto-sync auth on state changes - let Login component handle it
+// This prevents duplicate calls and race conditions
 
 const queryClient = new QueryClient();
 
@@ -52,7 +22,19 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  window.location.href = getLoginUrl();
+  // Prevent redirect loops - don't redirect if we're already on login or just logged in
+  const currentPath = window.location.pathname;
+  if (currentPath === "/login" || currentPath.startsWith("/login")) {
+    return;
+  }
+
+  // Add a small delay to prevent rapid redirects
+  console.log("[Auth] Unauthorized error detected, redirecting to login...");
+  setTimeout(() => {
+    if (window.location.pathname !== "/login") {
+      window.location.href = getLoginUrl();
+    }
+  }, 100);
 };
 
 queryClient.getQueryCache().subscribe(event => {
@@ -76,9 +58,24 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
-      fetch(input, init) {
+      async fetch(input, init) {
+        const headers = new Headers(init?.headers || {});
+
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (session?.access_token) {
+            headers.set("Authorization", `Bearer ${session.access_token}`);
+          }
+        } catch (error) {
+          console.warn("[TRPC] Failed to get Supabase session for request:", error);
+        }
+
         return globalThis.fetch(input, {
           ...(init ?? {}),
+          headers,
           credentials: "include",
         });
       },
@@ -112,48 +109,17 @@ if (document.readyState === "loading") {
   initializeApp();
 }
 
-// Register Service Worker for PWA with auto-update
+// Service Worker - only in production, simplified for development
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('[PWA] Service Worker registered:', registration.scope);
-        
-        // Check for updates immediately on registration
-        registration.update();
-        
-        // Listen for new service worker waiting
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('[PWA] New version available, reloading...');
-                // Tell the new service worker to skip waiting
-                newWorker.postMessage({ type: 'SKIP_WAITING' });
-              }
-            });
-          }
-        });
-        
-        // Check for updates periodically (every 30 seconds)
-        setInterval(() => {
-          registration.update();
-        }, 30000);
-      })
-      .catch((error) => {
-        console.error('[PWA] Service Worker registration failed:', error);
-      });
-  });
-  
-  // Reload page when new service worker takes control
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) {
-      refreshing = true;
-      console.log('[PWA] Controller changed, reloading page...');
-      window.location.reload();
-    }
-  });
+  if (import.meta.env.PROD) {
+    // Production: register service worker
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(console.error);
+    });
+  } else {
+    // Development: just unregister, no page reload
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach(r => r.unregister());
+    });
+  }
 }

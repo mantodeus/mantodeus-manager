@@ -23,27 +23,24 @@ export default function Login() {
     setError(null);
 
     try {
+      // Step 1: Sign in with Supabase
       if (isSignUp) {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
         });
-
         if (signUpError) throw signUpError;
 
-        // After signup, sign in the user
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-
         if (signInError) throw signInError;
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-
         if (signInError) throw signInError;
       }
 
@@ -58,7 +55,6 @@ export default function Login() {
         errorMessage = err.error;
       }
       setError(errorMessage);
-    } finally {
       setLoading(false);
     }
   };
