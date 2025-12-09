@@ -12,7 +12,16 @@ if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
   console.error("[Supabase] Missing configuration:");
   console.error("  VITE_SUPABASE_URL:", ENV.supabaseUrl ? "✓" : "✗");
   console.error("  SUPABASE_SERVICE_ROLE_KEY:", ENV.supabaseServiceRoleKey ? "✓" : "✗");
-  throw new Error("Supabase configuration is missing. Please set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.");
+  console.error("");
+  console.error("[Supabase] To fix this:");
+  console.error("  1. Create or update .env file in the project root");
+  console.error("  2. Add the following variables:");
+  console.error("     VITE_SUPABASE_URL=https://your-project.supabase.co");
+  console.error("     SUPABASE_SERVICE_ROLE_KEY=your_service_role_key");
+  console.error("  3. Restart the server");
+  console.error("");
+  console.error("  See docs/INFOMANIAK_ENVIRONMENTS.md for full environment variable documentation");
+  throw new Error("Supabase configuration is missing. Please set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables in .env file.");
 }
 
 // Create Supabase client for server-side operations
