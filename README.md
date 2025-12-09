@@ -57,6 +57,152 @@ pnpm dev
 
 The application will be available at `http://localhost:3000`
 
+## Development Workflow
+
+### Local Development Setup
+
+This project is configured for **local development with instant hot reload** and **automatic environment separation**.
+
+#### Quick Start
+
+1. **Install dependencies:**
+   ```bash
+   pnpm install
+   ```
+
+2. **Set up local environment:**
+   ```bash
+   cp .env.local.example .env.local
+   # Edit .env.local with your local/staging credentials
+   ```
+
+3. **Start development server:**
+   ```bash
+   pnpm dev
+   ```
+
+4. **Open in browser:**
+   ```
+   http://localhost:3000
+   ```
+
+The development server supports **hot module replacement (HMR)** - changes to your code will automatically reload in the browser.
+
+#### Environment Files
+
+The project uses **two separate environment files**:
+
+- **`.env.local`** - For local/staging development (gitignored)
+  - Used automatically when running `pnpm dev`
+  - Contains staging database, staging S3 bucket, test credentials
+  - **Never commit this file** - it's already in `.gitignore`
+
+- **`.env`** - For production deployment (gitignored)
+  - Used only in production builds
+  - Contains production database, production S3 bucket, production credentials
+  - Managed separately on your production server (Infomaniak)
+
+#### How It Works
+
+1. **Development Mode** (`pnpm dev`):
+   - Server automatically loads `.env.local` first, then falls back to `.env`
+   - Frontend (Vite) reads environment variables from `.env.local`
+   - Hot reload enabled for instant previews
+   - Uses staging/test resources
+
+2. **Production Mode** (`pnpm build` + `pnpm start`):
+   - Server loads only `.env` file
+   - Frontend is built with production environment variables
+   - No hot reload (static files served)
+   - Uses production resources
+
+#### Cursor AI Assistant Behavior
+
+The project includes `.cursor/config.json` that configures Cursor to:
+
+- ✅ **Never attempt automatic deployment**
+- ✅ **Always assume you're running `pnpm dev` locally**
+- ✅ **Always use `.env.local` for environment variables**
+- ✅ **Never modify `.env` unless you explicitly ask**
+- ✅ **Only modify local files**
+- ✅ **Show diffs for approval before changes**
+
+Deployment only happens when **you explicitly push to GitHub** - Cursor will never deploy automatically.
+
+#### Staging vs Production
+
+| Aspect | Local Development | Production |
+|--------|------------------|------------|
+| Environment File | `.env.local` | `.env` |
+| Database | Staging/local MySQL | Production MySQL |
+| S3 Bucket | Staging bucket | Production bucket |
+| OAuth | Staging app ID (if available) | Production app ID |
+| Hot Reload | ✅ Enabled | ❌ Disabled |
+| Port | 3000 (configurable) | 3000 (or server default) |
+
+#### Avoiding Environment Mix-ups
+
+**Best Practices:**
+
+1. ✅ Always use `.env.local` for local development
+2. ✅ Never copy production credentials to `.env.local`
+3. ✅ Use different S3 buckets for staging vs production
+4. ✅ Use different database instances for staging vs production
+5. ✅ Never commit `.env` or `.env.local` (already gitignored)
+6. ✅ Test changes locally before pushing to GitHub
+
+**What NOT to do:**
+
+1. ❌ Don't use production database credentials in `.env.local`
+2. ❌ Don't use production S3 bucket in `.env.local`
+3. ❌ Don't modify `.env` during local development
+4. ❌ Don't commit environment files
+
+#### Production Deployment
+
+Production deployment happens **only when you push to GitHub**:
+
+1. **Push to GitHub:**
+   ```bash
+   git add .
+   git commit -m "Your changes"
+   git push origin main
+   ```
+
+2. **GitHub Webhook** (if configured):
+   - Automatically triggers deployment on the server
+   - Runs `deploy.sh` script
+   - Pulls latest code, installs dependencies, builds, restarts
+
+3. **Manual Deployment** (if webhook not configured):
+   - SSH into production server
+   - Run `./deploy.sh` manually
+
+**The `deploy.sh` script:**
+- Pulls latest code from GitHub
+- Installs production dependencies (`npm install --omit=dev`)
+- Builds the application (`npm run build`)
+- Restarts the application with PM2
+
+See `deploy.sh` for the complete deployment script.
+
+#### Troubleshooting
+
+**Issue: Changes not reflecting in browser**
+- Make sure you're running `pnpm dev` (not `pnpm start`)
+- Check that hot reload is enabled (you should see Vite HMR messages in console)
+- Hard refresh browser (Ctrl+Shift+R or Cmd+Shift+R)
+
+**Issue: Wrong environment variables being used**
+- Check that `.env.local` exists and has correct values
+- Verify you're running in development mode (`NODE_ENV=development`)
+- Restart the dev server after changing `.env.local`
+
+**Issue: Can't connect to database**
+- Verify `DATABASE_URL` in `.env.local` is correct
+- Check that your local MySQL server is running
+- Ensure database credentials are correct
+
 ## Environment Variables
 
 Create a `.env` file in the root directory:

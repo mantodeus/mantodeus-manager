@@ -8,6 +8,11 @@ export const ENV = {
   ownerSupabaseId: process.env.OWNER_SUPABASE_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",
 
+  // Environment awareness: "production" for manager.mantodeus.com, "preview" for preview environment
+  // This allows different S3 buckets, logging levels, etc. between environments
+  appEnv: (process.env.APP_ENV || process.env.RUNTIME_ENV || "production") as "production" | "preview",
+  runtimeEnv: (process.env.APP_ENV || process.env.RUNTIME_ENV || "production") as "production" | "preview",
+
   // Legacy Manus storage proxy (no longer used for uploads, kept for backwards-compat if needed)
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",

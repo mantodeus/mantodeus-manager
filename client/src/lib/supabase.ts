@@ -17,10 +17,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(errorMessage);
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-});
+// Create a singleton instance to prevent multiple instances warning
+let supabaseInstance: ReturnType<typeof createClient> | null = null;
+
+export const supabase = (() => {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey: "mantodeus-supabase-auth", // Use a unique storage key
+      },
+    });
+  }
+  return supabaseInstance;
+})();

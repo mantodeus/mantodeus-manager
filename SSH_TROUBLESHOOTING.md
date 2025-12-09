@@ -117,3 +117,7 @@ If none of these work:
 2. Check your Infomaniak Manager dashboard for SSH connection details
 3. Use the File Manager as an alternative
 
+
+
+
+

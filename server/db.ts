@@ -38,11 +38,35 @@ let _db: ReturnType<typeof drizzle> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!_db) {
+    if (!process.env.DATABASE_URL) {
+      console.error("[Database] ❌ DATABASE_URL environment variable is not set!");
+      return null;
+    }
+    
     try {
+      console.log("[Database] Connecting to database...");
+      console.log("[Database] DATABASE_URL starts with:", process.env.DATABASE_URL.substring(0, 20) + "...");
       _db = drizzle(process.env.DATABASE_URL);
+      console.log("[Database] ✅ Database connection created");
+      
+      // Test the connection by running a simple query
+      // Note: We don't fail if the test fails - the connection might still work
+      // The test failure could be due to permissions or network issues, but the connection object is valid
+      try {
+        await _db.execute(sql`SELECT 1`);
+        console.log("[Database] ✅ Database connection test successful");
+      } catch (testError) {
+        console.warn("[Database] ⚠️ Database connection test failed, but connection object created:", testError);
+        // Don't set _db = null here - the connection might still work for actual queries
+        // The test failure might be due to permissions, but the connection is valid
+      }
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.error("[Database] ❌ Failed to create database connection:", error);
+      if (error instanceof Error) {
+        console.error("[Database] Error message:", error.message);
+        console.error("[Database] Error stack:", error.stack);
+      }
       _db = null;
     }
   }
@@ -124,13 +148,31 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 export async function getUserBySupabaseId(supabaseId: string) {
   const db = await getDb();
   if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
+    console.error("[Database] ❌ Cannot get user: database not available");
+    console.error("[Database] DATABASE_URL is:", process.env.DATABASE_URL ? "set" : "NOT SET");
+    throw new Error("Database connection not available");
   }
 
-  const result = await db.select().from(users).where(eq(users.supabaseId, supabaseId)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  try {
+    console.log(`[Database] Looking up user with supabaseId: ${supabaseId}`);
+    const result = await db.select().from(users).where(eq(users.supabaseId, supabaseId)).limit(1);
+    
+    if (result.length > 0) {
+      console.log(`[Database] ✅ Found user: ${result[0].id}`);
+      return result[0];
+    } else {
+      console.log(`[Database] User not found with supabaseId: ${supabaseId}`);
+      return undefined;
+    }
+  } catch (error) {
+    console.error("[Database] ❌ Query failed:", error);
+    if (error instanceof Error) {
+      console.error("[Database] Error message:", error.message);
+      console.error("[Database] Error stack:", error.stack);
+    }
+    // Re-throw with more context
+    throw new Error(`Database query failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 // Job queries

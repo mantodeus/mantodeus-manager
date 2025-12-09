@@ -1,0 +1,35 @@
+{
+  "instructions": {
+    "development": {
+      "mode": "local",
+      "environment": "development",
+      "rules": [
+        "NEVER attempt automatic deployment",
+        "NEVER modify .env file unless explicitly requested by user",
+        "ALWAYS assume user is running 'npm run dev' or 'pnpm dev' for local preview",
+        "ALWAYS use .env.local for environment variables during development",
+        "ONLY modify local files - never touch production files",
+        "ALWAYS show diffs for approval before making changes",
+        "Deployment only happens when user explicitly pushes to GitHub",
+        "Assume user is working locally with hot reload enabled",
+        "When editing environment-related code, prioritize .env.local in development mode",
+        "Never run deployment commands automatically",
+        "Never commit or push changes unless explicitly requested"
+      ]
+    },
+    "deployment": {
+      "enabled": false,
+      "trigger": "manual_only",
+      "note": "Deployment is manual and only happens when user pushes to GitHub. Never attempt automatic deployment."
+    }
+  },
+  "environment": {
+    "default": "local",
+    "files": {
+      "local": ".env.local",
+      "production": ".env"
+    },
+    "note": "Use .env.local for all local development. Production uses .env which is managed separately."
+  }
+}
+

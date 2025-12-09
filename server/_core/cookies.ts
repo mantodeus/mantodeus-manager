@@ -24,29 +24,23 @@ function isSecureRequest(req: Request) {
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
-  // const hostname = req.hostname;
-  // const shouldSetDomain =
-  //   hostname &&
-  //   !LOCAL_HOSTS.has(hostname) &&
-  //   !isIpAddress(hostname) &&
-  //   hostname !== "127.0.0.1" &&
-  //   hostname !== "::1";
-
-  // const domain =
-  //   shouldSetDomain && !hostname.startsWith(".")
-  //     ? `.${hostname}`
-  //     : shouldSetDomain
-  //       ? hostname
-  //       : undefined;
-
-  // For sameSite: "none", secure MUST be true
-  // If behind a proxy (like Infomaniak), assume HTTPS
-  const isSecure = isSecureRequest(req) || process.env.NODE_ENV === "production";
+  const hostname = req.hostname || "";
+  const isLocalhost = LOCAL_HOSTS.has(hostname) || hostname === "localhost" || hostname.startsWith("127.0.0.1") || hostname.startsWith("::1");
+  
+  // For localhost development: use lax, non-secure
+  // For production HTTPS: use none, secure
+  const isSecure = !isLocalhost && (isSecureRequest(req) || process.env.NODE_ENV === "production");
+  
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[Cookies] Hostname: ${hostname}, isLocalhost: ${isLocalhost}, isSecure: ${isSecure}`);
+  }
   
   return {
     httpOnly: true,
     path: "/",
-    sameSite: isSecure ? "none" : "lax", // Use "lax" for non-HTTPS, "none" for HTTPS
+    sameSite: isSecure ? "none" : "lax", // Use "lax" for localhost/dev, "none" for HTTPS production
     secure: isSecure,
+    // Don't set domain for localhost - let browser handle it
+    domain: undefined,
   };
 }
