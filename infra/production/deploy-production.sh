@@ -62,7 +62,27 @@ echo "📦 Installing dependencies..."
 # Use npm install with --no-audit --no-fund for shared hosting compatibility
 npm install --no-audit --no-fund || error_exit "npm install failed"
 
-# Step 4: Build the application
+# Step 4: Load environment variables for build
+echo ""
+echo "🔐 Loading environment variables..."
+
+# Source .env file if it exists (required for Vite build)
+if [ -f ".env" ]; then
+  echo "📄 Found .env file, exporting variables..."
+  set -a  # automatically export all variables
+  source .env
+  set +a
+  echo "✅ Environment variables loaded from .env"
+else
+  echo "⚠️  No .env file found - using system environment variables"
+fi
+
+# Verify critical VITE_ variables are set (required at build time)
+if [ -z "${VITE_SUPABASE_URL:-}" ] || [ -z "${VITE_SUPABASE_ANON_KEY:-}" ]; then
+  error_exit "Missing required VITE_* environment variables. Ensure .env file exists with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY"
+fi
+
+# Step 5: Build the application
 echo ""
 echo "🔨 Building application..."
 
@@ -80,7 +100,7 @@ if [ ! -d "dist/public" ]; then
   error_exit "Build output not found: dist/public"
 fi
 
-# Step 5: Stop existing production process and kill any process on port 3000
+# Step 6: Stop existing production process and kill any process on port 3000
 echo ""
 echo "🛑 Stopping existing production server..."
 if [ -f "$SHARED_DIR/stop-env.sh" ]; then
@@ -99,7 +119,7 @@ else
   fi
 fi
 
-# Step 6: Start the production server
+# Step 7: Start the production server
 echo ""
 echo "▶️  Starting production server..."
 
@@ -116,7 +136,7 @@ else
   echo $! > logs/production.pid
 fi
 
-# Step 7: Verify server started
+# Step 8: Verify server started
 sleep 3
 if [ -f "logs/production.pid" ]; then
   PID=$(cat logs/production.pid)
