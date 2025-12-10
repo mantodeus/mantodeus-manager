@@ -56,5 +56,5 @@ if [ -n "$PORT" ]; then
   fi
 fi
 
-echo "Environment $ENV_NAME stopped"
+echo "{\"status\":\"ok\",\"env\":\"$ENV_NAME\",\"message\":\"Environment stopped\"}"
 
