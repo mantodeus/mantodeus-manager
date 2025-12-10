@@ -84,57 +84,24 @@ if [ ! -d "dist/public" ]; then
   error_exit "Build output not found: dist/public"
 fi
 
-# Step 5: Stop existing preview process and kill any process on port 3001
+# Step 5: Deployment complete - ready for Infomaniak restart
 echo ""
-echo "🛑 Stopping existing preview server..."
-if [ -f "$SHARED_DIR/stop-env.sh" ]; then
-  bash "$SHARED_DIR/stop-env.sh" preview 3001 || true
-else
-  # Fallback: try to find and kill process on port 3001
-  if command -v lsof &> /dev/null; then
-    LSOF_PID=$(lsof -ti:3001 2>/dev/null || echo "")
-    if [ -n "$LSOF_PID" ]; then
-      kill "$LSOF_PID" 2>/dev/null || true
-      sleep 1
-      kill -9 "$LSOF_PID" 2>/dev/null || true
-    fi
-  elif command -v fuser &> /dev/null; then
-    fuser -k 3001/tcp 2>/dev/null || true
-  fi
-fi
-
-# Step 6: Start the preview server
+echo "✅ Preview deployment complete!"
 echo ""
-echo "▶️  Starting preview server..."
-
-export APP_ENV="preview"
-export PORT="3001"
-export NODE_ENV="production"
-
-if [ -f "$SHARED_DIR/run-background.sh" ]; then
-  bash "$SHARED_DIR/run-background.sh" preview 3001 || error_exit "Failed to start server"
-else
-  # Fallback: start directly with nohup
-  mkdir -p logs
-  nohup node dist/index.js >> logs/preview.log 2>&1 &
-  echo $! > logs/preview.pid
-fi
-
-# Step 7: Verify server started
-sleep 3
-if [ -f "logs/preview.pid" ]; then
-  PID=$(cat logs/preview.pid)
-  if kill -0 "$PID" 2>/dev/null; then
-    echo ""
-    echo "✅ Preview deployment complete!"
-    echo "📊 Server PID: $PID"
-    echo "📝 Logs: logs/preview.log"
-    output_status "ok" "Deployment complete"
-    exit 0
-  else
-    error_exit "Server process not running after start"
-  fi
-else
-  error_exit "PID file not created - server may not have started"
-fi
+echo "📦 Build outputs:"
+echo "   - Backend: dist/index.js"
+echo "   - Frontend: dist/public/"
+echo ""
+echo "⚠️  IMPORTANT: Server process management is handled by Infomaniak"
+echo "   This script only builds the application. To start/restart the server:"
+echo ""
+echo "   1. Log into Infomaniak control panel"
+echo "   2. Navigate to: Node.js Application → manager-preview.mantodeus.com"
+echo "   3. Click: 'Restart Application'"
+echo ""
+echo "   The server will read PORT from process.env.PORT (set by Infomaniak)"
+echo "   and environment variables from .env file at runtime."
+echo ""
+output_status "ok" "Deployment complete - restart required in Infomaniak"
+exit 0
 
