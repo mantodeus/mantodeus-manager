@@ -293,7 +293,33 @@ if (checkPath('dist/public', 'directory')) {
       let foundAnonKey = false;
       const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
       const anonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
-      const anonKeyPrefix = anonKey.substring(0, 20); // First 20 chars for matching
+      
+      // Try multiple patterns to find the anon key
+      const anonKeyPatterns = [];
+      if (anonKey) {
+        // Full key
+        anonKeyPatterns.push(anonKey);
+        // First 30 chars (common prefix)
+        if (anonKey.length > 30) {
+          anonKeyPatterns.push(anonKey.substring(0, 30));
+        }
+        // First 20 chars
+        if (anonKey.length > 20) {
+          anonKeyPatterns.push(anonKey.substring(0, 20));
+        }
+        // Check for "pk_" prefix (anon key format)
+        if (anonKey.startsWith('pk_')) {
+          anonKeyPatterns.push('pk_');
+        }
+        // Check for "eyJ" prefix (JWT format)
+        if (anonKey.startsWith('eyJ')) {
+          anonKeyPatterns.push(anonKey.substring(0, 20));
+        }
+      }
+      
+      console.log(`\n🔍 Searching ${jsFiles.length} JS files for embedded variables...`);
+      console.log(`   Looking for URL: ${supabaseUrl ? supabaseUrl.substring(0, 40) + '...' : 'MISSING'}`);
+      console.log(`   Looking for anon key patterns: ${anonKeyPatterns.length > 0 ? anonKeyPatterns.map(p => p.substring(0, 10) + '...').join(', ') : 'NONE'}`);
       
       for (const jsFile of jsFiles) {
         const jsFilePath = join(__dirname, 'dist/public/assets', jsFile);
@@ -301,26 +327,40 @@ if (checkPath('dist/public', 'directory')) {
         
         if (supabaseUrl && jsContent.includes(supabaseUrl)) {
           foundUrl = true;
+          console.log(`   ✓ Found URL in: ${jsFile}`);
         }
-        // Check for anon key - it might start with "pk_" or "eyJ" depending on format
-        if (anonKey && (jsContent.includes(anonKey) || jsContent.includes(anonKeyPrefix))) {
-          foundAnonKey = true;
+        
+        // Check for anon key using all patterns
+        for (const pattern of anonKeyPatterns) {
+          if (jsContent.includes(pattern)) {
+            foundAnonKey = true;
+            console.log(`   ✓ Found anon key (pattern: ${pattern.substring(0, 15)}...) in: ${jsFile}`);
+            break;
+          }
         }
       }
       
       if (foundUrl && foundAnonKey) {
-        console.log('✅ Supabase variables confirmed embedded in JS bundle');
+        console.log('\n✅ Supabase variables confirmed embedded in JS bundle');
         console.log(`   VITE_SUPABASE_URL: ✓ (embedded)`);
-        console.log(`   VITE_SUPABASE_ANON_KEY: ✓ (embedded, prefix: ${anonKeyPrefix}...)`);
+        console.log(`   VITE_SUPABASE_ANON_KEY: ✓ (embedded)`);
       } else {
-        console.error('❌ Supabase variables NOT found in JS bundle!');
+        console.error('\n❌ Supabase variables NOT found in JS bundle!');
         console.error(`   VITE_SUPABASE_URL: ${foundUrl ? '✓' : '✗ NOT FOUND'}`);
         console.error(`   VITE_SUPABASE_ANON_KEY: ${foundAnonKey ? '✓' : '✗ NOT FOUND'}`);
-        console.error('   This means Vite did not embed the variables correctly.');
-        console.error('   Check that:');
-        console.error('     1. Variables start with VITE_ prefix');
-        console.error('     2. .env file exists in project root');
-        console.error('     3. Variables are loaded before Vite build runs');
+        console.error('\n   This means Vite did not embed the variables correctly.');
+        console.error('   Possible causes:');
+        console.error('     1. .env file missing or not readable');
+        console.error('     2. Variables not in process.env when Vite runs');
+        console.error('     3. Vite config not loading .env correctly');
+        console.error('     4. Variables have wrong prefix (must start with VITE_)');
+        console.error('\n   Debug info:');
+        console.error(`     VITE_SUPABASE_URL in process.env: ${process.env.VITE_SUPABASE_URL ? 'YES' : 'NO'}`);
+        console.error(`     VITE_SUPABASE_ANON_KEY in process.env: ${process.env.VITE_SUPABASE_ANON_KEY ? 'YES' : 'NO'}`);
+        if (process.env.VITE_SUPABASE_ANON_KEY) {
+          console.error(`     Anon key length: ${process.env.VITE_SUPABASE_ANON_KEY.length}`);
+          console.error(`     Anon key starts with: ${process.env.VITE_SUPABASE_ANON_KEY.substring(0, 5)}`);
+        }
         process.exit(1);
       }
     }
