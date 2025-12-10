@@ -8,30 +8,43 @@ import { defineConfig } from "vite";
 
 const plugins = [react(), tailwindcss(), jsxLocPlugin()];
 
-export default defineConfig({
-  plugins,
-  resolve: {
-    alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+export default defineConfig(({ mode }) => {
+  // Ensure envDir points to project root where .env file is located
+  const projectRoot = path.resolve(import.meta.dirname);
+  const envDir = projectRoot;
+  
+  // Debug logging in non-production builds
+  if (mode !== 'production') {
+    console.log('[Vite] envDir:', envDir);
+    console.log('[Vite] VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? '✓ set' : '✗ missing');
+    console.log('[Vite] VITE_SUPABASE_ANON_KEY:', process.env.VITE_SUPABASE_ANON_KEY ? '✓ set' : '✗ missing');
+  }
+  
+  return {
+    plugins,
+    resolve: {
+      alias: {
+        "@": path.resolve(projectRoot, "client", "src"),
+        "@shared": path.resolve(projectRoot, "shared"),
+        "@assets": path.resolve(projectRoot, "attached_assets"),
+      },
     },
-  },
-  envDir: path.resolve(import.meta.dirname),
-  root: path.resolve(import.meta.dirname, "client"),
-  publicDir: path.resolve(import.meta.dirname, "client", "public"),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
-  },
-  server: {
-    host: true,
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
+    envDir, // Points to project root where .env file should be
+    root: path.resolve(projectRoot, "client"),
+    publicDir: path.resolve(projectRoot, "client", "public"),
+    build: {
+      outDir: path.resolve(projectRoot, "dist/public"),
+      emptyOutDir: true,
     },
-    hmr: {
-      overlay: false, // Disable error overlay to prevent UI blocking
+    server: {
+      host: true,
+      fs: {
+        strict: true,
+        deny: ["**/.*"],
+      },
+      hmr: {
+        overlay: false, // Disable error overlay to prevent UI blocking
+      },
     },
-  },
+  };
 });
