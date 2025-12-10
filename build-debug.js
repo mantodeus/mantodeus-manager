@@ -6,7 +6,7 @@
  */
 
 import { execSync, spawnSync } from 'child_process';
-import { existsSync, readdirSync, statSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { config } from 'dotenv';
@@ -16,35 +16,85 @@ const __dirname = dirname(__filename);
 
 // Load environment variables from .env file
 const envPath = join(__dirname, '.env');
-if (existsSync(envPath)) {
-  config({ path: envPath });
-  console.log('✅ Loaded environment variables from .env');
+const envFileExists = existsSync(envPath);
+if (envFileExists) {
+  const result = config({ path: envPath });
+  if (result.error) {
+    console.error('❌ Error loading .env file:', result.error.message);
+  } else {
+    console.log('✅ Loaded environment variables from .env');
+  }
 } else {
-  console.log('⚠️  No .env file found - using environment variables from system');
+  console.error('\n❌ FATAL: .env file not found!');
+  console.error(`   Expected location: ${envPath}`);
+  console.error('\n💡 Create a .env file in the project root with:');
+  console.error('   - VITE_SUPABASE_URL=https://your-project.supabase.co');
+  console.error('   - VITE_SUPABASE_ANON_KEY=your_anon_key_here');
+  console.error('   - SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here');
+  console.error('\n💡 See docs/INFOMANIAK_ENVIRONMENTS.md for a complete template.\n');
+  process.exit(1);
 }
 
 // Verify critical environment variables for client build
 const requiredViteVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'];
-const missingVars = requiredViteVars.filter(varName => !process.env[varName]);
+const placeholderValues = ['REPLACE_ME', 'replace_me', 'YOUR_KEY_HERE', 'your_key_here', ''];
 
-if (missingVars.length > 0) {
-  console.error('\n❌ FATAL: Missing required environment variables for client build:');
-  missingVars.forEach(varName => {
-    const value = process.env[varName];
-    console.error(`   - ${varName}: ${value ? `set (${value.substring(0, 10)}...)` : 'MISSING'}`);
+function isValidValue(value) {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (placeholderValues.includes(trimmed)) return false;
+  return true;
+}
+
+const invalidVars = [];
+requiredViteVars.forEach(varName => {
+  const value = process.env[varName];
+  if (!isValidValue(value)) {
+    invalidVars.push({
+      name: varName,
+      value: value || '(empty)',
+      issue: !value ? 'MISSING' : (placeholderValues.includes(value.trim()) ? 'PLACEHOLDER_VALUE' : 'EMPTY_OR_WHITESPACE')
+    });
+  }
+});
+
+if (invalidVars.length > 0) {
+  console.error('\n❌ FATAL: Invalid or missing required environment variables for client build:');
+  invalidVars.forEach(({ name, value, issue }) => {
+    console.error(`   - ${name}: ${issue}`);
+    if (issue === 'PLACEHOLDER_VALUE') {
+      console.error(`     Current value: "${value}" (placeholder - must be replaced with real key)`);
+    } else if (issue === 'EMPTY_OR_WHITESPACE') {
+      console.error(`     Current value: "${value}" (empty or whitespace only)`);
+    }
   });
   console.error('\n💡 These variables must be available during the build process.');
   console.error('💡 Vite embeds environment variables at BUILD TIME, not runtime.');
-  console.error('💡 Options:');
-  console.error('   1. Ensure .env file exists in project root with these variables');
-  console.error('   2. Set them as environment variables before running npm run build');
-  console.error('   3. Check your deployment configuration');
-  console.error('\n💡 Run: node check-env.js to diagnose environment variable issues\n');
+  console.error('\n💡 To fix:');
+  console.error('   1. Open .env file in the project root');
+  console.error('   2. Replace REPLACE_ME with your actual Supabase keys');
+  console.error('   3. Get keys from: https://supabase.com/dashboard/project/_/settings/api');
+  console.error('   4. Run "pnpm run build" again');
+  console.error('\n💡 The .env file should contain:');
+  console.error('   VITE_SUPABASE_URL=https://uwdkafekyrqjnstbywqw.supabase.co');
+  console.error('   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... (your actual key)');
+  console.error('   SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... (your actual key)');
+  console.error('\n');
   process.exit(1);
 } else {
-  console.log('✅ All required Vite environment variables are set');
-  console.log(`   VITE_SUPABASE_URL: ${process.env.VITE_SUPABASE_URL ? '✓' : '✗'}`);
-  console.log(`   VITE_SUPABASE_ANON_KEY: ${process.env.VITE_SUPABASE_ANON_KEY ? '✓' : '✗'}`);
+  console.log('✅ All required Vite environment variables are set and valid');
+  console.log(`   VITE_SUPABASE_URL: ✓ (${process.env.VITE_SUPABASE_URL.substring(0, 30)}...)`);
+  console.log(`   VITE_SUPABASE_ANON_KEY: ✓ (${process.env.VITE_SUPABASE_ANON_KEY.substring(0, 30)}...)`);
+  
+  // Also verify SUPABASE_SERVICE_ROLE_KEY for runtime (backend)
+  if (!isValidValue(process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+    console.warn('\n⚠️  WARNING: SUPABASE_SERVICE_ROLE_KEY is missing or invalid');
+    console.warn('   This will cause the backend server to fail at runtime.');
+    console.warn('   Add SUPABASE_SERVICE_ROLE_KEY to your .env file.');
+  } else {
+    console.log(`   SUPABASE_SERVICE_ROLE_KEY: ✓ (for backend runtime)`);
+  }
 }
 
 console.log('='.repeat(80));
@@ -53,7 +103,7 @@ console.log('='.repeat(80));
 console.log('');
 
 // Helper function to run commands with full output
-function runCommand(cmd, description) {
+function runCommand(cmd, description, customEnv = null) {
   console.log(`\n${'─'.repeat(80)}`);
   console.log(`📌 ${description}`);
   console.log(`💻 Command: ${cmd}`);
@@ -64,7 +114,8 @@ function runCommand(cmd, description) {
       shell: true,
       cwd: __dirname,
       stdio: 'inherit',
-      encoding: 'utf-8'
+      encoding: 'utf-8',
+      env: customEnv || process.env // Explicitly pass env vars
     });
     
     if (result.error) {
@@ -137,10 +188,11 @@ console.log('\n' + '='.repeat(80));
 console.log('📁 STEP 1: Clean dist directory');
 console.log('='.repeat(80));
 
-if (existsSync(join(__dirname, 'dist'))) {
+const distPath = join(__dirname, 'dist');
+if (existsSync(distPath)) {
   console.log('🗑️  Removing existing dist directory...');
   try {
-    execSync('rm -rf dist', { cwd: __dirname, stdio: 'inherit' });
+    rmSync(distPath, { recursive: true, force: true });
     console.log('✅ dist directory removed');
   } catch (error) {
     console.error('❌ Failed to remove dist:', error.message);
@@ -152,7 +204,7 @@ if (existsSync(join(__dirname, 'dist'))) {
 // Create fresh dist directory
 console.log('📁 Creating fresh dist directory...');
 try {
-  execSync('mkdir -p dist', { cwd: __dirname, stdio: 'inherit' });
+  mkdirSync(distPath, { recursive: true });
   console.log('✅ dist directory created');
 } catch (error) {
   console.error('❌ Failed to create dist:', error.message);
@@ -164,7 +216,38 @@ console.log('\n' + '='.repeat(80));
 console.log('⚛️  STEP 2: Build frontend with Vite');
 console.log('='.repeat(80));
 
-const viteSuccess = runCommand('npx vite build', 'Frontend build (Vite)');
+// CRITICAL: Verify env vars are in process.env before Vite build
+// Vite reads from process.env.VITE_* variables at build time
+console.log('\n🔍 Pre-build env verification:');
+console.log(`   VITE_SUPABASE_URL: ${process.env.VITE_SUPABASE_URL ? '✓ set' : '✗ MISSING'}`);
+console.log(`   VITE_SUPABASE_ANON_KEY: ${process.env.VITE_SUPABASE_ANON_KEY ? '✓ set' : '✗ MISSING'}`);
+if (process.env.VITE_SUPABASE_URL) {
+  console.log(`   VITE_SUPABASE_URL value: ${process.env.VITE_SUPABASE_URL.substring(0, 40)}...`);
+}
+if (process.env.VITE_SUPABASE_ANON_KEY) {
+  console.log(`   VITE_SUPABASE_ANON_KEY prefix: ${process.env.VITE_SUPABASE_ANON_KEY.substring(0, 20)}...`);
+}
+
+// Ensure env vars are explicitly passed to Vite build process
+// Vite reads from both .env files AND process.env.VITE_* variables
+// We ensure both are available
+const viteEnv = {
+  ...process.env,
+  // Explicitly ensure VITE_ vars are available (redundant but safe)
+  VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
+  VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
+};
+
+if (!viteEnv.VITE_SUPABASE_URL || !viteEnv.VITE_SUPABASE_ANON_KEY) {
+  console.error('\n❌ FATAL: VITE env vars not available for Vite build!');
+  console.error('   This means dotenv.config() did not load them correctly.');
+  console.error('   Check that .env file exists and contains VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+  process.exit(1);
+}
+
+// Build Vite command with explicit env vars
+const viteCmd = 'npx vite build';
+const viteSuccess = runCommand(viteCmd, 'Frontend build (Vite)', viteEnv);
 
 if (!viteSuccess) {
   console.error('\n❌ FATAL: Vite build failed');
@@ -183,6 +266,67 @@ if (checkPath('dist/public', 'directory')) {
     });
   } catch (error) {
     console.error('❌ Could not list dist/public:', error.message);
+  }
+  
+  // Verify Supabase variables are embedded in the build
+  console.log('\n🔍 Verifying Supabase variables are embedded in build...');
+  try {
+    const indexPath = join(__dirname, 'dist/public/index.html');
+    if (existsSync(indexPath)) {
+      const indexContent = readFileSync(indexPath, 'utf-8');
+      const hasSupabaseUrl = indexContent.includes(process.env.VITE_SUPABASE_URL || '');
+      const hasAnonKey = indexContent.includes(process.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) || '');
+      
+      if (hasSupabaseUrl && hasAnonKey) {
+        console.log('✅ Supabase variables found embedded in index.html');
+      } else {
+        console.warn('⚠️  Supabase variables may not be embedded correctly');
+        console.warn('   This is normal if variables are in JS bundles, not HTML');
+      }
+    }
+    
+    // Check JS bundles for embedded variables
+    const jsFiles = readdirSync(join(__dirname, 'dist/public/assets')).filter(f => f.endsWith('.js'));
+    if (jsFiles.length > 0) {
+      // Check all JS files, not just the first one
+      let foundUrl = false;
+      let foundAnonKey = false;
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+      const anonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+      const anonKeyPrefix = anonKey.substring(0, 20); // First 20 chars for matching
+      
+      for (const jsFile of jsFiles) {
+        const jsFilePath = join(__dirname, 'dist/public/assets', jsFile);
+        const jsContent = readFileSync(jsFilePath, 'utf-8');
+        
+        if (supabaseUrl && jsContent.includes(supabaseUrl)) {
+          foundUrl = true;
+        }
+        // Check for anon key - it might start with "pk_" or "eyJ" depending on format
+        if (anonKey && (jsContent.includes(anonKey) || jsContent.includes(anonKeyPrefix))) {
+          foundAnonKey = true;
+        }
+      }
+      
+      if (foundUrl && foundAnonKey) {
+        console.log('✅ Supabase variables confirmed embedded in JS bundle');
+        console.log(`   VITE_SUPABASE_URL: ✓ (embedded)`);
+        console.log(`   VITE_SUPABASE_ANON_KEY: ✓ (embedded, prefix: ${anonKeyPrefix}...)`);
+      } else {
+        console.error('❌ Supabase variables NOT found in JS bundle!');
+        console.error(`   VITE_SUPABASE_URL: ${foundUrl ? '✓' : '✗ NOT FOUND'}`);
+        console.error(`   VITE_SUPABASE_ANON_KEY: ${foundAnonKey ? '✓' : '✗ NOT FOUND'}`);
+        console.error('   This means Vite did not embed the variables correctly.');
+        console.error('   Check that:');
+        console.error('     1. Variables start with VITE_ prefix');
+        console.error('     2. .env file exists in project root');
+        console.error('     3. Variables are loaded before Vite build runs');
+        process.exit(1);
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️  Could not verify embedded variables:', error.message);
+    console.warn('   This is okay - variables may be in a different location');
   }
 } else {
   console.error('❌ FATAL: Frontend build failed - dist/public not found');
