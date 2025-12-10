@@ -1,145 +1,160 @@
-# Infomaniak Deployment - Fixed and Ready
+# Infomaniak Deployment Guide
 
-## ✅ Issues Fixed
+## Overview
 
-### 1. **Vite Version Conflict** ✅ RESOLVED
-- **Problem**: `@builder.io/vite-plugin-jsx-loc` requires vite 4.x or 5.x, but you had 7.x
-- **Solution**: Downgraded vite from `^7.1.7` to `^5.4.0`
+This project uses **Infomaniak's Node.js application manager** as the exclusive process manager. The deployment scripts only build the application - they do NOT start or manage the server process.
 
-### 2. **Build Dependencies** ✅ VERIFIED
-- **esbuild**: Moved to `dependencies` (already done by you)
-- **vite**: Kept in `devDependencies` (correct for build process)
+## Deployment Process
 
-### 3. **Build Output** ✅ VERIFIED
-- `dist/index.js` created successfully (71KB)
-- Frontend assets built correctly
-- No build errors
+### 1. Deploy via SSH
 
-## 📝 Changes Committed to GitHub
+SSH into your Infomaniak server and run the deployment script:
 
-All fixes have been pushed to:
-- **Repository**: https://github.com/mantodeus/mantodeus-manager
-- **Branch**: main
-- **Commit**: "Merge and fix: Downgrade vite to 5.4.0 for Infomaniak deployment compatibility"
-
-## 🚀 Next Steps on Infomaniak
-
-### Step 1: Trigger New Build
-1. Go to your Infomaniak Node.js hosting dashboard
-2. Navigate to your `manager.mantodeus.com` site
-3. Go to **Deployment** or **Build** settings
-4. **Important**: Select "Delete node_modules" option
-5. Click **"Trigger Build"** or **"Redeploy"**
-
-### Step 2: Monitor Build Process
-Watch for these steps to complete:
-1. ✅ Git pull from GitHub
-2. ✅ `npm install` (installs dependencies)
-3. ✅ `npm run build` (runs `vite build && esbuild...`)
-4. ✅ Creates `dist/index.js` file
-5. ✅ Starts with `npm start`
-
-### Step 3: Verify Deployment
-Once build completes, check:
-- Visit https://manager.mantodeus.com
-- Should show "Mantodeus Manager" login page
-- No "Cannot find module" errors in logs
-
-## 🔧 Build Configuration Summary
-
-Your Infomaniak setup should have:
-
-```
-Build Command: npm install && npm run build
-Start Command: npm start
-Node Version: 22.x (or latest)
+**Production:**
+```bash
+cd ~/sites/manager.mantodeus.com
+bash infra/production/deploy-production.sh
 ```
 
-The build process will now:
-1. Install all dependencies (including vite 5.4.0)
-2. Run `vite build` → creates frontend in `dist/public/`
-3. Run `esbuild` → creates backend in `dist/index.js`
-4. Start server with `node dist/index.js`
-
-## ⚠️ Important Notes
-
-### Database Configuration
-Make sure your Infomaniak environment variables include:
-```
-DATABASE_URL=mysql://user:password@host:3306/database
-JWT_SECRET=your_secret_key
-OAUTH_SERVER_URL=https://api.manus.im
-VITE_OAUTH_PORTAL_URL=https://portal.manus.im
-VITE_APP_ID=your_app_id
-VITE_APP_TITLE=Mantodeus Manager
-VITE_APP_LOGO=/mantodeus-logo.png
-OWNER_OPEN_ID=your_owner_id
-OWNER_NAME=Your Name
+**Preview:**
+```bash
+cd ~/sites/manager-preview.mantodeus.com
+bash infra/preview/deploy-preview.sh
 ```
 
-### S3 Storage (Optional)
-For file uploads to work, add:
+The deployment script will:
+- ✅ Pull latest code from Git
+- ✅ Install dependencies (`npm install`)
+- ✅ Build the application (`npm run build`)
+- ✅ Verify build outputs exist
+- ❌ **NOT** start or restart the server
+
+### 2. Restart in Infomaniak Control Panel
+
+**⚠️ IMPORTANT:** After deployment, you MUST restart the application in Infomaniak:
+
+1. Log into [Infomaniak control panel](https://www.infomaniak.com/)
+2. Navigate to: **Web Hosting** → **Node.js Applications**
+3. Find your application: `manager.mantodeus.com` (or preview)
+4. Click: **"Restart Application"**
+
+The server will:
+- Read `PORT` from `process.env.PORT` (set by Infomaniak)
+- Load environment variables from `.env` file at runtime
+- Start the Node.js process
+
+## Environment Variables
+
+### Production Environment
+
+Create/update `.env` in `/srv/customer/sites/manager.mantodeus.com/`:
+
+```bash
+# Supabase Configuration
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+
+# Database
+DATABASE_URL=mysql://username:password@host:port/database_name
+
+# JWT Secret
+JWT_SECRET=your_jwt_secret_here
+
+# Application Configuration
+APP_ENV=production
+PORT=3000  # Note: Infomaniak may override this via process.env.PORT
+NODE_ENV=production
 ```
-S3_ENDPOINT=https://s3.pub1.infomaniak.cloud
-S3_REGION=us-east-1
-S3_BUCKET=mantodeus-manager-files
-S3_ACCESS_KEY_ID=your_access_key
-S3_SECRET_ACCESS_KEY=your_secret_key
+
+**Important Notes:**
+- `VITE_*` variables are embedded at **build time** (during `npm run build`)
+- `SUPABASE_SERVICE_ROLE_KEY` and other backend variables are loaded at **runtime** from `.env`
+- `PORT` is set by Infomaniak via `process.env.PORT` - the `.env` PORT value is a fallback
+
+### Preview Environment
+
+Same structure, but in `/srv/customer/sites/manager-preview.mantodeus.com/`
+
+## How It Works
+
+### Build Time (Deployment Script)
+1. Frontend: Vite embeds `VITE_*` variables into JavaScript bundles
+2. Backend: esbuild bundles the server code (variables loaded at runtime)
+
+### Runtime (Infomaniak)
+1. Infomaniak runs: `npm start` (which runs `node dist/index.js`)
+2. `load-env.ts` loads `.env` file
+3. Server reads `PORT` from `process.env.PORT` (Infomaniak sets this)
+4. Server starts and serves the application
+
+## Troubleshooting
+
+### Server Not Starting
+
+1. **Check Infomaniak logs:**
+   - Infomaniak control panel → Node.js Application → Logs
+   - Or SSH: `tail -f /var/log/customer/...` (Infomaniak log location)
+
+2. **Verify build outputs exist:**
+   ```bash
+   ls -la dist/index.js dist/public
+   ```
+
+3. **Check environment variables:**
+   ```bash
+   cat .env | grep -E "VITE_SUPABASE|SUPABASE_SERVICE"
+   ```
+
+4. **Verify PORT is set:**
+   - Infomaniak sets `process.env.PORT` automatically
+   - The server reads: `process.env.PORT || 3000`
+
+### "Invalid API key" Error
+
+This means the Supabase anon key wasn't embedded correctly at build time:
+
+1. **Verify `.env` has correct keys:**
+   ```bash
+   cat .env | grep VITE_SUPABASE_ANON_KEY
+   ```
+
+2. **Rebuild the application:**
+   ```bash
+   npm run build
+   ```
+
+3. **Restart in Infomaniak control panel**
+
+### Port Conflicts
+
+- Infomaniak manages the port automatically via `process.env.PORT`
+- Do NOT manually bind ports in scripts
+- Do NOT use `nohup` or background processes
+- Let Infomaniak handle all process management
+
+## Disabled Scripts
+
+The following scripts are **disabled** and should NOT be used:
+
+- ❌ `infra/shared/run-background.sh` - Use Infomaniak restart instead
+- ❌ `infra/shared/stop-env.sh` - Use Infomaniak stop/restart instead
+
+These scripts will exit with an error if called, directing you to use Infomaniak control panel.
+
+## Local Development
+
+For local development, use:
+
+```bash
+pnpm dev
 ```
 
-## 🐛 Troubleshooting
+This runs the development server with hot reload. It does NOT use Infomaniak process management.
 
-### If Build Still Fails:
+## Summary
 
-1. **Check Node.js Version**
-   - Ensure Infomaniak is using Node.js 22.x
-   - Vite 5.4 requires Node.js 18+
-
-2. **Check Build Logs**
-   - Look for any error messages during `vite build`
-   - Look for any error messages during `esbuild`
-
-3. **Verify dist/ Directory**
-   - After build, check if `dist/index.js` exists
-   - Check if `dist/public/` contains frontend files
-
-4. **Check Package Manager**
-   - If using npm, it should work fine
-   - The project was developed with pnpm but npm is compatible
-
-### If Application Starts But Doesn't Work:
-
-1. **Check Environment Variables**
-   - Verify all required variables are set
-   - Check DATABASE_URL is correct
-
-2. **Check Database Connection**
-   - Ensure MySQL database is accessible
-   - Run migrations if needed
-
-3. **Check Logs**
-   - Look for connection errors
-   - Check for missing environment variables
-
-## ✨ Expected Result
-
-After successful deployment, you should see:
-- ✅ Build completes without errors
-- ✅ `dist/index.js` file exists
-- ✅ Server starts successfully
-- ✅ https://manager.mantodeus.com loads the login page
-- ✅ Application is accessible and functional
-
-## 📞 Need Help?
-
-If you encounter any issues:
-1. Check the build logs in Infomaniak dashboard
-2. Verify environment variables are set correctly
-3. Ensure database is accessible
-4. Check that Node.js version is 18+ or 22.x
-
----
-
-**Status**: ✅ Ready for deployment  
-**Last Updated**: November 25, 2025  
-**GitHub**: https://github.com/mantodeus/mantodeus-manager
+✅ **Deploy:** Run deployment script via SSH → Builds the app  
+✅ **Restart:** Use Infomaniak control panel → Starts the server  
+✅ **Local:** Use `pnpm dev` → Development server  
+❌ **Never:** Manually start server via SSH, use nohup, or manage PIDs

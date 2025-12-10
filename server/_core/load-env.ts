@@ -51,7 +51,19 @@ if (!isProduction) {
   // Also try .env as fallback
   const envPath = resolve(projectRoot, ".env");
   if (existsSync(envPath)) {
-    config({ path: envPath });
+    const result = config({ path: envPath });
+    if (result.error) {
+      console.warn("[dotenv] Error loading .env:", result.error.message);
+    } else if (result.parsed) {
+      console.log("[dotenv] Loaded .env with", Object.keys(result.parsed).length, "variables");
+      // Debug: Show if Supabase vars are loaded
+      if (result.parsed.VITE_SUPABASE_URL) {
+        console.log("[dotenv] ✓ VITE_SUPABASE_URL is set");
+      }
+      if (result.parsed.SUPABASE_SERVICE_ROLE_KEY) {
+        console.log("[dotenv] ✓ SUPABASE_SERVICE_ROLE_KEY is set");
+      }
+    }
   }
 } else {
   // In production, only load .env

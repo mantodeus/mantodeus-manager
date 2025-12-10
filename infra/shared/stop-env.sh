@@ -1,4 +1,20 @@
 #!/usr/bin/env bash
+# ⚠️  DEPRECATED: This script is disabled - Infomaniak manages the server process
+# 
+# This script is kept for reference but should NOT be used.
+# Server process management is now handled exclusively by Infomaniak's Node.js application manager.
+# 
+# To stop/restart the server:
+#   1. Log into Infomaniak control panel
+#   2. Navigate to: Node.js Application → [your-site]
+#   3. Click: 'Stop Application' or 'Restart Application'
+
+echo "❌ ERROR: This script is disabled." >&2
+echo "   Server process management is handled by Infomaniak." >&2
+echo "   Use Infomaniak control panel to stop/restart the application." >&2
+exit 1
+
+# Original script code below (disabled):
 # Helper script to stop a running environment by reading PID from logs/<env>.pid
 # Also kills any process on the specified port
 # Usage: stop-env.sh <env_name> [port]

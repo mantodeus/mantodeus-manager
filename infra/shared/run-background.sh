@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
-# Helper script to run the Node.js server in the background
+# ⚠️  DEPRECATED: This script is disabled - Infomaniak manages the server process
+# 
+# This script is kept for reference but should NOT be used.
+# Server process management is now handled exclusively by Infomaniak's Node.js application manager.
+# 
+# To start/restart the server:
+#   1. Log into Infomaniak control panel
+#   2. Navigate to: Node.js Application → [your-site]
+#   3. Click: 'Restart Application'
+#
+# The server reads PORT from process.env.PORT (set by Infomaniak)
+# and environment variables from .env file at runtime.
+
+echo "❌ ERROR: This script is disabled." >&2
+echo "   Server process management is handled by Infomaniak." >&2
+echo "   Use Infomaniak control panel to restart the application." >&2
+exit 1
+
+# Original script code below (disabled):
 # Usage: run-background.sh <env_name> <port>
 # Example: run-background.sh production 3000
 

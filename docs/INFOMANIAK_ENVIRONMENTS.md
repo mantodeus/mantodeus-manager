@@ -261,36 +261,49 @@ The deployment script will:
 
 ## Process Management
 
-The deployment scripts use simple process management without PM2 (since Infomaniak shared hosting may not support it):
+**⚠️ IMPORTANT: Process management is handled EXCLUSIVELY by Infomaniak's Node.js application manager.**
 
-- Processes run in the background using `nohup`
-- PID files are stored in `logs/<env>.pid`
-- Logs are written to `logs/<env>.log`
+The deployment scripts **DO NOT** start or manage the server process. They only:
+- Pull latest code
+- Install dependencies
+- Build the application
 
-### Manual Process Management
+### Starting/Stopping the Server
 
-**Stop production:**
+**All server process management must be done via Infomaniak control panel:**
+
+1. Log into [Infomaniak control panel](https://www.infomaniak.com/)
+2. Navigate to: **Web Hosting** → **Node.js Applications**
+3. Find your application: `manager.mantodeus.com` (or preview)
+4. Use the control panel buttons:
+   - **Start Application**
+   - **Stop Application**
+   - **Restart Application** ← Use this after deployment
+
+### After Deployment
+
+**After running the deployment script, you MUST restart the application in Infomaniak:**
+
 ```bash
-cd /srv/customer/sites/manager.mantodeus.com
-bash infra/shared/stop-env.sh production
+# 1. Deploy (builds the app)
+cd ~/sites/manager.mantodeus.com
+bash infra/production/deploy-production.sh
+
+# 2. Then restart in Infomaniak control panel (see above)
 ```
 
-**Stop preview:**
-```bash
-cd /srv/customer/sites/manager-preview.mantodeus.com
-bash infra/shared/stop-env.sh preview
-```
+The server will:
+- Read `PORT` from `process.env.PORT` (set by Infomaniak automatically)
+- Load environment variables from `.env` file at runtime
+- Start via `npm start` (which runs `node dist/index.js`)
 
-**Check if processes are running:**
-```bash
-# Production
-cat /srv/customer/sites/manager.mantodeus.com/logs/production.pid
-ps -p $(cat /srv/customer/sites/manager.mantodeus.com/logs/production.pid)
+### Disabled Scripts
 
-# Preview
-cat /srv/customer/sites/manager-preview.mantodeus.com/logs/preview.pid
-ps -p $(cat /srv/customer/sites/manager-preview.mantodeus.com/logs/preview.pid)
-```
+The following scripts are **disabled** and should NOT be used:
+- ❌ `infra/shared/run-background.sh` - Use Infomaniak restart instead
+- ❌ `infra/shared/stop-env.sh` - Use Infomaniak stop/restart instead
+
+These scripts will exit with an error if called, directing you to use Infomaniak control panel.
 
 ---
 
@@ -331,14 +344,16 @@ In the Infomaniak control panel, configure the domain mappings:
 1. **Production Domain:**
    - Domain: `manager.mantodeus.com`
    - Document root: `/srv/customer/sites/manager.mantodeus.com`
-   - Node.js application should be configured to run on port `3000`
+   - Start command: `npm start` (Infomaniak runs this automatically)
+   - Port: Set automatically by Infomaniak via `process.env.PORT`
 
 2. **Preview Domain:**
    - Domain: `nc9eti4he7h.preview.hosting-ik.com` (or mapped vhost)
    - Document root: `/srv/customer/sites/manager-preview.mantodeus.com`
-   - Node.js application should be configured to run on port `3001`
+   - Start command: `npm start` (Infomaniak runs this automatically)
+   - Port: Set automatically by Infomaniak via `process.env.PORT`
 
-The control panel should handle proxying HTTP requests to the respective Node.js processes.
+**Important:** The server reads `PORT` from `process.env.PORT` (set by Infomaniak). The `.env` file's `PORT` value is only a fallback and may be overridden by Infomaniak.
 
 ---
 
@@ -346,28 +361,23 @@ The control panel should handle proxying HTTP requests to the respective Node.js
 
 ### Server Won't Start
 
-1. Check if the port is already in use:
-   ```bash
-   # Production
-   lsof -i :3000
-   # Preview
-   lsof -i :3001
-   ```
+1. **Check Infomaniak logs:**
+   - Infomaniak control panel → Node.js Application → Logs
+   - Or check application status in control panel
 
-2. Check logs for errors:
-   ```bash
-   tail -n 50 logs/production.log  # or logs/preview.log
-   ```
-
-3. Verify environment variables are set:
-   ```bash
-   cat .env | grep -E "APP_ENV|PORT|NODE_ENV"
-   ```
-
-4. Verify build output exists:
+2. **Verify build output exists:**
    ```bash
    ls -la dist/index.js dist/public
    ```
+
+3. **Verify environment variables are set:**
+   ```bash
+   cat .env | grep -E "APP_ENV|VITE_SUPABASE|SUPABASE_SERVICE"
+   ```
+
+4. **Restart in Infomaniak control panel:**
+   - Sometimes a restart fixes issues
+   - The control panel will show any startup errors
 
 ### Build Fails
 
@@ -388,16 +398,23 @@ The control panel should handle proxying HTTP requests to the respective Node.js
    npm run build
    ```
 
-### Process Not Found
+### Application Not Running
 
-If the PID file exists but the process is gone:
+If the application is not running in Infomaniak:
 
-1. Clean up the PID file:
+1. **Check Infomaniak control panel:**
+   - Navigate to Node.js Application
+   - Check application status
+   - View logs for errors
+
+2. **Restart via Infomaniak control panel:**
+   - Click "Restart Application"
+   - Check logs after restart
+
+3. **Verify deployment completed:**
    ```bash
-   rm logs/production.pid  # or logs/preview.pid
+   ls -la dist/index.js dist/public
    ```
-
-2. Restart the server using the deployment script.
 
 ---
 
@@ -405,14 +422,16 @@ If the PID file exists but the process is gone:
 
 ### Port Configuration
 
-The server reads the port from the `PORT` environment variable:
-- Production: `PORT=3000`
-- Preview: `PORT=3001`
-
-The server code in `server/_core/index.ts` uses:
+The server reads the port from `process.env.PORT` (set by Infomaniak):
 ```typescript
 const port = parseInt(process.env.PORT || "3000");
 ```
+
+**Important:**
+- Infomaniak sets `process.env.PORT` automatically
+- The `.env` file's `PORT` value is only a fallback
+- Do NOT manually bind ports in scripts
+- Let Infomaniak manage the port assignment
 
 ### Environment Awareness
 
@@ -452,15 +471,17 @@ ssh mantodeus-server 'tail -f /srv/customer/sites/manager.mantodeus.com/logs/pro
 ssh mantodeus-server 'tail -f /srv/customer/sites/manager-preview.mantodeus.com/logs/preview.log'
 ```
 
-### Stop Production
-```bash
-ssh mantodeus-server 'cd /srv/customer/sites/manager.mantodeus.com && bash infra/shared/stop-env.sh production'
-```
+### Restart Production (After Deployment)
+1. Run deployment script (see "Deploy Production" above)
+2. Log into Infomaniak control panel
+3. Navigate to Node.js Application → manager.mantodeus.com
+4. Click "Restart Application"
 
-### Stop Preview
-```bash
-ssh mantodeus-server 'cd /srv/customer/sites/manager-preview.mantodeus.com && bash infra/shared/stop-env.sh preview'
-```
+### Restart Preview (After Deployment)
+1. Run deployment script (see "Deploy Preview" above)
+2. Log into Infomaniak control panel
+3. Navigate to Node.js Application → manager-preview.mantodeus.com
+4. Click "Restart Application"
 
 ---
 
@@ -470,12 +491,12 @@ ssh mantodeus-server 'cd /srv/customer/sites/manager-preview.mantodeus.com && ba
 mantodeus-manager/
 ├── infra/
 │   ├── shared/
-│   │   ├── run-background.sh      # Helper to start server in background
-│   │   └── stop-env.sh            # Helper to stop server by env name
+│   │   ├── run-background.sh      # ⚠️ DISABLED - Use Infomaniak restart
+│   │   └── stop-env.sh            # ⚠️ DISABLED - Use Infomaniak stop/restart
 │   ├── production/
-│   │   └── deploy-production.sh   # Production deployment script
+│   │   └── deploy-production.sh   # Production deployment (builds only)
 │   └── preview/
-│       └── deploy-preview.sh      # Preview deployment script
+│       └── deploy-preview.sh      # Preview deployment (builds only)
 ├── scripts/
 │   ├── deploy-production-local.sh # Local helper (prints command)
 │   └── deploy-preview-local.sh     # Local helper (prints command)
@@ -489,7 +510,9 @@ mantodeus-manager/
 
 - All scripts use `#!/usr/bin/env bash` and `set -euo pipefail` for safety
 - Scripts output JSON status for easy parsing
-- Process management uses `nohup` instead of PM2 for compatibility with shared hosting
-- Both environments can run simultaneously on different ports
+- **Process management is handled EXCLUSIVELY by Infomaniak** - deployment scripts only build
+- Both environments can run simultaneously (Infomaniak manages ports automatically)
 - The preview environment defaults to the `main` branch but can be configured to use `develop` or any other branch
+- After deployment, always restart the application in Infomaniak control panel
+- The server reads `PORT` from `process.env.PORT` (set by Infomaniak), not from `.env` file
 
