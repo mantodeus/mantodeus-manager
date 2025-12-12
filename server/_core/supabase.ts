@@ -9,48 +9,16 @@ import { ENV } from "./env";
 
 // Validate Supabase configuration
 if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
-  console.error("[Supabase] Missing configuration:");
-  console.error("  VITE_SUPABASE_URL:", ENV.supabaseUrl ? "✓" : "✗");
-  console.error("  SUPABASE_SERVICE_ROLE_KEY:", ENV.supabaseServiceRoleKey ? "✓" : "✗");
-  console.error("");
-  console.error("[Supabase] To fix this:");
-  console.error("  1. Create or update .env file in the project root");
-  console.error("  2. Add the following variables:");
-  console.error("     VITE_SUPABASE_URL=https://your-project.supabase.co");
-  console.error("     SUPABASE_SERVICE_ROLE_KEY=your_service_role_key");
-  console.error("  3. Restart the server");
-  console.error("");
-  console.error("  See docs/INFOMANIAK_ENVIRONMENTS.md for full environment variable documentation");
-  throw new Error("Supabase configuration is missing. Please set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables in .env file.");
+  console.error("[Supabase] ❌ Missing configuration - check .env file");
+  throw new Error("Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env");
 }
 
-// Debug: Log what values are actually being used (masked for security)
-console.log("[Supabase] Configuration check:");
-console.log(`[Supabase]   URL: ${ENV.supabaseUrl}`);
+// Log configuration (masked)
 const keyPreview = ENV.supabaseServiceRoleKey.length > 20 
   ? `${ENV.supabaseServiceRoleKey.slice(0, 20)}...${ENV.supabaseServiceRoleKey.slice(-10)}` 
-  : "[too short]";
-console.log(`[Supabase]   Service Role Key: ${keyPreview} (length: ${ENV.supabaseServiceRoleKey.length})`);
-
-// Extract project ID from URL and key to verify they match
-const urlMatch = ENV.supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/);
-const urlProjectId = urlMatch ? urlMatch[1] : "unknown";
-console.log(`[Supabase]   URL Project ID: ${urlProjectId}`);
-
-// Try to decode JWT to get project ref (service role key is a JWT)
-try {
-  const keyParts = ENV.supabaseServiceRoleKey.split('.');
-  if (keyParts.length === 3) {
-    const payload = JSON.parse(Buffer.from(keyParts[1], 'base64').toString());
-    console.log(`[Supabase]   Key Project ID (ref): ${payload.ref || "not found"}`);
-    console.log(`[Supabase]   Key Role: ${payload.role || "not found"}`);
-    if (payload.ref && payload.ref !== urlProjectId) {
-      console.error(`[Supabase] ⚠️  PROJECT MISMATCH! URL has "${urlProjectId}" but key has "${payload.ref}"`);
-    }
-  }
-} catch (e) {
-  console.log("[Supabase]   Could not decode key JWT");
-}
+  : "[invalid]";
+console.log(`[Supabase] URL: ${ENV.supabaseUrl}`);
+console.log(`[Supabase] Key: ${keyPreview} (${ENV.supabaseServiceRoleKey.length} chars)`);
 
 // Create Supabase client for server-side operations
 export const supabaseAdmin = createClient(
