@@ -1,6 +1,8 @@
 export const ENV = {
-  supabaseUrl: process.env.VITE_SUPABASE_URL ?? "",
-  supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY ?? "",
+  // Use non-VITE_ prefixed variables for backend (VITE_ is for client-side bundling)
+  // Fallback to VITE_ for backward compatibility with existing .env files
+  supabaseUrl: process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "",
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
 
   cookieSecret: process.env.JWT_SECRET ?? "",
