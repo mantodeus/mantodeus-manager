@@ -44,7 +44,9 @@ export default function Login() {
         if (signInError) throw signInError;
       }
 
-      // Routing will be handled automatically by App.tsx Router based on auth state
+      // Force page reload to refresh auth state
+      // This ensures the tRPC client picks up the new session
+      window.location.href = "/";
     } catch (err: any) {
       console.error("[Login] Authentication error:", err);
       // Provide more specific error messages
