@@ -245,6 +245,18 @@ export default function ProjectFileLightbox({
     const img = imgRef.current;
     if (!canvas || !img) return;
 
+    // Helper to convert base64 to Blob
+    const base64ToBlob = (base64: string, contentType: string): Blob => {
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      return new Blob([byteArray], { type: contentType });
+    };
+
+    // Try direct fetch first (works if CORS is configured), fall back to server proxy
     const downloadImageBlob = async (url: string) => {
       const response = await fetch(url, { cache: "no-store" });
       if (!response.ok) {
@@ -254,6 +266,7 @@ export default function ProjectFileLightbox({
     };
 
     const getPreviewBlob = async () => {
+      // First, try direct fetch from cached URLs (works if CORS is configured)
       const cachedUrls = [currentFile.imageUrls?.preview, currentFile.imageUrls?.full].filter(
         Boolean
       ) as string[];
@@ -262,30 +275,18 @@ export default function ProjectFileLightbox({
         try {
           return await downloadImageBlob(url);
         } catch (error) {
-          console.warn("[ProjectFileLightbox] Cached preview URL failed, requesting fresh URL", error);
+          console.warn("[ProjectFileLightbox] Direct fetch failed (likely CORS), trying server proxy", error);
         }
       }
 
-      try {
-        const freshPreview = await utils.client.projects.files.getPresignedUrl.query({
-          fileId: currentFile.id,
-          variant: "preview",
-        });
-        if (freshPreview.url) {
-          return await downloadImageBlob(freshPreview.url);
-        }
-      } catch (error) {
-        console.warn("[ProjectFileLightbox] Preview variant fetch failed, falling back to full", error);
-      }
-
-      const freshFull = await utils.client.projects.files.getPresignedUrl.query({
+      // Fall back to server-side proxy (bypasses CORS)
+      console.log("[ProjectFileLightbox] Using server proxy to fetch image");
+      const proxyResult = await utils.client.projects.files.getImageBlob.query({
         fileId: currentFile.id,
-        variant: "full",
+        variant: "preview",
       });
-      if (!freshFull.url) {
-        throw new Error("Preview unavailable for this file");
-      }
-      return await downloadImageBlob(freshFull.url);
+      
+      return base64ToBlob(proxyResult.base64, proxyResult.contentType);
     };
 
     setIsLoading(true);
@@ -630,26 +631,33 @@ export default function ProjectFileLightbox({
 
   const handleDownloadOriginal = async () => {
     try {
-      let fullUrl = currentFile.imageUrls?.full;
-      if (!fullUrl) {
-        const fallback = await utils.client.projects.files.getPresignedUrl.query({
-          fileId: currentFile.id,
-          variant: "full",
-        });
-        fullUrl = fallback.url;
-      }
-      if (!fullUrl) {
-        toast.error("Original image unavailable");
-        return;
-      }
+      // Helper to convert base64 to Blob
+      const base64ToBlob = (base64: string, contentType: string): Blob => {
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: contentType });
+      };
+
+      // Use server proxy to download full image
+      const proxyResult = await utils.client.projects.files.getImageBlob.query({
+        fileId: currentFile.id,
+        variant: "full",
+      });
+      
+      const blob = base64ToBlob(proxyResult.base64, proxyResult.contentType);
+      const url = URL.createObjectURL(blob);
 
       const anchor = document.createElement("a");
-      anchor.href = fullUrl;
+      anchor.href = url;
       const safeName = currentFile.originalName.replace(/\.[^.]+$/, "") || `project-image-${currentFile.id}`;
       anchor.download = `${safeName}.jpg`;
-      anchor.target = "_blank";
-      anchor.rel = "noopener";
       anchor.click();
+      
+      URL.revokeObjectURL(url);
       toast.success("Original download started");
     } catch (error) {
       console.error(error);

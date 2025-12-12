@@ -172,11 +172,10 @@ async function startServer() {
   }
 
   // ===== INFOMANIAK-READY PORT FIX =====
-  const port = parseInt(process.env.PORT || "3000");
+  const port = parseInt(process.env.PORT || "3000", 10);
 
   server.listen(port, () => {
     console.log(`✅ Server running on port ${port}`);
-    console.log(`🌐 Open http://localhost:${port} in your browser`);
     serverStarted = true; // Mark server as started successfully
   });
 

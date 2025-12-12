@@ -13,6 +13,7 @@ import {
   generateFileKey,
   storageList,
   getContentType,
+  storageGet,
 } from "./storage";
 import { exportRouter } from "./exportRouter";
 import { projectsRouter } from "./projectsRouter";
@@ -289,6 +290,27 @@ export const appRouter = router({
           }))
         );
         return { urls };
+      }),
+
+    // Server-side image proxy (bypasses CORS)
+    // Fetches the image from S3 and returns it as base64
+    getImageBlob: protectedProcedure
+      .input(z.object({ fileKey: z.string() }))
+      .query(async ({ input }) => {
+        try {
+          const { data, contentType } = await storageGet(input.fileKey);
+          return {
+            base64: data.toString("base64"),
+            contentType,
+            size: data.length,
+          };
+        } catch (error) {
+          console.error("[Images] Failed to fetch image from S3:", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to fetch image from storage",
+          });
+        }
       }),
     
     // Server-side upload (bypasses CORS - browser sends to server, server uploads to S3)
