@@ -1,8 +1,10 @@
+// Load .env BEFORE any process.env access
+import "dotenv/config";
+
 export const ENV = {
-  // Use non-VITE_ prefixed variables for backend (VITE_ is for client-side bundling)
-  // Fallback to VITE_ for backward compatibility with existing .env files
-  supabaseUrl: process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "",
-  supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? "",
+  // Use VITE_ variables (they're in .env and dotenv loads them for backend too)
+  supabaseUrl: process.env.VITE_SUPABASE_URL ?? "",
+  supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
 
   cookieSecret: process.env.JWT_SECRET ?? "",
@@ -28,22 +30,14 @@ export const ENV = {
 };
 
 // Debug logging for env var presence (safe - doesn't expose secrets)
-// This runs at module load time, so it will log when the server starts
-const isDev = process.env.NODE_ENV !== "production";
-if (isDev) {
-  // In development, log detailed env var presence (consistent with client code)
-  console.log("[ENV] Server environment variables check:");
-  console.log(`[ENV]   VITE_SUPABASE_URL: ${ENV.supabaseUrl ? "✓ set" : "✗ MISSING"}`);
-  console.log(`[ENV]   VITE_SUPABASE_ANON_KEY: ${ENV.supabaseAnonKey ? "✓ set" : "✗ MISSING"}`);
-  console.log(`[ENV]   SUPABASE_SERVICE_ROLE_KEY: ${ENV.supabaseServiceRoleKey ? "✓ set" : "✗ MISSING"}`);
-  console.log(`[ENV]   JWT_SECRET: ${ENV.cookieSecret ? "✓ set" : "✗ MISSING"}`);
-  console.log(`[ENV]   DATABASE_URL: ${ENV.databaseUrl ? "✓ set" : "✗ MISSING"}`);
-}
+console.log("[ENV] Server environment variables check:");
+console.log(`[ENV]   VITE_SUPABASE_URL: ${ENV.supabaseUrl ? "✓ set" : "✗ MISSING"}`);
+console.log(`[ENV]   VITE_SUPABASE_ANON_KEY: ${ENV.supabaseAnonKey ? "✓ set" : "✗ MISSING"}`);
+console.log(`[ENV]   SUPABASE_SERVICE_ROLE_KEY: ${ENV.supabaseServiceRoleKey ? "✓ set" : "✗ MISSING"}`);
+console.log(`[ENV]   DATABASE_URL: ${ENV.databaseUrl ? "✓ set" : "✗ MISSING"}`);
 
-// In both dev and production, warn if critical vars are missing
+// Fail fast if critical vars are missing
 if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
-  console.error("[ENV] ⚠️  WARNING: Critical Supabase env vars are missing!");
-  console.error("[ENV]   This will cause authentication to fail.");
-  console.error(`[ENV]   VITE_SUPABASE_URL: ${ENV.supabaseUrl ? "✓" : "✗ MISSING"}`);
-  console.error(`[ENV]   SUPABASE_SERVICE_ROLE_KEY: ${ENV.supabaseServiceRoleKey ? "✓" : "✗ MISSING"}`);
+  console.error("[ENV] ⚠️  FATAL: Critical Supabase env vars are missing!");
+  console.error("[ENV]   Add to .env: VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
 }
