@@ -64,3 +64,6 @@ aws s3 ls s3://your-bucket-name --profile infomaniak --endpoint-url https://s3.p
 
 
 
+
+
+

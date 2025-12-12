@@ -20,6 +20,7 @@ import {
   createPresignedReadUrl,
   deleteFromStorage,
   storagePut,
+  storageGet,
 } from "./storage";
 import { nanoid } from "nanoid";
 import type { TrpcContext } from "./_core/context";
@@ -377,6 +378,53 @@ export const projectFilesRouter = router({
         expiresIn: DOWNLOAD_URL_EXPIRY_SECONDS,
         file: await hydrateFileWithSignedUrls(file),
       };
+    }),
+
+  /**
+   * Server-side image proxy (bypasses CORS)
+   * 
+   * Fetches the image from S3 and returns it as base64.
+   * Use this when the browser can't directly fetch from S3 due to CORS restrictions.
+   */
+  getImageBlob: protectedProcedure
+    .input(z.object({
+      fileId: z.number(),
+      variant: z.enum(["thumb", "preview", "full"]).optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      const file = await db.getFileMetadataById(input.fileId);
+      
+      if (!file) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `File with id ${input.fileId} not found`,
+        });
+      }
+      
+      // Verify project access
+      await requireProjectAccess(ctx.user, file.projectId);
+      
+      // Determine which S3 key to fetch
+      const requestedVariant = input.variant ?? "preview";
+      const targetKey =
+        file.imageMetadata?.variants?.[requestedVariant]?.key ?? file.s3Key;
+      
+      try {
+        const { data, contentType } = await storageGet(targetKey);
+        
+        // Return as base64 for easy consumption by the client
+        return {
+          base64: data.toString("base64"),
+          contentType,
+          size: data.length,
+        };
+      } catch (error) {
+        console.error("[ProjectFiles] Failed to fetch image from S3:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to fetch image from storage",
+        });
+      }
     }),
 
   /**

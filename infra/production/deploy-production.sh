@@ -55,12 +55,13 @@ if ! git reset --hard origin/main; then
   error_exit "Git reset failed"
 fi
 
-# Step 3: Install dependencies
+# Step 3: Install dependencies (include dev deps for build tools)
 echo ""
 echo "📦 Installing dependencies..."
 
-# Use npm install with --no-audit --no-fund for shared hosting compatibility
-npm install --no-audit --no-fund || error_exit "npm install failed"
+# Use npm install with --no-audit --no-fund for shared hosting compatibility.
+# We must include devDependencies because Vite/esbuild are required to build.
+npm install --no-audit --no-fund --include=dev || error_exit "npm install failed"
 
 # Step 4: Build the application
 echo ""
