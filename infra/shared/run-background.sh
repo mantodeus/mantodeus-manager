@@ -1,20 +1,17 @@
 #!/usr/bin/env bash
-# ⚠️  DEPRECATED: This script is disabled - Infomaniak manages the server process
+# ⚠️  DEPRECATED: This script is disabled (use PM2 instead)
 # 
 # This script is kept for reference but should NOT be used.
-# Server process management is now handled exclusively by Infomaniak's Node.js application manager.
+# Server process management should be done via PM2 + the infra deploy scripts.
 # 
-# To start/restart the server:
-#   1. Log into Infomaniak control panel
-#   2. Navigate to: Node.js Application → [your-site]
-#   3. Click: 'Restart Application'
-#
-# The server reads PORT from process.env.PORT (set by Infomaniak)
-# and environment variables from .env file at runtime.
+# To restart the app, run (from the repo root on the server):
+#   bash infra/deploy/restart.sh
+# Or directly:
+#   npx pm2 restart mantodeus-manager
 
 echo "❌ ERROR: This script is disabled." >&2
-echo "   Server process management is handled by Infomaniak." >&2
-echo "   Use Infomaniak control panel to restart the application." >&2
+echo "   Use PM2 to manage the server process." >&2
+echo "   Restart via: bash infra/deploy/restart.sh" >&2
 exit 1
 
 # Original script code below (disabled):

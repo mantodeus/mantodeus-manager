@@ -25,14 +25,14 @@ Write-Host "Option 1: Use the deploy script (easiest):" -ForegroundColor Cyan
 Write-Host "   ssh your-username@your-server" -ForegroundColor White
 Write-Host "   cd /srv/customer/sites/manager.mantodeus.com" -ForegroundColor White
 Write-Host "   bash deploy-server.sh" -ForegroundColor White
-Write-Host "   # Then restart in Infomaniak panel" -ForegroundColor Gray
+Write-Host "   # (deploy-server.sh builds + restarts via PM2)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Option 2: Manual commands:" -ForegroundColor Cyan
 Write-Host "   ssh your-username@your-server" -ForegroundColor White
 Write-Host "   cd /srv/customer/sites/manager.mantodeus.com" -ForegroundColor White
 Write-Host "   git pull" -ForegroundColor White
 Write-Host "   npm run build" -ForegroundColor White
-Write-Host "   # Then restart in Infomaniak panel" -ForegroundColor Gray
+Write-Host "   npx pm2 restart mantodeus-manager" -ForegroundColor White
 Write-Host ""
-Write-Host "⚠️  IMPORTANT: Always restart the app in Infomaniak panel after building!" -ForegroundColor Yellow
+Write-Host "⚠️  IMPORTANT: Always restart the PM2 process after building!" -ForegroundColor Yellow
 

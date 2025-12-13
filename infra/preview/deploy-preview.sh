@@ -5,6 +5,9 @@
 
 set -euo pipefail
 
+# PM2 process name (override with env var if needed)
+PM2_APP_NAME="${PM2_APP_NAME:-mantodeus-manager}"
+
 # Script directory (for finding shared helpers)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(pwd)"
@@ -85,7 +88,13 @@ if [ ! -d "dist/public" ]; then
   error_exit "Build output not found: dist/public"
 fi
 
-# Step 5: Deployment complete - ready for Infomaniak restart
+# Step 5: Restart application (PM2)
+echo ""
+echo "🔄 Restarting PM2 process: $PM2_APP_NAME"
+if ! npx pm2 restart "$PM2_APP_NAME"; then
+  error_exit "PM2 restart failed (process: $PM2_APP_NAME)"
+fi
+
 echo ""
 echo "✅ Preview deployment complete!"
 echo ""
@@ -93,16 +102,6 @@ echo "📦 Build outputs:"
 echo "   - Backend: dist/index.js"
 echo "   - Frontend: dist/public/"
 echo ""
-echo "⚠️  IMPORTANT: Server process management is handled by Infomaniak"
-echo "   This script only builds the application. To start/restart the server:"
-echo ""
-echo "   1. Log into Infomaniak control panel"
-echo "   2. Navigate to: Node.js Application → manager-preview.mantodeus.com"
-echo "   3. Click: 'Restart Application'"
-echo ""
-echo "   The server will read PORT from process.env.PORT (set by Infomaniak)"
-echo "   and environment variables from .env file at runtime."
-echo ""
-output_status "ok" "Deployment complete - restart required in Infomaniak"
+output_status "ok" "Deployment complete - restarted via PM2 ($PM2_APP_NAME)"
 exit 0
 
