@@ -43,7 +43,7 @@ Write-Host "   ssh your-username@your-server" -ForegroundColor White
 Write-Host "   cd /srv/customer/sites/manager.mantodeus.com" -ForegroundColor White
 Write-Host "   git pull" -ForegroundColor White
 Write-Host "   npm run build" -ForegroundColor White
-Write-Host "   # Then restart in Infomaniak panel" -ForegroundColor Gray
+Write-Host "   npx pm2 restart mantodeus-manager" -ForegroundColor White
 
 Write-Host ""
 Write-Host "✨ Deployment script complete!" -ForegroundColor Green
