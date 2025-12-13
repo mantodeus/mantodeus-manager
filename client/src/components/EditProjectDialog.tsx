@@ -39,7 +39,7 @@ interface Project {
   status: "planned" | "active" | "completed" | "archived";
   startDate: Date | null;
   endDate: Date | null;
-  scheduledDates: string[] | null;
+  scheduledDates: string[] | string | null;
 }
 
 interface EditProjectDialogProps {
@@ -63,6 +63,22 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
     enabled: open,
   });
 
+  const coerceScheduledDates = (value: Project["scheduledDates"]): string[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter((d): d is string => typeof d === "string");
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((d): d is string => typeof d === "string");
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return [];
+  };
+
   // Reset form when project changes
   useEffect(() => {
     setName(project.name);
@@ -72,7 +88,9 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
     setAddress(project.address || "");
     setStatus(project.status);
 
-    const explicitDates = project.scheduledDates?.map((date) => new Date(date)) ?? [];
+    const explicitDates = coerceScheduledDates(project.scheduledDates)
+      .map((date) => new Date(date))
+      .filter((date) => !Number.isNaN(date.getTime()));
     if (explicitDates.length > 0) {
       setSelectedDates(explicitDates);
     } else {
