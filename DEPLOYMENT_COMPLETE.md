@@ -60,7 +60,11 @@ S3_SECRET_ACCESS_KEY=e78e5ef0cebb462faf397ea621b1d87a
 ### Step 5: Restart Application
 
 After build completes:
-1. **Restart the application** in Infomaniak Manager
+1. Restart the PM2 process:
+
+   ```bash
+   npx pm2 restart mantodeus-manager
+   ```
 2. **Clear browser cache** (Ctrl+Shift+Delete or Cmd+Shift+Delete)
 3. **Hard refresh** the page (Ctrl+F5 or Cmd+Shift+R)
 

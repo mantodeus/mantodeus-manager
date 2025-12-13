@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project uses **Infomaniak's Node.js application manager** as the exclusive process manager. The deployment scripts only build the application - they do NOT start or manage the server process.
+This project uses **PM2** for process management. The deployment scripts pull/build and then restart the running PM2 process.
 
 ## Deployment Process
 
@@ -27,21 +27,15 @@ The deployment script will:
 - ✅ Install dependencies (`npm install`)
 - ✅ Build the application (`npm run build`)
 - ✅ Verify build outputs exist
-- ❌ **NOT** start or restart the server
+- ✅ Restart the server via PM2 (`npx pm2 restart ...`)
 
-### 2. Restart in Infomaniak Control Panel
+### 2. Restart (PM2)
 
-**⚠️ IMPORTANT:** After deployment, you MUST restart the application in Infomaniak:
+The deployment scripts already restart via PM2. If you need to restart manually:
 
-1. Log into [Infomaniak control panel](https://www.infomaniak.com/)
-2. Navigate to: **Web Hosting** → **Node.js Applications**
-3. Find your application: `manager.mantodeus.com` (or preview)
-4. Click: **"Restart Application"**
-
-The server will:
-- Read `PORT` from `process.env.PORT` (set by Infomaniak)
-- Load environment variables from `.env` file at runtime
-- Start the Node.js process
+```bash
+npx pm2 restart mantodeus-manager
+```
 
 ## Environment Variables
 
@@ -63,14 +57,14 @@ JWT_SECRET=your_jwt_secret_here
 
 # Application Configuration
 APP_ENV=production
-PORT=3000  # Note: Infomaniak may override this via process.env.PORT
+PORT=3000  # Note: your hosting may override this via process.env.PORT
 NODE_ENV=production
 ```
 
 **Important Notes:**
 - `VITE_*` variables are embedded at **build time** (during `npm run build`)
 - `SUPABASE_SERVICE_ROLE_KEY` and other backend variables are loaded at **runtime** from `.env`
-- `PORT` is set by Infomaniak via `process.env.PORT` - the `.env` PORT value is a fallback
+- `PORT` may be set by the host via `process.env.PORT` - the `.env` PORT value is a fallback
 
 ### Preview Environment
 
@@ -82,19 +76,20 @@ Same structure, but in `/srv/customer/sites/manager-preview.mantodeus.com/`
 1. Frontend: Vite embeds `VITE_*` variables into JavaScript bundles
 2. Backend: esbuild bundles the server code (variables loaded at runtime)
 
-### Runtime (Infomaniak)
-1. Infomaniak runs: `npm start` (which runs `node dist/index.js`)
+### Runtime (PM2)
+1. PM2 runs the configured start command/script (e.g. via `ecosystem.config.js`)
 2. `load-env.ts` loads `.env` file
-3. Server reads `PORT` from `process.env.PORT` (Infomaniak sets this)
+3. Server reads `PORT` from `process.env.PORT` (if set) or falls back to `3000`
 4. Server starts and serves the application
 
 ## Troubleshooting
 
 ### Server Not Starting
 
-1. **Check Infomaniak logs:**
-   - Infomaniak control panel → Node.js Application → Logs
-   - Or SSH: `tail -f /var/log/customer/...` (Infomaniak log location)
+1. **Check PM2 logs:**
+   ```bash
+   pm2 logs mantodeus-manager --lines 200
+   ```
 
 2. **Verify build outputs exist:**
    ```bash
@@ -124,23 +119,24 @@ This means the Supabase anon key wasn't embedded correctly at build time:
    npm run build
    ```
 
-3. **Restart in Infomaniak control panel**
+3. **Restart via PM2:**
+   ```bash
+   npx pm2 restart mantodeus-manager
+   ```
 
 ### Port Conflicts
 
-- Infomaniak manages the port automatically via `process.env.PORT`
-- Do NOT manually bind ports in scripts
-- Do NOT use `nohup` or background processes
-- Let Infomaniak handle all process management
+- Prefer using `process.env.PORT` if your host sets it
+- Avoid `nohup`/PID files for production; use PM2 to manage the process
 
 ## Disabled Scripts
 
 The following scripts are **disabled** and should NOT be used:
 
-- ❌ `infra/shared/run-background.sh` - Use Infomaniak restart instead
-- ❌ `infra/shared/stop-env.sh` - Use Infomaniak stop/restart instead
+- ❌ `infra/shared/run-background.sh` - Use PM2 + the deploy scripts instead
+- ❌ `infra/shared/stop-env.sh` - Use PM2 + the deploy scripts instead
 
-These scripts will exit with an error if called, directing you to use Infomaniak control panel.
+These scripts will exit with an error if called, directing you to use PM2.
 
 ## Local Development
 
@@ -155,6 +151,6 @@ This runs the development server with hot reload. It does NOT use Infomaniak pro
 ## Summary
 
 ✅ **Deploy:** Run deployment script via SSH → Builds the app  
-✅ **Restart:** Use Infomaniak control panel → Starts the server  
+✅ **Restart:** Use PM2 (`npx pm2 restart mantodeus-manager`)  
 ✅ **Local:** Use `pnpm dev` → Development server  
-❌ **Never:** Manually start server via SSH, use nohup, or manage PIDs
+❌ **Never:** Use `nohup`/PID-file process management for production

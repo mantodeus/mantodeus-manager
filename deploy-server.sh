@@ -19,6 +19,6 @@ npm run build
 
 echo "✅ Build complete!"
 echo ""
-echo "⚠️  Don't forget to restart the app in Infomaniak panel!"
-echo "   Or if you have PM2: pm2 restart mantodeus-manager"
+echo "🔄 Restarting application via PM2..."
+npx pm2 restart mantodeus-manager
 

@@ -74,8 +74,10 @@ echo "=========================================="
 echo "✅ BUILD COMPLETE!"
 echo "=========================================="
 echo ""
-echo "⚠️  IMPORTANT: Restart the app in Infomaniak panel now!"
-echo "   The app will not use the new build until restarted."
+echo "🔄 Restarting application via PM2..."
+PM2_APP_NAME="${PM2_APP_NAME:-mantodeus-manager}"
+npx pm2 restart "$PM2_APP_NAME"
+echo "✅ Restarted: $PM2_APP_NAME"
 echo ""
 
 
