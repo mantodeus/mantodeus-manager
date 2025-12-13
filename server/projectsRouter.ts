@@ -97,17 +97,31 @@ const createJobSchema = z.object({
   endTime: z.date().optional(),
 });
 
-const updateJobSchema = z.object({
-  id: z.number(),
-  projectId: z.number(), // Required for access control verification
-  title: z.string().min(1).optional(),
-  category: z.string().optional(),
-  description: z.string().optional(),
-  assignedUsers: z.array(z.number()).optional(),
-  status: jobStatusSchema.optional(),
-  startTime: z.date().optional(),
-  endTime: z.date().optional(),
-});
+const updateJobSchema = z.union([
+  z.object({
+    id: z.number(),
+    projectId: z.number(), // Required for access control verification
+    title: z.string().min(1).optional(),
+    category: z.string().optional(),
+    description: z.string().optional(),
+    assignedUsers: z.array(z.number()).optional(),
+    status: jobStatusSchema.optional(),
+    startTime: z.date().optional(),
+    endTime: z.date().optional(),
+  }),
+  // Backwards/forwards compatibility with callers that use `jobId`
+  z.object({
+    jobId: z.number(),
+    projectId: z.number(),
+    title: z.string().min(1).optional(),
+    category: z.string().optional(),
+    description: z.string().optional(),
+    assignedUsers: z.array(z.number()).optional(),
+    status: jobStatusSchema.optional(),
+    startTime: z.date().optional(),
+    endTime: z.date().optional(),
+  }),
+]);
 
 // =============================================================================
 // ACCESS CONTROL HELPERS
@@ -157,7 +171,7 @@ async function requireProjectAccess(
   if (!allowed) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: `You don't have permission to ${action} this project`,
+      message: `Forbidden: You don't have permission to ${action} this project`,
     });
   }
   
@@ -239,7 +253,8 @@ const jobsRouter = router({
         endTime: input.endTime || null,
       });
       
-      return { success: true, id: result[0].insertId };
+      const created = await db.getProjectJobById(result[0].insertId);
+      return { success: true, ...(created ?? { id: result[0].insertId, projectId: input.projectId }) };
     }),
 
   /**
@@ -248,22 +263,30 @@ const jobsRouter = router({
   update: protectedProcedure
     .input(updateJobSchema)
     .mutation(async ({ input, ctx }) => {
-      await requireJobAccess(ctx.user, input.projectId, input.id, "update");
+      const jobId = "jobId" in input ? input.jobId : input.id;
+      await requireJobAccess(ctx.user, input.projectId, jobId, "update");
       
-      const { id, projectId, ...updates } = input;
+      const projectId = input.projectId;
+      const updates = { ...(input as Record<string, unknown>) } as typeof input;
+      // Remove identifiers so we can build updateData cleanly.
+      // (Handles both shapes: id/projectId and jobId/projectId.)
+      delete (updates as { id?: number }).id;
+      delete (updates as { jobId?: number }).jobId;
+      delete (updates as { projectId?: number }).projectId;
       
       // Convert optional fields
       const updateData: Parameters<typeof db.updateProjectJob>[1] = {};
-      if (updates.title !== undefined) updateData.title = updates.title;
-      if (updates.category !== undefined) updateData.category = updates.category || null;
-      if (updates.description !== undefined) updateData.description = updates.description || null;
-      if (updates.assignedUsers !== undefined) updateData.assignedUsers = updates.assignedUsers || null;
-      if (updates.status !== undefined) updateData.status = updates.status;
-      if (updates.startTime !== undefined) updateData.startTime = updates.startTime || null;
-      if (updates.endTime !== undefined) updateData.endTime = updates.endTime || null;
+      if ("title" in updates && updates.title !== undefined) updateData.title = updates.title as string;
+      if ("category" in updates && updates.category !== undefined) updateData.category = (updates.category as string) || null;
+      if ("description" in updates && updates.description !== undefined) updateData.description = (updates.description as string) || null;
+      if ("assignedUsers" in updates && updates.assignedUsers !== undefined) updateData.assignedUsers = (updates.assignedUsers as number[]) || null;
+      if ("status" in updates && updates.status !== undefined) updateData.status = updates.status as (typeof jobStatusSchema)["_type"];
+      if ("startTime" in updates && updates.startTime !== undefined) updateData.startTime = (updates.startTime as Date) || null;
+      if ("endTime" in updates && updates.endTime !== undefined) updateData.endTime = (updates.endTime as Date) || null;
       
-      await db.updateProjectJob(id, updateData);
-      return { success: true };
+      await db.updateProjectJob(jobId, updateData);
+      const updated = await db.getProjectJobById(jobId);
+      return { success: true, ...(updated ?? { id: jobId, projectId }) };
     }),
 
   /**
@@ -347,8 +370,9 @@ export const projectsRouter = router({
         status: input.status,
         createdBy: ctx.user.id,
       });
-      
-      return { success: true, id: result[0].insertId };
+
+      const created = await db.getProjectById(result[0].insertId);
+      return { success: true, ...(created ?? { id: result[0].insertId }) };
     }),
 
   /**
@@ -385,7 +409,8 @@ export const projectsRouter = router({
       if (updates.status !== undefined) updateData.status = updates.status;
       
       await db.updateProject(id, updateData);
-      return { success: true };
+      const updated = await db.getProjectById(id);
+      return { success: true, ...(updated ?? { id }) };
     }),
 
   /**

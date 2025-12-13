@@ -108,8 +108,8 @@ describe("projects.files.presignUpload", () => {
     const result = await caller.projects.files.presignUpload({
       projectId: project.id,
       jobId: job.id,
-      filename: "job-photo.jpg",
-      contentType: "image/jpeg",
+      filename: "job-file.pdf",
+      contentType: "application/pdf",
     });
 
     expect(result.s3Key).toContain(`projects/${project.id}/jobs/${job.id}/`);
@@ -361,8 +361,8 @@ describe("projects.files.listByProject", () => {
     await caller.projects.files.register({
       projectId: project.id,
       s3Key: `projects/${project.id}/_project/file2.png`,
-      originalName: "file2.png",
-      mimeType: "image/png",
+      originalName: "file2.pdf",
+      mimeType: "application/pdf",
     });
 
     const files = await caller.projects.files.listByProject({

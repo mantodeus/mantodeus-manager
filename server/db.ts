@@ -14,7 +14,7 @@ import {
   InsertInvoice, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate 
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
-import { ensureFileMetadataSchema, ensureProjectsSchema } from "./_core/schemaGuards";
+import { ensureFileMetadataSchema, ensureImagesSchema, ensureProjectsSchema } from "./_core/schemaGuards";
 
 type ProjectClientContact = Pick<Contact, "id" | "name" | "address" | "latitude" | "longitude">;
 export type ProjectWithClient = Project & { clientContact: ProjectClientContact | null };
@@ -277,7 +277,7 @@ export async function deleteTask(taskId: number) {
 export async function createImage(image: InsertImage) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+  await ensureImagesSchema();
   const result = await db.insert(images).values(image);
   return result;
 }

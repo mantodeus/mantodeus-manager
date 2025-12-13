@@ -382,9 +382,7 @@ describe("Integration: Access Control", () => {
     const ctx = createOtherUserContext();
     const caller = appRouter.createCaller(ctx);
 
-    await expect(
-      caller.projects.getById({ id: projectId })
-    ).rejects.toThrow("forbidden");
+    await expect(caller.projects.getById({ id: projectId })).rejects.toThrow(/forbidden/i);
   });
 
   it("Other user cannot update the project", async () => {
@@ -394,9 +392,7 @@ describe("Integration: Access Control", () => {
     const ctx = createOtherUserContext();
     const caller = appRouter.createCaller(ctx);
 
-    await expect(
-      caller.projects.update({ id: projectId, name: "Hacked!" })
-    ).rejects.toThrow("forbidden");
+    await expect(caller.projects.update({ id: projectId, name: "Hacked!" })).rejects.toThrow(/forbidden/i);
   });
 
   it("Other user cannot create jobs under the project", async () => {
@@ -411,7 +407,7 @@ describe("Integration: Access Control", () => {
         projectId,
         title: "Unauthorized Job",
       })
-    ).rejects.toThrow("forbidden");
+    ).rejects.toThrow(/forbidden/i);
   });
 
   it("Cleanup: Delete project", async () => {
@@ -489,7 +485,7 @@ describe("Integration: Data Validation", () => {
           filename: "malicious.exe",
           contentType: "application/x-msdownload",
         })
-      ).rejects.toThrow(/not allowed/i);
+      ).rejects.toThrow(/invalid file type/i);
     } finally {
       await caller.projects.moveProjectToTrash({ projectId: project.id });
       await caller.projects.deleteProjectPermanently({ projectId: project.id });

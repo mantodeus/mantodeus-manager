@@ -3,6 +3,7 @@ import { ENV } from "./env";
 
 let fileMetadataSchemaPromise: Promise<void> | null = null;
 let projectsSchemaPromise: Promise<void> | null = null;
+let imagesSchemaPromise: Promise<void> | null = null;
 
 type ColumnRow = {
   COLUMN_NAME: string;
@@ -329,4 +330,86 @@ export async function ensureProjectsSchema(): Promise<void> {
   });
 
   return projectsSchemaPromise;
+}
+
+export async function ensureImagesSchema(): Promise<void> {
+  const databaseUrl = resolveDatabaseUrl();
+  if (!databaseUrl) {
+    return;
+  }
+
+  if (imagesSchemaPromise) {
+    return imagesSchemaPromise;
+  }
+
+  imagesSchemaPromise = (async () => {
+    const config = parseConnectionConfig(databaseUrl);
+    if (!config.database) {
+      console.warn("[Database] Unable to verify images schema: missing database name");
+      return;
+    }
+
+    const connection = await mysql.createConnection({
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+      database: config.database,
+    });
+
+    try {
+      const columnNames = await fetchColumnNames(connection, config.database, "images");
+      if (columnNames.length === 0) {
+        // images table may not exist in some environments; ignore.
+        return;
+      }
+
+      const statements: Array<{ description: string; sql: string }> = [];
+
+      // Legacy DBs might not have images.projectId yet.
+      if (!columnNames.includes("projectId")) {
+        statements.push({
+          description: "Adding images.projectId column",
+          sql: "ALTER TABLE `images` ADD COLUMN `projectId` INT NULL AFTER `taskId`",
+        });
+      }
+
+      const indexNames = await fetchIndexNames(connection, config.database, "images");
+      const hasProjectIdIndex = indexNames.includes("images_projectId_idx");
+      if (!hasProjectIdIndex) {
+        statements.push({
+          description: "Adding images_projectId_idx index",
+          sql: "CREATE INDEX `images_projectId_idx` ON `images` (`projectId`)",
+        });
+      }
+
+      const foreignKeys = await fetchForeignKeyNames(connection, config.database, "images");
+      const hasProjectIdFk = foreignKeys.includes("images_projectId_projects_id_fk");
+      if (!hasProjectIdFk) {
+        statements.push({
+          description: "Adding images.projectId → projects.id foreign key",
+          sql: "ALTER TABLE `images` ADD CONSTRAINT `images_projectId_projects_id_fk` FOREIGN KEY (`projectId`) REFERENCES `projects`(`id`) ON DELETE SET NULL ON UPDATE NO ACTION",
+        });
+      }
+
+      if (statements.length === 0) {
+        return;
+      }
+
+      console.log(`[Database] Fixing images schema (${statements.length} change${statements.length > 1 ? "s" : ""})`);
+      for (const statement of statements) {
+        console.log(`[Database] ${statement.description}`);
+        await connection.execute(statement.sql);
+      }
+      console.log("[Database] images schema verified");
+    } finally {
+      await connection.end();
+    }
+  })().catch((error) => {
+    imagesSchemaPromise = null;
+    console.error("[Database] Images schema validation failed:", error);
+    throw error;
+  });
+
+  return imagesSchemaPromise;
 }
