@@ -49,7 +49,7 @@ interface EditProjectDialogProps {
   onRequestAddContact?: () => void;
 }
 
-type ProjectStatus = "planned" | "active" | "completed" | "archived";
+type ProjectStatus = "planned" | "active" | "completed";
 
 export function EditProjectDialog({ open, onOpenChange, project, onRequestAddContact }: EditProjectDialogProps) {
   const [name, setName] = useState(project.name);
@@ -57,7 +57,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
   const [clientId, setClientId] = useState<number | null>(project.clientId);
   const [description, setDescription] = useState(project.description || "");
   const [address, setAddress] = useState(project.address || "");
-  const [status, setStatus] = useState<ProjectStatus>(project.status);
+  const [status, setStatus] = useState<ProjectStatus>(project.status === "archived" ? "active" : project.status);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const { data: contacts = [] } = trpc.contacts.list.useQuery(undefined, {
     enabled: open,
@@ -70,7 +70,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
     setClientId(project.clientId);
     setDescription(project.description || "");
     setAddress(project.address || "");
-    setStatus(project.status);
+    setStatus(project.status === "archived" ? "active" : project.status);
 
     const explicitDates = project.scheduledDates?.map((date) => new Date(date)) ?? [];
     if (explicitDates.length > 0) {
@@ -228,7 +228,6 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
                   <SelectItem value="planned">Planned</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
             </div>

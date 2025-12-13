@@ -322,7 +322,11 @@ describe("Integration: Project → Job → File Flow", () => {
       const caller = appRouter.createCaller(ctx);
 
       await expect(
-        caller.projects.delete({ id: projectId })
+        caller.projects.moveProjectToTrash({ projectId })
+      ).resolves.toEqual({ success: true });
+
+      await expect(
+        caller.projects.deleteProjectPermanently({ projectId })
       ).resolves.toEqual({ success: true });
     });
   });
@@ -417,7 +421,8 @@ describe("Integration: Access Control", () => {
     const ctx = createTestContext();
     const caller = appRouter.createCaller(ctx);
 
-    await caller.projects.delete({ id: projectId });
+    await caller.projects.moveProjectToTrash({ projectId });
+    await caller.projects.deleteProjectPermanently({ projectId });
   });
 });
 
@@ -462,7 +467,8 @@ describe("Integration: Data Validation", () => {
       ).rejects.toThrow();
     } finally {
       // Cleanup
-      await caller.projects.delete({ id: project.id });
+      await caller.projects.moveProjectToTrash({ projectId: project.id });
+      await caller.projects.deleteProjectPermanently({ projectId: project.id });
     }
   });
 
@@ -485,7 +491,8 @@ describe("Integration: Data Validation", () => {
         })
       ).rejects.toThrow(/not allowed/i);
     } finally {
-      await caller.projects.delete({ id: project.id });
+      await caller.projects.moveProjectToTrash({ projectId: project.id });
+      await caller.projects.deleteProjectPermanently({ projectId: project.id });
     }
   });
 });

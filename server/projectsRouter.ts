@@ -15,13 +15,14 @@ import { protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { projectFilesRouter } from "./projectFilesRouter";
 import type { TrpcContext } from "./_core/context";
+import { deleteMultipleFromStorage } from "./storage";
 
 // =============================================================================
 // ZOD SCHEMAS
 // =============================================================================
 
 // Project status enum
-const projectStatusSchema = z.enum(["planned", "active", "completed", "archived"]);
+const projectStatusSchema = z.enum(["planned", "active", "completed"]);
 
 // Job status enum
 const jobStatusSchema = z.enum(["pending", "in_progress", "done", "cancelled"]);
@@ -295,6 +296,26 @@ export const projectsRouter = router({
   }),
 
   /**
+   * List archived projects (explicit query)
+   */
+  listArchived: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role === "admin") {
+      return await db.getAllArchivedProjects();
+    }
+    return await db.getArchivedProjectsByUser(ctx.user.id);
+  }),
+
+  /**
+   * List trashed projects (explicit query)
+   */
+  listTrashed: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role === "admin") {
+      return await db.getAllTrashedProjects();
+    }
+    return await db.getTrashedProjectsByUser(ctx.user.id);
+  }),
+
+  /**
    * Get a specific project by ID
    */
   getById: protectedProcedure
@@ -368,26 +389,95 @@ export const projectsRouter = router({
     }),
 
   /**
-   * Archive a project (soft delete)
-   * Sets status to 'archived' instead of deleting
+   * Archive a project
+   * Sets archivedAt = now
    */
-  archive: protectedProcedure
-    .input(z.object({ id: z.number() }))
+  archiveProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      await requireProjectAccess(ctx.user, input.id, "archive");
-      await db.archiveProject(input.id);
+      await requireProjectAccess(ctx.user, input.projectId, "archive");
+      await db.archiveProject(input.projectId);
       return { success: true };
     }),
 
   /**
-   * Permanently delete a project and all related data
-   * Use with caution - this will cascade delete jobs and files
+   * Restore an archived project
+   * Sets archivedAt = null
    */
-  delete: protectedProcedure
-    .input(z.object({ id: z.number() }))
+  restoreArchivedProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      await requireProjectAccess(ctx.user, input.id, "delete");
-      await db.deleteProject(input.id);
+      await requireProjectAccess(ctx.user, input.projectId, "restore");
+      await db.restoreArchivedProject(input.projectId);
+      return { success: true };
+    }),
+
+  /**
+   * Move a project to Trash
+   * Sets trashedAt = now
+   */
+  moveProjectToTrash: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "move to Trash");
+      await db.moveProjectToTrash(input.projectId);
+      return { success: true };
+    }),
+
+  /**
+   * Restore a project from Trash
+   * Sets trashedAt = null
+   */
+  restoreProjectFromTrash: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const project = await requireProjectAccess(ctx.user, input.projectId, "restore from Trash");
+      if (!project.trashedAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Project is not in Trash",
+        });
+      }
+      await db.restoreProjectFromTrash(input.projectId);
+      return { success: true };
+    }),
+
+  /**
+   * Permanently delete a project and all related data.
+   * Only allowed if the project is in Trash (trashedAt IS NOT NULL).
+   * Also deletes associated S3/object storage assets referenced by file metadata.
+   *
+   * Irreversible.
+   */
+  deleteProjectPermanently: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const project = await requireProjectAccess(ctx.user, input.projectId, "permanently delete");
+      if (!project.trashedAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Permanent delete is only allowed from Trash",
+        });
+      }
+
+      // Collect all storage keys before deleting DB records.
+      const files = await db.getFilesByProjectId(input.projectId);
+      const keys = new Set<string>();
+      for (const file of files) {
+        if (file.s3Key) keys.add(file.s3Key);
+        const variants = file.imageMetadata?.variants;
+        if (variants?.thumb?.key) keys.add(variants.thumb.key);
+        if (variants?.preview?.key) keys.add(variants.preview.key);
+        if (variants?.full?.key) keys.add(variants.full.key);
+      }
+
+      // Delete objects first; if this fails, keep DB data so user can retry.
+      if (keys.size > 0) {
+        await deleteMultipleFromStorage(Array.from(keys));
+      }
+
+      // Cascade deletes: project_jobs, file_metadata, etc.
+      await db.deleteProject(input.projectId);
       return { success: true };
     }),
 
