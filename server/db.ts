@@ -27,9 +27,44 @@ const clientContactSelection = {
   longitude: contacts.longitude,
 };
 
+function safeJsonParse(value: unknown): unknown {
+  if (value == null) return null;
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeStringArray(value: unknown): string[] | null {
+  if (value == null) return null;
+  const parsed = safeJsonParse(value);
+  if (!Array.isArray(parsed)) return null;
+  const strings = parsed.filter((item): item is string => typeof item === "string");
+  return strings.length ? strings : [];
+}
+
+function normalizeProjectGeo(value: unknown): { lat: number; lng: number } | null {
+  if (value == null) return null;
+  const parsed = safeJsonParse(value);
+  if (!parsed || typeof parsed !== "object") return null;
+  const maybe = parsed as { lat?: unknown; lng?: unknown };
+  if (typeof maybe.lat !== "number" || typeof maybe.lng !== "number") return null;
+  return { lat: maybe.lat, lng: maybe.lng };
+}
+
 function mapProjectWithClient(row: { project: Project; clientContact: ProjectClientContact | null }): ProjectWithClient {
+  // MySQL JSON columns are frequently returned as strings by mysql2.
+  // Normalize them here so the API consistently returns typed JS values.
+  const projectAny = row.project as unknown as { scheduledDates?: unknown; geo?: unknown };
+  const scheduledDates = normalizeStringArray(projectAny.scheduledDates);
+  const geo = normalizeProjectGeo(projectAny.geo);
+
   return {
     ...row.project,
+    scheduledDates: scheduledDates ?? null,
+    geo: geo ?? null,
     clientContact: row.clientContact,
   };
 }
