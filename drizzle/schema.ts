@@ -87,11 +87,22 @@ export const projects = mysqlTable("projects", {
   /** Optional list of explicitly selected schedule dates */
   scheduledDates: json("scheduledDates").$type<string[] | null>(),
   status: mysqlEnum("status", ["planned", "active", "completed", "archived"]).default("planned").notNull(),
+  /**
+   * Project lifecycle timestamps (source of truth).
+   *
+   * Active: archivedAt IS NULL AND trashedAt IS NULL
+   * Archived: archivedAt IS NOT NULL AND trashedAt IS NULL
+   * Trash: trashedAt IS NOT NULL
+   */
+  archivedAt: timestamp("archivedAt"),
+  trashedAt: timestamp("trashedAt"),
   createdBy: int("createdBy").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [
   index("projects_status_idx").on(table.status),
+  index("projects_archivedAt_idx").on(table.archivedAt),
+  index("projects_trashedAt_idx").on(table.trashedAt),
   index("projects_createdBy_idx").on(table.createdBy),
   index("projects_clientId_idx").on(table.clientId),
 ]);

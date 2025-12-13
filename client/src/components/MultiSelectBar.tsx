@@ -1,14 +1,29 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Trash2, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 interface MultiSelectBarProps {
   selectedCount: number;
-  onDelete: () => void;
+  onPrimaryAction: () => void;
   onCancel: () => void;
+  primaryLabel?: string;
+  primaryIcon?: LucideIcon;
+  /**
+   * Defaults to destructive to preserve existing behavior.
+   * (Projects use this for "Archive", etc.)
+   */
+  primaryVariant?: "default" | "destructive" | "outline" | "secondary";
 }
 
-export function MultiSelectBar({ selectedCount, onDelete, onCancel }: MultiSelectBarProps) {
+export function MultiSelectBar({
+  selectedCount,
+  onPrimaryAction,
+  onCancel,
+  primaryLabel = "Delete",
+  primaryIcon: PrimaryIcon = Trash2,
+  primaryVariant = "destructive",
+}: MultiSelectBarProps) {
   if (selectedCount === 0) return null;
 
   return (
@@ -22,13 +37,13 @@ export function MultiSelectBar({ selectedCount, onDelete, onCancel }: MultiSelec
         </span>
         <div className="flex items-center gap-2">
           <Button
-            variant="destructive"
+            variant={primaryVariant}
             size="sm"
-            onClick={onDelete}
+            onClick={onPrimaryAction}
             className="gap-2"
           >
-            <Trash2 className="h-4 w-4" />
-            Delete
+            <PrimaryIcon className="h-4 w-4" />
+            {primaryLabel}
           </Button>
           <Button
             variant="outline"

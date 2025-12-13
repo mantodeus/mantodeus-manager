@@ -3,6 +3,7 @@ import { ENV } from "./env";
 
 let fileMetadataSchemaPromise: Promise<void> | null = null;
 let projectsSchemaPromise: Promise<void> | null = null;
+let imagesSchemaPromise: Promise<void> | null = null;
 
 type ColumnRow = {
   COLUMN_NAME: string;
@@ -225,6 +226,20 @@ export async function ensureProjectsSchema(): Promise<void> {
         });
       }
 
+      if (!columnNames.includes("archivedAt")) {
+        statements.push({
+          description: "Adding projects.archivedAt column",
+          sql: "ALTER TABLE `projects` ADD COLUMN `archivedAt` DATETIME NULL AFTER `status`",
+        });
+      }
+
+      if (!columnNames.includes("trashedAt")) {
+        statements.push({
+          description: "Adding projects.trashedAt column",
+          sql: "ALTER TABLE `projects` ADD COLUMN `trashedAt` DATETIME NULL AFTER `archivedAt`",
+        });
+      }
+
       const indexNames = await fetchIndexNames(connection, config.database, "projects");
       const hasClientIdIndex = indexNames.includes("projects_clientId_idx");
       const hasLegacyClientIndex = indexNames.includes("projects_clientld_idx");
@@ -238,6 +253,22 @@ export async function ensureProjectsSchema(): Promise<void> {
         statements.push({
           description: "Adding projects_clientId_idx index",
           sql: "CREATE INDEX `projects_clientId_idx` ON `projects` (`clientId`)",
+        });
+      }
+
+      const hasArchivedAtIndex = indexNames.includes("projects_archivedAt_idx");
+      if (!hasArchivedAtIndex) {
+        statements.push({
+          description: "Adding projects_archivedAt_idx index",
+          sql: "CREATE INDEX `projects_archivedAt_idx` ON `projects` (`archivedAt`)",
+        });
+      }
+
+      const hasTrashedAtIndex = indexNames.includes("projects_trashedAt_idx");
+      if (!hasTrashedAtIndex) {
+        statements.push({
+          description: "Adding projects_trashedAt_idx index",
+          sql: "CREATE INDEX `projects_trashedAt_idx` ON `projects` (`trashedAt`)",
         });
       }
 
@@ -258,6 +289,17 @@ export async function ensureProjectsSchema(): Promise<void> {
       }
 
       if (statements.length === 0) {
+        // Still run legacy backfill when schema is already correct.
+        // (Older builds used projects.status = 'archived' as a soft-delete flag.)
+        if (columnNames.includes("archivedAt") && columnNames.includes("status")) {
+          try {
+            await connection.execute(
+              "UPDATE `projects` SET `archivedAt` = COALESCE(`archivedAt`, `updatedAt`, `createdAt`, NOW()) WHERE `status` = 'archived' AND `archivedAt` IS NULL"
+            );
+          } catch (error) {
+            console.warn("[Database] Legacy archive backfill failed:", error);
+          }
+        }
         return;
       }
 
@@ -265,6 +307,17 @@ export async function ensureProjectsSchema(): Promise<void> {
       for (const statement of statements) {
         console.log(`[Database] ${statement.description}`);
         await connection.execute(statement.sql);
+      }
+
+      // Backfill legacy archived projects into the new lifecycle fields.
+      if (columnNames.includes("status")) {
+        try {
+          await connection.execute(
+            "UPDATE `projects` SET `archivedAt` = COALESCE(`archivedAt`, `updatedAt`, `createdAt`, NOW()) WHERE `status` = 'archived' AND `archivedAt` IS NULL"
+          );
+        } catch (error) {
+          console.warn("[Database] Legacy archive backfill failed:", error);
+        }
       }
       console.log("[Database] projects schema verified");
     } finally {
@@ -277,4 +330,86 @@ export async function ensureProjectsSchema(): Promise<void> {
   });
 
   return projectsSchemaPromise;
+}
+
+export async function ensureImagesSchema(): Promise<void> {
+  const databaseUrl = resolveDatabaseUrl();
+  if (!databaseUrl) {
+    return;
+  }
+
+  if (imagesSchemaPromise) {
+    return imagesSchemaPromise;
+  }
+
+  imagesSchemaPromise = (async () => {
+    const config = parseConnectionConfig(databaseUrl);
+    if (!config.database) {
+      console.warn("[Database] Unable to verify images schema: missing database name");
+      return;
+    }
+
+    const connection = await mysql.createConnection({
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+      database: config.database,
+    });
+
+    try {
+      const columnNames = await fetchColumnNames(connection, config.database, "images");
+      if (columnNames.length === 0) {
+        // images table may not exist in some environments; ignore.
+        return;
+      }
+
+      const statements: Array<{ description: string; sql: string }> = [];
+
+      // Legacy DBs might not have images.projectId yet.
+      if (!columnNames.includes("projectId")) {
+        statements.push({
+          description: "Adding images.projectId column",
+          sql: "ALTER TABLE `images` ADD COLUMN `projectId` INT NULL AFTER `taskId`",
+        });
+      }
+
+      const indexNames = await fetchIndexNames(connection, config.database, "images");
+      const hasProjectIdIndex = indexNames.includes("images_projectId_idx");
+      if (!hasProjectIdIndex) {
+        statements.push({
+          description: "Adding images_projectId_idx index",
+          sql: "CREATE INDEX `images_projectId_idx` ON `images` (`projectId`)",
+        });
+      }
+
+      const foreignKeys = await fetchForeignKeyNames(connection, config.database, "images");
+      const hasProjectIdFk = foreignKeys.includes("images_projectId_projects_id_fk");
+      if (!hasProjectIdFk) {
+        statements.push({
+          description: "Adding images.projectId → projects.id foreign key",
+          sql: "ALTER TABLE `images` ADD CONSTRAINT `images_projectId_projects_id_fk` FOREIGN KEY (`projectId`) REFERENCES `projects`(`id`) ON DELETE SET NULL ON UPDATE NO ACTION",
+        });
+      }
+
+      if (statements.length === 0) {
+        return;
+      }
+
+      console.log(`[Database] Fixing images schema (${statements.length} change${statements.length > 1 ? "s" : ""})`);
+      for (const statement of statements) {
+        console.log(`[Database] ${statement.description}`);
+        await connection.execute(statement.sql);
+      }
+      console.log("[Database] images schema verified");
+    } finally {
+      await connection.end();
+    }
+  })().catch((error) => {
+    imagesSchemaPromise = null;
+    console.error("[Database] Images schema validation failed:", error);
+    throw error;
+  });
+
+  return imagesSchemaPromise;
 }
