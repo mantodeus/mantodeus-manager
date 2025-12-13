@@ -225,6 +225,20 @@ export async function ensureProjectsSchema(): Promise<void> {
         });
       }
 
+      if (!columnNames.includes("archivedAt")) {
+        statements.push({
+          description: "Adding projects.archivedAt column",
+          sql: "ALTER TABLE `projects` ADD COLUMN `archivedAt` DATETIME NULL AFTER `status`",
+        });
+      }
+
+      if (!columnNames.includes("trashedAt")) {
+        statements.push({
+          description: "Adding projects.trashedAt column",
+          sql: "ALTER TABLE `projects` ADD COLUMN `trashedAt` DATETIME NULL AFTER `archivedAt`",
+        });
+      }
+
       const indexNames = await fetchIndexNames(connection, config.database, "projects");
       const hasClientIdIndex = indexNames.includes("projects_clientId_idx");
       const hasLegacyClientIndex = indexNames.includes("projects_clientld_idx");
@@ -238,6 +252,22 @@ export async function ensureProjectsSchema(): Promise<void> {
         statements.push({
           description: "Adding projects_clientId_idx index",
           sql: "CREATE INDEX `projects_clientId_idx` ON `projects` (`clientId`)",
+        });
+      }
+
+      const hasArchivedAtIndex = indexNames.includes("projects_archivedAt_idx");
+      if (!hasArchivedAtIndex) {
+        statements.push({
+          description: "Adding projects_archivedAt_idx index",
+          sql: "CREATE INDEX `projects_archivedAt_idx` ON `projects` (`archivedAt`)",
+        });
+      }
+
+      const hasTrashedAtIndex = indexNames.includes("projects_trashedAt_idx");
+      if (!hasTrashedAtIndex) {
+        statements.push({
+          description: "Adding projects_trashedAt_idx index",
+          sql: "CREATE INDEX `projects_trashedAt_idx` ON `projects` (`trashedAt`)",
         });
       }
 
@@ -258,6 +288,17 @@ export async function ensureProjectsSchema(): Promise<void> {
       }
 
       if (statements.length === 0) {
+        // Still run legacy backfill when schema is already correct.
+        // (Older builds used projects.status = 'archived' as a soft-delete flag.)
+        if (columnNames.includes("archivedAt") && columnNames.includes("status")) {
+          try {
+            await connection.execute(
+              "UPDATE `projects` SET `archivedAt` = COALESCE(`archivedAt`, `updatedAt`, `createdAt`, NOW()) WHERE `status` = 'archived' AND `archivedAt` IS NULL"
+            );
+          } catch (error) {
+            console.warn("[Database] Legacy archive backfill failed:", error);
+          }
+        }
         return;
       }
 
@@ -265,6 +306,17 @@ export async function ensureProjectsSchema(): Promise<void> {
       for (const statement of statements) {
         console.log(`[Database] ${statement.description}`);
         await connection.execute(statement.sql);
+      }
+
+      // Backfill legacy archived projects into the new lifecycle fields.
+      if (columnNames.includes("status")) {
+        try {
+          await connection.execute(
+            "UPDATE `projects` SET `archivedAt` = COALESCE(`archivedAt`, `updatedAt`, `createdAt`, NOW()) WHERE `status` = 'archived' AND `archivedAt` IS NULL"
+          );
+        } catch (error) {
+          console.warn("[Database] Legacy archive backfill failed:", error);
+        }
       }
       console.log("[Database] projects schema verified");
     } finally {
