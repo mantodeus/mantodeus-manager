@@ -55,8 +55,8 @@ export function ItemActionsMenu({
     select: { icon: CheckSquare, label: "Select", variant: "default" as const },
     archive: { icon: Archive, label: "Archive", variant: "default" as const },
     restore: { icon: RotateCcw, label: "Restore", variant: "default" as const },
-    moveToTrash: { icon: Trash, label: "Move to Trash", variant: "destructive" as const },
-    deletePermanently: { icon: Trash2, label: "Delete permanently", variant: "destructive" as const },
+    moveToTrash: { icon: Trash, label: "Delete", variant: "destructive" as const },
+    deletePermanently: { icon: Trash2, label: "Delete permanently (irreversible)", variant: "destructive" as const },
   };
 
   const handleAction = useCallback(

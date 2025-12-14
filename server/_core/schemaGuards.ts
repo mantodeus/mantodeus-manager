@@ -4,6 +4,8 @@ import { ENV } from "./env";
 let fileMetadataSchemaPromise: Promise<void> | null = null;
 let projectsSchemaPromise: Promise<void> | null = null;
 let imagesSchemaPromise: Promise<void> | null = null;
+let contactsSchemaPromise: Promise<void> | null = null;
+let notesSchemaPromise: Promise<void> | null = null;
 
 type ColumnRow = {
   COLUMN_NAME: string;
@@ -145,6 +147,21 @@ export async function ensureFileMetadataSchema(): Promise<void> {
         statements.push({
           description: "Adding file_metadata.imageMetadata column",
           sql: "ALTER TABLE `file_metadata` ADD COLUMN `imageMetadata` JSON NULL AFTER `uploadedAt`",
+        });
+      }
+
+      if (!columnNames.includes("trashedAt")) {
+        statements.push({
+          description: "Adding file_metadata.trashedAt column",
+          sql: "ALTER TABLE `file_metadata` ADD COLUMN `trashedAt` DATETIME NULL AFTER `imageMetadata`",
+        });
+      }
+
+      const indexNames = await fetchIndexNames(connection, config.database, "file_metadata");
+      if (!indexNames.includes("file_metadata_trashedAt_idx")) {
+        statements.push({
+          description: "Adding file_metadata_trashedAt_idx index",
+          sql: "CREATE INDEX `file_metadata_trashedAt_idx` ON `file_metadata` (`trashedAt`)",
         });
       }
 
@@ -412,4 +429,172 @@ export async function ensureImagesSchema(): Promise<void> {
   });
 
   return imagesSchemaPromise;
+}
+
+export async function ensureContactsSchema(): Promise<void> {
+  const databaseUrl = resolveDatabaseUrl();
+  if (!databaseUrl) {
+    return;
+  }
+
+  if (contactsSchemaPromise) {
+    return contactsSchemaPromise;
+  }
+
+  contactsSchemaPromise = (async () => {
+    const config = parseConnectionConfig(databaseUrl);
+    if (!config.database) {
+      console.warn("[Database] Unable to verify contacts schema: missing database name");
+      return;
+    }
+
+    const connection = await mysql.createConnection({
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+      database: config.database,
+    });
+
+    try {
+      const columnNames = await fetchColumnNames(connection, config.database, "contacts");
+      if (columnNames.length === 0) {
+        // contacts table may not exist in some environments; ignore.
+        return;
+      }
+
+      const statements: Array<{ description: string; sql: string }> = [];
+
+      if (!columnNames.includes("archivedAt")) {
+        statements.push({
+          description: "Adding contacts.archivedAt column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `archivedAt` DATETIME NULL AFTER `notes`",
+        });
+      }
+
+      if (!columnNames.includes("trashedAt")) {
+        statements.push({
+          description: "Adding contacts.trashedAt column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `trashedAt` DATETIME NULL AFTER `archivedAt`",
+        });
+      }
+
+      const indexNames = await fetchIndexNames(connection, config.database, "contacts");
+      if (!indexNames.includes("contacts_archivedAt_idx")) {
+        statements.push({
+          description: "Adding contacts_archivedAt_idx index",
+          sql: "CREATE INDEX `contacts_archivedAt_idx` ON `contacts` (`archivedAt`)",
+        });
+      }
+      if (!indexNames.includes("contacts_trashedAt_idx")) {
+        statements.push({
+          description: "Adding contacts_trashedAt_idx index",
+          sql: "CREATE INDEX `contacts_trashedAt_idx` ON `contacts` (`trashedAt`)",
+        });
+      }
+
+      if (statements.length === 0) {
+        return;
+      }
+
+      console.log(`[Database] Fixing contacts schema (${statements.length} change${statements.length > 1 ? "s" : ""})`);
+      for (const statement of statements) {
+        console.log(`[Database] ${statement.description}`);
+        await connection.execute(statement.sql);
+      }
+      console.log("[Database] contacts schema verified");
+    } finally {
+      await connection.end();
+    }
+  })().catch((error) => {
+    contactsSchemaPromise = null;
+    console.error("[Database] Contacts schema validation failed:", error);
+    throw error;
+  });
+
+  return contactsSchemaPromise;
+}
+
+export async function ensureNotesSchema(): Promise<void> {
+  const databaseUrl = resolveDatabaseUrl();
+  if (!databaseUrl) {
+    return;
+  }
+
+  if (notesSchemaPromise) {
+    return notesSchemaPromise;
+  }
+
+  notesSchemaPromise = (async () => {
+    const config = parseConnectionConfig(databaseUrl);
+    if (!config.database) {
+      console.warn("[Database] Unable to verify notes schema: missing database name");
+      return;
+    }
+
+    const connection = await mysql.createConnection({
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+      database: config.database,
+    });
+
+    try {
+      const columnNames = await fetchColumnNames(connection, config.database, "notes");
+      if (columnNames.length === 0) {
+        // notes table may not exist in some environments; ignore.
+        return;
+      }
+
+      const statements: Array<{ description: string; sql: string }> = [];
+
+      if (!columnNames.includes("archivedAt")) {
+        statements.push({
+          description: "Adding notes.archivedAt column",
+          sql: "ALTER TABLE `notes` ADD COLUMN `archivedAt` DATETIME NULL AFTER `contactId`",
+        });
+      }
+
+      if (!columnNames.includes("trashedAt")) {
+        statements.push({
+          description: "Adding notes.trashedAt column",
+          sql: "ALTER TABLE `notes` ADD COLUMN `trashedAt` DATETIME NULL AFTER `archivedAt`",
+        });
+      }
+
+      const indexNames = await fetchIndexNames(connection, config.database, "notes");
+      if (!indexNames.includes("notes_archivedAt_idx")) {
+        statements.push({
+          description: "Adding notes_archivedAt_idx index",
+          sql: "CREATE INDEX `notes_archivedAt_idx` ON `notes` (`archivedAt`)",
+        });
+      }
+      if (!indexNames.includes("notes_trashedAt_idx")) {
+        statements.push({
+          description: "Adding notes_trashedAt_idx index",
+          sql: "CREATE INDEX `notes_trashedAt_idx` ON `notes` (`trashedAt`)",
+        });
+      }
+
+      if (statements.length === 0) {
+        return;
+      }
+
+      console.log(`[Database] Fixing notes schema (${statements.length} change${statements.length > 1 ? "s" : ""})`);
+      for (const statement of statements) {
+        console.log(`[Database] ${statement.description}`);
+        await connection.execute(statement.sql);
+      }
+      console.log("[Database] notes schema verified");
+    } finally {
+      await connection.end();
+    }
+  })().catch((error) => {
+    notesSchemaPromise = null;
+    console.error("[Database] Notes schema validation failed:", error);
+    throw error;
+  });
+
+  return notesSchemaPromise;
 }
