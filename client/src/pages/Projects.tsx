@@ -43,10 +43,13 @@ export default function Projects() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  // Permanent delete dialog (Trash only)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<ProjectListItem | null>(null);
+  // Delete confirmation dialogs
+  const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
+  const [deleteToRubbishTargetId, setDeleteToRubbishTargetId] = useState<number | null>(null);
+
+  // Permanent delete dialog (Rubbish only)
+  const [deletePermanentlyDialogOpen, setDeletePermanentlyDialogOpen] = useState(false);
+  const [deletePermanentlyTarget, setDeletePermanentlyTarget] = useState<ProjectListItem | null>(null);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -112,11 +115,11 @@ export default function Projects() {
 
   const moveProjectToTrashMutation = trpc.projects.moveProjectToTrash.useMutation({
     onSuccess: () => {
-      toast.success("Moved to Trash. Items in Trash can be restored.");
+      toast.success("Deleted. You can restore this later from the Rubbish bin.");
       invalidateProjectLists();
     },
     onError: (error) => {
-      toast.error(`Failed to move to Trash: ${error.message}`);
+      toast.error(`Failed to delete: ${error.message}`);
     },
   });
 
@@ -134,9 +137,8 @@ export default function Projects() {
     onSuccess: () => {
       toast.success("Project deleted permanently");
       invalidateProjectLists();
-      setDeleteDialogOpen(false);
-      setDeleteTarget(null);
-      setDeleteConfirmValue("");
+      setDeletePermanentlyDialogOpen(false);
+      setDeletePermanentlyTarget(null);
     },
     onError: (error) => {
       toast.error(`Failed to delete project permanently: ${error.message}`);
@@ -175,7 +177,8 @@ export default function Projects() {
         handleRestoreProject(projectId);
         break;
       case "moveToTrash":
-        handleMoveToTrash(projectId);
+        setDeleteToRubbishTargetId(projectId);
+        setDeleteToRubbishDialogOpen(true);
         break;
       case "deletePermanently":
         handleDeletePermanently(projectId);
@@ -197,10 +200,8 @@ export default function Projects() {
     restoreArchivedProjectMutation.mutate({ projectId });
   };
 
-  const handleMoveToTrash = (projectId: number) => {
-    if (confirm("Move this project to Trash? Items in Trash can be restored.")) {
-      moveProjectToTrashMutation.mutate({ projectId });
-    }
+  const handleDeleteToRubbish = (projectId: number) => {
+    moveProjectToTrashMutation.mutate({ projectId });
   };
 
   const handleRestoreFromTrash = (projectId: number) => {
@@ -210,9 +211,8 @@ export default function Projects() {
   const handleDeletePermanently = (projectId: number) => {
     const project = (trashedProjects ?? []).find((p) => p.id === projectId) ?? null;
     if (!project) return;
-    setDeleteTarget(project);
-    setDeleteConfirmValue("");
-    setDeleteDialogOpen(true);
+    setDeletePermanentlyTarget(project);
+    setDeletePermanentlyDialogOpen(true);
   };
 
   const handleBatchArchive = () => {
@@ -308,7 +308,7 @@ export default function Projects() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="active">Active</TabsTrigger>
           <TabsTrigger value="archived">Archived</TabsTrigger>
-          <TabsTrigger value="trash">Trash</TabsTrigger>
+          <TabsTrigger value="trash">Rubbish</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="space-y-4">
@@ -501,12 +501,12 @@ export default function Projects() {
         </TabsContent>
 
         <TabsContent value="trash" className="space-y-4">
-          <p className="text-sm text-muted-foreground">Items in Trash can be restored.</p>
+          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored.</p>
           {trashedProjects && trashedProjects.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Trash2 className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Trash is empty.</p>
+                <p className="text-muted-foreground">Rubbish bin is empty.</p>
               </CardContent>
             </Card>
           ) : (
@@ -517,7 +517,7 @@ export default function Projects() {
                     <div className="min-w-0">
                       <div className="font-medium truncate">{project.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        Trashed{" "}
+                        Deleted{" "}
                         {project.trashedAt ? new Date(project.trashedAt).toLocaleDateString() : "—"}
                       </div>
                     </div>
@@ -571,24 +571,37 @@ export default function Projects() {
       />
 
       <DeleteConfirmDialog
-        open={deleteDialogOpen}
+        open={deleteToRubbishDialogOpen}
         onOpenChange={(open) => {
-          setDeleteDialogOpen(open);
+          setDeleteToRubbishDialogOpen(open);
           if (!open) {
-            setDeleteTarget(null);
-            setDeleteConfirmValue("");
+            setDeleteToRubbishTargetId(null);
           }
         }}
         onConfirm={() => {
-          if (!deleteTarget) return;
-          deleteProjectPermanentlyMutation.mutate({ projectId: deleteTarget.id });
+          if (!deleteToRubbishTargetId) return;
+          handleDeleteToRubbish(deleteToRubbishTargetId);
         }}
-        title="Delete project permanently"
+        title="Delete"
+        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        confirmLabel="Delete"
+        isDeleting={moveProjectToTrashMutation.isPending}
+      />
+
+      <DeleteConfirmDialog
+        open={deletePermanentlyDialogOpen}
+        onOpenChange={(open) => {
+          setDeletePermanentlyDialogOpen(open);
+          if (!open) {
+            setDeletePermanentlyTarget(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!deletePermanentlyTarget) return;
+          deleteProjectPermanentlyMutation.mutate({ projectId: deletePermanentlyTarget.id });
+        }}
+        title="Delete permanently"
         description="This action cannot be undone."
-        warning="This will permanently delete the project and all related data."
-        requireTypeToConfirm={deleteTarget?.name ?? ""}
-        confirmValue={deleteConfirmValue}
-        onConfirmValueChange={setDeleteConfirmValue}
         confirmLabel="Delete permanently"
         isDeleting={deleteProjectPermanentlyMutation.isPending}
       />
