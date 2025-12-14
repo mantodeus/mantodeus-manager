@@ -438,29 +438,29 @@ export const projectsRouter = router({
     }),
 
   /**
-   * Move a project to Trash
+   * Move a project to Rubbish (internally: Trash)
    * Sets trashedAt = now
    */
   moveProjectToTrash: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      await requireProjectAccess(ctx.user, input.projectId, "move to Trash");
+      await requireProjectAccess(ctx.user, input.projectId, "delete");
       await db.moveProjectToTrash(input.projectId);
       return { success: true };
     }),
 
   /**
-   * Restore a project from Trash
+   * Restore a project from Rubbish (internally: Trash)
    * Sets trashedAt = null
    */
   restoreProjectFromTrash: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      const project = await requireProjectAccess(ctx.user, input.projectId, "restore from Trash");
+      const project = await requireProjectAccess(ctx.user, input.projectId, "restore from Rubbish");
       if (!project.trashedAt) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Project is not in Trash",
+          message: "Project is not in Rubbish",
         });
       }
       await db.restoreProjectFromTrash(input.projectId);
@@ -481,7 +481,7 @@ export const projectsRouter = router({
       if (!project.trashedAt) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Permanent delete is only allowed from Trash",
+          message: "Permanent delete is only allowed from Rubbish",
         });
       }
 

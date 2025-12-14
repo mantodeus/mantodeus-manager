@@ -21,6 +21,7 @@ import { ProjectJobList } from "@/components/ProjectJobList";
 import { ProjectFileGallery } from "@/components/ProjectFileGallery";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 export default function ProjectDetail() {
   const [, params] = useRoute("/projects/:id");
@@ -28,6 +29,7 @@ export default function ProjectDetail() {
   const projectId = params?.id ? parseInt(params.id) : 0;
   const [createJobDialogOpen, setCreateJobDialogOpen] = useState(false);
   const [editProjectDialogOpen, setEditProjectDialogOpen] = useState(false);
+  const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
 
   const { data: project, isLoading: projectLoading } = trpc.projects.getById.useQuery({ id: projectId });
   const { data: jobs, isLoading: jobsLoading } = trpc.projects.jobs.list.useQuery({ projectId });
@@ -83,11 +85,11 @@ export default function ProjectDetail() {
       utils.projects.list.invalidate();
       utils.projects.listArchived.invalidate();
       utils.projects.listTrashed.invalidate();
-      toast.success("Moved to Trash. Items in Trash can be restored.");
+      toast.success("Deleted. You can restore this later from the Rubbish bin.");
       navigate("/projects");
     },
     onError: (error) => {
-      toast.error("Failed to move to Trash: " + error.message);
+      toast.error("Failed to delete: " + error.message);
     },
   });
 
@@ -114,10 +116,8 @@ export default function ProjectDetail() {
     restoreArchivedProject.mutate({ projectId });
   };
 
-  const handleMoveToTrash = () => {
-    if (confirm("Move this project to Trash? Items in Trash can be restored.")) {
-      moveToTrash.mutate({ projectId });
-    }
+  const handleDeleteToRubbish = () => {
+    setDeleteToRubbishDialogOpen(true);
   };
 
   const handleRestoreFromTrash = () => {
@@ -397,7 +397,7 @@ export default function ProjectDetail() {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleMoveToTrash}
+              onClick={handleDeleteToRubbish}
               disabled={moveToTrash.isPending}
               className="gap-2"
             >
@@ -406,7 +406,7 @@ export default function ProjectDetail() {
               ) : (
                 <Trash2 className="h-4 w-4" />
               )}
-              Move to Trash
+              Delete
             </Button>
           </>
         ) : (
@@ -426,7 +426,7 @@ export default function ProjectDetail() {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleMoveToTrash}
+              onClick={handleDeleteToRubbish}
               disabled={moveToTrash.isPending}
               className="gap-2"
             >
@@ -435,7 +435,7 @@ export default function ProjectDetail() {
               ) : (
                 <Trash2 className="h-4 w-4" />
               )}
-              Move to Trash
+              Delete
             </Button>
           </>
         )}
@@ -454,6 +454,16 @@ export default function ProjectDetail() {
           onRequestAddContact={handleRequestAddContact}
         />
       )}
+
+      <DeleteConfirmDialog
+        open={deleteToRubbishDialogOpen}
+        onOpenChange={setDeleteToRubbishDialogOpen}
+        onConfirm={() => moveToTrash.mutate({ projectId })}
+        title="Delete"
+        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        confirmLabel="Delete"
+        isDeleting={moveToTrash.isPending}
+      />
     </div>
   );
 }

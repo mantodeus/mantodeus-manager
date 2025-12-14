@@ -169,11 +169,14 @@ export const fileMetadata = mysqlTable("file_metadata", {
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
   /** Optional responsive image metadata when the file is an image */
   imageMetadata: json("imageMetadata").$type<StoredImageMetadata | null>(),
+  /** Rubbish bin support (soft-delete) */
+  trashedAt: timestamp("trashedAt"),
 }, (table) => [
   index("file_metadata_projectId_idx").on(table.projectId),
   index("file_metadata_jobId_idx").on(table.jobId),
   index("file_metadata_projectId_jobId_idx").on(table.projectId, table.jobId),
   index("file_metadata_uploadedBy_idx").on(table.uploadedBy),
+  index("file_metadata_trashedAt_idx").on(table.trashedAt),
 ]);
 
 export type FileMetadata = typeof fileMetadata.$inferSelect;
@@ -312,10 +315,23 @@ export const contacts = mysqlTable("contacts", {
   latitude: varchar("latitude", { length: 20 }),
   longitude: varchar("longitude", { length: 20 }),
   notes: text("notes"),
+  /**
+   * Contact lifecycle timestamps (source of truth).
+   *
+   * Active: archivedAt IS NULL AND trashedAt IS NULL
+   * Archived: archivedAt IS NOT NULL AND trashedAt IS NULL
+   * Rubbish: trashedAt IS NOT NULL
+   */
+  archivedAt: timestamp("archivedAt"),
+  trashedAt: timestamp("trashedAt"),
   createdBy: int("createdBy").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("contacts_createdBy_idx").on(table.createdBy),
+  index("contacts_archivedAt_idx").on(table.archivedAt),
+  index("contacts_trashedAt_idx").on(table.trashedAt),
+]);
 
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = typeof contacts.$inferInsert;
@@ -363,10 +379,25 @@ export const notes = mysqlTable("notes", {
   tags: varchar("tags", { length: 500 }),
   jobId: int("jobId").references(() => jobs.id),
   contactId: int("contactId").references(() => contacts.id),
+  /**
+   * Note lifecycle timestamps (source of truth).
+   *
+   * Active: archivedAt IS NULL AND trashedAt IS NULL
+   * Archived: archivedAt IS NOT NULL AND trashedAt IS NULL
+   * Rubbish: trashedAt IS NOT NULL
+   */
+  archivedAt: timestamp("archivedAt"),
+  trashedAt: timestamp("trashedAt"),
   createdBy: int("createdBy").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("notes_createdBy_idx").on(table.createdBy),
+  index("notes_archivedAt_idx").on(table.archivedAt),
+  index("notes_trashedAt_idx").on(table.trashedAt),
+  index("notes_jobId_idx").on(table.jobId),
+  index("notes_contactId_idx").on(table.contactId),
+]);
 
 export type Note = typeof notes.$inferSelect;
 export type InsertNote = typeof notes.$inferInsert;
