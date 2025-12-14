@@ -199,7 +199,7 @@ describe("projects router", () => {
   });
 
   describe("archive project", () => {
-    it("should archive a project (soft delete)", async () => {
+    it("should archive a project", async () => {
       const { ctx } = createAuthContext();
       const caller = appRouter.createCaller(ctx);
 
@@ -210,13 +210,14 @@ describe("projects router", () => {
       });
 
       // Archive it
-      const archiveResult = await caller.projects.archive({ id: createResult.id });
+      const archiveResult = await caller.projects.archiveProject({ projectId: createResult.id });
 
       expect(archiveResult.success).toBe(true);
 
       // Verify the archive
       const project = await caller.projects.getById({ id: createResult.id });
-      expect(project?.status).toBe("archived");
+      expect(project?.archivedAt).toBeTruthy();
+      expect(project?.trashedAt).toBeNull();
     });
   });
 

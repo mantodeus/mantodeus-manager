@@ -15,13 +15,14 @@ import { protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { projectFilesRouter } from "./projectFilesRouter";
 import type { TrpcContext } from "./_core/context";
+import { deleteMultipleFromStorage } from "./storage";
 
 // =============================================================================
 // ZOD SCHEMAS
 // =============================================================================
 
 // Project status enum
-const projectStatusSchema = z.enum(["planned", "active", "completed", "archived"]);
+const projectStatusSchema = z.enum(["planned", "active", "completed"]);
 
 // Job status enum
 const jobStatusSchema = z.enum(["pending", "in_progress", "done", "cancelled"]);
@@ -96,17 +97,31 @@ const createJobSchema = z.object({
   endTime: z.date().optional(),
 });
 
-const updateJobSchema = z.object({
-  id: z.number(),
-  projectId: z.number(), // Required for access control verification
-  title: z.string().min(1).optional(),
-  category: z.string().optional(),
-  description: z.string().optional(),
-  assignedUsers: z.array(z.number()).optional(),
-  status: jobStatusSchema.optional(),
-  startTime: z.date().optional(),
-  endTime: z.date().optional(),
-});
+const updateJobSchema = z.union([
+  z.object({
+    id: z.number(),
+    projectId: z.number(), // Required for access control verification
+    title: z.string().min(1).optional(),
+    category: z.string().optional(),
+    description: z.string().optional(),
+    assignedUsers: z.array(z.number()).optional(),
+    status: jobStatusSchema.optional(),
+    startTime: z.date().optional(),
+    endTime: z.date().optional(),
+  }),
+  // Backwards/forwards compatibility with callers that use `jobId`
+  z.object({
+    jobId: z.number(),
+    projectId: z.number(),
+    title: z.string().min(1).optional(),
+    category: z.string().optional(),
+    description: z.string().optional(),
+    assignedUsers: z.array(z.number()).optional(),
+    status: jobStatusSchema.optional(),
+    startTime: z.date().optional(),
+    endTime: z.date().optional(),
+  }),
+]);
 
 // =============================================================================
 // ACCESS CONTROL HELPERS
@@ -156,7 +171,7 @@ async function requireProjectAccess(
   if (!allowed) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: `You don't have permission to ${action} this project`,
+      message: `Forbidden: You don't have permission to ${action} this project`,
     });
   }
   
@@ -238,7 +253,8 @@ const jobsRouter = router({
         endTime: input.endTime || null,
       });
       
-      return { success: true, id: result[0].insertId };
+      const created = await db.getProjectJobById(result[0].insertId);
+      return { success: true, ...(created ?? { id: result[0].insertId, projectId: input.projectId }) };
     }),
 
   /**
@@ -247,22 +263,30 @@ const jobsRouter = router({
   update: protectedProcedure
     .input(updateJobSchema)
     .mutation(async ({ input, ctx }) => {
-      await requireJobAccess(ctx.user, input.projectId, input.id, "update");
+      const jobId = "jobId" in input ? input.jobId : input.id;
+      await requireJobAccess(ctx.user, input.projectId, jobId, "update");
       
-      const { id, projectId, ...updates } = input;
+      const projectId = input.projectId;
+      const updates = { ...(input as Record<string, unknown>) } as typeof input;
+      // Remove identifiers so we can build updateData cleanly.
+      // (Handles both shapes: id/projectId and jobId/projectId.)
+      delete (updates as { id?: number }).id;
+      delete (updates as { jobId?: number }).jobId;
+      delete (updates as { projectId?: number }).projectId;
       
       // Convert optional fields
       const updateData: Parameters<typeof db.updateProjectJob>[1] = {};
-      if (updates.title !== undefined) updateData.title = updates.title;
-      if (updates.category !== undefined) updateData.category = updates.category || null;
-      if (updates.description !== undefined) updateData.description = updates.description || null;
-      if (updates.assignedUsers !== undefined) updateData.assignedUsers = updates.assignedUsers || null;
-      if (updates.status !== undefined) updateData.status = updates.status;
-      if (updates.startTime !== undefined) updateData.startTime = updates.startTime || null;
-      if (updates.endTime !== undefined) updateData.endTime = updates.endTime || null;
+      if ("title" in updates && updates.title !== undefined) updateData.title = updates.title as string;
+      if ("category" in updates && updates.category !== undefined) updateData.category = (updates.category as string) || null;
+      if ("description" in updates && updates.description !== undefined) updateData.description = (updates.description as string) || null;
+      if ("assignedUsers" in updates && updates.assignedUsers !== undefined) updateData.assignedUsers = (updates.assignedUsers as number[]) || null;
+      if ("status" in updates && updates.status !== undefined) updateData.status = updates.status as (typeof jobStatusSchema)["_type"];
+      if ("startTime" in updates && updates.startTime !== undefined) updateData.startTime = (updates.startTime as Date) || null;
+      if ("endTime" in updates && updates.endTime !== undefined) updateData.endTime = (updates.endTime as Date) || null;
       
-      await db.updateProjectJob(id, updateData);
-      return { success: true };
+      await db.updateProjectJob(jobId, updateData);
+      const updated = await db.getProjectJobById(jobId);
+      return { success: true, ...(updated ?? { id: jobId, projectId }) };
     }),
 
   /**
@@ -292,6 +316,26 @@ export const projectsRouter = router({
       return await db.getAllProjects();
     }
     return await db.getProjectsByUser(ctx.user.id);
+  }),
+
+  /**
+   * List archived projects (explicit query)
+   */
+  listArchived: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role === "admin") {
+      return await db.getAllArchivedProjects();
+    }
+    return await db.getArchivedProjectsByUser(ctx.user.id);
+  }),
+
+  /**
+   * List trashed projects (explicit query)
+   */
+  listTrashed: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role === "admin") {
+      return await db.getAllTrashedProjects();
+    }
+    return await db.getTrashedProjectsByUser(ctx.user.id);
   }),
 
   /**
@@ -326,8 +370,9 @@ export const projectsRouter = router({
         status: input.status,
         createdBy: ctx.user.id,
       });
-      
-      return { success: true, id: result[0].insertId };
+
+      const created = await db.getProjectById(result[0].insertId);
+      return { success: true, ...(created ?? { id: result[0].insertId }) };
     }),
 
   /**
@@ -364,30 +409,100 @@ export const projectsRouter = router({
       if (updates.status !== undefined) updateData.status = updates.status;
       
       await db.updateProject(id, updateData);
+      const updated = await db.getProjectById(id);
+      return { success: true, ...(updated ?? { id }) };
+    }),
+
+  /**
+   * Archive a project
+   * Sets archivedAt = now
+   */
+  archiveProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "archive");
+      await db.archiveProject(input.projectId);
       return { success: true };
     }),
 
   /**
-   * Archive a project (soft delete)
-   * Sets status to 'archived' instead of deleting
+   * Restore an archived project
+   * Sets archivedAt = null
    */
-  archive: protectedProcedure
-    .input(z.object({ id: z.number() }))
+  restoreArchivedProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      await requireProjectAccess(ctx.user, input.id, "archive");
-      await db.archiveProject(input.id);
+      await requireProjectAccess(ctx.user, input.projectId, "restore");
+      await db.restoreArchivedProject(input.projectId);
       return { success: true };
     }),
 
   /**
-   * Permanently delete a project and all related data
-   * Use with caution - this will cascade delete jobs and files
+   * Move a project to Trash
+   * Sets trashedAt = now
    */
-  delete: protectedProcedure
-    .input(z.object({ id: z.number() }))
+  moveProjectToTrash: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      await requireProjectAccess(ctx.user, input.id, "delete");
-      await db.deleteProject(input.id);
+      await requireProjectAccess(ctx.user, input.projectId, "move to Trash");
+      await db.moveProjectToTrash(input.projectId);
+      return { success: true };
+    }),
+
+  /**
+   * Restore a project from Trash
+   * Sets trashedAt = null
+   */
+  restoreProjectFromTrash: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const project = await requireProjectAccess(ctx.user, input.projectId, "restore from Trash");
+      if (!project.trashedAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Project is not in Trash",
+        });
+      }
+      await db.restoreProjectFromTrash(input.projectId);
+      return { success: true };
+    }),
+
+  /**
+   * Permanently delete a project and all related data.
+   * Only allowed if the project is in Trash (trashedAt IS NOT NULL).
+   * Also deletes associated S3/object storage assets referenced by file metadata.
+   *
+   * Irreversible.
+   */
+  deleteProjectPermanently: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const project = await requireProjectAccess(ctx.user, input.projectId, "permanently delete");
+      if (!project.trashedAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Permanent delete is only allowed from Trash",
+        });
+      }
+
+      // Collect all storage keys before deleting DB records.
+      const files = await db.getFilesByProjectId(input.projectId);
+      const keys = new Set<string>();
+      for (const file of files) {
+        if (file.s3Key) keys.add(file.s3Key);
+        const variants = file.imageMetadata?.variants;
+        if (variants?.thumb?.key) keys.add(variants.thumb.key);
+        if (variants?.preview?.key) keys.add(variants.preview.key);
+        if (variants?.full?.key) keys.add(variants.full.key);
+      }
+
+      // Delete objects first; if this fails, keep DB data so user can retry.
+      if (keys.size > 0) {
+        await deleteMultipleFromStorage(Array.from(keys));
+      }
+
+      // Cascade deletes: project_jobs, file_metadata, etc.
+      await db.deleteProject(input.projectId);
       return { success: true };
     }),
 

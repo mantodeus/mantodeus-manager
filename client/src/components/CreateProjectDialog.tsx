@@ -43,7 +43,7 @@ interface CreateProjectDialogProps {
   onRequestAddContact?: () => void;
 }
 
-type ProjectStatus = "planned" | "active" | "completed" | "archived";
+type ProjectStatus = "planned" | "active" | "completed";
 
 const CREATE_NEW_CLIENT_VALUE = "__create_new_client__";
 
@@ -236,7 +236,6 @@ export function CreateProjectDialog({
                   <SelectItem value="planned">Planned</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
             </div>
