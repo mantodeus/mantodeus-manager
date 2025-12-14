@@ -28,6 +28,7 @@ import ProjectFileLightbox from "./ProjectFileLightbox";
 import { compressImage } from "@/lib/imageCompression";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FileMetadata {
   id: number;
@@ -76,15 +77,31 @@ function isImageFile(mimeType: string, imageUrls?: FileMetadata["imageUrls"]): b
 }
 
 export function ProjectFileGallery({ projectId, jobId, files, isLoading }: ProjectFileGalleryProps) {
+  const [view, setView] = useState<"active" | "trash">("active");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<number | null>(null);
+  const [deletePermanentlyDialogOpen, setDeletePermanentlyDialogOpen] = useState(false);
+  const [fileToDeletePermanently, setFileToDeletePermanently] = useState<number | null>(null);
   const [viewingFileId, setViewingFileId] = useState<number | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
+
+  const { data: trashedByProject = [], isLoading: trashedProjectLoading } =
+    trpc.projects.files.listTrashedByProject.useQuery(
+      { projectId },
+      { enabled: view === "trash" && !jobId }
+    );
+  const { data: trashedByJob = [], isLoading: trashedJobLoading } =
+    trpc.projects.files.listTrashedByJob.useQuery(
+      { projectId, jobId: jobId ?? 0 },
+      { enabled: view === "trash" && Boolean(jobId) }
+    );
+  const trashedFiles = jobId ? trashedByJob : trashedByProject;
+  const trashedLoading = jobId ? trashedJobLoading : trashedProjectLoading;
 
   // Filter image files for the lightbox
   const imageFiles = files.filter(f => isImageFile(f.mimeType, f.imageUrls));
@@ -106,15 +123,47 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
 
   const deleteFile = trpc.projects.files.delete.useMutation({
     onSuccess: () => {
-      toast.success("File deleted successfully");
+      toast.success("Deleted. You can restore this later from the Rubbish bin.");
       if (jobId) {
         utils.projects.files.listByJob.invalidate({ projectId, jobId });
+        utils.projects.files.listTrashedByJob.invalidate({ projectId, jobId });
       } else {
         utils.projects.files.listByProject.invalidate({ projectId });
+        utils.projects.files.listTrashedByProject.invalidate({ projectId });
       }
     },
     onError: (error) => {
       toast.error("Failed to delete file: " + error.message);
+    },
+  });
+
+  const restoreFile = trpc.projects.files.restoreFromTrash.useMutation({
+    onSuccess: () => {
+      toast.success("File restored");
+      if (jobId) {
+        utils.projects.files.listByJob.invalidate({ projectId, jobId });
+        utils.projects.files.listTrashedByJob.invalidate({ projectId, jobId });
+      } else {
+        utils.projects.files.listByProject.invalidate({ projectId });
+        utils.projects.files.listTrashedByProject.invalidate({ projectId });
+      }
+    },
+    onError: (error) => {
+      toast.error("Failed to restore file: " + error.message);
+    },
+  });
+
+  const deleteFilePermanently = trpc.projects.files.deletePermanently.useMutation({
+    onSuccess: () => {
+      toast.success("File deleted permanently");
+      if (jobId) {
+        utils.projects.files.listTrashedByJob.invalidate({ projectId, jobId });
+      } else {
+        utils.projects.files.listTrashedByProject.invalidate({ projectId });
+      }
+    },
+    onError: (error) => {
+      toast.error("Failed to delete file permanently: " + error.message);
     },
   });
 
@@ -222,9 +271,18 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
   };
 
   const handleItemAction = (action: ItemAction, fileId: number) => {
-    if (action === "delete") {
+    if (action === "delete" || action === "moveToTrash") {
       setFileToDelete(fileId);
       setDeleteDialogOpen(true);
+      return;
+    }
+    if (action === "restore") {
+      restoreFile.mutate({ fileId });
+      return;
+    }
+    if (action === "deletePermanently") {
+      setFileToDeletePermanently(fileId);
+      setDeletePermanentlyDialogOpen(true);
     }
   };
 
@@ -232,6 +290,13 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
     if (fileToDelete !== null) {
       deleteFile.mutate({ fileId: fileToDelete });
       setFileToDelete(null);
+    }
+  };
+
+  const confirmDeleteFilePermanently = () => {
+    if (fileToDeletePermanently !== null) {
+      deleteFilePermanently.mutate({ fileId: fileToDeletePermanently });
+      setFileToDeletePermanently(null);
     }
   };
 
@@ -270,161 +335,228 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
               {uploadStatus}
             </span>
           )}
-          <div className="relative">
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={handleFileSelect}
-              disabled={uploading}
-              accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
-              multiple
-            />
-            <Button disabled={uploading}>
-              {uploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {uploadProgress}%
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Upload Files
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {files.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-4">No files uploaded yet.</p>
+          {view === "active" && (
             <div className="relative">
               <input
                 type="file"
+                ref={fileInputRef}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={handleFileSelect}
                 disabled={uploading}
                 accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
                 multiple
               />
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload First File
+              <Button disabled={uploading}>
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {uploadProgress}%
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Upload Files
+                  </>
+                )}
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {files.map((file) => {
-            const isImage = isImageFile(file.mimeType, file.imageUrls);
-            
-            return (
-              <Card 
-                key={file.id} 
-                className={`group overflow-hidden transition-shadow hover:shadow-md ${isImage ? 'cursor-pointer' : ''}`}
-                onClick={() => isImage && handleViewFile(file)}
-              >
-                <CardContent className="p-0">
-                  {isImage ? (
-                    // Image thumbnail
-                    <div className="relative aspect-square">
-                      {file.imageUrls?.thumb ? (
-                        <img
-                          src={file.imageUrls.thumb}
-                          alt={file.originalName}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
+          )}
+        </div>
+      </div>
+
+      <Tabs value={view} onValueChange={(value) => setView(value as "active" | "trash")}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="trash">Rubbish</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active" className="space-y-4">
+          {files.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Upload className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">No files uploaded yet.</p>
+                <div className="relative">
+                  <input
+                    type="file"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    onChange={handleFileSelect}
+                    disabled={uploading}
+                    accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                    multiple
+                  />
+                  <Button variant="outline">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload First File
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {files.map((file) => {
+                const isImage = isImageFile(file.mimeType, file.imageUrls);
+
+                return (
+                  <Card
+                    key={file.id}
+                    className={`group overflow-hidden transition-shadow hover:shadow-md ${isImage ? "cursor-pointer" : ""}`}
+                    onClick={() => isImage && handleViewFile(file)}
+                  >
+                    <CardContent className="p-0">
+                      {isImage ? (
+                        // Image thumbnail
+                        <div className="relative aspect-square">
+                          {file.imageUrls?.thumb ? (
+                            <img
+                              src={file.imageUrls.thumb}
+                              alt={file.originalName}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                              Preview unavailable
+                            </div>
+                          )}
+                          {/* Overlay on hover (desktop only, non-blocking on touch) */}
+                          <div
+                            className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+                          >
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewFile(file);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                          </div>
+                          {/* Always-visible action menu for touch users */}
+                          <div className="absolute top-2 right-2 z-20">
+                            <ItemActionsMenu
+                              onAction={(action) => handleItemAction(action, file.id)}
+                              actions={["delete"]}
+                              triggerClassName="bg-background/90 hover:bg-background shadow-sm"
+                              disabled={deleteFile.isPending}
+                            />
+                          </div>
+                          {/* File name at bottom */}
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 truncate">
+                            {file.originalName}
+                          </div>
+                        </div>
                       ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                          Preview unavailable
+                        // Non-image file card
+                        <div className="p-4">
+                          <div className="flex items-start gap-3">
+                            {getFileIcon(file.mimeType)}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate text-sm" title={file.originalName}>
+                                {file.originalName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatFileSize(file.fileSize)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(file.uploadedAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewFile(file)}
+                              disabled={viewingFileId === file.id}
+                              className="flex-1"
+                            >
+                              {viewingFileId === file.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <ExternalLink className="h-4 w-4 mr-1" />
+                                  View
+                                </>
+                              )}
+                            </Button>
+                            <ItemActionsMenu
+                              onAction={(action) => handleItemAction(action, file.id)}
+                              actions={["delete"]}
+                              triggerClassName="text-muted-foreground hover:text-foreground"
+                              disabled={deleteFile.isPending}
+                              size="sm"
+                            />
+                          </div>
                         </div>
                       )}
-                      {/* Overlay on hover (desktop only, non-blocking on touch) */}
-                      <div
-                        className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
-                      >
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewFile(file);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                      </div>
-                      {/* Always-visible action menu for touch users */}
-                      <div className="absolute top-2 right-2 z-20">
-                        <ItemActionsMenu
-                          onAction={(action) => handleItemAction(action, file.id)}
-                          actions={["delete"]}
-                          triggerClassName="bg-background/90 hover:bg-background shadow-sm"
-                          disabled={deleteFile.isPending}
-                        />
-                      </div>
-                      {/* File name at bottom */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 truncate">
-                        {file.originalName}
-                      </div>
-                    </div>
-                  ) : (
-                    // Non-image file card
-                    <div className="p-4">
-                      <div className="flex items-start gap-3">
-                        {getFileIcon(file.mimeType)}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate text-sm" title={file.originalName}>
-                            {file.originalName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatFileSize(file.fileSize)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(file.uploadedAt).toLocaleDateString()}
-                          </p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="trash" className="space-y-4">
+          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored.</p>
+          {trashedLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : trashedFiles.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Upload className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Rubbish bin is empty.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {trashedFiles.map((file) => {
+                const isImage = isImageFile(file.mimeType, file.imageUrls);
+                return (
+                  <Card key={file.id} className="group overflow-hidden">
+                    <CardContent className="p-0">
+                      <div className="relative aspect-square bg-muted flex items-center justify-center">
+                        {isImage && file.imageUrls?.thumb ? (
+                          <img
+                            src={file.imageUrls.thumb}
+                            alt={file.originalName}
+                            className="w-full h-full object-cover opacity-90"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
+                            {getFileIcon(file.mimeType)}
+                            <div className="text-xs text-muted-foreground truncate max-w-full">
+                              {file.originalName}
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 z-20">
+                          <ItemActionsMenu
+                            onAction={(action) => handleItemAction(action, file.id)}
+                            actions={["restore", "deletePermanently"]}
+                            triggerClassName="bg-background/90 hover:bg-background shadow-sm"
+                            disabled={restoreFile.isPending || deleteFilePermanently.isPending}
+                          />
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 truncate">
+                          {file.originalName}
                         </div>
                       </div>
-                      <div className="flex gap-2 mt-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewFile(file)}
-                          disabled={viewingFileId === file.id}
-                          className="flex-1"
-                        >
-                          {viewingFileId === file.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <ExternalLink className="h-4 w-4 mr-1" />
-                              View
-                            </>
-                          )}
-                        </Button>
-                        <ItemActionsMenu
-                          onAction={(action) => handleItemAction(action, file.id)}
-                          actions={["delete"]}
-                          triggerClassName="text-muted-foreground hover:text-foreground"
-                          disabled={deleteFile.isPending}
-                          size="sm"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Image Lightbox */}
       {selectedImageIndex !== null && imageFiles.length > 0 && (
@@ -448,10 +580,27 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
             }
           }}
           onConfirm={confirmDeleteFile}
-          title="Delete File"
-          description="This action cannot be undone. This file will be permanently deleted from storage."
-          confirmLabel="Delete File"
+          title="Delete"
+          description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+          confirmLabel="Delete"
           isDeleting={deleteFile.isPending}
+        />
+      )}
+
+      {fileToDeletePermanently !== null && (
+        <DeleteConfirmDialog
+          open={deletePermanentlyDialogOpen}
+          onOpenChange={(open) => {
+            setDeletePermanentlyDialogOpen(open);
+            if (!open) {
+              setFileToDeletePermanently(null);
+            }
+          }}
+          onConfirm={confirmDeleteFilePermanently}
+          title="Delete permanently"
+          description="This action cannot be undone."
+          confirmLabel="Delete permanently"
+          isDeleting={deleteFilePermanently.isPending}
         />
       )}
     </div>

@@ -12,10 +12,13 @@ import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 export default function Contacts() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
+  const [view, setView] = useState<"active" | "archived" | "trash">("active");
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -24,6 +27,13 @@ export default function Contacts() {
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Delete confirmation dialogs
+  const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
+  const [deleteToRubbishTargetId, setDeleteToRubbishTargetId] = useState<number | null>(null);
+  const [deletePermanentlyDialogOpen, setDeletePermanentlyDialogOpen] = useState(false);
+  const [deletePermanentlyTargetId, setDeletePermanentlyTargetId] = useState<number | null>(null);
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -32,10 +42,70 @@ export default function Contacts() {
     notes: "",
   });
 
-  const { data: contacts = [], refetch } = trpc.contacts.list.useQuery();
+  const utils = trpc.useUtils();
+  const { data: activeContacts = [], isLoading: activeLoading } = trpc.contacts.list.useQuery();
+  const { data: archivedContacts = [], isLoading: archivedLoading } = trpc.contacts.listArchived.useQuery(undefined, {
+    enabled: view === "archived",
+  });
+  const { data: trashedContacts = [], isLoading: trashedLoading } = trpc.contacts.listTrashed.useQuery(undefined, {
+    enabled: view === "trash",
+  });
   const createMutation = trpc.contacts.create.useMutation();
   const updateMutation = trpc.contacts.update.useMutation();
-  const deleteMutation = trpc.contacts.delete.useMutation();
+  const archiveMutation = trpc.contacts.archive.useMutation({
+    onSuccess: () => {
+      toast.success("Archived. You can restore this later.");
+      invalidateContactLists();
+    },
+    onError: (error) => {
+      toast.error("Failed to archive contact: " + error.message);
+    },
+  });
+  const restoreArchivedMutation = trpc.contacts.restore.useMutation({
+    onSuccess: () => {
+      toast.success("Contact restored");
+      invalidateContactLists();
+    },
+    onError: (error) => {
+      toast.error("Failed to restore contact: " + error.message);
+    },
+  });
+  const deleteToRubbishMutation = trpc.contacts.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Deleted. You can restore this later from the Rubbish bin.");
+      invalidateContactLists();
+    },
+    onError: (error) => {
+      toast.error("Failed to delete contact: " + error.message);
+    },
+  });
+  const restoreFromRubbishMutation = trpc.contacts.restoreFromTrash.useMutation({
+    onSuccess: () => {
+      toast.success("Contact restored");
+      invalidateContactLists();
+    },
+    onError: (error) => {
+      toast.error("Failed to restore contact: " + error.message);
+    },
+  });
+  const deletePermanentlyMutation = trpc.contacts.deletePermanently.useMutation({
+    onSuccess: () => {
+      toast.success("Contact deleted permanently");
+      invalidateContactLists();
+    },
+    onError: (error) => {
+      toast.error("Failed to delete contact permanently: " + error.message);
+    },
+  });
+
+  const invalidateContactLists = () => {
+    utils.contacts.list.invalidate();
+    utils.contacts.listArchived.invalidate();
+    utils.contacts.listTrashed.invalidate();
+  };
+
+  const isLoading = view === "active" ? activeLoading : view === "archived" ? archivedLoading : trashedLoading;
+  const contacts = view === "active" ? activeContacts : view === "archived" ? archivedContacts : trashedContacts;
 
   const filteredContacts = contacts.filter((contact) =>
     contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -74,7 +144,7 @@ export default function Contacts() {
       setFormData({ name: "", email: "", phone: "", address: "", notes: "" });
       setEditingId(null);
       setIsDialogOpen(false);
-      refetch();
+      invalidateContactLists();
       if (!editingId && newlyCreatedId && returnTo) {
         const redirectUrl = new URL(returnTo, window.location.origin);
         redirectUrl.searchParams.set("prefillClientId", newlyCreatedId.toString());
@@ -106,35 +176,19 @@ export default function Contacts() {
     setIsDialogOpen(false);
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("Are you sure you want to delete this contact?")) {
-      try {
-        await deleteMutation.mutateAsync({ id });
-        toast.success("Contact deleted successfully");
-        refetch();
-      } catch (error) {
-        toast.error("Failed to delete contact");
-      }
-    }
+  const requestDeleteToRubbish = (id: number) => {
+    setDeleteToRubbishTargetId(id);
+    setDeleteToRubbishDialogOpen(true);
+  };
+
+  const requestDeletePermanently = (id: number) => {
+    setDeletePermanentlyTargetId(id);
+    setDeletePermanentlyDialogOpen(true);
   };
 
   const handleBatchDelete = async () => {
     if (selectedIds.size === 0) return;
-    
-    const count = selectedIds.size;
-    if (confirm(`Are you sure you want to delete ${count} contact${count > 1 ? 's' : ''}?`)) {
-      try {
-        selectedIds.forEach(async (id) => {
-          await deleteMutation.mutateAsync({ id });
-        });
-        toast.success(`${count} contact${count > 1 ? 's' : ''} deleted successfully`);
-        setSelectedIds(new Set());
-        setIsMultiSelectMode(false);
-        refetch();
-      } catch (error) {
-        toast.error("Failed to delete contacts");
-      }
-    }
+    setBatchDeleteDialogOpen(true);
   };
 
   const handleItemAction = (action: ItemAction, contactId: number) => {
@@ -143,10 +197,25 @@ export default function Contacts() {
 
     switch (action) {
       case "edit":
-        handleEdit(contact);
+        if (view === "active") {
+          handleEdit(contact);
+        }
         break;
-      case "delete":
-        handleDelete(contactId);
+      case "archive":
+        archiveMutation.mutate({ id: contactId });
+        break;
+      case "restore":
+        if (view === "archived") {
+          restoreArchivedMutation.mutate({ id: contactId });
+        } else if (view === "trash") {
+          restoreFromRubbishMutation.mutate({ id: contactId });
+        }
+        break;
+      case "moveToTrash":
+        requestDeleteToRubbish(contactId);
+        break;
+      case "deletePermanently":
+        requestDeletePermanently(contactId);
         break;
       case "select":
         setIsMultiSelectMode(true);
@@ -192,82 +261,107 @@ export default function Contacts() {
           <h1 className="text-3xl font-regular">Contacts</h1>
           <p className="text-gray-400 text-sm">Manage your clients and contacts</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77]">
-              <Plus className="w-4 h-4 mr-2" />
-              New Contact
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-[#1a1a1a] border-[#0D0E10]">
-            <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Contact" : "Add New Contact"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Name *</label>
-                <Input
-                  placeholder="Contact name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="bg-[#0D0E10] border-[#0D0E10]"
-                />
+        {view === "active" && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77]">
+                <Plus className="w-4 h-4 mr-2" />
+                New Contact
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-[#1a1a1a] border-[#0D0E10]">
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Edit Contact" : "Add New Contact"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Name *</label>
+                  <Input
+                    placeholder="Contact name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="bg-[#0D0E10] border-[#0D0E10]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Email</label>
+                  <Input
+                    type="email"
+                    placeholder="email@example.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="bg-[#0D0E10] border-[#0D0E10]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Phone</label>
+                  <Input
+                    placeholder="+1 (555) 123-4567"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="bg-[#0D0E10] border-[#0D0E10]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Address</label>
+                  <Input
+                    placeholder="Street address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="bg-[#0D0E10] border-[#0D0E10]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Notes</label>
+                  <Textarea
+                    placeholder="Additional notes..."
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="bg-[#0D0E10] border-[#0D0E10]"
+                    rows={3}
+                  />
+                </div>
+              <Button
+                onClick={handleSave}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="w-full bg-[#00ff88] text-black hover:bg-[#00dd77]"
+              >
+                {editingId
+                  ? updateMutation.isPending
+                    ? "Updating..."
+                    : "Update Contact"
+                  : createMutation.isPending
+                  ? "Creating..."
+                  : "Create Contact"}
+              </Button>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <Input
-                  type="email"
-                  placeholder="email@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="bg-[#0D0E10] border-[#0D0E10]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Phone</label>
-                <Input
-                  placeholder="+1 (555) 123-4567"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="bg-[#0D0E10] border-[#0D0E10]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Address</label>
-                <Input
-                  placeholder="Street address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="bg-[#0D0E10] border-[#0D0E10]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Notes</label>
-                <Textarea
-                  placeholder="Additional notes..."
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="bg-[#0D0E10] border-[#0D0E10]"
-                  rows={3}
-                />
-              </div>
-            <Button
-              onClick={handleSave}
-              disabled={createMutation.isPending || updateMutation.isPending}
-              className="w-full bg-[#00ff88] text-black hover:bg-[#00dd77]"
-            >
-              {editingId
-                ? updateMutation.isPending
-                  ? "Updating..."
-                  : "Update Contact"
-                : createMutation.isPending
-                ? "Creating..."
-                : "Create Contact"}
-            </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
+
+      <Tabs
+        value={view}
+        onValueChange={(value) => {
+          setIsMultiSelectMode(false);
+          setSelectedIds(new Set());
+          setView(value as "active" | "archived" | "trash");
+        }}
+      >
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="archived">Archived</TabsTrigger>
+          <TabsTrigger value="trash">Rubbish</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active" className="space-y-6 pt-4" />
+        <TabsContent value="archived" className="space-y-6 pt-4">
+          <p className="text-sm text-muted-foreground">You can restore this later.</p>
+        </TabsContent>
+        <TabsContent value="trash" className="space-y-6 pt-4">
+          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored.</p>
+        </TabsContent>
+      </Tabs>
 
       <div>
         <Input
@@ -278,9 +372,19 @@ export default function Contacts() {
         />
       </div>
 
-      {filteredContacts.length === 0 ? (
+      {isLoading ? (
         <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
-          <p className="text-gray-400">No contacts found. Create your first contact to get started.</p>
+          <p className="text-gray-400">Loading...</p>
+        </Card>
+      ) : filteredContacts.length === 0 ? (
+        <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+          <p className="text-gray-400">
+            {view === "trash"
+              ? "Rubbish bin is empty."
+              : view === "archived"
+              ? "No archived contacts."
+              : "No contacts found. Create your first contact to get started."}
+          </p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -289,7 +393,9 @@ export default function Contacts() {
               if (isMultiSelectMode) {
                 toggleSelection(contact.id);
               } else {
-                handleEdit(contact);
+                if (view === "active") {
+                  handleEdit(contact);
+                }
               }
             };
 
@@ -335,7 +441,13 @@ export default function Contacts() {
                 {!isMultiSelectMode && (
                   <ItemActionsMenu
                     onAction={(action) => handleItemAction(action, contact.id)}
-                    actions={["edit", "delete", "select"]}
+                    actions={
+                      view === "active"
+                        ? ["edit", "archive", "moveToTrash", "select"]
+                        : view === "archived"
+                        ? ["restore", "moveToTrash"]
+                        : ["restore", "deletePermanently"]
+                    }
                     triggerClassName="text-muted-foreground hover:text-foreground"
                   />
                 )}
@@ -388,6 +500,57 @@ export default function Contacts() {
           setIsMultiSelectMode(false);
           setSelectedIds(new Set());
         }}
+      />
+
+      <DeleteConfirmDialog
+        open={deleteToRubbishDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteToRubbishDialogOpen(open);
+          if (!open) {
+            setDeleteToRubbishTargetId(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!deleteToRubbishTargetId) return;
+          deleteToRubbishMutation.mutate({ id: deleteToRubbishTargetId });
+        }}
+        title="Delete"
+        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        confirmLabel="Delete"
+        isDeleting={deleteToRubbishMutation.isPending}
+      />
+
+      <DeleteConfirmDialog
+        open={deletePermanentlyDialogOpen}
+        onOpenChange={(open) => {
+          setDeletePermanentlyDialogOpen(open);
+          if (!open) {
+            setDeletePermanentlyTargetId(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!deletePermanentlyTargetId) return;
+          deletePermanentlyMutation.mutate({ id: deletePermanentlyTargetId });
+        }}
+        title="Delete permanently"
+        description="This action cannot be undone."
+        confirmLabel="Delete permanently"
+        isDeleting={deletePermanentlyMutation.isPending}
+      />
+
+      <DeleteConfirmDialog
+        open={batchDeleteDialogOpen}
+        onOpenChange={setBatchDeleteDialogOpen}
+        onConfirm={() => {
+          const ids = Array.from(selectedIds);
+          ids.forEach((id) => deleteToRubbishMutation.mutate({ id }));
+          setSelectedIds(new Set());
+          setIsMultiSelectMode(false);
+        }}
+        title="Delete"
+        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        confirmLabel="Delete"
+        isDeleting={deleteToRubbishMutation.isPending}
       />
     </div>
   );
