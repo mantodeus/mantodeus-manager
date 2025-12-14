@@ -383,7 +383,7 @@ export default function Contacts() {
       {/* Multi-Select Bar */}
       <MultiSelectBar
         selectedCount={selectedIds.size}
-        onDelete={handleBatchDelete}
+        onPrimaryAction={handleBatchDelete}
         onCancel={() => {
           setIsMultiSelectMode(false);
           setSelectedIds(new Set());

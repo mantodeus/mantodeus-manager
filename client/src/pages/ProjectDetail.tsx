@@ -12,14 +12,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, MapPin, Calendar, Plus, Loader2, FileText, Trash2, Building2, Briefcase, Archive, Edit } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Plus, Loader2, FileText, Trash2, Building2, Briefcase, Archive, Edit, RotateCcw } from "lucide-react";
 import { Link, useRoute, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { CreateProjectJobDialog } from "@/components/CreateProjectJobDialog";
 import { EditProjectDialog } from "@/components/EditProjectDialog";
 import { ProjectJobList } from "@/components/ProjectJobList";
 import { ProjectFileGallery } from "@/components/ProjectFileGallery";
-import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
 
@@ -29,8 +28,6 @@ export default function ProjectDetail() {
   const projectId = params?.id ? parseInt(params.id) : 0;
   const [createJobDialogOpen, setCreateJobDialogOpen] = useState(false);
   const [editProjectDialogOpen, setEditProjectDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
 
   const { data: project, isLoading: projectLoading } = trpc.projects.getById.useQuery({ id: projectId });
   const { data: jobs, isLoading: jobsLoading } = trpc.projects.jobs.list.useQuery({ projectId });
@@ -57,10 +54,11 @@ export default function ProjectDetail() {
       })
     : null;
   
-  const archiveProject = trpc.projects.archive.useMutation({
+  const archiveProject = trpc.projects.archiveProject.useMutation({
     onSuccess: () => {
       utils.projects.list.invalidate();
-      toast.success("Project archived successfully");
+      utils.projects.listArchived.invalidate();
+      toast.success("Archived. You can restore this later.");
       navigate("/projects");
     },
     onError: (error) => {
@@ -68,29 +66,62 @@ export default function ProjectDetail() {
     },
   });
 
-  const deleteProject = trpc.projects.delete.useMutation({
+  const restoreArchivedProject = trpc.projects.restoreArchivedProject.useMutation({
     onSuccess: () => {
       utils.projects.list.invalidate();
-      toast.success("Project deleted permanently");
+      utils.projects.listArchived.invalidate();
+      toast.success("Project restored");
       navigate("/projects");
     },
     onError: (error) => {
-      toast.error("Failed to delete project: " + error.message);
+      toast.error("Failed to restore project: " + error.message);
+    },
+  });
+
+  const moveToTrash = trpc.projects.moveProjectToTrash.useMutation({
+    onSuccess: () => {
+      utils.projects.list.invalidate();
+      utils.projects.listArchived.invalidate();
+      utils.projects.listTrashed.invalidate();
+      toast.success("Moved to Trash. Items in Trash can be restored.");
+      navigate("/projects");
+    },
+    onError: (error) => {
+      toast.error("Failed to move to Trash: " + error.message);
+    },
+  });
+
+  const restoreFromTrash = trpc.projects.restoreProjectFromTrash.useMutation({
+    onSuccess: () => {
+      utils.projects.list.invalidate();
+      utils.projects.listArchived.invalidate();
+      utils.projects.listTrashed.invalidate();
+      toast.success("Project restored");
+      navigate("/projects");
+    },
+    onError: (error) => {
+      toast.error("Failed to restore project: " + error.message);
     },
   });
 
   const handleArchiveProject = () => {
-    if (confirm("Are you sure you want to archive this project? It will be hidden from the main list.")) {
-      archiveProject.mutate({ id: projectId });
+    if (confirm("Archive this project? You can restore this later.")) {
+      archiveProject.mutate({ projectId });
     }
   };
 
-  const handleDeleteProject = () => {
-    setDeleteDialogOpen(true);
+  const handleRestoreArchivedProject = () => {
+    restoreArchivedProject.mutate({ projectId });
   };
 
-  const confirmDeleteProject = () => {
-    deleteProject.mutate({ id: projectId });
+  const handleMoveToTrash = () => {
+    if (confirm("Move this project to Trash? Items in Trash can be restored.")) {
+      moveToTrash.mutate({ projectId });
+    }
+  };
+
+  const handleRestoreFromTrash = () => {
+    restoreFromTrash.mutate({ projectId });
   };
 
   const handleDateClick = () => {
@@ -167,6 +198,9 @@ export default function ProjectDetail() {
     );
   }
 
+  const isTrashed = Boolean(project.trashedAt);
+  const isArchived = Boolean(project.archivedAt) && !isTrashed;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -177,7 +211,7 @@ export default function ProjectDetail() {
           </Button>
         </Link>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setEditProjectDialogOpen(true)}>
+          <Button variant="outline" onClick={() => setEditProjectDialogOpen(true)} disabled={isTrashed}>
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>
@@ -312,7 +346,7 @@ export default function ProjectDetail() {
         <TabsContent value="jobs" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Jobs</h2>
-            <Button onClick={() => setCreateJobDialogOpen(true)}>
+            <Button onClick={() => setCreateJobDialogOpen(true)} disabled={isTrashed}>
               <Plus className="h-4 w-4 mr-2" />
               New Job
             </Button>
@@ -332,49 +366,80 @@ export default function ProjectDetail() {
       </Tabs>
 
       <div className="flex justify-end gap-2 pt-6 border-t border-border">
-        {project.status !== "archived" && (
+        {isTrashed ? (
           <Button
             variant="outline"
-            onClick={handleArchiveProject}
-            disabled={archiveProject.isPending}
+            onClick={handleRestoreFromTrash}
+            disabled={restoreFromTrash.isPending}
             className="gap-2"
           >
-            {archiveProject.isPending ? (
+            {restoreFromTrash.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Archive className="h-4 w-4" />
+              <RotateCcw className="h-4 w-4" />
             )}
-            Archive Project
+            Restore
           </Button>
+        ) : isArchived ? (
+          <>
+            <Button
+              variant="outline"
+              onClick={handleRestoreArchivedProject}
+              disabled={restoreArchivedProject.isPending}
+              className="gap-2"
+            >
+              {restoreArchivedProject.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4" />
+              )}
+              Restore
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleMoveToTrash}
+              disabled={moveToTrash.isPending}
+              className="gap-2"
+            >
+              {moveToTrash.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Move to Trash
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              onClick={handleArchiveProject}
+              disabled={archiveProject.isPending}
+              className="gap-2"
+            >
+              {archiveProject.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Archive className="h-4 w-4" />
+              )}
+              Archive
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleMoveToTrash}
+              disabled={moveToTrash.isPending}
+              className="gap-2"
+            >
+              {moveToTrash.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Move to Trash
+            </Button>
+          </>
         )}
-        <Button
-          variant="destructive"
-          onClick={handleDeleteProject}
-          disabled={deleteProject.isPending}
-          className="gap-2"
-        >
-          {deleteProject.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
-          Delete Project
-        </Button>
       </div>
-
-      <DeleteConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={confirmDeleteProject}
-        title="Permanently Delete Project"
-        description="This action cannot be undone. This will permanently delete the project and remove all associated data from our servers."
-        warning={`This will delete ${jobs?.length || 0} job${(jobs?.length || 0) !== 1 ? 's' : ''} and ${files?.length || 0} file${(files?.length || 0) !== 1 ? 's' : ''} associated with this project.`}
-        requireTypeToConfirm={project.name}
-        confirmValue={deleteConfirmValue}
-        onConfirmValueChange={setDeleteConfirmValue}
-        confirmLabel="Delete Project Permanently"
-        isDeleting={deleteProject.isPending}
-      />
 
       <CreateProjectJobDialog 
         open={createJobDialogOpen} 

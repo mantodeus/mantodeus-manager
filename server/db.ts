@@ -1,4 +1,4 @@
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, isNull, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   // User types
@@ -14,7 +14,7 @@ import {
   InsertInvoice, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate 
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
-import { ensureFileMetadataSchema, ensureProjectsSchema } from "./_core/schemaGuards";
+import { ensureFileMetadataSchema, ensureImagesSchema, ensureProjectsSchema } from "./_core/schemaGuards";
 
 type ProjectClientContact = Pick<Contact, "id" | "name" | "address" | "latitude" | "longitude">;
 export type ProjectWithClient = Project & { clientContact: ProjectClientContact | null };
@@ -277,7 +277,7 @@ export async function deleteTask(taskId: number) {
 export async function createImage(image: InsertImage) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+  await ensureImagesSchema();
   const result = await db.insert(images).values(image);
   return result;
 }
@@ -897,7 +897,11 @@ export async function getProjectsByUser(userId: number): Promise<ProjectWithClie
     })
     .from(projects)
     .leftJoin(contacts, eq(projects.clientId, contacts.id))
-    .where(eq(projects.createdBy, userId))
+    .where(and(
+      eq(projects.createdBy, userId),
+      isNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ))
     .orderBy(desc(projects.createdAt));
 
   return rows.map(mapProjectWithClient);
@@ -915,7 +919,93 @@ export async function getAllProjects(): Promise<ProjectWithClient[]> {
     })
     .from(projects)
     .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(and(
+      isNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ))
     .orderBy(desc(projects.createdAt));
+
+  return rows.map(mapProjectWithClient);
+}
+
+export async function getArchivedProjectsByUser(userId: number): Promise<ProjectWithClient[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  const rows = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(and(
+      eq(projects.createdBy, userId),
+      isNotNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ))
+    .orderBy(desc(projects.archivedAt), desc(projects.updatedAt));
+
+  return rows.map(mapProjectWithClient);
+}
+
+export async function getAllArchivedProjects(): Promise<ProjectWithClient[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  const rows = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(and(
+      isNotNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ))
+    .orderBy(desc(projects.archivedAt), desc(projects.updatedAt));
+
+  return rows.map(mapProjectWithClient);
+}
+
+export async function getTrashedProjectsByUser(userId: number): Promise<ProjectWithClient[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  const rows = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(and(
+      eq(projects.createdBy, userId),
+      isNotNull(projects.trashedAt)
+    ))
+    .orderBy(desc(projects.trashedAt), desc(projects.updatedAt));
+
+  return rows.map(mapProjectWithClient);
+}
+
+export async function getAllTrashedProjects(): Promise<ProjectWithClient[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  const rows = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(isNotNull(projects.trashedAt))
+    .orderBy(desc(projects.trashedAt), desc(projects.updatedAt));
 
   return rows.map(mapProjectWithClient);
 }
@@ -940,11 +1030,55 @@ export async function deleteProject(projectId: number) {
 export async function archiveProject(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   await ensureProjectsSchema();
   return await db.update(projects)
-    .set({ status: "archived" })
-    .where(eq(projects.id, projectId));
+    .set({ archivedAt: new Date() })
+    .where(and(
+      eq(projects.id, projectId),
+      isNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ));
+}
+
+export async function restoreArchivedProject(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  return await db.update(projects)
+    .set({ archivedAt: null })
+    .where(and(
+      eq(projects.id, projectId),
+      isNotNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ));
+}
+
+export async function moveProjectToTrash(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  return await db.update(projects)
+    .set({ trashedAt: new Date() })
+    .where(and(
+      eq(projects.id, projectId),
+      isNull(projects.trashedAt)
+    ));
+}
+
+export async function restoreProjectFromTrash(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  return await db.update(projects)
+    .set({ trashedAt: null })
+    .where(and(
+      eq(projects.id, projectId),
+      isNotNull(projects.trashedAt)
+    ));
 }
 
 // ===== PROJECT JOBS QUERIES =====
