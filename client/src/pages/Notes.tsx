@@ -1,3 +1,13 @@
+/**
+ * Notes List Page
+ * 
+ * Displays all notes for the current user.
+ * 
+ * Archive Pattern:
+ * - Active items shown by default
+ * - Archived and Rubbish sections revealed via "View archived" control
+ */
+
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -22,12 +32,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Tag, FileText, Edit } from "lucide-react";
+import { Plus, Search, Tag, FileText, Archive, Trash2, RotateCcw, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { ArchiveViewControl } from "@/components/ArchiveViewControl";
+
 type Note = {
   id: number;
   title: string;
@@ -44,7 +55,7 @@ type Note = {
 
 export default function Notes() {
   const { user } = useAuth();
-  const [view, setView] = useState<"active" | "archived" | "trash">("active");
+  const [showArchived, setShowArchived] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -72,12 +83,12 @@ export default function Notes() {
 
   // Queries
   const utils = trpc.useUtils();
-  const { data: activeNotes = [], refetch: refetchNotes, isLoading: activeLoading } = trpc.notes.list.useQuery();
+  const { data: activeNotes = [], isLoading: activeLoading } = trpc.notes.list.useQuery();
   const { data: archivedNotes = [], isLoading: archivedLoading } = trpc.notes.listArchived.useQuery(undefined, {
-    enabled: view === "archived",
+    enabled: showArchived,
   });
   const { data: trashedNotes = [], isLoading: trashedLoading } = trpc.notes.listTrashed.useQuery(undefined, {
-    enabled: view === "trash",
+    enabled: showArchived,
   });
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
@@ -163,9 +174,6 @@ export default function Notes() {
     utils.notes.listTrashed.invalidate();
   };
 
-  const notes = view === "active" ? activeNotes : view === "archived" ? archivedNotes : trashedNotes;
-  const isLoading = view === "active" ? activeLoading : view === "archived" ? archivedLoading : trashedLoading;
-
   const resetForm = () => {
     setTitle("");
     setContent("");
@@ -222,13 +230,14 @@ export default function Notes() {
     setBatchDeleteDialogOpen(true);
   };
 
-  const handleItemAction = (action: ItemAction, noteId: number) => {
+  const handleItemAction = (action: ItemAction, noteId: number, section: "active" | "archived" | "trash") => {
+    const notes = section === "active" ? activeNotes : section === "archived" ? archivedNotes : trashedNotes;
     const note = notes.find((n) => n.id === noteId);
     if (!note) return;
 
     switch (action) {
       case "edit":
-        if (view === "active") {
+        if (section === "active") {
           openEditDialog(note);
         }
         break;
@@ -236,9 +245,9 @@ export default function Notes() {
         archiveNoteMutation.mutate({ id: noteId });
         break;
       case "restore":
-        if (view === "archived") {
+        if (section === "archived") {
           restoreArchivedNoteMutation.mutate({ id: noteId });
-        } else if (view === "trash") {
+        } else if (section === "trash") {
           restoreFromRubbishMutation.mutate({ id: noteId });
         }
         break;
@@ -275,19 +284,25 @@ export default function Notes() {
     setIsEditDialogOpen(true);
   };
 
-  // Filter notes
-  const filteredNotes = notes.filter((note) => {
-    const matchesSearch =
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.tags?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter notes helper
+  const filterNotes = (notes: Note[]) => {
+    return notes.filter((note) => {
+      const matchesSearch =
+        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.tags?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesJob = filterJob === "all" || note.jobId?.toString() === filterJob;
-    const matchesContact =
-      filterContact === "all" || note.contactId?.toString() === filterContact;
+      const matchesJob = filterJob === "all" || note.jobId?.toString() === filterJob;
+      const matchesContact =
+        filterContact === "all" || note.contactId?.toString() === filterContact;
 
-    return matchesSearch && matchesJob && matchesContact;
-  });
+      return matchesSearch && matchesJob && matchesContact;
+    });
+  };
+
+  const filteredActiveNotes = filterNotes(activeNotes);
+  const filteredArchivedNotes = filterNotes(archivedNotes);
+  const filteredTrashedNotes = filterNotes(trashedNotes);
 
   const getJobName = (jobId: number | null) => {
     if (!jobId) return null;
@@ -301,10 +316,141 @@ export default function Notes() {
     return contact?.name;
   };
 
+  const renderNoteCard = (note: Note, section: "active" | "archived" | "trash") => {
+    const isActive = section === "active";
+
+    const handleCardClick = (e: React.MouseEvent) => {
+      if (isMultiSelectMode && isActive) {
+        toggleSelection(note.id);
+      } else if (isActive) {
+        openEditDialog(note);
+      }
+    };
+
+    return (
+      <Card
+        key={note.id}
+        className={`p-6 hover:shadow-lg transition-all ${
+          selectedIds.has(note.id) ? "ring-2 ring-[#00ff88]" : ""
+        } ${!isMultiSelectMode && isActive ? "cursor-pointer" : ""} ${section !== "active" ? "opacity-75" : ""}`}
+        onClick={handleCardClick}
+      >
+        <div className="flex items-start gap-3 mb-3">
+          {isMultiSelectMode && isActive && (
+            <Checkbox
+              checked={selectedIds.has(note.id)}
+              onCheckedChange={() => toggleSelection(note.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="mt-1"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <h3
+              className="text-lg font-semibold line-clamp-1"
+              style={{ fontFamily: "Kanit, sans-serif" }}
+            >
+              {note.title}
+            </h3>
+          </div>
+          {!isMultiSelectMode && (
+            <ItemActionsMenu
+              onAction={(action) => handleItemAction(action, note.id, section)}
+              actions={
+                section === "active"
+                  ? ["edit", "archive", "moveToTrash", "select"]
+                  : section === "archived"
+                  ? ["restore", "moveToTrash"]
+                  : ["restore", "deletePermanently"]
+              }
+              triggerClassName="text-muted-foreground hover:text-foreground"
+            />
+          )}
+        </div>
+
+        {note.content && (
+          <p
+            className="text-sm text-muted-foreground mb-3 line-clamp-3"
+            style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
+          >
+            {note.content}
+          </p>
+        )}
+
+        {note.tags && (
+          <div className="flex items-center gap-2 mb-3">
+            <Tag className="h-3 w-3 text-[#00ff88]" />
+            <span className="text-xs text-muted-foreground">{note.tags}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {getJobName(note.jobId) && (
+            <div className="flex items-center gap-1">
+              <span className="text-[#00ff88]">Job:</span>
+              <span>{getJobName(note.jobId)}</span>
+            </div>
+          )}
+          {getContactName(note.contactId) && (
+            <div className="flex items-center gap-1">
+              <span className="text-[#00ff88]">Contact:</span>
+              <span>{getContactName(note.contactId)}</span>
+            </div>
+          )}
+          <div className="mt-2">
+            {new Date(note.createdAt).toLocaleDateString()}
+          </div>
+        </div>
+      </Card>
+    );
+  };
+
+  const renderRubbishItem = (note: Note) => (
+    <Card key={note.id}>
+      <div className="flex items-center justify-between p-4">
+        <div className="min-w-0">
+          <div className="font-medium truncate">{note.title}</div>
+          <div className="text-sm text-muted-foreground">
+            Deleted{" "}
+            {note.trashedAt ? new Date(note.trashedAt).toLocaleDateString() : "—"}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => restoreFromRubbishMutation.mutate({ id: note.id })}
+            disabled={restoreFromRubbishMutation.isPending}
+            className="gap-2"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Restore
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => requestDeletePermanently(note.id)}
+            className="gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete permanently
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-muted-foreground">Please log in to view notes.</p>
+      </div>
+    );
+  }
+
+  if (activeLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -321,39 +467,22 @@ export default function Notes() {
             Create and manage your notes
           </p>
         </div>
-        {view === "active" && (
-          <Button
-            onClick={() => setIsCreateDialogOpen(true)}
-            className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-medium"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Note
-          </Button>
-        )}
+        <Button
+          onClick={() => setIsCreateDialogOpen(true)}
+          className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-medium"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          New Note
+        </Button>
       </div>
 
-      <Tabs
-        value={view}
-        onValueChange={(value) => {
-          setIsMultiSelectMode(false);
-          setSelectedIds(new Set());
-          setView(value as "active" | "archived" | "trash");
-        }}
-        className="mb-6"
-      >
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="archived">Archived</TabsTrigger>
-          <TabsTrigger value="trash">Rubbish</TabsTrigger>
-        </TabsList>
-        <TabsContent value="active" className="pt-4" />
-        <TabsContent value="archived" className="pt-4">
-          <p className="text-sm text-muted-foreground">You can restore this later.</p>
-        </TabsContent>
-        <TabsContent value="trash" className="pt-4">
-          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored.</p>
-        </TabsContent>
-      </Tabs>
+      {/* Archive View Control */}
+      <div className="flex justify-start mb-6">
+        <ArchiveViewControl
+          isExpanded={showArchived}
+          onToggle={() => setShowArchived(!showArchived)}
+        />
+      </div>
 
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -367,10 +496,10 @@ export default function Notes() {
           />
         </div>
         <Select value={filterJob} onValueChange={setFilterJob}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by job" />
-            </SelectTrigger>
-            <SelectContent>
+          <SelectTrigger>
+            <SelectValue placeholder="Filter by job" />
+          </SelectTrigger>
+          <SelectContent>
             <SelectItem value="all">All Jobs</SelectItem>
             {jobs.length === 0 ? (
               <div className="px-2 py-1.5 text-sm text-muted-foreground">No jobs available</div>
@@ -402,124 +531,82 @@ export default function Notes() {
         </Select>
       </div>
 
-      {/* Notes Grid */}
-      {isLoading ? (
-        <Card className="p-12 text-center">
-          <p className="text-muted-foreground" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
-            Loading...
-          </p>
-        </Card>
-      ) : filteredNotes.length === 0 ? (
-        <Card className="p-12 text-center">
-          <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
-            {searchQuery || filterJob !== "all" || filterContact !== "all"
-              ? "No notes found matching your filters"
-              : view === "trash"
-              ? "Rubbish bin is empty."
-              : view === "archived"
-              ? "No archived notes."
-              : "No notes yet"}
-          </p>
-          {view === "active" && !searchQuery && filterJob === "all" && filterContact === "all" && (
-            <Button
-              onClick={() => setIsCreateDialogOpen(true)}
-              variant="outline"
-              className="mt-4"
-            >
-              Create your first note
-            </Button>
-          )}
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredNotes.map((note) => {
-            const handleCardClick = (e: React.MouseEvent) => {
-              if (isMultiSelectMode) {
-                toggleSelection(note.id);
-              } else {
-                if (view === "active") {
-                  openEditDialog(note);
-                }
-              }
-            };
-
-            return (
-              <Card
-                key={note.id}
-                className={`p-6 hover:shadow-lg transition-all ${
-                  selectedIds.has(note.id) ? "ring-2 ring-[#00ff88]" : ""
-                } ${!isMultiSelectMode ? "cursor-pointer" : ""}`}
-                onClick={handleCardClick}
+      {/* Active Notes Section */}
+      <div className="space-y-4">
+        {filteredActiveNotes.length === 0 ? (
+          <Card className="p-12 text-center">
+            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+              {searchQuery || filterJob !== "all" || filterContact !== "all"
+                ? "No notes found matching your filters"
+                : "No notes yet"}
+            </p>
+            {!searchQuery && filterJob === "all" && filterContact === "all" && (
+              <Button
+                onClick={() => setIsCreateDialogOpen(true)}
+                variant="outline"
+                className="mt-4"
               >
-                <div className="flex items-start gap-3 mb-3">
-                  {isMultiSelectMode && (
-                    <Checkbox
-                      checked={selectedIds.has(note.id)}
-                      onCheckedChange={() => toggleSelection(note.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-1"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3
-                      className="text-lg font-semibold line-clamp-1"
-                      style={{ fontFamily: "Kanit, sans-serif" }}
-                    >
-                      {note.title}
-                    </h3>
-                  </div>
-                  {!isMultiSelectMode && (
-                    <ItemActionsMenu
-                      onAction={(action) => handleItemAction(action, note.id)}
-                      actions={
-                        view === "active"
-                          ? ["edit", "archive", "moveToTrash", "select"]
-                          : view === "archived"
-                          ? ["restore", "moveToTrash"]
-                          : ["restore", "deletePermanently"]
-                      }
-                      triggerClassName="text-muted-foreground hover:text-foreground"
-                    />
-                  )}
-                </div>
+                Create your first note
+              </Button>
+            )}
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredActiveNotes.map((note) => renderNoteCard(note, "active"))}
+          </div>
+        )}
+      </div>
 
-              {note.content && (
-                <p
-                  className="text-sm text-muted-foreground mb-3 line-clamp-3"
-                  style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
-                >
-                  {note.content}
-                </p>
-              )}
-
-              {note.tags && (
-                <div className="flex items-center gap-2 mb-3">
-                  <Tag className="h-3 w-3 text-[#00ff88]" />
-                  <span className="text-xs text-muted-foreground">{note.tags}</span>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                {getJobName(note.jobId) && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[#00ff88]">Job:</span>
-                    <span>{getJobName(note.jobId)}</span>
-                  </div>
-                )}
-                {getContactName(note.contactId) && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[#00ff88]">Contact:</span>
-                    <span>{getContactName(note.contactId)}</span>
-                  </div>
-                )}
-                <div className="mt-2">
-                  {new Date(note.createdAt).toLocaleDateString()}
-                </div>
-              </div>
+      {/* Archived Notes Section (when expanded) */}
+      {showArchived && (
+        <div className="space-y-4 mt-8">
+          <div className="flex items-center gap-2 pt-4 border-t">
+            <Archive className="h-5 w-5 text-muted-foreground" />
+            <h2 className="text-lg font-medium text-muted-foreground">Archived</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">You can restore these notes anytime.</p>
+          
+          {archivedLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredArchivedNotes.length === 0 ? (
+            <Card className="p-8 text-center">
+              <Archive className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+              <p className="text-muted-foreground text-sm">No archived notes.</p>
             </Card>
-            );
-          })}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredArchivedNotes.map((note) => renderNoteCard(note, "archived"))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Rubbish Section (when expanded) */}
+      {showArchived && (
+        <div className="space-y-4 mt-8">
+          <div className="flex items-center gap-2 pt-4 border-t">
+            <Trash2 className="h-5 w-5 text-muted-foreground" />
+            <h2 className="text-lg font-medium text-muted-foreground">Rubbish</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored or permanently deleted.</p>
+          
+          {trashedLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredTrashedNotes.length === 0 ? (
+            <Card className="p-8 text-center">
+              <Trash2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+              <p className="text-muted-foreground text-sm">Rubbish bin is empty.</p>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {filteredTrashedNotes.map((note) => renderRubbishItem(note))}
+            </div>
+          )}
         </div>
       )}
 
