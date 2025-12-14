@@ -12,13 +12,13 @@ import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { ActiveArchiveRubbishSections } from "@/components/ActiveArchiveRubbishSections";
 
 export default function Contacts() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
-  const [view, setView] = useState<"active" | "archived" | "trash">("active");
+  const [showArchived, setShowArchived] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -45,10 +45,10 @@ export default function Contacts() {
   const utils = trpc.useUtils();
   const { data: activeContacts = [], isLoading: activeLoading } = trpc.contacts.list.useQuery();
   const { data: archivedContacts = [], isLoading: archivedLoading } = trpc.contacts.listArchived.useQuery(undefined, {
-    enabled: view === "archived",
+    enabled: showArchived,
   });
   const { data: trashedContacts = [], isLoading: trashedLoading } = trpc.contacts.listTrashed.useQuery(undefined, {
-    enabled: view === "trash",
+    enabled: showArchived,
   });
   const createMutation = trpc.contacts.create.useMutation();
   const updateMutation = trpc.contacts.update.useMutation();
@@ -104,13 +104,13 @@ export default function Contacts() {
     utils.contacts.listTrashed.invalidate();
   };
 
-  const isLoading = view === "active" ? activeLoading : view === "archived" ? archivedLoading : trashedLoading;
-  const contacts = view === "active" ? activeContacts : view === "archived" ? archivedContacts : trashedContacts;
-
-  const filteredContacts = contacts.filter((contact) =>
+  const filterFn = (contact: (typeof activeContacts)[number]) =>
     contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    contact.email?.toLowerCase().includes(searchTerm.toLowerCase());
+
+  const filteredActiveContacts = activeContacts.filter(filterFn);
+  const filteredArchivedContacts = archivedContacts.filter(filterFn);
+  const filteredTrashedContacts = trashedContacts.filter(filterFn);
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
@@ -158,7 +158,7 @@ export default function Contacts() {
     }
   };
 
-  const handleEdit = (contact: typeof contacts[0]) => {
+  const handleEdit = (contact: (typeof activeContacts)[number]) => {
     setFormData({
       name: contact.name,
       email: contact.email || "",
@@ -191,13 +191,16 @@ export default function Contacts() {
     setBatchDeleteDialogOpen(true);
   };
 
-  const handleItemAction = (action: ItemAction, contactId: number) => {
-    const contact = contacts.find((c) => c.id === contactId);
-    if (!contact) return;
-
+  const handleItemAction = (
+    action: ItemAction,
+    contactId: number,
+    context: "active" | "archived" | "trash"
+  ) => {
     switch (action) {
       case "edit":
-        if (view === "active") {
+        if (context === "active") {
+          const contact = activeContacts.find((c) => c.id === contactId);
+          if (!contact) return;
           handleEdit(contact);
         }
         break;
@@ -205,9 +208,9 @@ export default function Contacts() {
         archiveMutation.mutate({ id: contactId });
         break;
       case "restore":
-        if (view === "archived") {
+        if (context === "archived") {
           restoreArchivedMutation.mutate({ id: contactId });
-        } else if (view === "trash") {
+        } else if (context === "trash") {
           restoreFromRubbishMutation.mutate({ id: contactId });
         }
         break;
@@ -231,9 +234,9 @@ export default function Contacts() {
       setReturnTo(returnParam);
     }
     const focusParam = url.searchParams.get("contactId");
-    if (focusParam && contacts.length > 0) {
+    if (focusParam && activeContacts.length > 0) {
       const contactId = parseInt(focusParam, 10);
-      const focusContact = contacts.find((contact) => contact.id === contactId);
+      const focusContact = activeContacts.find((contact) => contact.id === contactId);
       if (focusContact) {
         handleEdit(focusContact);
       }
@@ -242,7 +245,7 @@ export default function Contacts() {
       const nextHref = nextSearch ? `${url.pathname}?${nextSearch}${url.hash}` : `${url.pathname}${url.hash}`;
       window.history.replaceState(null, "", nextHref);
     }
-  }, [location, contacts]);
+  }, [location, activeContacts]);
 
   const toggleSelection = (contactId: number) => {
     const newSelected = new Set(selectedIds);
@@ -261,66 +264,65 @@ export default function Contacts() {
           <h1 className="text-3xl font-regular">Contacts</h1>
           <p className="text-gray-400 text-sm">Manage your clients and contacts</p>
         </div>
-        {view === "active" && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77]">
-                <Plus className="w-4 h-4 mr-2" />
-                New Contact
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-[#1a1a1a] border-[#0D0E10]">
-              <DialogHeader>
-                <DialogTitle>{editingId ? "Edit Contact" : "Add New Contact"}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Name *</label>
-                  <Input
-                    placeholder="Contact name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="bg-[#0D0E10] border-[#0D0E10]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Email</label>
-                  <Input
-                    type="email"
-                    placeholder="email@example.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="bg-[#0D0E10] border-[#0D0E10]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Phone</label>
-                  <Input
-                    placeholder="+1 (555) 123-4567"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="bg-[#0D0E10] border-[#0D0E10]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Address</label>
-                  <Input
-                    placeholder="Street address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="bg-[#0D0E10] border-[#0D0E10]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Notes</label>
-                  <Textarea
-                    placeholder="Additional notes..."
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="bg-[#0D0E10] border-[#0D0E10]"
-                    rows={3}
-                  />
-                </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77]">
+              <Plus className="w-4 h-4 mr-2" />
+              New Contact
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-[#1a1a1a] border-[#0D0E10]">
+            <DialogHeader>
+              <DialogTitle>{editingId ? "Edit Contact" : "Add New Contact"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Name *</label>
+                <Input
+                  placeholder="Contact name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="bg-[#0D0E10] border-[#0D0E10]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Email</label>
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="bg-[#0D0E10] border-[#0D0E10]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Phone</label>
+                <Input
+                  placeholder="+1 (555) 123-4567"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="bg-[#0D0E10] border-[#0D0E10]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Address</label>
+                <Input
+                  placeholder="Street address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="bg-[#0D0E10] border-[#0D0E10]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Notes</label>
+                <Textarea
+                  placeholder="Additional notes..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="bg-[#0D0E10] border-[#0D0E10]"
+                  rows={3}
+                />
+              </div>
               <Button
                 onClick={handleSave}
                 disabled={createMutation.isPending || updateMutation.isPending}
@@ -331,37 +333,13 @@ export default function Contacts() {
                     ? "Updating..."
                     : "Update Contact"
                   : createMutation.isPending
-                  ? "Creating..."
-                  : "Create Contact"}
+                    ? "Creating..."
+                    : "Create Contact"}
               </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      <Tabs
-        value={view}
-        onValueChange={(value) => {
-          setIsMultiSelectMode(false);
-          setSelectedIds(new Set());
-          setView(value as "active" | "archived" | "trash");
-        }}
-      >
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="archived">Archived</TabsTrigger>
-          <TabsTrigger value="trash">Rubbish</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="active" className="space-y-6 pt-4" />
-        <TabsContent value="archived" className="space-y-6 pt-4">
-          <p className="text-sm text-muted-foreground">You can restore this later.</p>
-        </TabsContent>
-        <TabsContent value="trash" className="space-y-6 pt-4">
-          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored.</p>
-        </TabsContent>
-      </Tabs>
 
       <div>
         <Input
@@ -372,125 +350,233 @@ export default function Contacts() {
         />
       </div>
 
-      {isLoading ? (
-        <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
-          <p className="text-gray-400">Loading...</p>
-        </Card>
-      ) : filteredContacts.length === 0 ? (
-        <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
-          <p className="text-gray-400">
-            {view === "trash"
-              ? "Rubbish bin is empty."
-              : view === "archived"
-              ? "No archived contacts."
-              : "No contacts found. Create your first contact to get started."}
-          </p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredContacts.map((contact) => {
-            const handleCardClick = () => {
-              if (isMultiSelectMode) {
-                toggleSelection(contact.id);
-              } else {
-                if (view === "active") {
-                  handleEdit(contact);
-                }
-              }
-            };
-
-            return (
-              <Card
-                key={contact.id}
-                className={`bg-[#0D0E10] border-[#0D0E10] p-4 hover:border-[#0D0E10] transition-all ${
-                  selectedIds.has(contact.id) ? "ring-2 ring-[#0D0E10]" : ""
-                }`}
-                onClick={handleCardClick}
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  {isMultiSelectMode && (
-                    <Checkbox
-                      checked={selectedIds.has(contact.id)}
-                      onCheckedChange={() => toggleSelection(contact.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-1"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <h3 
-                      className="font-regular text-lg"
-                    >
-                      {contact.name}
-                    </h3>
-                  {contact.address && (
-                    <a 
-                      href={contact.latitude && contact.longitude ? `/maps?contactId=${contact.id}` : '#'}
-                      className={`text-gray-400 text-sm flex items-center gap-1 mt-1 ${contact.latitude && contact.longitude ? 'hover:text-[#00ff88] cursor-pointer transition-colors' : ''}`}
-                      onClick={(e) => {
-                        if (!contact.latitude || !contact.longitude) {
-                          e.preventDefault();
-                        }
-                        e.stopPropagation();
-                      }}
-                    >
-                      <MapPin className="w-3 h-3" />
-                      {contact.address}
-                    </a>
-                  )}
-                </div>
-                {!isMultiSelectMode && (
-                  <ItemActionsMenu
-                    onAction={(action) => handleItemAction(action, contact.id)}
-                    actions={
-                      view === "active"
-                        ? ["edit", "archive", "moveToTrash", "select"]
-                        : view === "archived"
-                        ? ["restore", "moveToTrash"]
-                        : ["restore", "deletePermanently"]
-                    }
-                    triggerClassName="text-muted-foreground hover:text-foreground"
-                  />
-                )}
-              </div>
-
-              <div className="space-y-2 text-sm text-gray-400">
-                {contact.email && (
-                  <p className="flex items-center gap-2">
-                    <Mail className="w-3 h-3" />
-                    <a href={`mailto:${contact.email}`} className="hover:text-[#00ff88] transition-colors">
-                      {contact.email}
-                    </a>
-                  </p>
-                )}
-                {contact.phone && (
-                  <p className="flex items-center gap-2">
-                    <Phone className="w-3 h-3" />
-                    <a href={`tel:${contact.phone}`} className="hover:text-[#00ff88] transition-colors">
-                      {contact.phone}
-                    </a>
-                  </p>
-                )}
-              </div>
-              
-              {!isMultiSelectMode && contact.latitude && contact.longitude && (
-                <div className="mt-3 pt-3 border-t border-[#0D0E10]">
-                  <a href={`/maps?contactId=${contact.id}`}>
-                    <Button variant="outline" size="sm" className="w-full">
-                      <Map className="h-3 w-3 mr-2" />
-                      View on Map
-                    </Button>
-                  </a>
-                </div>
-              )}
-
-              {contact.notes && (
-                <p className="text-gray-500 text-xs mt-3 pt-3 border-t border-[#0D0E10]">{contact.notes}</p>
-              )}
+      <ActiveArchiveRubbishSections
+        expanded={showArchived}
+        onExpandedChange={(expanded) => {
+          setIsMultiSelectMode(false);
+          setSelectedIds(new Set());
+          setShowArchived(expanded);
+        }}
+        active={
+          activeLoading ? (
+            <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+              <p className="text-gray-400">Loading...</p>
             </Card>
-            );
-          })}
-        </div>
-      )}
+          ) : filteredActiveContacts.length === 0 ? (
+            <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+              <p className="text-gray-400">No contacts found. Create your first contact to get started.</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredActiveContacts.map((contact) => {
+                const handleCardClick = () => {
+                  if (isMultiSelectMode) {
+                    toggleSelection(contact.id);
+                  } else {
+                    handleEdit(contact);
+                  }
+                };
+
+                return (
+                  <Card
+                    key={contact.id}
+                    className={`bg-[#0D0E10] border-[#0D0E10] p-4 hover:border-[#0D0E10] transition-all ${
+                      selectedIds.has(contact.id) ? "ring-2 ring-[#0D0E10]" : ""
+                    }`}
+                    onClick={handleCardClick}
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      {isMultiSelectMode && (
+                        <Checkbox
+                          checked={selectedIds.has(contact.id)}
+                          onCheckedChange={() => toggleSelection(contact.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-1"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <h3 className="font-regular text-lg">{contact.name}</h3>
+                        {contact.address && (
+                          <a
+                            href={contact.latitude && contact.longitude ? `/maps?contactId=${contact.id}` : "#"}
+                            className={`text-gray-400 text-sm flex items-center gap-1 mt-1 ${
+                              contact.latitude && contact.longitude
+                                ? "hover:text-[#00ff88] cursor-pointer transition-colors"
+                                : ""
+                            }`}
+                            onClick={(e) => {
+                              if (!contact.latitude || !contact.longitude) {
+                                e.preventDefault();
+                              }
+                              e.stopPropagation();
+                            }}
+                          >
+                            <MapPin className="w-3 h-3" />
+                            {contact.address}
+                          </a>
+                        )}
+                      </div>
+                      {!isMultiSelectMode && (
+                        <ItemActionsMenu
+                          onAction={(action) => handleItemAction(action, contact.id, "active")}
+                          actions={["edit", "archive", "moveToTrash", "select"]}
+                          triggerClassName="text-muted-foreground hover:text-foreground"
+                        />
+                      )}
+                    </div>
+
+                    <div className="space-y-2 text-sm text-gray-400">
+                      {contact.email && (
+                        <p className="flex items-center gap-2">
+                          <Mail className="w-3 h-3" />
+                          <a href={`mailto:${contact.email}`} className="hover:text-[#00ff88] transition-colors">
+                            {contact.email}
+                          </a>
+                        </p>
+                      )}
+                      {contact.phone && (
+                        <p className="flex items-center gap-2">
+                          <Phone className="w-3 h-3" />
+                          <a href={`tel:${contact.phone}`} className="hover:text-[#00ff88] transition-colors">
+                            {contact.phone}
+                          </a>
+                        </p>
+                      )}
+                    </div>
+
+                    {!isMultiSelectMode && contact.latitude && contact.longitude && (
+                      <div className="mt-3 pt-3 border-t border-[#0D0E10]">
+                        <a href={`/maps?contactId=${contact.id}`}>
+                          <Button variant="outline" size="sm" className="w-full">
+                            <Map className="h-3 w-3 mr-2" />
+                            View on Map
+                          </Button>
+                        </a>
+                      </div>
+                    )}
+
+                    {contact.notes && (
+                      <p className="text-gray-500 text-xs mt-3 pt-3 border-t border-[#0D0E10]">{contact.notes}</p>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )
+        }
+        archived={
+          <>
+            <p className="text-sm text-muted-foreground">You can restore this later.</p>
+            {archivedLoading ? (
+              <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+                <p className="text-gray-400">Loading...</p>
+              </Card>
+            ) : filteredArchivedContacts.length === 0 ? (
+              <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+                <p className="text-gray-400">No archived contacts.</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredArchivedContacts.map((contact) => (
+                  <Card key={contact.id} className="bg-[#0D0E10] border-[#0D0E10] p-4">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-regular text-lg">{contact.name}</h3>
+                        {contact.address && (
+                          <div className="text-gray-400 text-sm flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3" />
+                            {contact.address}
+                          </div>
+                        )}
+                      </div>
+                      <ItemActionsMenu
+                        onAction={(action) => handleItemAction(action, contact.id, "archived")}
+                        actions={["restore", "moveToTrash"]}
+                        triggerClassName="text-muted-foreground hover:text-foreground"
+                      />
+                    </div>
+
+                    <div className="space-y-2 text-sm text-gray-400">
+                      {contact.email && (
+                        <p className="flex items-center gap-2">
+                          <Mail className="w-3 h-3" />
+                          <a href={`mailto:${contact.email}`} className="hover:text-[#00ff88] transition-colors">
+                            {contact.email}
+                          </a>
+                        </p>
+                      )}
+                      {contact.phone && (
+                        <p className="flex items-center gap-2">
+                          <Phone className="w-3 h-3" />
+                          <a href={`tel:${contact.phone}`} className="hover:text-[#00ff88] transition-colors">
+                            {contact.phone}
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        }
+        rubbish={
+          <>
+            <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored.</p>
+            {trashedLoading ? (
+              <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+                <p className="text-gray-400">Loading...</p>
+              </Card>
+            ) : filteredTrashedContacts.length === 0 ? (
+              <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+                <p className="text-gray-400">Rubbish bin is empty.</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredTrashedContacts.map((contact) => (
+                  <Card key={contact.id} className="bg-[#0D0E10] border-[#0D0E10] p-4">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-regular text-lg">{contact.name}</h3>
+                        {contact.address && (
+                          <div className="text-gray-400 text-sm flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3" />
+                            {contact.address}
+                          </div>
+                        )}
+                      </div>
+                      <ItemActionsMenu
+                        onAction={(action) => handleItemAction(action, contact.id, "trash")}
+                        actions={["restore", "deletePermanently"]}
+                        triggerClassName="text-muted-foreground hover:text-foreground"
+                      />
+                    </div>
+
+                    <div className="space-y-2 text-sm text-gray-400">
+                      {contact.email && (
+                        <p className="flex items-center gap-2">
+                          <Mail className="w-3 h-3" />
+                          <a href={`mailto:${contact.email}`} className="hover:text-[#00ff88] transition-colors">
+                            {contact.email}
+                          </a>
+                        </p>
+                      )}
+                      {contact.phone && (
+                        <p className="flex items-center gap-2">
+                          <Phone className="w-3 h-3" />
+                          <a href={`tel:${contact.phone}`} className="hover:text-[#00ff88] transition-colors">
+                            {contact.phone}
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        }
+      />
 
       {/* Multi-Select Bar */}
       <MultiSelectBar

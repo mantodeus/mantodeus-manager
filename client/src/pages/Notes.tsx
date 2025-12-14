@@ -26,8 +26,8 @@ import { Plus, Search, Tag, FileText, Edit } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { ActiveArchiveRubbishSections } from "@/components/ActiveArchiveRubbishSections";
 type Note = {
   id: number;
   title: string;
@@ -44,7 +44,7 @@ type Note = {
 
 export default function Notes() {
   const { user } = useAuth();
-  const [view, setView] = useState<"active" | "archived" | "trash">("active");
+  const [showArchived, setShowArchived] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -74,10 +74,10 @@ export default function Notes() {
   const utils = trpc.useUtils();
   const { data: activeNotes = [], refetch: refetchNotes, isLoading: activeLoading } = trpc.notes.list.useQuery();
   const { data: archivedNotes = [], isLoading: archivedLoading } = trpc.notes.listArchived.useQuery(undefined, {
-    enabled: view === "archived",
+    enabled: showArchived,
   });
   const { data: trashedNotes = [], isLoading: trashedLoading } = trpc.notes.listTrashed.useQuery(undefined, {
-    enabled: view === "trash",
+    enabled: showArchived,
   });
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
@@ -163,8 +163,18 @@ export default function Notes() {
     utils.notes.listTrashed.invalidate();
   };
 
-  const notes = view === "active" ? activeNotes : view === "archived" ? archivedNotes : trashedNotes;
-  const isLoading = view === "active" ? activeLoading : view === "archived" ? archivedLoading : trashedLoading;
+  const filterNotes = (source: Note[]) =>
+    source.filter((note) => {
+      const matchesSearch =
+        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.tags?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesJob = filterJob === "all" || note.jobId?.toString() === filterJob;
+      const matchesContact = filterContact === "all" || note.contactId?.toString() === filterContact;
+
+      return matchesSearch && matchesJob && matchesContact;
+    });
 
   const resetForm = () => {
     setTitle("");
@@ -222,13 +232,12 @@ export default function Notes() {
     setBatchDeleteDialogOpen(true);
   };
 
-  const handleItemAction = (action: ItemAction, noteId: number) => {
-    const note = notes.find((n) => n.id === noteId);
-    if (!note) return;
-
+  const handleItemAction = (action: ItemAction, noteId: number, context: "active" | "archived" | "trash") => {
     switch (action) {
       case "edit":
-        if (view === "active") {
+        if (context === "active") {
+          const note = activeNotes.find((n) => n.id === noteId);
+          if (!note) return;
           openEditDialog(note);
         }
         break;
@@ -236,9 +245,9 @@ export default function Notes() {
         archiveNoteMutation.mutate({ id: noteId });
         break;
       case "restore":
-        if (view === "archived") {
+        if (context === "archived") {
           restoreArchivedNoteMutation.mutate({ id: noteId });
-        } else if (view === "trash") {
+        } else if (context === "trash") {
           restoreFromRubbishMutation.mutate({ id: noteId });
         }
         break;
@@ -275,19 +284,9 @@ export default function Notes() {
     setIsEditDialogOpen(true);
   };
 
-  // Filter notes
-  const filteredNotes = notes.filter((note) => {
-    const matchesSearch =
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.tags?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesJob = filterJob === "all" || note.jobId?.toString() === filterJob;
-    const matchesContact =
-      filterContact === "all" || note.contactId?.toString() === filterContact;
-
-    return matchesSearch && matchesJob && matchesContact;
-  });
+  const filteredActiveNotes = filterNotes(activeNotes);
+  const filteredArchivedNotes = filterNotes(archivedNotes);
+  const filteredTrashedNotes = filterNotes(trashedNotes);
 
   const getJobName = (jobId: number | null) => {
     if (!jobId) return null;
@@ -321,39 +320,14 @@ export default function Notes() {
             Create and manage your notes
           </p>
         </div>
-        {view === "active" && (
-          <Button
-            onClick={() => setIsCreateDialogOpen(true)}
-            className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-medium"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Note
-          </Button>
-        )}
+        <Button
+          onClick={() => setIsCreateDialogOpen(true)}
+          className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-medium"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          New Note
+        </Button>
       </div>
-
-      <Tabs
-        value={view}
-        onValueChange={(value) => {
-          setIsMultiSelectMode(false);
-          setSelectedIds(new Set());
-          setView(value as "active" | "archived" | "trash");
-        }}
-        className="mb-6"
-      >
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="archived">Archived</TabsTrigger>
-          <TabsTrigger value="trash">Rubbish</TabsTrigger>
-        </TabsList>
-        <TabsContent value="active" className="pt-4" />
-        <TabsContent value="archived" className="pt-4">
-          <p className="text-sm text-muted-foreground">You can restore this later.</p>
-        </TabsContent>
-        <TabsContent value="trash" className="pt-4">
-          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored.</p>
-        </TabsContent>
-      </Tabs>
 
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -402,126 +376,258 @@ export default function Notes() {
         </Select>
       </div>
 
-      {/* Notes Grid */}
-      {isLoading ? (
-        <Card className="p-12 text-center">
-          <p className="text-muted-foreground" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
-            Loading...
-          </p>
-        </Card>
-      ) : filteredNotes.length === 0 ? (
-        <Card className="p-12 text-center">
-          <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
-            {searchQuery || filterJob !== "all" || filterContact !== "all"
-              ? "No notes found matching your filters"
-              : view === "trash"
-              ? "Rubbish bin is empty."
-              : view === "archived"
-              ? "No archived notes."
-              : "No notes yet"}
-          </p>
-          {view === "active" && !searchQuery && filterJob === "all" && filterContact === "all" && (
-            <Button
-              onClick={() => setIsCreateDialogOpen(true)}
-              variant="outline"
-              className="mt-4"
-            >
-              Create your first note
-            </Button>
-          )}
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredNotes.map((note) => {
-            const handleCardClick = (e: React.MouseEvent) => {
-              if (isMultiSelectMode) {
-                toggleSelection(note.id);
-              } else {
-                if (view === "active") {
-                  openEditDialog(note);
-                }
-              }
-            };
-
-            return (
-              <Card
-                key={note.id}
-                className={`p-6 hover:shadow-lg transition-all ${
-                  selectedIds.has(note.id) ? "ring-2 ring-[#00ff88]" : ""
-                } ${!isMultiSelectMode ? "cursor-pointer" : ""}`}
-                onClick={handleCardClick}
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  {isMultiSelectMode && (
-                    <Checkbox
-                      checked={selectedIds.has(note.id)}
-                      onCheckedChange={() => toggleSelection(note.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-1"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3
-                      className="text-lg font-semibold line-clamp-1"
-                      style={{ fontFamily: "Kanit, sans-serif" }}
-                    >
-                      {note.title}
-                    </h3>
-                  </div>
-                  {!isMultiSelectMode && (
-                    <ItemActionsMenu
-                      onAction={(action) => handleItemAction(action, note.id)}
-                      actions={
-                        view === "active"
-                          ? ["edit", "archive", "moveToTrash", "select"]
-                          : view === "archived"
-                          ? ["restore", "moveToTrash"]
-                          : ["restore", "deletePermanently"]
-                      }
-                      triggerClassName="text-muted-foreground hover:text-foreground"
-                    />
-                  )}
-                </div>
-
-              {note.content && (
-                <p
-                  className="text-sm text-muted-foreground mb-3 line-clamp-3"
-                  style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
-                >
-                  {note.content}
-                </p>
-              )}
-
-              {note.tags && (
-                <div className="flex items-center gap-2 mb-3">
-                  <Tag className="h-3 w-3 text-[#00ff88]" />
-                  <span className="text-xs text-muted-foreground">{note.tags}</span>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                {getJobName(note.jobId) && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[#00ff88]">Job:</span>
-                    <span>{getJobName(note.jobId)}</span>
-                  </div>
-                )}
-                {getContactName(note.contactId) && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[#00ff88]">Contact:</span>
-                    <span>{getContactName(note.contactId)}</span>
-                  </div>
-                )}
-                <div className="mt-2">
-                  {new Date(note.createdAt).toLocaleDateString()}
-                </div>
-              </div>
+      <ActiveArchiveRubbishSections
+        expanded={showArchived}
+        onExpandedChange={(expanded) => {
+          setIsMultiSelectMode(false);
+          setSelectedIds(new Set());
+          setShowArchived(expanded);
+        }}
+        active={
+          activeLoading ? (
+            <Card className="p-12 text-center">
+              <p className="text-muted-foreground" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+                Loading...
+              </p>
             </Card>
-            );
-          })}
-        </div>
-      )}
+          ) : filteredActiveNotes.length === 0 ? (
+            <Card className="p-12 text-center">
+              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+                {searchQuery || filterJob !== "all" || filterContact !== "all"
+                  ? "No notes found matching your filters"
+                  : "No notes yet"}
+              </p>
+              {!searchQuery && filterJob === "all" && filterContact === "all" && (
+                <Button onClick={() => setIsCreateDialogOpen(true)} variant="outline" className="mt-4">
+                  Create your first note
+                </Button>
+              )}
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredActiveNotes.map((note) => {
+                const handleCardClick = () => {
+                  if (isMultiSelectMode) {
+                    toggleSelection(note.id);
+                  } else {
+                    openEditDialog(note);
+                  }
+                };
+
+                return (
+                  <Card
+                    key={note.id}
+                    className={`p-6 hover:shadow-lg transition-all ${
+                      selectedIds.has(note.id) ? "ring-2 ring-[#00ff88]" : ""
+                    } ${!isMultiSelectMode ? "cursor-pointer" : ""}`}
+                    onClick={handleCardClick}
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      {isMultiSelectMode && (
+                        <Checkbox
+                          checked={selectedIds.has(note.id)}
+                          onCheckedChange={() => toggleSelection(note.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-1"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold line-clamp-1" style={{ fontFamily: "Kanit, sans-serif" }}>
+                          {note.title}
+                        </h3>
+                      </div>
+                      {!isMultiSelectMode && (
+                        <ItemActionsMenu
+                          onAction={(action) => handleItemAction(action, note.id, "active")}
+                          actions={["edit", "archive", "moveToTrash", "select"]}
+                          triggerClassName="text-muted-foreground hover:text-foreground"
+                        />
+                      )}
+                    </div>
+
+                    {note.content && (
+                      <p
+                        className="text-sm text-muted-foreground mb-3 line-clamp-3"
+                        style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
+                      >
+                        {note.content}
+                      </p>
+                    )}
+
+                    {note.tags && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Tag className="h-3 w-3 text-[#00ff88]" />
+                        <span className="text-xs text-muted-foreground">{note.tags}</span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                      {getJobName(note.jobId) && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#00ff88]">Job:</span>
+                          <span>{getJobName(note.jobId)}</span>
+                        </div>
+                      )}
+                      {getContactName(note.contactId) && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#00ff88]">Contact:</span>
+                          <span>{getContactName(note.contactId)}</span>
+                        </div>
+                      )}
+                      <div className="mt-2">{new Date(note.createdAt).toLocaleDateString()}</div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )
+        }
+        archived={
+          <>
+            <p className="text-sm text-muted-foreground">You can restore this later.</p>
+            {archivedLoading ? (
+              <Card className="p-12 text-center">
+                <p className="text-muted-foreground" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+                  Loading...
+                </p>
+              </Card>
+            ) : filteredArchivedNotes.length === 0 ? (
+              <Card className="p-12 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+                  {searchQuery || filterJob !== "all" || filterContact !== "all"
+                    ? "No archived notes match your filters"
+                    : "No archived notes."}
+                </p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredArchivedNotes.map((note) => (
+                  <Card key={note.id} className="p-6">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold line-clamp-1" style={{ fontFamily: "Kanit, sans-serif" }}>
+                          {note.title}
+                        </h3>
+                      </div>
+                      <ItemActionsMenu
+                        onAction={(action) => handleItemAction(action, note.id, "archived")}
+                        actions={["restore", "moveToTrash"]}
+                        triggerClassName="text-muted-foreground hover:text-foreground"
+                      />
+                    </div>
+
+                    {note.content && (
+                      <p
+                        className="text-sm text-muted-foreground mb-3 line-clamp-3"
+                        style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
+                      >
+                        {note.content}
+                      </p>
+                    )}
+
+                    {note.tags && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Tag className="h-3 w-3 text-[#00ff88]" />
+                        <span className="text-xs text-muted-foreground">{note.tags}</span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                      {getJobName(note.jobId) && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#00ff88]">Job:</span>
+                          <span>{getJobName(note.jobId)}</span>
+                        </div>
+                      )}
+                      {getContactName(note.contactId) && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#00ff88]">Contact:</span>
+                          <span>{getContactName(note.contactId)}</span>
+                        </div>
+                      )}
+                      <div className="mt-2">{new Date(note.createdAt).toLocaleDateString()}</div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        }
+        rubbish={
+          <>
+            <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored.</p>
+            {trashedLoading ? (
+              <Card className="p-12 text-center">
+                <p className="text-muted-foreground" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+                  Loading...
+                </p>
+              </Card>
+            ) : filteredTrashedNotes.length === 0 ? (
+              <Card className="p-12 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+                  {searchQuery || filterJob !== "all" || filterContact !== "all"
+                    ? "No items in Rubbish match your filters"
+                    : "Rubbish bin is empty."}
+                </p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredTrashedNotes.map((note) => (
+                  <Card key={note.id} className="p-6">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold line-clamp-1" style={{ fontFamily: "Kanit, sans-serif" }}>
+                          {note.title}
+                        </h3>
+                      </div>
+                      <ItemActionsMenu
+                        onAction={(action) => handleItemAction(action, note.id, "trash")}
+                        actions={["restore", "deletePermanently"]}
+                        triggerClassName="text-muted-foreground hover:text-foreground"
+                      />
+                    </div>
+
+                    {note.content && (
+                      <p
+                        className="text-sm text-muted-foreground mb-3 line-clamp-3"
+                        style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
+                      >
+                        {note.content}
+                      </p>
+                    )}
+
+                    {note.tags && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Tag className="h-3 w-3 text-[#00ff88]" />
+                        <span className="text-xs text-muted-foreground">{note.tags}</span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                      {getJobName(note.jobId) && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#00ff88]">Job:</span>
+                          <span>{getJobName(note.jobId)}</span>
+                        </div>
+                      )}
+                      {getContactName(note.contactId) && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#00ff88]">Contact:</span>
+                          <span>{getContactName(note.contactId)}</span>
+                        </div>
+                      )}
+                      <div className="mt-2">{new Date(note.createdAt).toLocaleDateString()}</div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        }
+      />
 
       {/* Create Note Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

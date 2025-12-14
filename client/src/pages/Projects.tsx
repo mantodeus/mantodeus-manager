@@ -20,21 +20,21 @@ import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { ActiveArchiveRubbishSections } from "@/components/ActiveArchiveRubbishSections";
 
 type ProjectListItem = RouterOutputs["projects"]["list"][number];
 
 export default function Projects() {
   const [location, setLocation] = useLocation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [view, setView] = useState<"active" | "archived" | "trash">("active");
+  const [showArchived, setShowArchived] = useState(false);
   const { data: activeProjects, isLoading: activeLoading } = trpc.projects.list.useQuery();
   const { data: archivedProjects, isLoading: archivedLoading } = trpc.projects.listArchived.useQuery(undefined, {
-    enabled: view === "archived",
+    enabled: showArchived,
   });
   const { data: trashedProjects, isLoading: trashedLoading } = trpc.projects.listTrashed.useQuery(undefined, {
-    enabled: view === "trash",
+    enabled: showArchived,
   });
   const utils = trpc.useUtils();
   const [prefillClientId, setPrefillClientId] = useState<number | null>(null);
@@ -274,10 +274,7 @@ export default function Projects() {
     return { contact, label };
   };
 
-  const isLoading = view === "active" ? activeLoading : view === "archived" ? archivedLoading : trashedLoading;
-  const projects = view === "active" ? activeProjects : view === "archived" ? archivedProjects : trashedProjects;
-
-  if (isLoading) {
+  if (activeLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -292,27 +289,21 @@ export default function Projects() {
           <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
           <p className="text-muted-foreground">Manage your client projects and work</p>
         </div>
-        {view !== "trash" && (
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Project
-          </Button>
-        )}
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Project
+        </Button>
       </div>
 
-      <Tabs value={view} onValueChange={(value) => {
-        setIsMultiSelectMode(false);
-        setSelectedIds(new Set());
-        setView(value as "active" | "archived" | "trash");
-      }}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="archived">Archived</TabsTrigger>
-          <TabsTrigger value="trash">Rubbish</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="active" className="space-y-4">
-          {activeProjects && activeProjects.length === 0 ? (
+      <ActiveArchiveRubbishSections
+        expanded={showArchived}
+        onExpandedChange={(expanded) => {
+          setIsMultiSelectMode(false);
+          setSelectedIds(new Set());
+          setShowArchived(expanded);
+        }}
+        active={
+          activeProjects && activeProjects.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
@@ -437,116 +428,125 @@ export default function Projects() {
                 );
               })}
             </div>
-          )}
-        </TabsContent>
+          )
+        }
+        archived={
+          <>
+            <p className="text-sm text-muted-foreground">You can restore this later.</p>
+            {archivedLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : archivedProjects && archivedProjects.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Archive className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No archived projects.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {archivedProjects?.map((project) => {
+                  const { contact, label: clientLabel } = resolveClientDisplay(project);
+                  const schedule = getScheduleInfo(project);
 
-        <TabsContent value="archived" className="space-y-4">
-          <p className="text-sm text-muted-foreground">You can restore this later.</p>
-          {archivedProjects && archivedProjects.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Archive className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No archived projects.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {archivedProjects?.map((project) => {
-                const { contact, label: clientLabel } = resolveClientDisplay(project);
-                const schedule = getScheduleInfo(project);
-
-                return (
-                  <Link key={project.id} href={`/projects/${project.id}`}>
-                    <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-5 w-5 text-muted-foreground" />
-                            <CardTitle className="text-xl">{project.name}</CardTitle>
+                  return (
+                    <Link key={project.id} href={`/projects/${project.id}`}>
+                      <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-5 w-5 text-muted-foreground" />
+                              <CardTitle className="text-xl">{project.name}</CardTitle>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-muted text-muted-foreground">Archived</Badge>
+                              <ItemActionsMenu
+                                onAction={(action) => handleItemAction(action, project.id)}
+                                actions={["restore", "moveToTrash"]}
+                                triggerClassName="text-muted-foreground hover:text-foreground"
+                              />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className="bg-muted text-muted-foreground">Archived</Badge>
-                            <ItemActionsMenu
-                              onAction={(action) => handleItemAction(action, project.id)}
-                              actions={["restore", "moveToTrash"]}
-                              triggerClassName="text-muted-foreground hover:text-foreground"
-                            />
-                          </div>
-                        </div>
-                        {clientLabel && (
-                          <CardDescription>Client: {contact?.name ?? clientLabel}</CardDescription>
-                        )}
-                        {project.description && (
-                          <CardDescription className="line-clamp-2">{project.description}</CardDescription>
-                        )}
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {project.address && (
+                          {clientLabel && (
+                            <CardDescription>Client: {contact?.name ?? clientLabel}</CardDescription>
+                          )}
+                          {project.description && (
+                            <CardDescription className="line-clamp-2">{project.description}</CardDescription>
+                          )}
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          {project.address && (
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              <span className="truncate">{project.address}</span>
+                            </div>
+                          )}
                           <div className="flex items-center text-sm text-muted-foreground">
-                            <MapPin className="h-4 w-4 mr-2" />
-                            <span className="truncate">{project.address}</span>
+                            <Calendar className="h-4 w-4 mr-2" />
+                            <span>{schedule.label}</span>
                           </div>
-                        )}
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4 mr-2" />
-                          <span>{schedule.label}</span>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        }
+        rubbish={
+          <>
+            <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored.</p>
+            {trashedLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : trashedProjects && trashedProjects.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Trash2 className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Rubbish bin is empty.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {trashedProjects?.map((project) => (
+                  <Card key={project.id}>
+                    <CardContent className="flex items-center justify-between py-4">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{project.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Deleted {project.trashedAt ? new Date(project.trashedAt).toLocaleDateString() : "—"}
                         </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="trash" className="space-y-4">
-          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored.</p>
-          {trashedProjects && trashedProjects.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Trash2 className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Rubbish bin is empty.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {trashedProjects?.map((project) => (
-                <Card key={project.id}>
-                  <CardContent className="flex items-center justify-between py-4">
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{project.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Deleted{" "}
-                        {project.trashedAt ? new Date(project.trashedAt).toLocaleDateString() : "—"}
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => handleRestoreFromTrash(project.id)}
-                        disabled={restoreProjectFromTrashMutation.isPending}
-                        className="gap-2"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        Restore
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={() => handleDeletePermanently(project.id)}
-                        className="gap-2"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete permanently
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleRestoreFromTrash(project.id)}
+                          disabled={restoreProjectFromTrashMutation.isPending}
+                          className="gap-2"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          Restore
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => handleDeletePermanently(project.id)}
+                          className="gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete permanently
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        }
+      />
 
       {isMultiSelectMode && (
         <MultiSelectBar
