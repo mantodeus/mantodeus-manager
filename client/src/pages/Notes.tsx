@@ -1,11 +1,8 @@
 /**
  * Notes List Page
  * 
- * Displays all notes for the current user.
- * 
- * Archive Pattern:
- * - Active items shown by default
- * - Archived and Rubbish sections revealed via "View archived" control
+ * Displays all active notes for the current user.
+ * Pull-down reveal provides navigation to archived/rubbish views.
  */
 
 import { useState } from "react";
@@ -32,12 +29,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Tag, FileText, Archive, Trash2, RotateCcw, Loader2 } from "lucide-react";
+import { Plus, Search, Tag, FileText, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { ArchiveViewControl } from "@/components/ArchiveViewControl";
+import { PullDownReveal } from "@/components/PullDownReveal";
 
 type Note = {
   id: number;
@@ -55,7 +52,6 @@ type Note = {
 
 export default function Notes() {
   const { user } = useAuth();
-  const [showArchived, setShowArchived] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -67,12 +63,13 @@ export default function Notes() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  // Delete confirmation dialogs
+  // Confirmation dialogs
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiveTargetId, setArchiveTargetId] = useState<number | null>(null);
   const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
   const [deleteToRubbishTargetId, setDeleteToRubbishTargetId] = useState<number | null>(null);
-  const [deletePermanentlyDialogOpen, setDeletePermanentlyDialogOpen] = useState(false);
-  const [deletePermanentlyTargetId, setDeletePermanentlyTargetId] = useState<number | null>(null);
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [batchArchiveDialogOpen, setBatchArchiveDialogOpen] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -84,12 +81,6 @@ export default function Notes() {
   // Queries
   const utils = trpc.useUtils();
   const { data: activeNotes = [], isLoading: activeLoading } = trpc.notes.list.useQuery();
-  const { data: archivedNotes = [], isLoading: archivedLoading } = trpc.notes.listArchived.useQuery(undefined, {
-    enabled: showArchived,
-  });
-  const { data: trashedNotes = [], isLoading: trashedLoading } = trpc.notes.listTrashed.useQuery(undefined, {
-    enabled: showArchived,
-  });
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
 
@@ -128,16 +119,6 @@ export default function Notes() {
     },
   });
 
-  const restoreArchivedNoteMutation = trpc.notes.restore.useMutation({
-    onSuccess: () => {
-      toast.success("Note restored");
-      invalidateNoteLists();
-    },
-    onError: (error) => {
-      toast.error(`Failed to restore note: ${error.message}`);
-    },
-  });
-
   const deleteToRubbishMutation = trpc.notes.delete.useMutation({
     onSuccess: () => {
       toast.success("Deleted. You can restore this later from the Rubbish bin.");
@@ -145,26 +126,6 @@ export default function Notes() {
     },
     onError: (error) => {
       toast.error(`Failed to delete note: ${error.message}`);
-    },
-  });
-
-  const restoreFromRubbishMutation = trpc.notes.restoreFromTrash.useMutation({
-    onSuccess: () => {
-      toast.success("Note restored");
-      invalidateNoteLists();
-    },
-    onError: (error) => {
-      toast.error(`Failed to restore note: ${error.message}`);
-    },
-  });
-
-  const deletePermanentlyMutation = trpc.notes.deletePermanently.useMutation({
-    onSuccess: () => {
-      toast.success("Note deleted permanently");
-      invalidateNoteLists();
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete note permanently: ${error.message}`);
     },
   });
 
@@ -215,47 +176,31 @@ export default function Notes() {
     });
   };
 
-  const requestDeleteToRubbish = (noteId: number) => {
-    setDeleteToRubbishTargetId(noteId);
-    setDeleteToRubbishDialogOpen(true);
-  };
-
-  const requestDeletePermanently = (noteId: number) => {
-    setDeletePermanentlyTargetId(noteId);
-    setDeletePermanentlyDialogOpen(true);
-  };
-
   const handleBatchDelete = () => {
     if (selectedIds.size === 0) return;
     setBatchDeleteDialogOpen(true);
   };
 
-  const handleItemAction = (action: ItemAction, noteId: number, section: "active" | "archived" | "trash") => {
-    const notes = section === "active" ? activeNotes : section === "archived" ? archivedNotes : trashedNotes;
-    const note = notes.find((n) => n.id === noteId);
+  const handleBatchArchive = () => {
+    if (selectedIds.size === 0) return;
+    setBatchArchiveDialogOpen(true);
+  };
+
+  const handleItemAction = (action: ItemAction, noteId: number) => {
+    const note = activeNotes.find((n) => n.id === noteId);
     if (!note) return;
 
     switch (action) {
       case "edit":
-        if (section === "active") {
-          openEditDialog(note);
-        }
+        openEditDialog(note);
         break;
       case "archive":
-        archiveNoteMutation.mutate({ id: noteId });
-        break;
-      case "restore":
-        if (section === "archived") {
-          restoreArchivedNoteMutation.mutate({ id: noteId });
-        } else if (section === "trash") {
-          restoreFromRubbishMutation.mutate({ id: noteId });
-        }
+        setArchiveTargetId(noteId);
+        setArchiveDialogOpen(true);
         break;
       case "moveToTrash":
-        requestDeleteToRubbish(noteId);
-        break;
-      case "deletePermanently":
-        requestDeletePermanently(noteId);
+        setDeleteToRubbishTargetId(noteId);
+        setDeleteToRubbishDialogOpen(true);
         break;
       case "select":
         setIsMultiSelectMode(true);
@@ -301,8 +246,6 @@ export default function Notes() {
   };
 
   const filteredActiveNotes = filterNotes(activeNotes);
-  const filteredArchivedNotes = filterNotes(archivedNotes);
-  const filteredTrashedNotes = filterNotes(trashedNotes);
 
   const getJobName = (jobId: number | null) => {
     if (!jobId) return null;
@@ -316,13 +259,11 @@ export default function Notes() {
     return contact?.name;
   };
 
-  const renderNoteCard = (note: Note, section: "active" | "archived" | "trash") => {
-    const isActive = section === "active";
-
+  const renderNoteCard = (note: Note) => {
     const handleCardClick = (e: React.MouseEvent) => {
-      if (isMultiSelectMode && isActive) {
+      if (isMultiSelectMode) {
         toggleSelection(note.id);
-      } else if (isActive) {
+      } else {
         openEditDialog(note);
       }
     };
@@ -332,11 +273,11 @@ export default function Notes() {
         key={note.id}
         className={`p-6 hover:shadow-lg transition-all ${
           selectedIds.has(note.id) ? "ring-2 ring-[#00ff88]" : ""
-        } ${!isMultiSelectMode && isActive ? "cursor-pointer" : ""} ${section !== "active" ? "opacity-75" : ""}`}
+        } ${!isMultiSelectMode ? "cursor-pointer" : ""}`}
         onClick={handleCardClick}
       >
         <div className="flex items-start gap-3 mb-3">
-          {isMultiSelectMode && isActive && (
+          {isMultiSelectMode && (
             <Checkbox
               checked={selectedIds.has(note.id)}
               onCheckedChange={() => toggleSelection(note.id)}
@@ -354,14 +295,8 @@ export default function Notes() {
           </div>
           {!isMultiSelectMode && (
             <ItemActionsMenu
-              onAction={(action) => handleItemAction(action, note.id, section)}
-              actions={
-                section === "active"
-                  ? ["edit", "archive", "moveToTrash", "select"]
-                  : section === "archived"
-                  ? ["restore", "moveToTrash"]
-                  : ["restore", "deletePermanently"]
-              }
+              onAction={(action) => handleItemAction(action, note.id)}
+              actions={["edit", "archive", "moveToTrash", "select"]}
               triggerClassName="text-muted-foreground hover:text-foreground"
             />
           )}
@@ -404,41 +339,6 @@ export default function Notes() {
     );
   };
 
-  const renderRubbishItem = (note: Note) => (
-    <Card key={note.id}>
-      <div className="flex items-center justify-between p-4">
-        <div className="min-w-0">
-          <div className="font-medium truncate">{note.title}</div>
-          <div className="text-sm text-muted-foreground">
-            Deleted{" "}
-            {note.trashedAt ? new Date(note.trashedAt).toLocaleDateString() : "—"}
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => restoreFromRubbishMutation.mutate({ id: note.id })}
-            disabled={restoreFromRubbishMutation.isPending}
-            className="gap-2"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Restore
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => requestDeletePermanently(note.id)}
-            className="gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete permanently
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
-
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -476,12 +376,9 @@ export default function Notes() {
         </Button>
       </div>
 
-      {/* Archive View Control */}
-      <div className="flex justify-start mb-6">
-        <ArchiveViewControl
-          isExpanded={showArchived}
-          onToggle={() => setShowArchived(!showArchived)}
-        />
+      {/* Pull-Down Reveal for Archived/Rubbish */}
+      <div className="mb-6">
+        <PullDownReveal basePath="/notes" />
       </div>
 
       {/* Filters */}
@@ -531,7 +428,7 @@ export default function Notes() {
         </Select>
       </div>
 
-      {/* Active Notes Section */}
+      {/* Active Notes Grid */}
       <div className="space-y-4">
         {filteredActiveNotes.length === 0 ? (
           <Card className="p-12 text-center">
@@ -553,62 +450,10 @@ export default function Notes() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredActiveNotes.map((note) => renderNoteCard(note, "active"))}
+            {filteredActiveNotes.map((note) => renderNoteCard(note))}
           </div>
         )}
       </div>
-
-      {/* Archived Notes Section (when expanded) */}
-      {showArchived && (
-        <div className="space-y-4 mt-8">
-          <div className="flex items-center gap-2 pt-4 border-t">
-            <Archive className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-medium text-muted-foreground">Archived</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">You can restore these notes anytime.</p>
-          
-          {archivedLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredArchivedNotes.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Archive className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-              <p className="text-muted-foreground text-sm">No archived notes.</p>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredArchivedNotes.map((note) => renderNoteCard(note, "archived"))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Rubbish Section (when expanded) */}
-      {showArchived && (
-        <div className="space-y-4 mt-8">
-          <div className="flex items-center gap-2 pt-4 border-t">
-            <Trash2 className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-medium text-muted-foreground">Rubbish</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored or permanently deleted.</p>
-          
-          {trashedLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredTrashedNotes.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Trash2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-              <p className="text-muted-foreground text-sm">Rubbish bin is empty.</p>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {filteredTrashedNotes.map((note) => renderRubbishItem(note))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Create Note Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -811,15 +656,37 @@ export default function Notes() {
       </Dialog>
 
       {/* Multi-Select Bar */}
-      <MultiSelectBar
-        selectedCount={selectedIds.size}
-        onPrimaryAction={handleBatchDelete}
-        onCancel={() => {
-          setIsMultiSelectMode(false);
-          setSelectedIds(new Set());
+      {isMultiSelectMode && (
+        <MultiSelectBar
+          selectedCount={selectedIds.size}
+          onPrimaryAction={handleBatchDelete}
+          onCancel={() => {
+            setIsMultiSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+        />
+      )}
+
+      {/* Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={(open) => {
+          setArchiveDialogOpen(open);
+          if (!open) {
+            setArchiveTargetId(null);
+          }
         }}
+        onConfirm={() => {
+          if (!archiveTargetId) return;
+          archiveNoteMutation.mutate({ id: archiveTargetId });
+        }}
+        title="Archive"
+        description="Archive this note? You can restore it anytime from the archived view."
+        confirmLabel="Archive"
+        isDeleting={archiveNoteMutation.isPending}
       />
 
+      {/* Delete (Move to Rubbish) Confirmation Dialog */}
       <DeleteConfirmDialog
         open={deleteToRubbishDialogOpen}
         onOpenChange={(open) => {
@@ -838,24 +705,7 @@ export default function Notes() {
         isDeleting={deleteToRubbishMutation.isPending}
       />
 
-      <DeleteConfirmDialog
-        open={deletePermanentlyDialogOpen}
-        onOpenChange={(open) => {
-          setDeletePermanentlyDialogOpen(open);
-          if (!open) {
-            setDeletePermanentlyTargetId(null);
-          }
-        }}
-        onConfirm={() => {
-          if (!deletePermanentlyTargetId) return;
-          deletePermanentlyMutation.mutate({ id: deletePermanentlyTargetId });
-        }}
-        title="Delete permanently"
-        description="This action cannot be undone."
-        confirmLabel="Delete permanently"
-        isDeleting={deletePermanentlyMutation.isPending}
-      />
-
+      {/* Batch Delete Confirmation Dialog */}
       <DeleteConfirmDialog
         open={batchDeleteDialogOpen}
         onOpenChange={setBatchDeleteDialogOpen}
@@ -869,6 +719,22 @@ export default function Notes() {
         description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
         confirmLabel="Delete"
         isDeleting={deleteToRubbishMutation.isPending}
+      />
+
+      {/* Batch Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={batchArchiveDialogOpen}
+        onOpenChange={setBatchArchiveDialogOpen}
+        onConfirm={() => {
+          const ids = Array.from(selectedIds);
+          ids.forEach((id) => archiveNoteMutation.mutate({ id }));
+          setSelectedIds(new Set());
+          setIsMultiSelectMode(false);
+        }}
+        title="Archive"
+        description={`Archive ${selectedIds.size} note${selectedIds.size > 1 ? "s" : ""}? You can restore them anytime.`}
+        confirmLabel="Archive"
+        isDeleting={archiveNoteMutation.isPending}
       />
     </div>
   );
