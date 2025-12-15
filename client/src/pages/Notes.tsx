@@ -34,7 +34,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PullDownReveal } from "@/components/PullDownReveal";
+import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 
 type Note = {
   id: number;
@@ -376,11 +376,6 @@ export default function Notes() {
         </Button>
       </div>
 
-      {/* Pull-Down Reveal for Archived/Rubbish */}
-      <div className="mb-6">
-        <PullDownReveal basePath="/notes" />
-      </div>
-
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="relative">
@@ -454,6 +449,9 @@ export default function Notes() {
           </div>
         )}
       </div>
+
+      {/* Scroll-reveal footer for Archived/Rubbish navigation */}
+      <ScrollRevealFooter basePath="/notes" />
 
       {/* Create Note Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

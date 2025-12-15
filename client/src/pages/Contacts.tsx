@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PullDownReveal } from "@/components/PullDownReveal";
+import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 
 export default function Contacts() {
   const { user } = useAuth();
@@ -392,9 +392,6 @@ export default function Contacts() {
         </Dialog>
       </div>
 
-      {/* Pull-Down Reveal for Archived/Rubbish */}
-      <PullDownReveal basePath="/contacts" />
-
       {/* Search */}
       <div>
         <Input
@@ -420,6 +417,9 @@ export default function Contacts() {
           </div>
         )}
       </div>
+
+      {/* Scroll-reveal footer for Archived/Rubbish navigation */}
+      <ScrollRevealFooter basePath="/contacts" />
 
       {/* Multi-Select Bar */}
       {isMultiSelectMode && (
