@@ -1,23 +1,25 @@
 /**
  * ArchiveViewControl Component
  * 
- * A subtle toggle control to reveal/hide archived and rubbish items.
- * Shows "View archived ▾" when collapsed, "Hide archived ▴" when expanded.
+ * A subtle toggle control to reveal/hide sections like rubbish bin.
+ * Used for nested entities (e.g., files within a project) where
+ * separate routes aren't practical.
  * 
- * This component is designed to reduce UI clutter by:
- * - Showing Active items only by default
- * - Allowing users to opt-in to see Archived and Rubbish sections
- * - Providing a consistent pattern across all entities
+ * For main entities (Projects, Contacts, Notes), use PullDownReveal instead.
  */
 
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface ArchiveViewControlProps {
-  /** Whether the archived/rubbish sections are currently visible */
+  /** Whether the section is currently visible */
   isExpanded: boolean;
   /** Callback when the toggle is clicked */
   onToggle: () => void;
+  /** Label when collapsed (default: "View rubbish bin") */
+  collapsedLabel?: string;
+  /** Label when expanded (default: "Hide rubbish bin") */
+  expandedLabel?: string;
   /** Optional additional className */
   className?: string;
 }
@@ -25,6 +27,8 @@ interface ArchiveViewControlProps {
 export function ArchiveViewControl({
   isExpanded,
   onToggle,
+  collapsedLabel = "View rubbish bin",
+  expandedLabel = "Hide rubbish bin",
   className = "",
 }: ArchiveViewControlProps) {
   return (
@@ -36,12 +40,12 @@ export function ArchiveViewControl({
     >
       {isExpanded ? (
         <>
-          Hide archived
+          {expandedLabel}
           <ChevronUp className="h-4 w-4" />
         </>
       ) : (
         <>
-          View archived
+          {collapsedLabel}
           <ChevronDown className="h-4 w-4" />
         </>
       )}
