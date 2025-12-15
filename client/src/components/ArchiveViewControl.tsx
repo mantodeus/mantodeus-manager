@@ -5,7 +5,7 @@
  * Used for nested entities (e.g., files within a project) where
  * separate routes aren't practical.
  * 
- * For main entities (Projects, Contacts, Notes), use ScrollRevealFooter instead.
+ * For main entities (Projects, Contacts, Notes), use PullDownReveal instead.
  */
 
 import { Button } from "@/components/ui/button";

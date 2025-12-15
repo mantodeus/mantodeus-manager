@@ -22,7 +22,7 @@ import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
+import { PullDownReveal } from "@/components/PullDownReveal";
 
 type ProjectListItem = RouterOutputs["projects"]["list"][number];
 
@@ -334,6 +334,9 @@ export default function Projects() {
         </Button>
       </div>
 
+      {/* Pull-down reveal for Archived/Rubbish navigation */}
+      <PullDownReveal basePath="/projects" />
+
       {/* Active Projects Grid */}
       <div className="space-y-4">
         {activeProjects && activeProjects.length === 0 ? (
@@ -353,9 +356,6 @@ export default function Projects() {
           </div>
         )}
       </div>
-
-      {/* Scroll-reveal footer for Archived/Rubbish navigation */}
-      <ScrollRevealFooter basePath="/projects" />
 
       {isMultiSelectMode && (
         <MultiSelectBar
