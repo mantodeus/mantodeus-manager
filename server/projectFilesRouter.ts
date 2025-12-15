@@ -197,6 +197,7 @@ const registerFileSchema = z.object({
   originalName: z.string().min(1, "Original filename is required"),
   mimeType: z.string().min(1, "MIME type is required"),
   fileSize: z.number().optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 const imageVariantEnum = z.enum(["thumb", "preview", "full"]);
@@ -313,10 +314,11 @@ export const projectFilesRouter = router({
         mimeType: input.mimeType,
         fileSize: input.fileSize ?? null,
         uploadedBy: ctx.user.id,
+        tags: input.tags || null,
       });
       
       // Fetch and return the created record
-      const file = await db.getFileMetadataById(result[0].insertId);
+      const file = await db.getFileMetadataById(result[0].id);
       if (!file) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -502,6 +504,7 @@ export const projectFilesRouter = router({
       filename: z.string().min(1),
       mimeType: z.string(),
       base64Data: z.string(),
+      tags: z.array(z.string()).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       let { filename, mimeType } = input;
@@ -565,9 +568,10 @@ export const projectFilesRouter = router({
         fileSize,
         uploadedBy: ctx.user.id,
         imageMetadata,
+        tags: input.tags || null,
       });
       
-      const file = await db.getFileMetadataById(result[0].insertId);
+      const file = await db.getFileMetadataById(result[0].id);
       if (!file) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",

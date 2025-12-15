@@ -238,7 +238,7 @@ const jobsRouter = router({
         endTime: input.endTime || null,
       });
       
-      return { success: true, id: result[0].insertId };
+      return { success: true, id: result[0].id };
     }),
 
   /**
@@ -327,7 +327,7 @@ export const projectsRouter = router({
         createdBy: ctx.user.id,
       });
       
-      return { success: true, id: result[0].insertId };
+      return { success: true, id: result[0].id };
     }),
 
   /**
@@ -396,6 +396,92 @@ export const projectsRouter = router({
    * Accessed as: projects.jobs.list, projects.jobs.create, etc.
    */
   jobs: jobsRouter,
+
+  /**
+   * Check in to a project (start work)
+   */
+  checkIn: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "view");
+      
+      // Check if user already has an active check-in
+      const activeCheckin = await db.getActiveCheckin(input.projectId, ctx.user.id);
+      if (activeCheckin) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You are already checked in to this project",
+        });
+      }
+      
+      await db.createProjectCheckin({
+        projectId: input.projectId,
+        userId: ctx.user.id,
+        checkInTime: new Date(),
+        checkOutTime: null,
+        latitude: input.latitude ? String(input.latitude) : null,
+        longitude: input.longitude ? String(input.longitude) : null,
+        notes: null,
+      });
+      
+      return { success: true };
+    }),
+
+  /**
+   * Check out from a project (end work)
+   */
+  checkOut: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number(),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "view");
+      
+      // Find active check-in
+      const activeCheckin = await db.getActiveCheckin(input.projectId, ctx.user.id);
+      if (!activeCheckin) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You are not checked in to this project",
+        });
+      }
+      
+      await db.updateProjectCheckin(activeCheckin.id, {
+        checkOutTime: new Date(),
+        notes: input.notes || null,
+      });
+      
+      return { success: true };
+    }),
+
+  /**
+   * Get check-in history for a project
+   */
+  getCheckins: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "view");
+      return await db.getProjectCheckinsByProjectId(input.projectId);
+    }),
+
+  /**
+   * Get active check-in status for current user
+   */
+  getActiveCheckin: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "view");
+      return await db.getActiveCheckin(input.projectId, ctx.user.id);
+    }),
 
   /**
    * Nested files router
