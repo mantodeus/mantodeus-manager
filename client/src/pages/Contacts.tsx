@@ -1,11 +1,8 @@
 /**
  * Contacts List Page
  * 
- * Displays all contacts for the current user.
- * 
- * Archive Pattern:
- * - Active items shown by default
- * - Archived and Rubbish sections revealed via "View archived" control
+ * Displays all active contacts for the current user.
+ * Pull-down reveal provides navigation to archived/rubbish views.
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -15,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Mail, MapPin, Phone, Plus, Map, Archive, Trash2, RotateCcw, Loader2, Users } from "lucide-react";
+import { Mail, MapPin, Phone, Plus, Map, Loader2, Users } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
@@ -23,12 +20,11 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { ArchiveViewControl } from "@/components/ArchiveViewControl";
+import { PullDownReveal } from "@/components/PullDownReveal";
 
 export default function Contacts() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
-  const [showArchived, setShowArchived] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -38,12 +34,13 @@ export default function Contacts() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  // Delete confirmation dialogs
+  // Confirmation dialogs
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiveTargetId, setArchiveTargetId] = useState<number | null>(null);
   const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
   const [deleteToRubbishTargetId, setDeleteToRubbishTargetId] = useState<number | null>(null);
-  const [deletePermanentlyDialogOpen, setDeletePermanentlyDialogOpen] = useState(false);
-  const [deletePermanentlyTargetId, setDeletePermanentlyTargetId] = useState<number | null>(null);
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [batchArchiveDialogOpen, setBatchArchiveDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -54,12 +51,6 @@ export default function Contacts() {
 
   const utils = trpc.useUtils();
   const { data: activeContacts = [], isLoading: activeLoading } = trpc.contacts.list.useQuery();
-  const { data: archivedContacts = [], isLoading: archivedLoading } = trpc.contacts.listArchived.useQuery(undefined, {
-    enabled: showArchived,
-  });
-  const { data: trashedContacts = [], isLoading: trashedLoading } = trpc.contacts.listTrashed.useQuery(undefined, {
-    enabled: showArchived,
-  });
   const createMutation = trpc.contacts.create.useMutation();
   const updateMutation = trpc.contacts.update.useMutation();
   const archiveMutation = trpc.contacts.archive.useMutation({
@@ -71,15 +62,6 @@ export default function Contacts() {
       toast.error("Failed to archive contact: " + error.message);
     },
   });
-  const restoreArchivedMutation = trpc.contacts.restore.useMutation({
-    onSuccess: () => {
-      toast.success("Contact restored");
-      invalidateContactLists();
-    },
-    onError: (error) => {
-      toast.error("Failed to restore contact: " + error.message);
-    },
-  });
   const deleteToRubbishMutation = trpc.contacts.delete.useMutation({
     onSuccess: () => {
       toast.success("Deleted. You can restore this later from the Rubbish bin.");
@@ -87,24 +69,6 @@ export default function Contacts() {
     },
     onError: (error) => {
       toast.error("Failed to delete contact: " + error.message);
-    },
-  });
-  const restoreFromRubbishMutation = trpc.contacts.restoreFromTrash.useMutation({
-    onSuccess: () => {
-      toast.success("Contact restored");
-      invalidateContactLists();
-    },
-    onError: (error) => {
-      toast.error("Failed to restore contact: " + error.message);
-    },
-  });
-  const deletePermanentlyMutation = trpc.contacts.deletePermanently.useMutation({
-    onSuccess: () => {
-      toast.success("Contact deleted permanently");
-      invalidateContactLists();
-    },
-    onError: (error) => {
-      toast.error("Failed to delete contact permanently: " + error.message);
     },
   });
 
@@ -115,16 +79,6 @@ export default function Contacts() {
   };
 
   const filteredActiveContacts = activeContacts.filter((contact) =>
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredArchivedContacts = archivedContacts.filter((contact) =>
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredTrashedContacts = trashedContacts.filter((contact) =>
     contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -193,47 +147,31 @@ export default function Contacts() {
     setIsDialogOpen(false);
   };
 
-  const requestDeleteToRubbish = (id: number) => {
-    setDeleteToRubbishTargetId(id);
-    setDeleteToRubbishDialogOpen(true);
-  };
-
-  const requestDeletePermanently = (id: number) => {
-    setDeletePermanentlyTargetId(id);
-    setDeletePermanentlyDialogOpen(true);
-  };
-
   const handleBatchDelete = async () => {
     if (selectedIds.size === 0) return;
     setBatchDeleteDialogOpen(true);
   };
 
-  const handleItemAction = (action: ItemAction, contactId: number, section: "active" | "archived" | "trash") => {
-    const contacts = section === "active" ? activeContacts : section === "archived" ? archivedContacts : trashedContacts;
-    const contact = contacts.find((c) => c.id === contactId);
+  const handleBatchArchive = async () => {
+    if (selectedIds.size === 0) return;
+    setBatchArchiveDialogOpen(true);
+  };
+
+  const handleItemAction = (action: ItemAction, contactId: number) => {
+    const contact = activeContacts.find((c) => c.id === contactId);
     if (!contact) return;
 
     switch (action) {
       case "edit":
-        if (section === "active") {
-          handleEdit(contact);
-        }
+        handleEdit(contact);
         break;
       case "archive":
-        archiveMutation.mutate({ id: contactId });
-        break;
-      case "restore":
-        if (section === "archived") {
-          restoreArchivedMutation.mutate({ id: contactId });
-        } else if (section === "trash") {
-          restoreFromRubbishMutation.mutate({ id: contactId });
-        }
+        setArchiveTargetId(contactId);
+        setArchiveDialogOpen(true);
         break;
       case "moveToTrash":
-        requestDeleteToRubbish(contactId);
-        break;
-      case "deletePermanently":
-        requestDeletePermanently(contactId);
+        setDeleteToRubbishTargetId(contactId);
+        setDeleteToRubbishDialogOpen(true);
         break;
       case "select":
         setIsMultiSelectMode(true);
@@ -272,13 +210,11 @@ export default function Contacts() {
     setSelectedIds(newSelected);
   };
 
-  const renderContactCard = (contact: typeof activeContacts[0], section: "active" | "archived" | "trash") => {
-    const isActive = section === "active";
-
+  const renderContactCard = (contact: typeof activeContacts[0]) => {
     const handleCardClick = () => {
-      if (isMultiSelectMode && isActive) {
+      if (isMultiSelectMode) {
         toggleSelection(contact.id);
-      } else if (isActive) {
+      } else {
         handleEdit(contact);
       }
     };
@@ -288,11 +224,11 @@ export default function Contacts() {
         key={contact.id}
         className={`bg-[#0D0E10] border-[#0D0E10] p-4 hover:border-[#0D0E10] transition-all ${
           selectedIds.has(contact.id) ? "ring-2 ring-[#0D0E10]" : ""
-        } ${section !== "active" ? "opacity-75" : ""}`}
+        }`}
         onClick={handleCardClick}
       >
         <div className="flex items-start gap-3 mb-3">
-          {isMultiSelectMode && isActive && (
+          {isMultiSelectMode && (
             <Checkbox
               checked={selectedIds.has(contact.id)}
               onCheckedChange={() => toggleSelection(contact.id)}
@@ -320,14 +256,8 @@ export default function Contacts() {
           </div>
           {!isMultiSelectMode && (
             <ItemActionsMenu
-              onAction={(action) => handleItemAction(action, contact.id, section)}
-              actions={
-                section === "active"
-                  ? ["edit", "archive", "moveToTrash", "select"]
-                  : section === "archived"
-                  ? ["restore", "moveToTrash"]
-                  : ["restore", "deletePermanently"]
-              }
+              onAction={(action) => handleItemAction(action, contact.id)}
+              actions={["edit", "archive", "moveToTrash", "select"]}
               triggerClassName="text-muted-foreground hover:text-foreground"
             />
           )}
@@ -352,7 +282,7 @@ export default function Contacts() {
           )}
         </div>
         
-        {!isMultiSelectMode && isActive && contact.latitude && contact.longitude && (
+        {!isMultiSelectMode && contact.latitude && contact.longitude && (
           <div className="mt-3 pt-3 border-t border-[#0D0E10]">
             <a href={`/maps?contactId=${contact.id}`}>
               <Button variant="outline" size="sm" className="w-full">
@@ -369,41 +299,6 @@ export default function Contacts() {
       </Card>
     );
   };
-
-  const renderRubbishItem = (contact: typeof trashedContacts[0]) => (
-    <Card key={contact.id} className="bg-[#0D0E10] border-[#0D0E10]">
-      <div className="flex items-center justify-between p-4">
-        <div className="min-w-0">
-          <div className="font-medium truncate">{contact.name}</div>
-          <div className="text-sm text-muted-foreground">
-            Deleted{" "}
-            {contact.trashedAt ? new Date(contact.trashedAt).toLocaleDateString() : "—"}
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => restoreFromRubbishMutation.mutate({ id: contact.id })}
-            disabled={restoreFromRubbishMutation.isPending}
-            className="gap-2"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Restore
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => requestDeletePermanently(contact.id)}
-            className="gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete permanently
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
 
   if (activeLoading) {
     return (
@@ -497,13 +392,8 @@ export default function Contacts() {
         </Dialog>
       </div>
 
-      {/* Archive View Control */}
-      <div className="flex justify-start">
-        <ArchiveViewControl
-          isExpanded={showArchived}
-          onToggle={() => setShowArchived(!showArchived)}
-        />
-      </div>
+      {/* Pull-Down Reveal for Archived/Rubbish */}
+      <PullDownReveal basePath="/contacts" />
 
       {/* Search */}
       <div>
@@ -515,7 +405,7 @@ export default function Contacts() {
         />
       </div>
 
-      {/* Active Contacts Section */}
+      {/* Active Contacts Grid */}
       <div className="space-y-4">
         {filteredActiveContacts.length === 0 ? (
           <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
@@ -526,73 +416,43 @@ export default function Contacts() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredActiveContacts.map((contact) => renderContactCard(contact, "active"))}
+            {filteredActiveContacts.map((contact) => renderContactCard(contact))}
           </div>
         )}
       </div>
 
-      {/* Archived Contacts Section (when expanded) */}
-      {showArchived && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 pt-4 border-t">
-            <Archive className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-medium text-muted-foreground">Archived</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">You can restore these contacts anytime.</p>
-          
-          {archivedLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredArchivedContacts.length === 0 ? (
-            <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
-              <Archive className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-              <p className="text-muted-foreground text-sm">No archived contacts.</p>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredArchivedContacts.map((contact) => renderContactCard(contact, "archived"))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Rubbish Section (when expanded) */}
-      {showArchived && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 pt-4 border-t">
-            <Trash2 className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-medium text-muted-foreground">Rubbish</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored or permanently deleted.</p>
-          
-          {trashedLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredTrashedContacts.length === 0 ? (
-            <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
-              <Trash2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-              <p className="text-muted-foreground text-sm">Rubbish bin is empty.</p>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {filteredTrashedContacts.map((contact) => renderRubbishItem(contact))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Multi-Select Bar */}
-      <MultiSelectBar
-        selectedCount={selectedIds.size}
-        onPrimaryAction={handleBatchDelete}
-        onCancel={() => {
-          setIsMultiSelectMode(false);
-          setSelectedIds(new Set());
+      {isMultiSelectMode && (
+        <MultiSelectBar
+          selectedCount={selectedIds.size}
+          onPrimaryAction={handleBatchDelete}
+          onCancel={() => {
+            setIsMultiSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+        />
+      )}
+
+      {/* Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={(open) => {
+          setArchiveDialogOpen(open);
+          if (!open) {
+            setArchiveTargetId(null);
+          }
         }}
+        onConfirm={() => {
+          if (!archiveTargetId) return;
+          archiveMutation.mutate({ id: archiveTargetId });
+        }}
+        title="Archive"
+        description="Archive this contact? You can restore it anytime from the archived view."
+        confirmLabel="Archive"
+        isDeleting={archiveMutation.isPending}
       />
 
+      {/* Delete (Move to Rubbish) Confirmation Dialog */}
       <DeleteConfirmDialog
         open={deleteToRubbishDialogOpen}
         onOpenChange={(open) => {
@@ -611,24 +471,7 @@ export default function Contacts() {
         isDeleting={deleteToRubbishMutation.isPending}
       />
 
-      <DeleteConfirmDialog
-        open={deletePermanentlyDialogOpen}
-        onOpenChange={(open) => {
-          setDeletePermanentlyDialogOpen(open);
-          if (!open) {
-            setDeletePermanentlyTargetId(null);
-          }
-        }}
-        onConfirm={() => {
-          if (!deletePermanentlyTargetId) return;
-          deletePermanentlyMutation.mutate({ id: deletePermanentlyTargetId });
-        }}
-        title="Delete permanently"
-        description="This action cannot be undone."
-        confirmLabel="Delete permanently"
-        isDeleting={deletePermanentlyMutation.isPending}
-      />
-
+      {/* Batch Delete Confirmation Dialog */}
       <DeleteConfirmDialog
         open={batchDeleteDialogOpen}
         onOpenChange={setBatchDeleteDialogOpen}
@@ -642,6 +485,22 @@ export default function Contacts() {
         description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
         confirmLabel="Delete"
         isDeleting={deleteToRubbishMutation.isPending}
+      />
+
+      {/* Batch Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={batchArchiveDialogOpen}
+        onOpenChange={setBatchArchiveDialogOpen}
+        onConfirm={() => {
+          const ids = Array.from(selectedIds);
+          ids.forEach((id) => archiveMutation.mutate({ id }));
+          setSelectedIds(new Set());
+          setIsMultiSelectMode(false);
+        }}
+        title="Archive"
+        description={`Archive ${selectedIds.size} contact${selectedIds.size > 1 ? "s" : ""}? You can restore them anytime.`}
+        confirmLabel="Archive"
+        isDeleting={archiveMutation.isPending}
       />
     </div>
   );

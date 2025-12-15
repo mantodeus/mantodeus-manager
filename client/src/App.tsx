@@ -9,13 +9,19 @@ import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { useAuth } from "@/_core/hooks/useAuth";
 // Project-based pages
 import Projects from "./pages/Projects";
+import ProjectsArchived from "./pages/ProjectsArchived";
+import ProjectsRubbish from "./pages/ProjectsRubbish";
 import ProjectDetail from "./pages/ProjectDetail";
 import ProjectJobDetail from "./pages/ProjectJobDetail";
 import Reports from "./pages/Reports";
 import Calendar from "./components/Calendar";
 import Contacts from "./pages/Contacts";
+import ContactsArchived from "./pages/ContactsArchived";
+import ContactsRubbish from "./pages/ContactsRubbish";
 import Invoices from "./pages/Invoices";
 import Notes from "./pages/Notes";
+import NotesArchived from "./pages/NotesArchived";
+import NotesRubbish from "./pages/NotesRubbish";
 import Maps from "./pages/Maps";
 import Login from "./pages/Login";
 import { useEffect } from "react";
@@ -69,6 +75,16 @@ function Router() {
           <Projects />
         </DashboardLayout>
       </Route>
+      <Route path="/projects/archived">
+        <DashboardLayout>
+          <ProjectsArchived />
+        </DashboardLayout>
+      </Route>
+      <Route path="/projects/rubbish">
+        <DashboardLayout>
+          <ProjectsRubbish />
+        </DashboardLayout>
+      </Route>
       <Route path="/projects/:id">
         <DashboardLayout>
           <ProjectDetail />
@@ -94,6 +110,16 @@ function Router() {
           <Contacts />
         </DashboardLayout>
       </Route>
+      <Route path="/contacts/archived">
+        <DashboardLayout>
+          <ContactsArchived />
+        </DashboardLayout>
+      </Route>
+      <Route path="/contacts/rubbish">
+        <DashboardLayout>
+          <ContactsRubbish />
+        </DashboardLayout>
+      </Route>
       <Route path="/invoices">
         <DashboardLayout>
           <Invoices />
@@ -102,6 +128,16 @@ function Router() {
       <Route path="/notes">
         <DashboardLayout>
           <Notes />
+        </DashboardLayout>
+      </Route>
+      <Route path="/notes/archived">
+        <DashboardLayout>
+          <NotesArchived />
+        </DashboardLayout>
+      </Route>
+      <Route path="/notes/rubbish">
+        <DashboardLayout>
+          <NotesRubbish />
         </DashboardLayout>
       </Route>
       <Route path="/maps">

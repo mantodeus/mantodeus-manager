@@ -1,22 +1,19 @@
 /**
  * Projects List Page
  * 
- * Displays all projects for the current user with:
+ * Displays all active projects for the current user with:
  * - Grid of project cards
  * - Status badges
- * - Quick actions (edit, delete)
+ * - Quick actions (edit, archive, delete)
  * - Create new project button
- * 
- * Archive Pattern:
- * - Active items shown by default
- * - Archived and Rubbish sections revealed via "View archived" control
+ * - Pull-down reveal for archived/rubbish navigation (Telegram-style)
  */
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen, Archive, Trash2, RotateCcw } from "lucide-react";
+import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen, Archive } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";
@@ -25,22 +22,15 @@ import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { ArchiveViewControl } from "@/components/ArchiveViewControl";
+import { PullDownReveal } from "@/components/PullDownReveal";
 
 type ProjectListItem = RouterOutputs["projects"]["list"][number];
 
 export default function Projects() {
   const [location, setLocation] = useLocation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
   
   const { data: activeProjects, isLoading: activeLoading } = trpc.projects.list.useQuery();
-  const { data: archivedProjects, isLoading: archivedLoading } = trpc.projects.listArchived.useQuery(undefined, {
-    enabled: showArchived,
-  });
-  const { data: trashedProjects, isLoading: trashedLoading } = trpc.projects.listTrashed.useQuery(undefined, {
-    enabled: showArchived,
-  });
   const utils = trpc.useUtils();
   const [prefillClientId, setPrefillClientId] = useState<number | null>(null);
 
@@ -52,9 +42,9 @@ export default function Projects() {
   const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
   const [deleteToRubbishTargetId, setDeleteToRubbishTargetId] = useState<number | null>(null);
 
-  // Permanent delete dialog (Rubbish only)
-  const [deletePermanentlyDialogOpen, setDeletePermanentlyDialogOpen] = useState(false);
-  const [deletePermanentlyTarget, setDeletePermanentlyTarget] = useState<ProjectListItem | null>(null);
+  // Archive confirmation dialog
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiveTargetId, setArchiveTargetId] = useState<number | null>(null);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -108,16 +98,6 @@ export default function Projects() {
     },
   });
 
-  const restoreArchivedProjectMutation = trpc.projects.restoreArchivedProject.useMutation({
-    onSuccess: () => {
-      toast.success("Project restored");
-      invalidateProjectLists();
-    },
-    onError: (error) => {
-      toast.error(`Failed to restore project: ${error.message}`);
-    },
-  });
-
   const moveProjectToTrashMutation = trpc.projects.moveProjectToTrash.useMutation({
     onSuccess: () => {
       toast.success("Deleted. You can restore this later from the Rubbish bin.");
@@ -125,28 +105,6 @@ export default function Projects() {
     },
     onError: (error) => {
       toast.error(`Failed to delete: ${error.message}`);
-    },
-  });
-
-  const restoreProjectFromTrashMutation = trpc.projects.restoreProjectFromTrash.useMutation({
-    onSuccess: () => {
-      toast.success("Project restored");
-      invalidateProjectLists();
-    },
-    onError: (error) => {
-      toast.error(`Failed to restore project: ${error.message}`);
-    },
-  });
-
-  const deleteProjectPermanentlyMutation = trpc.projects.deleteProjectPermanently.useMutation({
-    onSuccess: () => {
-      toast.success("Project deleted permanently");
-      invalidateProjectLists();
-      setDeletePermanentlyDialogOpen(false);
-      setDeletePermanentlyTarget(null);
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete project permanently: ${error.message}`);
     },
   });
 
@@ -165,27 +123,18 @@ export default function Projects() {
     }
   };
 
-  const handleItemAction = (action: ItemAction, projectId: number, section: "active" | "archived" | "trash") => {
+  const handleItemAction = (action: ItemAction, projectId: number) => {
     switch (action) {
       case "edit":
         window.location.href = `/projects/${projectId}`;
         break;
       case "archive":
-        handleArchiveProject(projectId);
-        break;
-      case "restore":
-        if (section === "archived") {
-          handleRestoreProject(projectId);
-        } else if (section === "trash") {
-          handleRestoreFromTrash(projectId);
-        }
+        setArchiveTargetId(projectId);
+        setArchiveDialogOpen(true);
         break;
       case "moveToTrash":
         setDeleteToRubbishTargetId(projectId);
         setDeleteToRubbishDialogOpen(true);
-        break;
-      case "deletePermanently":
-        handleDeletePermanently(projectId);
         break;
       case "select":
         setIsMultiSelectMode(true);
@@ -194,42 +143,16 @@ export default function Projects() {
     }
   };
 
-  const handleArchiveProject = (projectId: number) => {
-    if (confirm("Archive this project? You can restore this later.")) {
-      archiveProjectMutation.mutate({ projectId });
-    }
-  };
-
-  const handleRestoreProject = (projectId: number) => {
-    restoreArchivedProjectMutation.mutate({ projectId });
-  };
-
   const handleDeleteToRubbish = (projectId: number) => {
     moveProjectToTrashMutation.mutate({ projectId });
   };
 
-  const handleRestoreFromTrash = (projectId: number) => {
-    restoreProjectFromTrashMutation.mutate({ projectId });
-  };
-
-  const handleDeletePermanently = (projectId: number) => {
-    const project = (trashedProjects ?? []).find((p) => p.id === projectId) ?? null;
-    if (!project) return;
-    setDeletePermanentlyTarget(project);
-    setDeletePermanentlyDialogOpen(true);
-  };
+  // Batch archive dialog
+  const [batchArchiveDialogOpen, setBatchArchiveDialogOpen] = useState(false);
 
   const handleBatchArchive = () => {
     if (selectedIds.size === 0) return;
-    
-    const count = selectedIds.size;
-    if (confirm(`Archive ${count} project${count > 1 ? "s" : ""}? You can restore this later.`)) {
-      selectedIds.forEach((id) => {
-        archiveProjectMutation.mutate({ projectId: id });
-      });
-      setSelectedIds(new Set());
-      setIsMultiSelectMode(false);
-    }
+    setBatchArchiveDialogOpen(true);
   };
 
   const toggleSelection = (projectId: number) => {
@@ -286,24 +209,23 @@ export default function Projects() {
     );
   }
 
-  const renderProjectCard = (project: ProjectListItem, section: "active" | "archived" | "trash") => {
+  const renderProjectCard = (project: ProjectListItem) => {
     const isSelected = selectedIds.has(project.id);
     const { contact, label: clientLabel } = resolveClientDisplay(project);
     const schedule = getScheduleInfo(project);
-    const isActive = section === "active";
 
     return (
       <div
         key={project.id}
         className="relative no-select"
         onClick={(e) => {
-          if (isMultiSelectMode && isActive) {
+          if (isMultiSelectMode) {
             e.preventDefault();
             toggleSelection(project.id);
           }
         }}
       >
-        {isMultiSelectMode && isActive && (
+        {isMultiSelectMode && (
           <div className="absolute top-2 left-2 z-10">
             <input
               type="checkbox"
@@ -317,7 +239,7 @@ export default function Projects() {
           <Card
             className={`hover:shadow-lg transition-all cursor-pointer h-full ${
               isSelected ? "ring-2 ring-primary" : ""
-            } ${section !== "active" ? "opacity-75" : ""}`}
+            }`}
           >
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -326,21 +248,11 @@ export default function Projects() {
                   <CardTitle className="text-xl">{project.name}</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
-                  {section === "archived" ? (
-                    <Badge className="bg-muted text-muted-foreground">Archived</Badge>
-                  ) : (
-                    <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
-                  )}
+                  <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
                   {!isMultiSelectMode && (
                     <ItemActionsMenu
-                      onAction={(action) => handleItemAction(action, project.id, section)}
-                      actions={
-                        section === "active"
-                          ? ["edit", "archive", "moveToTrash", "select"]
-                          : section === "archived"
-                          ? ["restore", "moveToTrash"]
-                          : ["restore", "deletePermanently"]
-                      }
+                      onAction={(action) => handleItemAction(action, project.id)}
+                      actions={["edit", "archive", "moveToTrash", "select"]}
                       triggerClassName="text-muted-foreground hover:text-foreground"
                     />
                   )}
@@ -409,39 +321,6 @@ export default function Projects() {
     );
   };
 
-  const renderRubbishItem = (project: ProjectListItem) => (
-    <Card key={project.id}>
-      <CardContent className="flex items-center justify-between py-4">
-        <div className="min-w-0">
-          <div className="font-medium truncate">{project.name}</div>
-          <div className="text-sm text-muted-foreground">
-            Deleted{" "}
-            {project.trashedAt ? new Date(project.trashedAt).toLocaleDateString() : "—"}
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => handleRestoreFromTrash(project.id)}
-            disabled={restoreProjectFromTrashMutation.isPending}
-            className="gap-2"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Restore
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => handleDeletePermanently(project.id)}
-            className="gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete permanently
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -455,15 +334,10 @@ export default function Projects() {
         </Button>
       </div>
 
-      {/* Archive View Control */}
-      <div className="flex justify-start">
-        <ArchiveViewControl
-          isExpanded={showArchived}
-          onToggle={() => setShowArchived(!showArchived)}
-        />
-      </div>
+      {/* Pull-Down Reveal for Archived/Rubbish */}
+      <PullDownReveal basePath="/projects" />
 
-      {/* Active Projects Section */}
+      {/* Active Projects Grid */}
       <div className="space-y-4">
         {activeProjects && activeProjects.length === 0 ? (
           <Card>
@@ -478,66 +352,10 @@ export default function Projects() {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {activeProjects?.map((project) => renderProjectCard(project, "active"))}
+            {activeProjects?.map((project) => renderProjectCard(project))}
           </div>
         )}
       </div>
-
-      {/* Archived Projects Section (when expanded) */}
-      {showArchived && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 pt-4 border-t">
-            <Archive className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-medium text-muted-foreground">Archived</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">You can restore these projects anytime.</p>
-          
-          {archivedLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : archivedProjects && archivedProjects.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-8">
-                <Archive className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground text-sm">No archived projects.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {archivedProjects?.map((project) => renderProjectCard(project, "archived"))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Rubbish Section (when expanded) */}
-      {showArchived && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 pt-4 border-t">
-            <Trash2 className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-medium text-muted-foreground">Rubbish</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">Items in the Rubbish bin can be restored or permanently deleted.</p>
-          
-          {trashedLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : trashedProjects && trashedProjects.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-8">
-                <Trash2 className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground text-sm">Rubbish bin is empty.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {trashedProjects?.map((project) => renderRubbishItem(project))}
-            </div>
-          )}
-        </div>
-      )}
 
       {isMultiSelectMode && (
         <MultiSelectBar
@@ -561,6 +379,26 @@ export default function Projects() {
         onRequestAddContact={handleRequestAddContact}
       />
 
+      {/* Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={(open) => {
+          setArchiveDialogOpen(open);
+          if (!open) {
+            setArchiveTargetId(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!archiveTargetId) return;
+          archiveProjectMutation.mutate({ projectId: archiveTargetId });
+        }}
+        title="Archive"
+        description="Archive this project? You can restore it anytime from the archived view."
+        confirmLabel="Archive"
+        isDeleting={archiveProjectMutation.isPending}
+      />
+
+      {/* Delete (Move to Rubbish) Confirmation Dialog */}
       <DeleteConfirmDialog
         open={deleteToRubbishDialogOpen}
         onOpenChange={(open) => {
@@ -579,22 +417,21 @@ export default function Projects() {
         isDeleting={moveProjectToTrashMutation.isPending}
       />
 
+      {/* Batch Archive Confirmation Dialog */}
       <DeleteConfirmDialog
-        open={deletePermanentlyDialogOpen}
-        onOpenChange={(open) => {
-          setDeletePermanentlyDialogOpen(open);
-          if (!open) {
-            setDeletePermanentlyTarget(null);
-          }
-        }}
+        open={batchArchiveDialogOpen}
+        onOpenChange={setBatchArchiveDialogOpen}
         onConfirm={() => {
-          if (!deletePermanentlyTarget) return;
-          deleteProjectPermanentlyMutation.mutate({ projectId: deletePermanentlyTarget.id });
+          selectedIds.forEach((id) => {
+            archiveProjectMutation.mutate({ projectId: id });
+          });
+          setSelectedIds(new Set());
+          setIsMultiSelectMode(false);
         }}
-        title="Delete permanently"
-        description="This action cannot be undone."
-        confirmLabel="Delete permanently"
-        isDeleting={deleteProjectPermanentlyMutation.isPending}
+        title="Archive"
+        description={`Archive ${selectedIds.size} project${selectedIds.size > 1 ? "s" : ""}? You can restore them anytime.`}
+        confirmLabel="Archive"
+        isDeleting={archiveProjectMutation.isPending}
       />
     </div>
   );
