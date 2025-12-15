@@ -241,7 +241,7 @@ export const exportRouter = router({
               address: contact.address || null,
               type: "contact",
               jobId: null,
-              contactId: result[0].insertId,
+              contactId: result[0].id,
               createdBy: userId,
             });
           }
@@ -264,7 +264,7 @@ export const exportRouter = router({
             contactId: null, // We don't preserve contact relationships for simplicity
             createdBy: userId,
           });
-          const newJobId = jobResult[0].insertId;
+          const newJobId = jobResult[0].id;
           results.jobs++;
 
           // Auto-create location for job if coordinates exist

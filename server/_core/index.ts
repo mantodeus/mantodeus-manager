@@ -56,6 +56,41 @@ async function startServer() {
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
 
+  // Public shareable document endpoint
+  app.get("/share/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      // Import here to avoid circular dependencies
+      const { getSharedDocumentByToken } = await import("../db");
+      const { storageGet } = await import("../storage");
+      
+      const sharedDoc = await getSharedDocumentByToken(token);
+      
+      if (!sharedDoc) {
+        return res.status(404).send("Document not found");
+      }
+      
+      // Check if expired
+      if (new Date(sharedDoc.expiresAt) < new Date()) {
+        return res.status(410).send("This link has expired");
+      }
+      
+      // Fetch PDF from S3
+      const { data, contentType } = await storageGet(sharedDoc.s3Key);
+      
+      // Set headers for PDF viewing
+      res.setHeader("Content-Type", contentType || "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="document.pdf"`);
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      
+      res.send(data);
+    } catch (error) {
+      console.error("Share link error:", error);
+      res.status(500).send("Internal server error");
+    }
+  });
+
   // Generic file proxy endpoint - for PDFs, documents, etc.
   app.get("/api/file-proxy", async (req, res) => {
     try {

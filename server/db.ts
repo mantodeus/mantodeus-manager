@@ -1,5 +1,6 @@
 import { eq, desc, and, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { 
   // User types
   InsertUser, users, 
@@ -8,6 +9,9 @@ import {
   type Project, type InsertProject, type Contact,
   type ProjectJob, type InsertProjectJob,
   type FileMetadata, type InsertFileMetadata,
+  // PDF & Settings types
+  sharedDocuments, companySettings, projectCheckins,
+  type InsertSharedDocument, type InsertCompanySettings, type InsertProjectCheckin,
   // Legacy types (kept for backward compatibility)
   jobs, tasks, images, reports, comments, contacts, invoices, notes, locations, 
   InsertJob, InsertTask, InsertImage, InsertReport, InsertComment, InsertContact, 
@@ -35,6 +39,7 @@ function mapProjectWithClient(row: { project: Project; clientContact: ProjectCli
 }
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _postgresClient: ReturnType<typeof postgres> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
@@ -45,9 +50,12 @@ export async function getDb() {
     }
     
     try {
-      console.log("[Database] Connecting to database...");
+      console.log("[Database] Connecting to PostgreSQL database...");
       console.log("[Database] DATABASE_URL starts with:", process.env.DATABASE_URL.substring(0, 20) + "...");
-      _db = drizzle(process.env.DATABASE_URL);
+      
+      // Create postgres client
+      _postgresClient = postgres(process.env.DATABASE_URL);
+      _db = drizzle(_postgresClient);
       console.log("[Database] ✅ Database connection created");
       
       // Test the connection by running a simple query
@@ -68,6 +76,7 @@ export async function getDb() {
         console.error("[Database] Error stack:", error.stack);
       }
       _db = null;
+      _postgresClient = null;
     }
   }
   return _db;
@@ -136,7 +145,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.supabaseId,
       set: updateSet,
     });
   } catch (error) {
@@ -180,7 +190,7 @@ export async function createJob(job: InsertJob) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(jobs).values(job);
+  const result = await db.insert(jobs).values(job).returning();
   return result;
 }
 
@@ -218,7 +228,7 @@ export async function createJobDate(jobDate: InsertJobDate) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return await db.insert(jobDates).values(jobDate);
+  return await db.insert(jobDates).values(jobDate).returning();
 }
 
 export async function getJobDates(jobId: number) {
@@ -240,7 +250,7 @@ export async function createTask(task: InsertTask) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(tasks).values(task);
+  const result = await db.insert(tasks).values(task).returning();
   return result;
 }
 
@@ -278,7 +288,7 @@ export async function createImage(image: InsertImage) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(images).values(image);
+  const result = await db.insert(images).values(image).returning();
   return result;
 }
 
@@ -316,7 +326,7 @@ export async function createReport(report: InsertReport) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(reports).values(report);
+  const result = await db.insert(reports).values(report).returning();
   return result;
 }
 
@@ -339,7 +349,7 @@ export async function createComment(comment: InsertComment) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(comments).values(comment);
+  const result = await db.insert(comments).values(comment).returning();
   return result;
 }
 
@@ -509,7 +519,7 @@ export async function getContactById(id: number) {
 export async function createContact(data: InsertContact) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(contacts).values(data);
+  const result = await db.insert(contacts).values(data).returning();
   return result;
 }
 
@@ -568,7 +578,7 @@ export async function getInvoicesByContact(contactId: number) {
 export async function createInvoice(data: InsertInvoice) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(invoices).values(data);
+  return db.insert(invoices).values(data).returning();
 }
 
 export async function getInvoiceById(id: number) {
@@ -614,7 +624,7 @@ export async function getNoteById(id: number) {
 export async function createNote(data: InsertNote) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(notes).values(data);
+  return db.insert(notes).values(data).returning();
 }
 
 export async function updateNote(id: number, data: Partial<InsertNote>) {
@@ -658,7 +668,7 @@ export async function getLocationsByContact(contactId: number) {
 export async function createLocation(data: InsertLocation) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(locations).values(data);
+  return db.insert(locations).values(data).returning();
 }
 
 export async function updateLocation(id: number, data: Partial<InsertLocation>) {
@@ -859,7 +869,7 @@ export async function createProject(project: InsertProject) {
   if (!db) throw new Error("Database not available");
   
   await ensureProjectsSchema();
-  const result = await db.insert(projects).values(project);
+  const result = await db.insert(projects).values(project).returning();
   return result;
 }
 
@@ -953,7 +963,7 @@ export async function createProjectJob(job: InsertProjectJob) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(projectJobs).values(job);
+  const result = await db.insert(projectJobs).values(job).returning();
   return result;
 }
 
@@ -995,7 +1005,7 @@ export async function createFileMetadata(file: InsertFileMetadata) {
   const db = await getFileMetadataDb();
   
   try {
-    const result = await db.insert(fileMetadata).values(file);
+    const result = await db.insert(fileMetadata).values(file).returning();
     return result;
   } catch (error) {
     console.error("[Database] Failed to create file metadata:", error);
@@ -1047,4 +1057,135 @@ export async function deleteFileMetadataByS3Key(s3Key: string) {
   const db = await getFileMetadataDb();
   
   return await db.delete(fileMetadata).where(eq(fileMetadata.s3Key, s3Key));
+}
+
+// =============================================================================
+// SHARED DOCUMENTS FUNCTIONS
+// =============================================================================
+
+export async function createSharedDocument(data: InsertSharedDocument) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.insert(sharedDocuments).values(data).returning();
+}
+
+export async function getSharedDocumentByToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(sharedDocuments)
+    .where(eq(sharedDocuments.shareToken, token))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function deleteSharedDocument(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.delete(sharedDocuments).where(eq(sharedDocuments.id, id));
+}
+
+// =============================================================================
+// COMPANY SETTINGS FUNCTIONS
+// =============================================================================
+
+export async function getCompanySettingsByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(companySettings)
+    .where(eq(companySettings.userId, userId))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createCompanySettings(data: InsertCompanySettings) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.insert(companySettings).values(data).returning();
+}
+
+export async function updateCompanySettings(userId: number, data: Partial<InsertCompanySettings>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.update(companySettings)
+    .set(data)
+    .where(eq(companySettings.userId, userId));
+}
+
+export async function incrementInvoiceNumber(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Get current settings
+  const settings = await getCompanySettingsByUserId(userId);
+  if (!settings) throw new Error("Company settings not found");
+  
+  // Increment and update
+  const newNumber = (settings.nextInvoiceNumber || 1) + 1;
+  await db.update(companySettings)
+    .set({ nextInvoiceNumber: newNumber })
+    .where(eq(companySettings.userId, userId));
+  
+  return newNumber;
+}
+
+// =============================================================================
+// PROJECT CHECK-INS FUNCTIONS
+// =============================================================================
+
+export async function createProjectCheckin(data: InsertProjectCheckin) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.insert(projectCheckins).values(data).returning();
+}
+
+export async function getProjectCheckinsByProjectId(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(projectCheckins)
+    .where(eq(projectCheckins.projectId, projectId))
+    .orderBy(desc(projectCheckins.checkInTime));
+}
+
+export async function getProjectCheckinsByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(projectCheckins)
+    .where(eq(projectCheckins.userId, userId))
+    .orderBy(desc(projectCheckins.checkInTime));
+}
+
+export async function getActiveCheckin(projectId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(projectCheckins)
+    .where(and(
+      eq(projectCheckins.projectId, projectId),
+      eq(projectCheckins.userId, userId),
+      sql`${projectCheckins.checkOutTime} IS NULL`
+    ))
+    .orderBy(desc(projectCheckins.checkInTime))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function updateProjectCheckin(id: number, data: Partial<InsertProjectCheckin>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.update(projectCheckins)
+    .set(data)
+    .where(eq(projectCheckins.id, id));
 }

@@ -17,6 +17,8 @@ import {
 } from "./storage";
 import { exportRouter } from "./exportRouter";
 import { projectsRouter } from "./projectsRouter";
+import { pdfRouter } from "./pdfRouter";
+import { settingsRouter } from "./settingsRouter";
 import { geocodeAddress } from "./_core/geocoding";
 import { shouldProcessImage } from "./_core/imageProcessing";
 import { 
@@ -40,6 +42,8 @@ async function hydrateImageRecord<T extends { imageMetadata: StoredImageMetadata
 export const appRouter = router({
   system: systemRouter,
   export: exportRouter,
+  pdf: pdfRouter,
+  settings: settingsRouter,
   
   // New project-based structure
   projects: projectsRouter,
@@ -101,7 +105,7 @@ export const appRouter = router({
           createdBy: ctx.user.id,
         });
         
-        const jobId = result[0].insertId;
+        const jobId = result[0].id;
 
         // Auto-create map marker if coordinates exist
         if (latitude && longitude) {
@@ -227,7 +231,7 @@ export const appRouter = router({
           ...input,
           createdBy: ctx.user.id,
         });
-        return { success: true, id: result[0].insertId };
+        return { success: true, id: result[0].id };
       }),
     
     update: protectedProcedure
@@ -362,7 +366,7 @@ export const appRouter = router({
           imageMetadata: metadata,
         });
 
-        const image = await db.getImageById(result[0].insertId);
+        const image = await db.getImageById(result[0].id);
         if (!image) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
@@ -441,7 +445,7 @@ export const appRouter = router({
           uploadedBy: ctx.user.id,
         });
 
-        return { success: true, id: result[0].insertId };
+        return { success: true, id: result[0].id };
       }),
 
     // Update image caption
@@ -496,7 +500,7 @@ export const appRouter = router({
           ...input,
           createdBy: ctx.user.id,
         });
-        return { success: true, id: result[0].insertId };
+        return { success: true, id: result[0].id };
       }),
     
     delete: protectedProcedure
@@ -541,7 +545,7 @@ export const appRouter = router({
           content: input.content,
           createdBy: ctx.user.id,
         });
-        return { success: true, id: result[0].insertId };
+        return { success: true, id: result[0].id };
       }),
     
     delete: protectedProcedure
@@ -597,7 +601,7 @@ export const appRouter = router({
           createdBy: ctx.user.id,
         });
         
-        const contactId = result[0].insertId;
+        const contactId = result[0].id;
 
         // Auto-create map marker if coordinates exist
         if (latitude && longitude) {
@@ -759,7 +763,7 @@ export const appRouter = router({
           uploadedBy: ctx.user.id,
         });
 
-        return { success: true, id: result[0].insertId, url, fileKey };
+        return { success: true, id: result[0].id, url, fileKey };
       }),
 
     // Get a presigned URL for direct browser upload (requires CORS on bucket)
@@ -811,7 +815,7 @@ export const appRouter = router({
           uploadDate: input.uploadDate || new Date(),
           uploadedBy: ctx.user.id,
         });
-        return { success: true, id: result[0].insertId };
+        return { success: true, id: result[0].id };
       }),
     
     // Delete an invoice
@@ -969,7 +973,7 @@ export const appRouter = router({
           contactId: input.contactId || null,
           createdBy: ctx.user.id,
         });
-        return { success: true, id: result[0].insertId };
+        return { success: true, id: result[0].id };
       }),
     
     update: protectedProcedure
@@ -1039,7 +1043,7 @@ export const appRouter = router({
           contactId: input.contactId || null,
           createdBy: ctx.user.id,
         });
-        return { success: true, id: result[0].insertId };
+        return { success: true, id: result[0].id };
       }),
     
     update: protectedProcedure
