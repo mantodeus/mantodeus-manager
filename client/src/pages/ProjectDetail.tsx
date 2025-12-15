@@ -30,6 +30,7 @@ export default function ProjectDetail() {
   const [createJobDialogOpen, setCreateJobDialogOpen] = useState(false);
   const [editProjectDialogOpen, setEditProjectDialogOpen] = useState(false);
   const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
 
   const { data: project, isLoading: projectLoading } = trpc.projects.getById.useQuery({ id: projectId });
   const { data: jobs, isLoading: jobsLoading } = trpc.projects.jobs.list.useQuery({ projectId });
@@ -107,9 +108,7 @@ export default function ProjectDetail() {
   });
 
   const handleArchiveProject = () => {
-    if (confirm("Archive this project? You can restore this later.")) {
-      archiveProject.mutate({ projectId });
-    }
+    setArchiveDialogOpen(true);
   };
 
   const handleRestoreArchivedProject = () => {
@@ -455,6 +454,18 @@ export default function ProjectDetail() {
         />
       )}
 
+      {/* Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={setArchiveDialogOpen}
+        onConfirm={() => archiveProject.mutate({ projectId })}
+        title="Archive"
+        description="Archive this project? You can restore it anytime from the archived view."
+        confirmLabel="Archive"
+        isDeleting={archiveProject.isPending}
+      />
+
+      {/* Delete (Move to Rubbish) Confirmation Dialog */}
       <DeleteConfirmDialog
         open={deleteToRubbishDialogOpen}
         onOpenChange={setDeleteToRubbishDialogOpen}
