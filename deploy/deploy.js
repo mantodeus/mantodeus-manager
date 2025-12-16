@@ -84,20 +84,35 @@ function deploy() {
   return new Promise((resolve, reject) => {
     log('Starting deployment...');
     
-    const packageManager = USE_PNPM ? 'pnpm' : 'npm';
-    const installCmd = USE_PNPM ? 'pnpm install' : 'npm ci';
-    const buildCmd = USE_PNPM ? 'pnpm build' : 'npm run build';
+    // Use the proper deployment script that handles node_modules cleanup
+    // This fixes issues with corrupted optional dependencies (e.g., Tailwind CSS)
+    const deployScript = path.join(APP_PATH, 'infra/production/deploy-production.sh');
     
-    // Build the deployment command
-    const commands = [
-      `cd ${APP_PATH}`,
-      'git pull',
-      installCmd,
-      buildCmd,
-      `pm2 restart ${PM2_APP_NAME}`
-    ];
+    // Check if deployment script exists, otherwise fall back to manual commands
+    const useDeployScript = fs.existsSync(deployScript);
     
-    const fullCommand = commands.join(' && ');
+    let fullCommand;
+    if (useDeployScript) {
+      log('Using deployment script: infra/production/deploy-production.sh');
+      fullCommand = `cd ${APP_PATH} && bash infra/production/deploy-production.sh`;
+    } else {
+      log('Deployment script not found, using manual commands');
+      const packageManager = USE_PNPM ? 'pnpm' : 'npm';
+      const installCmd = USE_PNPM ? 'pnpm install' : 'npm install --legacy-peer-deps --no-audit --no-fund --include=dev';
+      const buildCmd = USE_PNPM ? 'pnpm build' : 'npm run build';
+      
+      // Clean node_modules if it exists to avoid corrupted dependency issues
+      const commands = [
+        `cd ${APP_PATH}`,
+        'git pull',
+        '[ -d node_modules ] && rm -rf node_modules || true',
+        installCmd,
+        buildCmd,
+        `npx pm2 restart ${PM2_APP_NAME}`
+      ];
+      
+      fullCommand = commands.join(' && ');
+    }
     
     log(`Executing: ${fullCommand}`);
     
