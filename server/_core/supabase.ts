@@ -32,6 +32,45 @@ export const supabaseAdmin = createClient(
   }
 );
 
+// =============================================================================
+// SESSION CACHE - Prevents hitting Supabase/DB on every request
+// =============================================================================
+
+interface CachedSession {
+  user: User;
+  verifiedAt: number;
+}
+
+// In-memory cache: token hash -> cached session
+const sessionCache = new Map<string, CachedSession>();
+
+// How long to trust a cached session (5 minutes)
+const SESSION_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Clean up expired cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  const keysToDelete: string[] = [];
+  sessionCache.forEach((session, key) => {
+    if (now - session.verifiedAt > SESSION_CACHE_TTL_MS * 2) {
+      keysToDelete.push(key);
+    }
+  });
+  keysToDelete.forEach(key => sessionCache.delete(key));
+}, 60 * 1000); // Clean every minute
+
+// Simple hash for cache key (avoid storing raw tokens)
+function hashToken(token: string): string {
+  let hash = 0;
+  for (let i = 0; i < token.length; i++) {
+    const char = token.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  // Include token length and last chars for uniqueness
+  return `${hash}_${token.length}_${token.slice(-8)}`;
+}
+
 // Create Supabase client for client-side operations (public)
 export function createSupabaseClient(accessToken?: string) {
   const client = createClient(ENV.supabaseUrl, ENV.supabaseAnonKey, {
@@ -58,96 +97,33 @@ class SupabaseAuthService {
       return new Map<string, string>();
     }
     
-    if (process.env.NODE_ENV === "development") {
-      const url = typeof globalThis !== "undefined" && globalThis.process?.env ? "" : "";
-      // Only log for auth.me requests
-      if (cookieHeader.includes(COOKIE_NAME) || cookieHeader.length > 0) {
-        console.log(`[Auth] Parsing cookie header (length: ${cookieHeader.length})`);
-      }
-    }
-    
     const parsed = parseCookieHeader(cookieHeader);
-    const cookieMap = new Map(Object.entries(parsed));
-    
-    if (process.env.NODE_ENV === "development") {
-      if (cookieMap.size > 0) {
-        console.log(`[Auth] Parsed ${cookieMap.size} cookies`);
-        console.log(`[Auth] Cookie keys:`, Array.from(cookieMap.keys()));
-        console.log(`[Auth] Looking for: ${COOKIE_NAME}`);
-        console.log(`[Auth] Found ${COOKIE_NAME}:`, cookieMap.has(COOKIE_NAME));
-      }
-    }
-    
-    return cookieMap;
+    return new Map(Object.entries(parsed));
   }
 
   /**
-   * Get the access token from the request cookies
+   * Get the access token from the request cookies or headers
    */
   private getAccessToken(req: Request): string | null {
     const cookieHeader = req.headers.cookie;
     const cookies = this.parseCookies(cookieHeader);
     
-    if (process.env.NODE_ENV === "development") {
-      const url = req.url || req.originalUrl || "";
-      if (url.includes("auth.me")) {
-        console.log(`[Auth] ===== getAccessToken called =====`);
-        console.log(`[Auth] Cookie header raw:`, cookieHeader || "NONE");
-        console.log(`[Auth] Cookie name looking for: ${COOKIE_NAME}`);
-        console.log(`[Auth] Parsed cookies map size:`, cookies.size);
-        console.log(`[Auth] All parsed cookie keys:`, Array.from(cookies.keys()));
-      }
-    }
-    
+    // Try cookie first
     let token = cookies.get(COOKIE_NAME) || null;
 
     // Fallback to Authorization header (Bearer token) if cookie missing
-    // This is IMPORTANT - tRPC client sends this header
     if (!token) {
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith("Bearer ")) {
         token = authHeader.slice("Bearer ".length).trim() || null;
-        if (process.env.NODE_ENV === "development") {
-          const url = req.url || req.originalUrl || "";
-          if (url.includes("auth.me") || url.includes("auth/debug")) {
-            console.log(`[Auth] ✅ Using Authorization header fallback (cookie was missing)`);
-            console.log(`[Auth] Token from header (length: ${token?.length || 0})`);
-          }
-        }
-      } else if (process.env.NODE_ENV === "development") {
-        const url = req.url || req.originalUrl || "";
-        if (url.includes("auth.me") || url.includes("auth/debug")) {
-          console.log(`[Auth] Authorization header not present or doesn't start with 'Bearer '`);
-        }
       }
     }
 
-    // Another fallback: custom header for debugging
+    // Fallback: custom header for debugging/testing
     if (!token) {
       const headerToken = req.headers["x-supabase-token"];
       if (typeof headerToken === "string" && headerToken.length > 0) {
         token = headerToken;
-        if (process.env.NODE_ENV === "development") {
-          const url = req.url || req.originalUrl || "";
-          if (url.includes("auth.me")) {
-            console.log(`[Auth] Using x-supabase-token header fallback`);
-          }
-        }
-      }
-    }
-    
-    if (process.env.NODE_ENV === "development") {
-      const url = req.url || req.originalUrl || "";
-      if (url.includes("auth.me") || url.includes("auth/debug")) {
-        if (!token) {
-          console.log(`[Auth] ❌ No token found after all checks`);
-          console.log(`[Auth] Cookie header:`, cookieHeader || "none");
-          console.log(`[Auth] Authorization header:`, req.headers.authorization || "none");
-          console.log(`[Auth] x-supabase-token header:`, req.headers["x-supabase-token"] || "none");
-        } else {
-          console.log(`[Auth] ✅ Found access token (length: ${token.length})`);
-          console.log(`[Auth] Token source: ${cookieHeader?.includes(COOKIE_NAME) ? "cookie" : req.headers.authorization ? "Authorization header" : "x-supabase-token header"}`);
-        }
       }
     }
     
@@ -156,40 +132,30 @@ class SupabaseAuthService {
 
   /**
    * Verify the Supabase session and get user info
+   * NOTE: This makes an HTTP call to Supabase - should be cached at higher level
    */
   async verifySession(accessToken: string | null): Promise<SessionPayload | null> {
     if (!accessToken) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Auth] verifySession called with null token");
-      }
       return null;
     }
 
     try {
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[Auth] Verifying token with Supabase (length: ${accessToken.length})`);
-      }
-      
-      // Verify the token with Supabase
+      // Verify the token with Supabase (network call)
       const {
         data: { user },
         error,
       } = await supabaseAdmin.auth.getUser(accessToken);
 
       if (error) {
-        console.error("[Auth] ❌ Supabase token verification error:", error.message);
-        console.error("[Auth] Error code:", error.status);
-        console.error("[Auth] Full error:", error);
+        // Only log actual errors, not expired tokens
+        if (error.status !== 401) {
+          console.error("[Auth] Supabase verification error:", error.message);
+        }
         return null;
       }
 
       if (!user) {
-        console.error("[Auth] ❌ Supabase returned no user (but no error)");
         return null;
-      }
-
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[Auth] ✅ Token verified, user ID: ${user.id}`);
       }
 
       return {
@@ -198,41 +164,47 @@ class SupabaseAuthService {
         name: user.user_metadata?.name || user.user_metadata?.full_name || undefined,
       };
     } catch (error) {
-      console.error("[Auth] ❌ Exception during token verification:", error);
-      if (error instanceof Error) {
-        console.error("[Auth] Error message:", error.message);
-        console.error("[Auth] Error stack:", error.stack);
-      }
+      console.error("[Auth] Exception during token verification:", error instanceof Error ? error.message : error);
       return null;
     }
   }
 
   /**
    * Authenticate a request and return the user
+   * 
+   * PERFORMANCE OPTIMIZATION:
+   * - Uses in-memory cache to avoid hitting Supabase API on every request
+   * - Only verifies with Supabase when cache is expired
+   * - Does NOT update lastSignedIn on every request (only on cache miss)
    */
   async authenticateRequest(req: Request): Promise<User> {
     const accessToken = this.getAccessToken(req);
     
     if (!accessToken) {
-      console.error("[Auth] ❌ No access token found in request");
-      console.error("[Auth] This should not happen if cookie/header is set correctly");
+      // Don't spam logs - this is common for unauthenticated requests
       throw ForbiddenError("Invalid or missing session");
     }
     
-    console.log(`[Auth] Token found, verifying with Supabase...`);
+    // Check cache first - this avoids Supabase API call and DB queries
+    const cacheKey = hashToken(accessToken);
+    const cached = sessionCache.get(cacheKey);
+    const now = Date.now();
+    
+    if (cached && (now - cached.verifiedAt) < SESSION_CACHE_TTL_MS) {
+      // Cache hit - return immediately without any network/DB calls
+      return cached.user;
+    }
+    
+    // Cache miss or expired - need to verify with Supabase
     const session = await this.verifySession(accessToken);
 
     if (!session) {
-      console.error("[Auth] ❌ Session verification returned null");
-      console.error("[Auth] This means Supabase token verification failed");
+      // Invalid token - remove from cache if present
+      sessionCache.delete(cacheKey);
       throw ForbiddenError("Invalid or missing session");
     }
 
-    console.log(`[Auth] ✅ Session verified, user ID: ${session.userId}`);
-    const signedInAt = new Date();
-    
     // Get or create user in our database
-    console.log(`[Auth] Looking up user in database: ${session.userId}`);
     let user = await db.getUserBySupabaseId(session.userId);
 
     // If user doesn't exist in our DB, create them
@@ -243,48 +215,34 @@ class SupabaseAuthService {
           supabaseId: session.userId,
           name: session.name || null,
           email: session.email || null,
-          lastSignedIn: signedInAt,
+          lastSignedIn: new Date(),
         });
         user = await db.getUserBySupabaseId(session.userId);
         
         if (!user) {
           console.error("[Auth] User was created but getUserBySupabaseId returned null!");
-          console.error("[Auth] This might be a database connection issue");
           throw ForbiddenError("User account creation failed - user not found after creation");
         }
-        
-        console.log(`[Auth] User created successfully: ${user.id}`);
       } catch (error) {
         console.error("[Auth] Failed to create user in database:", error);
         if (error instanceof Error && error.message.includes("Failed to create user account")) {
-          throw error; // Re-throw ForbiddenError
+          throw error;
         }
-        // Log full error details
-        console.error("[Auth] Database error details:", error);
         throw ForbiddenError(`Failed to create user account: ${error instanceof Error ? error.message : String(error)}`);
       }
-    } else {
-      // Update last signed in time
-      try {
-        await db.upsertUser({
-          supabaseId: session.userId,
-          name: session.name || user.name,
-          email: session.email || user.email,
-          lastSignedIn: signedInAt,
-        });
-        user = await db.getUserBySupabaseId(session.userId);
-      } catch (error) {
-        console.error("[Auth] Failed to update user in database:", error);
-        // Continue with existing user data if update fails
-      }
     }
+    // NOTE: We no longer update lastSignedIn on every request - only on new user creation
+    // This eliminates a DB write on every single request
 
     if (!user) {
-      console.error("[Auth] User not found after upsert:", session.userId);
       throw ForbiddenError("User not found");
     }
     
-    console.log(`[Auth] User authenticated successfully: ${user.id} (${user.name || user.email || "no name"})`);
+    // Cache the successful authentication
+    sessionCache.set(cacheKey, {
+      user,
+      verifiedAt: now,
+    });
 
     return user;
   }
