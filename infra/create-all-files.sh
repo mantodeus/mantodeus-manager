@@ -123,11 +123,34 @@ if [ "$DRY_RUN" = true ]; then
   json_output "{\"step\":\"install\",\"status\":\"dry-run\"}"
 else
   json_output "{\"step\":\"install\",\"status\":\"installing\"}"
-  if npm install --include=dev; then
-    json_output "{\"step\":\"install\",\"status\":\"success\"}"
-  else
-    error_exit "npm install failed"
+  if ! npm install --no-audit --no-fund --include=dev --legacy-peer-deps; then
+    json_output "{\"step\":\"install\",\"status\":\"first-attempt-failed\"}"
+    
+    # Clean up temporary npm directories that cause ENOTEMPTY errors
+    # These are created when npm fails mid-install (e.g., .body-parser-oXjK4POA)
+    json_output "{\"step\":\"install\",\"status\":\"cleaning-temp-dirs\"}"
+    find node_modules -maxdepth 1 -name '.*' -type d 2>/dev/null | xargs rm -rf 2>/dev/null || true
+    
+    # Clear npm cache to avoid corrupted state
+    json_output "{\"step\":\"install\",\"status\":\"clearing-npm-cache\"}"
+    npm cache clean --force 2>/dev/null || true
+    
+    # Remove node_modules with timeout
+    json_output "{\"step\":\"install\",\"status\":\"removing-node-modules\"}"
+    timeout 60 rm -rf node_modules 2>/dev/null || {
+      # Try removing directories in smaller batches
+      rm -rf node_modules/.* 2>/dev/null || true
+      rm -rf node_modules/@* 2>/dev/null || true
+      rm -rf node_modules 2>/dev/null || true
+    }
+    
+    # Retry npm install
+    json_output "{\"step\":\"install\",\"status\":\"retrying\"}"
+    if ! npm install --no-audit --no-fund --include=dev --legacy-peer-deps; then
+      error_exit "npm install failed after cleanup"
+    fi
   fi
+  json_output "{\"step\":\"install\",\"status\":\"success\"}"
 fi
 
 # Step 4: Build
