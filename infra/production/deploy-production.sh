@@ -68,12 +68,26 @@ echo "📦 Installing dependencies..."
 # --legacy-peer-deps helps with optional dependency issues
 if ! npm install --no-audit --no-fund --include=dev --legacy-peer-deps; then
   echo "⚠️  First npm install failed, cleaning node_modules and retrying..."
-  # Use timeout to prevent hanging - 30 seconds max for cleanup
-  timeout 30 rm -rf node_modules 2>/dev/null || {
-    echo "⚠️  Cleanup timed out or failed, continuing anyway..."
-    # Try to remove just the problematic package if cleanup fails
-    rm -rf node_modules/@tailwindcss 2>/dev/null || true
+  
+  # Clean up temporary npm directories that cause ENOTEMPTY errors
+  # These are created when npm fails mid-install (e.g., .body-parser-oXjK4POA)
+  echo "🧹 Removing temporary npm directories..."
+  find node_modules -maxdepth 1 -name '.*' -type d 2>/dev/null | xargs rm -rf 2>/dev/null || true
+  
+  # Clear npm cache to avoid corrupted state
+  echo "🧹 Clearing npm cache..."
+  npm cache clean --force 2>/dev/null || true
+  
+  # Use timeout to prevent hanging - 60 seconds max for cleanup (increased from 30)
+  echo "🧹 Removing node_modules..."
+  timeout 60 rm -rf node_modules 2>/dev/null || {
+    echo "⚠️  Full cleanup timed out, trying incremental cleanup..."
+    # Try removing directories in smaller batches
+    rm -rf node_modules/.* 2>/dev/null || true
+    rm -rf node_modules/@* 2>/dev/null || true
+    rm -rf node_modules 2>/dev/null || true
   }
+  
   echo "🔄 Retrying npm install..."
   npm install --no-audit --no-fund --include=dev --legacy-peer-deps || error_exit "npm install failed after cleanup"
 fi
