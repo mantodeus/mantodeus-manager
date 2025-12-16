@@ -18,7 +18,8 @@ import {
   InsertInvoice, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate 
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
-import { ensureContactsSchema, ensureFileMetadataSchema, ensureImagesSchema, ensureNotesSchema, ensureProjectsSchema } from "./_core/schemaGuards";
+// Schema guards removed from hot path - initialized once at server startup
+// import { ensureContactsSchema, ensureFileMetadataSchema, ensureImagesSchema, ensureNotesSchema, ensureProjectsSchema } from "./_core/schemaGuards";
 
 type ProjectClientContact = Pick<Contact, "id" | "name" | "address" | "latitude" | "longitude">;
 export type ProjectWithClient = Project & { clientContact: ProjectClientContact | null };
@@ -132,7 +133,7 @@ async function requireDbConnection() {
 }
 
 async function getFileMetadataDb() {
-  await ensureFileMetadataSchema();
+  
   return requireDbConnection();
 }
 
@@ -327,7 +328,7 @@ export async function deleteTask(taskId: number) {
 export async function createImage(image: InsertImage) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureImagesSchema();
+  
   const result = await db.insert(images).values(image);
   return result;
 }
@@ -546,7 +547,6 @@ export async function getAllUsers() {
 export async function getContactsByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  await ensureContactsSchema();
   return db
     .select()
     .from(contacts)
@@ -561,7 +561,7 @@ export async function getContactsByUser(userId: number) {
 export async function getContactById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-  await ensureContactsSchema();
+  
   const result = await db.select().from(contacts).where(eq(contacts.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -569,7 +569,7 @@ export async function getContactById(id: number) {
 export async function createContact(data: InsertContact) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureContactsSchema();
+  
   const result = await db.insert(contacts).values(data);
   return result;
 }
@@ -577,21 +577,21 @@ export async function createContact(data: InsertContact) {
 export async function updateContact(id: number, data: Partial<InsertContact>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureContactsSchema();
+  
   return db.update(contacts).set(data).where(eq(contacts.id, id));
 }
 
 export async function deleteContact(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureContactsSchema();
+  
   return db.delete(contacts).where(eq(contacts.id, id));
 }
 
 export async function getArchivedContactsByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  await ensureContactsSchema();
+  
   return db
     .select()
     .from(contacts)
@@ -606,7 +606,7 @@ export async function getArchivedContactsByUser(userId: number) {
 export async function getTrashedContactsByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  await ensureContactsSchema();
+  
   return db
     .select()
     .from(contacts)
@@ -620,7 +620,7 @@ export async function getTrashedContactsByUser(userId: number) {
 export async function archiveContact(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureContactsSchema();
+  
   return db
     .update(contacts)
     .set({ archivedAt: new Date() })
@@ -630,7 +630,7 @@ export async function archiveContact(id: number) {
 export async function restoreArchivedContact(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureContactsSchema();
+  
   return db
     .update(contacts)
     .set({ archivedAt: null })
@@ -640,7 +640,7 @@ export async function restoreArchivedContact(id: number) {
 export async function moveContactToTrash(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureContactsSchema();
+  
   return db
     .update(contacts)
     .set({ trashedAt: new Date() })
@@ -650,7 +650,7 @@ export async function moveContactToTrash(id: number) {
 export async function restoreContactFromTrash(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureContactsSchema();
+  
   return db
     .update(contacts)
     .set({ trashedAt: null })
@@ -721,7 +721,7 @@ export async function deleteInvoice(id: number) {
 export async function getNotesByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  await ensureNotesSchema();
+  
   return db
     .select()
     .from(notes)
@@ -736,7 +736,7 @@ export async function getNotesByUser(userId: number) {
 export async function getNotesByJob(jobId: number) {
   const db = await getDb();
   if (!db) return [];
-  await ensureNotesSchema();
+  
   return db
     .select()
     .from(notes)
@@ -751,7 +751,7 @@ export async function getNotesByJob(jobId: number) {
 export async function getNotesByContact(contactId: number) {
   const db = await getDb();
   if (!db) return [];
-  await ensureNotesSchema();
+  
   return db
     .select()
     .from(notes)
@@ -766,7 +766,7 @@ export async function getNotesByContact(contactId: number) {
 export async function getNoteById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-  await ensureNotesSchema();
+  
   const result = await db.select().from(notes).where(eq(notes.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -774,28 +774,28 @@ export async function getNoteById(id: number) {
 export async function createNote(data: InsertNote) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureNotesSchema();
+  
   return db.insert(notes).values(data);
 }
 
 export async function updateNote(id: number, data: Partial<InsertNote>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureNotesSchema();
+  
   return db.update(notes).set(data).where(eq(notes.id, id));
 }
 
 export async function deleteNote(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureNotesSchema();
+  
   return db.delete(notes).where(eq(notes.id, id));
 }
 
 export async function getArchivedNotesByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  await ensureNotesSchema();
+  
   return db
     .select()
     .from(notes)
@@ -810,7 +810,7 @@ export async function getArchivedNotesByUser(userId: number) {
 export async function getTrashedNotesByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  await ensureNotesSchema();
+  
   return db
     .select()
     .from(notes)
@@ -824,7 +824,7 @@ export async function getTrashedNotesByUser(userId: number) {
 export async function archiveNote(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureNotesSchema();
+  
   return db
     .update(notes)
     .set({ archivedAt: new Date() })
@@ -834,7 +834,7 @@ export async function archiveNote(id: number) {
 export async function restoreArchivedNote(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureNotesSchema();
+  
   return db
     .update(notes)
     .set({ archivedAt: null })
@@ -844,7 +844,7 @@ export async function restoreArchivedNote(id: number) {
 export async function moveNoteToTrash(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureNotesSchema();
+  
   return db
     .update(notes)
     .set({ trashedAt: new Date() })
@@ -854,7 +854,7 @@ export async function moveNoteToTrash(id: number) {
 export async function restoreNoteFromTrash(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureNotesSchema();
+  
   return db
     .update(notes)
     .set({ trashedAt: null })
@@ -1090,7 +1090,6 @@ export async function createProject(project: InsertProject) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await ensureProjectsSchema();
   const result = await db.insert(projects).values(project);
   return result;
 }
@@ -1099,7 +1098,6 @@ export async function getProjectById(projectId: number): Promise<ProjectWithClie
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await ensureProjectsSchema();
   const result = await db
     .select({
       project: projects,
@@ -1121,7 +1119,6 @@ export async function getProjectsByUser(userId: number): Promise<ProjectWithClie
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await ensureProjectsSchema();
   const rows = await db
     .select({
       project: projects,
@@ -1143,7 +1140,6 @@ export async function getAllProjects(): Promise<ProjectWithClient[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await ensureProjectsSchema();
   const rows = await db
     .select({
       project: projects,
@@ -1164,7 +1160,7 @@ export async function getArchivedProjectsByUser(userId: number): Promise<Project
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await ensureProjectsSchema();
+  
   const rows = await db
     .select({
       project: projects,
@@ -1186,7 +1182,6 @@ export async function getAllArchivedProjects(): Promise<ProjectWithClient[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await ensureProjectsSchema();
   const rows = await db
     .select({
       project: projects,
@@ -1207,7 +1202,6 @@ export async function getTrashedProjectsByUser(userId: number): Promise<ProjectW
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await ensureProjectsSchema();
   const rows = await db
     .select({
       project: projects,
@@ -1228,7 +1222,6 @@ export async function getAllTrashedProjects(): Promise<ProjectWithClient[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await ensureProjectsSchema();
   const rows = await db
     .select({
       project: projects,
@@ -1246,7 +1239,6 @@ export async function updateProject(projectId: number, updates: Partial<InsertPr
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await ensureProjectsSchema();
   return await db.update(projects).set(updates).where(eq(projects.id, projectId));
 }
 
@@ -1254,7 +1246,6 @@ export async function deleteProject(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await ensureProjectsSchema();
   // Note: ON DELETE CASCADE will automatically delete related project_jobs and file_metadata
   return await db.delete(projects).where(eq(projects.id, projectId));
 }
@@ -1263,7 +1254,6 @@ export async function archiveProject(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await ensureProjectsSchema();
   return await db.update(projects)
     .set({ archivedAt: new Date() })
     .where(and(
@@ -1277,7 +1267,6 @@ export async function restoreArchivedProject(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await ensureProjectsSchema();
   return await db.update(projects)
     .set({ archivedAt: null })
     .where(and(
@@ -1291,7 +1280,6 @@ export async function moveProjectToTrash(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await ensureProjectsSchema();
   return await db.update(projects)
     .set({ trashedAt: new Date() })
     .where(and(
@@ -1304,7 +1292,6 @@ export async function restoreProjectFromTrash(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await ensureProjectsSchema();
   return await db.update(projects)
     .set({ trashedAt: null })
     .where(and(
