@@ -114,7 +114,7 @@
     "add": "^2.0.6",
     "autoprefixer": "^10.4.20",
     "cross-env": "^7.0.3",
-    "drizzle-kit": "^0.32.0",
+    "drizzle-kit": "^0.31.8",
     "pnpm": "^10.15.1",
     "postcss": "^8.4.47",
     "prettier": "^3.6.2",
