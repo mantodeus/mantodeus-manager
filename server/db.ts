@@ -570,8 +570,19 @@ export async function createContact(data: InsertContact) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(contacts).values(data);
-  return result;
+  try {
+    const result = await db.insert(contacts).values(data);
+    // MySQL2 returns result as [ResultSetHeader] where ResultSetHeader has insertId
+    const insertId = (result as any)[0]?.insertId;
+    if (!insertId) {
+      console.error("[Database] createContact: No insertId returned", result);
+      throw new Error("Failed to get insert ID from database");
+    }
+    return [{ id: insertId }];
+  } catch (error) {
+    console.error("[Database] createContact error:", error);
+    throw error;
+  }
 }
 
 export async function updateContact(id: number, data: Partial<InsertContact>) {
@@ -1090,8 +1101,19 @@ export async function createProject(project: InsertProject) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(projects).values(project);
-  return result;
+  try {
+    const result = await db.insert(projects).values(project);
+    // MySQL2 returns result as [ResultSetHeader] where ResultSetHeader has insertId
+    const insertId = (result as any)[0]?.insertId;
+    if (!insertId) {
+      console.error("[Database] createProject: No insertId returned", result);
+      throw new Error("Failed to get insert ID from database");
+    }
+    return [{ id: insertId }];
+  } catch (error) {
+    console.error("[Database] createProject error:", error);
+    throw error;
+  }
 }
 
 export async function getProjectById(projectId: number): Promise<ProjectWithClient | null> {
@@ -1306,8 +1328,19 @@ export async function createProjectJob(job: InsertProjectJob) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(projectJobs).values(job);
-  return result;
+  try {
+    const result = await db.insert(projectJobs).values(job);
+    // MySQL2 returns result as [ResultSetHeader] where ResultSetHeader has insertId
+    const insertId = (result as any)[0]?.insertId;
+    if (!insertId) {
+      console.error("[Database] createProjectJob: No insertId returned", result);
+      throw new Error("Failed to get insert ID from database");
+    }
+    return [{ id: insertId }];
+  } catch (error) {
+    console.error("[Database] createProjectJob error:", error);
+    throw error;
+  }
 }
 
 export async function getProjectJobById(jobId: number) {

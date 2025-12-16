@@ -309,25 +309,44 @@ export const projectsRouter = router({
   create: protectedProcedure
     .input(createProjectSchema)
     .mutation(async ({ input, ctx }) => {
-      const { serialized: scheduledDates, first, last } = normalizeDateList(input.scheduledDates);
-      const startDate = input.startDate ?? first ?? null;
-      const endDate = input.endDate ?? last ?? null;
+      try {
+        const { serialized: scheduledDates, first, last } = normalizeDateList(input.scheduledDates);
+        const startDate = input.startDate ?? first ?? null;
+        const endDate = input.endDate ?? last ?? null;
 
-      const result = await db.createProject({
-        name: input.name,
-        client: input.client?.trim() || null,
-        clientId: input.clientId ?? null,
-        description: input.description || null,
-        startDate,
-        endDate,
-        address: input.address || null,
-        geo: input.geo || null,
-        scheduledDates,
-        status: input.status,
-        createdBy: ctx.user.id,
-      });
-      
-      return { success: true, id: result[0].id };
+        const result = await db.createProject({
+          name: input.name,
+          client: input.client?.trim() || null,
+          clientId: input.clientId ?? null,
+          description: input.description || null,
+          startDate,
+          endDate,
+          address: input.address || null,
+          geo: input.geo || null,
+          scheduledDates,
+          status: input.status,
+          createdBy: ctx.user.id,
+        });
+        
+        if (!result || !result[0] || !result[0].id) {
+          console.error("[Projects] createProject returned invalid result:", result);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create project: invalid response from database",
+          });
+        }
+        
+        return { success: true, id: result[0].id };
+      } catch (error) {
+        console.error("[Projects] createProject error:", error);
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Failed to create project",
+        });
+      }
     }),
 
   /**
