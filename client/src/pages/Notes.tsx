@@ -1,3 +1,10 @@
+/**
+ * Notes List Page
+ * 
+ * Displays all active notes for the current user.
+ * Pull-down reveal provides navigation to archived/rubbish views.
+ */
+
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -22,10 +29,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Tag, FileText, Edit } from "lucide-react";
+import { Plus, Search, Tag, FileText, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
+
 type Note = {
   id: number;
   title: string;
@@ -36,6 +46,8 @@ type Note = {
   createdBy: number;
   createdAt: Date;
   updatedAt: Date;
+  archivedAt?: Date | null;
+  trashedAt?: Date | null;
 };
 
 export default function Notes() {
@@ -51,6 +63,14 @@ export default function Notes() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
+  // Confirmation dialogs
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiveTargetId, setArchiveTargetId] = useState<number | null>(null);
+  const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
+  const [deleteToRubbishTargetId, setDeleteToRubbishTargetId] = useState<number | null>(null);
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [batchArchiveDialogOpen, setBatchArchiveDialogOpen] = useState(false);
+
   // Form state
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -59,7 +79,8 @@ export default function Notes() {
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
 
   // Queries
-  const { data: notes = [], refetch: refetchNotes } = trpc.notes.list.useQuery();
+  const utils = trpc.useUtils();
+  const { data: activeNotes = [], isLoading: activeLoading } = trpc.notes.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
 
@@ -67,7 +88,7 @@ export default function Notes() {
   const createNoteMutation = trpc.notes.create.useMutation({
     onSuccess: () => {
       toast.success("Note created successfully");
-      refetchNotes();
+      invalidateNoteLists();
       resetForm();
       setIsCreateDialogOpen(false);
     },
@@ -79,7 +100,7 @@ export default function Notes() {
   const updateNoteMutation = trpc.notes.update.useMutation({
     onSuccess: () => {
       toast.success("Note updated successfully");
-      refetchNotes();
+      invalidateNoteLists();
       resetForm();
       setIsEditDialogOpen(false);
     },
@@ -88,15 +109,31 @@ export default function Notes() {
     },
   });
 
-  const deleteNoteMutation = trpc.notes.delete.useMutation({
+  const archiveNoteMutation = trpc.notes.archive.useMutation({
     onSuccess: () => {
-      toast.success("Note deleted successfully");
-      refetchNotes();
+      toast.success("Archived. You can restore this later.");
+      invalidateNoteLists();
+    },
+    onError: (error) => {
+      toast.error(`Failed to archive note: ${error.message}`);
+    },
+  });
+
+  const deleteToRubbishMutation = trpc.notes.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Deleted. You can restore this later from the Rubbish bin.");
+      invalidateNoteLists();
     },
     onError: (error) => {
       toast.error(`Failed to delete note: ${error.message}`);
     },
   });
+
+  const invalidateNoteLists = () => {
+    utils.notes.list.invalidate();
+    utils.notes.listArchived.invalidate();
+    utils.notes.listTrashed.invalidate();
+  };
 
   const resetForm = () => {
     setTitle("");
@@ -139,35 +176,31 @@ export default function Notes() {
     });
   };
 
-  const handleDeleteNote = (noteId: number) => {
-    if (confirm("Are you sure you want to delete this note?")) {
-      deleteNoteMutation.mutate({ id: noteId });
-    }
-  };
-
   const handleBatchDelete = () => {
     if (selectedIds.size === 0) return;
-    
-    const count = selectedIds.size;
-    if (confirm(`Are you sure you want to delete ${count} note${count > 1 ? 's' : ''}?`)) {
-      selectedIds.forEach((id) => {
-        deleteNoteMutation.mutate({ id });
-      });
-      setSelectedIds(new Set());
-      setIsMultiSelectMode(false);
-    }
+    setBatchDeleteDialogOpen(true);
+  };
+
+  const handleBatchArchive = () => {
+    if (selectedIds.size === 0) return;
+    setBatchArchiveDialogOpen(true);
   };
 
   const handleItemAction = (action: ItemAction, noteId: number) => {
-    const note = notes.find((n) => n.id === noteId);
+    const note = activeNotes.find((n) => n.id === noteId);
     if (!note) return;
 
     switch (action) {
       case "edit":
         openEditDialog(note);
         break;
-      case "delete":
-        handleDeleteNote(noteId);
+      case "archive":
+        setArchiveTargetId(noteId);
+        setArchiveDialogOpen(true);
+        break;
+      case "moveToTrash":
+        setDeleteToRubbishTargetId(noteId);
+        setDeleteToRubbishDialogOpen(true);
         break;
       case "select":
         setIsMultiSelectMode(true);
@@ -196,19 +229,23 @@ export default function Notes() {
     setIsEditDialogOpen(true);
   };
 
-  // Filter notes
-  const filteredNotes = notes.filter((note) => {
-    const matchesSearch =
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.tags?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter notes helper
+  const filterNotes = (notes: Note[]) => {
+    return notes.filter((note) => {
+      const matchesSearch =
+        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.tags?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesJob = filterJob === "all" || note.jobId?.toString() === filterJob;
-    const matchesContact =
-      filterContact === "all" || note.contactId?.toString() === filterContact;
+      const matchesJob = filterJob === "all" || note.jobId?.toString() === filterJob;
+      const matchesContact =
+        filterContact === "all" || note.contactId?.toString() === filterContact;
 
-    return matchesSearch && matchesJob && matchesContact;
-  });
+      return matchesSearch && matchesJob && matchesContact;
+    });
+  };
+
+  const filteredActiveNotes = filterNotes(activeNotes);
 
   const getJobName = (jobId: number | null) => {
     if (!jobId) return null;
@@ -222,10 +259,98 @@ export default function Notes() {
     return contact?.name;
   };
 
+  const renderNoteCard = (note: Note) => {
+    const handleCardClick = (e: React.MouseEvent) => {
+      if (isMultiSelectMode) {
+        toggleSelection(note.id);
+      } else {
+        openEditDialog(note);
+      }
+    };
+
+    return (
+      <Card
+        key={note.id}
+        className={`p-6 hover:shadow-lg transition-all ${
+          selectedIds.has(note.id) ? "ring-2 ring-[#00ff88]" : ""
+        } ${!isMultiSelectMode ? "cursor-pointer" : ""}`}
+        onClick={handleCardClick}
+      >
+        <div className="flex items-start gap-3 mb-3">
+          {isMultiSelectMode && (
+            <Checkbox
+              checked={selectedIds.has(note.id)}
+              onCheckedChange={() => toggleSelection(note.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="mt-1"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <h3
+              className="text-lg font-semibold line-clamp-1"
+              style={{ fontFamily: "Kanit, sans-serif" }}
+            >
+              {note.title}
+            </h3>
+          </div>
+          {!isMultiSelectMode && (
+            <ItemActionsMenu
+              onAction={(action) => handleItemAction(action, note.id)}
+              actions={["edit", "archive", "moveToTrash", "select"]}
+              triggerClassName="text-muted-foreground hover:text-foreground"
+            />
+          )}
+        </div>
+
+        {note.content && (
+          <p
+            className="text-sm text-muted-foreground mb-3 line-clamp-3"
+            style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
+          >
+            {note.content}
+          </p>
+        )}
+
+        {note.tags && (
+          <div className="flex items-center gap-2 mb-3">
+            <Tag className="h-3 w-3 text-[#00ff88]" />
+            <span className="text-xs text-muted-foreground">{note.tags}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {getJobName(note.jobId) && (
+            <div className="flex items-center gap-1">
+              <span className="text-[#00ff88]">Job:</span>
+              <span>{getJobName(note.jobId)}</span>
+            </div>
+          )}
+          {getContactName(note.contactId) && (
+            <div className="flex items-center gap-1">
+              <span className="text-[#00ff88]">Contact:</span>
+              <span>{getContactName(note.contactId)}</span>
+            </div>
+          )}
+          <div className="mt-2">
+            {new Date(note.createdAt).toLocaleDateString()}
+          </div>
+        </div>
+      </Card>
+    );
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-muted-foreground">Please log in to view notes.</p>
+      </div>
+    );
+  }
+
+  if (activeLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -263,10 +388,10 @@ export default function Notes() {
           />
         </div>
         <Select value={filterJob} onValueChange={setFilterJob}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by job" />
-            </SelectTrigger>
-            <SelectContent>
+          <SelectTrigger>
+            <SelectValue placeholder="Filter by job" />
+          </SelectTrigger>
+          <SelectContent>
             <SelectItem value="all">All Jobs</SelectItem>
             {jobs.length === 0 ? (
               <div className="px-2 py-1.5 text-sm text-muted-foreground">No jobs available</div>
@@ -298,108 +423,35 @@ export default function Notes() {
         </Select>
       </div>
 
-      {/* Notes Grid */}
-      {filteredNotes.length === 0 ? (
-        <Card className="p-12 text-center">
-          <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
-            {searchQuery || filterJob !== "all" || filterContact !== "all"
-              ? "No notes found matching your filters"
-              : "No notes yet"}
-          </p>
-          {!searchQuery && filterJob === "all" && filterContact === "all" && (
-            <Button
-              onClick={() => setIsCreateDialogOpen(true)}
-              variant="outline"
-              className="mt-4"
-            >
-              Create your first note
-            </Button>
-          )}
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredNotes.map((note) => {
-            const handleCardClick = (e: React.MouseEvent) => {
-              if (isMultiSelectMode) {
-                toggleSelection(note.id);
-              } else {
-                openEditDialog(note);
-              }
-            };
-
-            return (
-              <Card
-                key={note.id}
-                className={`p-6 hover:shadow-lg transition-all ${
-                  selectedIds.has(note.id) ? "ring-2 ring-[#00ff88]" : ""
-                } ${!isMultiSelectMode ? "cursor-pointer" : ""}`}
-                onClick={handleCardClick}
+      {/* Active Notes Grid */}
+      <div className="space-y-4">
+        {filteredActiveNotes.length === 0 ? (
+          <Card className="p-12 text-center">
+            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+              {searchQuery || filterJob !== "all" || filterContact !== "all"
+                ? "No notes found matching your filters"
+                : "No notes yet"}
+            </p>
+            {!searchQuery && filterJob === "all" && filterContact === "all" && (
+              <Button
+                onClick={() => setIsCreateDialogOpen(true)}
+                variant="outline"
+                className="mt-4"
               >
-                <div className="flex items-start gap-3 mb-3">
-                  {isMultiSelectMode && (
-                    <Checkbox
-                      checked={selectedIds.has(note.id)}
-                      onCheckedChange={() => toggleSelection(note.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-1"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3
-                      className="text-lg font-semibold line-clamp-1"
-                      style={{ fontFamily: "Kanit, sans-serif" }}
-                    >
-                      {note.title}
-                    </h3>
-                  </div>
-                  {!isMultiSelectMode && (
-                    <ItemActionsMenu
-                      onAction={(action) => handleItemAction(action, note.id)}
-                      actions={["edit", "delete", "select"]}
-                      triggerClassName="text-muted-foreground hover:text-foreground"
-                    />
-                  )}
-                </div>
+                Create your first note
+              </Button>
+            )}
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredActiveNotes.map((note) => renderNoteCard(note))}
+          </div>
+        )}
+      </div>
 
-              {note.content && (
-                <p
-                  className="text-sm text-muted-foreground mb-3 line-clamp-3"
-                  style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
-                >
-                  {note.content}
-                </p>
-              )}
-
-              {note.tags && (
-                <div className="flex items-center gap-2 mb-3">
-                  <Tag className="h-3 w-3 text-[#00ff88]" />
-                  <span className="text-xs text-muted-foreground">{note.tags}</span>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                {getJobName(note.jobId) && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[#00ff88]">Job:</span>
-                    <span>{getJobName(note.jobId)}</span>
-                  </div>
-                )}
-                {getContactName(note.contactId) && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[#00ff88]">Contact:</span>
-                    <span>{getContactName(note.contactId)}</span>
-                  </div>
-                )}
-                <div className="mt-2">
-                  {new Date(note.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-            </Card>
-            );
-          })}
-        </div>
-      )}
+      {/* Scroll-reveal footer for Archived/Rubbish navigation */}
+      <ScrollRevealFooter basePath="/notes" />
 
       {/* Create Note Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -602,13 +654,85 @@ export default function Notes() {
       </Dialog>
 
       {/* Multi-Select Bar */}
-      <MultiSelectBar
-        selectedCount={selectedIds.size}
-        onDelete={handleBatchDelete}
-        onCancel={() => {
-          setIsMultiSelectMode(false);
-          setSelectedIds(new Set());
+      {isMultiSelectMode && (
+        <MultiSelectBar
+          selectedCount={selectedIds.size}
+          onPrimaryAction={handleBatchDelete}
+          onCancel={() => {
+            setIsMultiSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+        />
+      )}
+
+      {/* Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={(open) => {
+          setArchiveDialogOpen(open);
+          if (!open) {
+            setArchiveTargetId(null);
+          }
         }}
+        onConfirm={() => {
+          if (!archiveTargetId) return;
+          archiveNoteMutation.mutate({ id: archiveTargetId });
+        }}
+        title="Archive"
+        description="Archive this note? You can restore it anytime from the archived view."
+        confirmLabel="Archive"
+        isDeleting={archiveNoteMutation.isPending}
+      />
+
+      {/* Delete (Move to Rubbish) Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={deleteToRubbishDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteToRubbishDialogOpen(open);
+          if (!open) {
+            setDeleteToRubbishTargetId(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!deleteToRubbishTargetId) return;
+          deleteToRubbishMutation.mutate({ id: deleteToRubbishTargetId });
+        }}
+        title="Delete"
+        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        confirmLabel="Delete"
+        isDeleting={deleteToRubbishMutation.isPending}
+      />
+
+      {/* Batch Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={batchDeleteDialogOpen}
+        onOpenChange={setBatchDeleteDialogOpen}
+        onConfirm={() => {
+          const ids = Array.from(selectedIds);
+          ids.forEach((id) => deleteToRubbishMutation.mutate({ id }));
+          setSelectedIds(new Set());
+          setIsMultiSelectMode(false);
+        }}
+        title="Delete"
+        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        confirmLabel="Delete"
+        isDeleting={deleteToRubbishMutation.isPending}
+      />
+
+      {/* Batch Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={batchArchiveDialogOpen}
+        onOpenChange={setBatchArchiveDialogOpen}
+        onConfirm={() => {
+          const ids = Array.from(selectedIds);
+          ids.forEach((id) => archiveNoteMutation.mutate({ id }));
+          setSelectedIds(new Set());
+          setIsMultiSelectMode(false);
+        }}
+        title="Archive"
+        description={`Archive ${selectedIds.size} note${selectedIds.size > 1 ? "s" : ""}? You can restore them anytime.`}
+        confirmLabel="Archive"
+        isDeleting={archiveNoteMutation.isPending}
       />
     </div>
   );

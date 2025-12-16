@@ -39,7 +39,7 @@ interface Project {
   status: "planned" | "active" | "completed" | "archived";
   startDate: Date | null;
   endDate: Date | null;
-  scheduledDates: string[] | null;
+  scheduledDates: string[] | string | null;
 }
 
 interface EditProjectDialogProps {
@@ -49,7 +49,7 @@ interface EditProjectDialogProps {
   onRequestAddContact?: () => void;
 }
 
-type ProjectStatus = "planned" | "active" | "completed" | "archived";
+type ProjectStatus = "planned" | "active" | "completed";
 
 export function EditProjectDialog({ open, onOpenChange, project, onRequestAddContact }: EditProjectDialogProps) {
   const [name, setName] = useState(project.name);
@@ -57,11 +57,27 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
   const [clientId, setClientId] = useState<number | null>(project.clientId);
   const [description, setDescription] = useState(project.description || "");
   const [address, setAddress] = useState(project.address || "");
-  const [status, setStatus] = useState<ProjectStatus>(project.status);
+  const [status, setStatus] = useState<ProjectStatus>(project.status === "archived" ? "active" : project.status);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const { data: contacts = [] } = trpc.contacts.list.useQuery(undefined, {
     enabled: open,
   });
+
+  const coerceScheduledDates = (value: Project["scheduledDates"]): string[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter((d): d is string => typeof d === "string");
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((d): d is string => typeof d === "string");
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return [];
+  };
 
   // Reset form when project changes
   useEffect(() => {
@@ -70,9 +86,11 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
     setClientId(project.clientId);
     setDescription(project.description || "");
     setAddress(project.address || "");
-    setStatus(project.status);
+    setStatus(project.status === "archived" ? "active" : project.status);
 
-    const explicitDates = project.scheduledDates?.map((date) => new Date(date)) ?? [];
+    const explicitDates = coerceScheduledDates(project.scheduledDates)
+      .map((date) => new Date(date))
+      .filter((date) => !Number.isNaN(date.getTime()));
     if (explicitDates.length > 0) {
       setSelectedDates(explicitDates);
     } else {
@@ -228,7 +246,6 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
                   <SelectItem value="planned">Planned</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
             </div>

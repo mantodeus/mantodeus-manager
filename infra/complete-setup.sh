@@ -58,7 +58,7 @@ if command -v pm2 > /dev/null 2>&1; then
 else
   echo "  ⚠️  PM2 is not installed"
   echo "  💡 Install with: npm install -g pm2"
-  echo "  💡 Or continue without PM2 (Infomaniak may manage the process differently)"
+  echo "  💡 Or continue without PM2 (you'll need some process manager to run the server)"
 fi
 echo ""
 
@@ -165,7 +165,7 @@ if [ "$APP_RUNNING" = false ]; then
   echo "⚠️  Application is not responding on port 3000"
   echo "   This might be normal if:"
   echo "   - Application runs on a different port"
-  echo "   - Application is managed by Infomaniak (not PM2)"
+  echo "   - Application is managed by a different process manager (not PM2)"
   echo "   - Application needs to be started"
   echo ""
 fi

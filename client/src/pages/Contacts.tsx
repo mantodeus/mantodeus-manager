@@ -1,3 +1,10 @@
+/**
+ * Contacts List Page
+ * 
+ * Displays all active contacts for the current user.
+ * Pull-down reveal provides navigation to archived/rubbish views.
+ */
+
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -5,13 +12,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Mail, MapPin, Phone, Plus, Map } from "lucide-react";
+import { Mail, MapPin, Phone, Plus, Map, Loader2, Users } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 
 export default function Contacts() {
   const { user } = useAuth();
@@ -24,6 +33,14 @@ export default function Contacts() {
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Confirmation dialogs
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiveTargetId, setArchiveTargetId] = useState<number | null>(null);
+  const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
+  const [deleteToRubbishTargetId, setDeleteToRubbishTargetId] = useState<number | null>(null);
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [batchArchiveDialogOpen, setBatchArchiveDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -32,12 +49,36 @@ export default function Contacts() {
     notes: "",
   });
 
-  const { data: contacts = [], refetch } = trpc.contacts.list.useQuery();
+  const utils = trpc.useUtils();
+  const { data: activeContacts = [], isLoading: activeLoading } = trpc.contacts.list.useQuery();
   const createMutation = trpc.contacts.create.useMutation();
   const updateMutation = trpc.contacts.update.useMutation();
-  const deleteMutation = trpc.contacts.delete.useMutation();
+  const archiveMutation = trpc.contacts.archive.useMutation({
+    onSuccess: () => {
+      toast.success("Archived. You can restore this later.");
+      invalidateContactLists();
+    },
+    onError: (error) => {
+      toast.error("Failed to archive contact: " + error.message);
+    },
+  });
+  const deleteToRubbishMutation = trpc.contacts.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Deleted. You can restore this later from the Rubbish bin.");
+      invalidateContactLists();
+    },
+    onError: (error) => {
+      toast.error("Failed to delete contact: " + error.message);
+    },
+  });
 
-  const filteredContacts = contacts.filter((contact) =>
+  const invalidateContactLists = () => {
+    utils.contacts.list.invalidate();
+    utils.contacts.listArchived.invalidate();
+    utils.contacts.listTrashed.invalidate();
+  };
+
+  const filteredActiveContacts = activeContacts.filter((contact) =>
     contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -74,7 +115,7 @@ export default function Contacts() {
       setFormData({ name: "", email: "", phone: "", address: "", notes: "" });
       setEditingId(null);
       setIsDialogOpen(false);
-      refetch();
+      invalidateContactLists();
       if (!editingId && newlyCreatedId && returnTo) {
         const redirectUrl = new URL(returnTo, window.location.origin);
         redirectUrl.searchParams.set("prefillClientId", newlyCreatedId.toString());
@@ -88,7 +129,7 @@ export default function Contacts() {
     }
   };
 
-  const handleEdit = (contact: typeof contacts[0]) => {
+  const handleEdit = (contact: typeof activeContacts[0]) => {
     setFormData({
       name: contact.name,
       email: contact.email || "",
@@ -106,47 +147,31 @@ export default function Contacts() {
     setIsDialogOpen(false);
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("Are you sure you want to delete this contact?")) {
-      try {
-        await deleteMutation.mutateAsync({ id });
-        toast.success("Contact deleted successfully");
-        refetch();
-      } catch (error) {
-        toast.error("Failed to delete contact");
-      }
-    }
-  };
-
   const handleBatchDelete = async () => {
     if (selectedIds.size === 0) return;
-    
-    const count = selectedIds.size;
-    if (confirm(`Are you sure you want to delete ${count} contact${count > 1 ? 's' : ''}?`)) {
-      try {
-        selectedIds.forEach(async (id) => {
-          await deleteMutation.mutateAsync({ id });
-        });
-        toast.success(`${count} contact${count > 1 ? 's' : ''} deleted successfully`);
-        setSelectedIds(new Set());
-        setIsMultiSelectMode(false);
-        refetch();
-      } catch (error) {
-        toast.error("Failed to delete contacts");
-      }
-    }
+    setBatchDeleteDialogOpen(true);
+  };
+
+  const handleBatchArchive = async () => {
+    if (selectedIds.size === 0) return;
+    setBatchArchiveDialogOpen(true);
   };
 
   const handleItemAction = (action: ItemAction, contactId: number) => {
-    const contact = contacts.find((c) => c.id === contactId);
+    const contact = activeContacts.find((c) => c.id === contactId);
     if (!contact) return;
 
     switch (action) {
       case "edit":
         handleEdit(contact);
         break;
-      case "delete":
-        handleDelete(contactId);
+      case "archive":
+        setArchiveTargetId(contactId);
+        setArchiveDialogOpen(true);
+        break;
+      case "moveToTrash":
+        setDeleteToRubbishTargetId(contactId);
+        setDeleteToRubbishDialogOpen(true);
         break;
       case "select":
         setIsMultiSelectMode(true);
@@ -162,9 +187,9 @@ export default function Contacts() {
       setReturnTo(returnParam);
     }
     const focusParam = url.searchParams.get("contactId");
-    if (focusParam && contacts.length > 0) {
+    if (focusParam && activeContacts.length > 0) {
       const contactId = parseInt(focusParam, 10);
-      const focusContact = contacts.find((contact) => contact.id === contactId);
+      const focusContact = activeContacts.find((contact) => contact.id === contactId);
       if (focusContact) {
         handleEdit(focusContact);
       }
@@ -173,7 +198,7 @@ export default function Contacts() {
       const nextHref = nextSearch ? `${url.pathname}?${nextSearch}${url.hash}` : `${url.pathname}${url.hash}`;
       window.history.replaceState(null, "", nextHref);
     }
-  }, [location, contacts]);
+  }, [location, activeContacts]);
 
   const toggleSelection = (contactId: number) => {
     const newSelected = new Set(selectedIds);
@@ -184,6 +209,104 @@ export default function Contacts() {
     }
     setSelectedIds(newSelected);
   };
+
+  const renderContactCard = (contact: typeof activeContacts[0]) => {
+    const handleCardClick = () => {
+      if (isMultiSelectMode) {
+        toggleSelection(contact.id);
+      } else {
+        handleEdit(contact);
+      }
+    };
+
+    return (
+      <Card
+        key={contact.id}
+        className={`bg-[#0D0E10] border-[#0D0E10] p-4 hover:border-[#0D0E10] transition-all ${
+          selectedIds.has(contact.id) ? "ring-2 ring-[#0D0E10]" : ""
+        }`}
+        onClick={handleCardClick}
+      >
+        <div className="flex items-start gap-3 mb-3">
+          {isMultiSelectMode && (
+            <Checkbox
+              checked={selectedIds.has(contact.id)}
+              onCheckedChange={() => toggleSelection(contact.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="mt-1"
+            />
+          )}
+          <div className="flex-1">
+            <h3 className="font-regular text-lg">{contact.name}</h3>
+            {contact.address && (
+              <a 
+                href={contact.latitude && contact.longitude ? `/maps?contactId=${contact.id}` : '#'}
+                className={`text-gray-400 text-sm flex items-center gap-1 mt-1 ${contact.latitude && contact.longitude ? 'hover:text-[#00ff88] cursor-pointer transition-colors' : ''}`}
+                onClick={(e) => {
+                  if (!contact.latitude || !contact.longitude) {
+                    e.preventDefault();
+                  }
+                  e.stopPropagation();
+                }}
+              >
+                <MapPin className="w-3 h-3" />
+                {contact.address}
+              </a>
+            )}
+          </div>
+          {!isMultiSelectMode && (
+            <ItemActionsMenu
+              onAction={(action) => handleItemAction(action, contact.id)}
+              actions={["edit", "archive", "moveToTrash", "select"]}
+              triggerClassName="text-muted-foreground hover:text-foreground"
+            />
+          )}
+        </div>
+
+        <div className="space-y-2 text-sm text-gray-400">
+          {contact.email && (
+            <p className="flex items-center gap-2">
+              <Mail className="w-3 h-3" />
+              <a href={`mailto:${contact.email}`} className="hover:text-[#00ff88] transition-colors">
+                {contact.email}
+              </a>
+            </p>
+          )}
+          {contact.phone && (
+            <p className="flex items-center gap-2">
+              <Phone className="w-3 h-3" />
+              <a href={`tel:${contact.phone}`} className="hover:text-[#00ff88] transition-colors">
+                {contact.phone}
+              </a>
+            </p>
+          )}
+        </div>
+        
+        {!isMultiSelectMode && contact.latitude && contact.longitude && (
+          <div className="mt-3 pt-3 border-t border-[#0D0E10]">
+            <a href={`/maps?contactId=${contact.id}`}>
+              <Button variant="outline" size="sm" className="w-full">
+                <Map className="h-3 w-3 mr-2" />
+                View on Map
+              </Button>
+            </a>
+          </div>
+        )}
+
+        {contact.notes && (
+          <p className="text-gray-500 text-xs mt-3 pt-3 border-t border-[#0D0E10]">{contact.notes}</p>
+        )}
+      </Card>
+    );
+  };
+
+  if (activeLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -251,143 +374,133 @@ export default function Contacts() {
                   rows={3}
                 />
               </div>
-            <Button
-              onClick={handleSave}
-              disabled={createMutation.isPending || updateMutation.isPending}
-              className="w-full bg-[#00ff88] text-black hover:bg-[#00dd77]"
-            >
-              {editingId
-                ? updateMutation.isPending
-                  ? "Updating..."
-                  : "Update Contact"
-                : createMutation.isPending
-                ? "Creating..."
-                : "Create Contact"}
-            </Button>
+              <Button
+                onClick={handleSave}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="w-full bg-[#00ff88] text-black hover:bg-[#00dd77]"
+              >
+                {editingId
+                  ? updateMutation.isPending
+                    ? "Updating..."
+                    : "Update Contact"
+                  : createMutation.isPending
+                  ? "Creating..."
+                  : "Create Contact"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* Search */}
       <div>
         <Input
           placeholder="Search contacts..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="bg-[#0D0E10] border-[#0D0E10] mb-4"
+          className="bg-[#0D0E10] border-[#0D0E10]"
         />
       </div>
 
-      {filteredContacts.length === 0 ? (
-        <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
-          <p className="text-gray-400">No contacts found. Create your first contact to get started.</p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredContacts.map((contact) => {
-            const handleCardClick = () => {
-              if (isMultiSelectMode) {
-                toggleSelection(contact.id);
-              } else {
-                handleEdit(contact);
-              }
-            };
+      {/* Active Contacts Grid */}
+      <div className="space-y-4">
+        {filteredActiveContacts.length === 0 ? (
+          <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+            <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-gray-400">
+              {searchTerm ? "No contacts found matching your search." : "No contacts found. Create your first contact to get started."}
+            </p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredActiveContacts.map((contact) => renderContactCard(contact))}
+          </div>
+        )}
+      </div>
 
-            return (
-              <Card
-                key={contact.id}
-                className={`bg-[#0D0E10] border-[#0D0E10] p-4 hover:border-[#0D0E10] transition-all ${
-                  selectedIds.has(contact.id) ? "ring-2 ring-[#0D0E10]" : ""
-                }`}
-                onClick={handleCardClick}
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  {isMultiSelectMode && (
-                    <Checkbox
-                      checked={selectedIds.has(contact.id)}
-                      onCheckedChange={() => toggleSelection(contact.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-1"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <h3 
-                      className="font-regular text-lg"
-                    >
-                      {contact.name}
-                    </h3>
-                  {contact.address && (
-                    <a 
-                      href={contact.latitude && contact.longitude ? `/maps?contactId=${contact.id}` : '#'}
-                      className={`text-gray-400 text-sm flex items-center gap-1 mt-1 ${contact.latitude && contact.longitude ? 'hover:text-[#00ff88] cursor-pointer transition-colors' : ''}`}
-                      onClick={(e) => {
-                        if (!contact.latitude || !contact.longitude) {
-                          e.preventDefault();
-                        }
-                        e.stopPropagation();
-                      }}
-                    >
-                      <MapPin className="w-3 h-3" />
-                      {contact.address}
-                    </a>
-                  )}
-                </div>
-                {!isMultiSelectMode && (
-                  <ItemActionsMenu
-                    onAction={(action) => handleItemAction(action, contact.id)}
-                    actions={["edit", "delete", "select"]}
-                    triggerClassName="text-muted-foreground hover:text-foreground"
-                  />
-                )}
-              </div>
-
-              <div className="space-y-2 text-sm text-gray-400">
-                {contact.email && (
-                  <p className="flex items-center gap-2">
-                    <Mail className="w-3 h-3" />
-                    <a href={`mailto:${contact.email}`} className="hover:text-[#00ff88] transition-colors">
-                      {contact.email}
-                    </a>
-                  </p>
-                )}
-                {contact.phone && (
-                  <p className="flex items-center gap-2">
-                    <Phone className="w-3 h-3" />
-                    <a href={`tel:${contact.phone}`} className="hover:text-[#00ff88] transition-colors">
-                      {contact.phone}
-                    </a>
-                  </p>
-                )}
-              </div>
-              
-              {!isMultiSelectMode && contact.latitude && contact.longitude && (
-                <div className="mt-3 pt-3 border-t border-[#0D0E10]">
-                  <a href={`/maps?contactId=${contact.id}`}>
-                    <Button variant="outline" size="sm" className="w-full">
-                      <Map className="h-3 w-3 mr-2" />
-                      View on Map
-                    </Button>
-                  </a>
-                </div>
-              )}
-
-              {contact.notes && (
-                <p className="text-gray-500 text-xs mt-3 pt-3 border-t border-[#0D0E10]">{contact.notes}</p>
-              )}
-            </Card>
-            );
-          })}
-        </div>
-      )}
+      {/* Scroll-reveal footer for Archived/Rubbish navigation */}
+      <ScrollRevealFooter basePath="/contacts" />
 
       {/* Multi-Select Bar */}
-      <MultiSelectBar
-        selectedCount={selectedIds.size}
-        onDelete={handleBatchDelete}
-        onCancel={() => {
-          setIsMultiSelectMode(false);
-          setSelectedIds(new Set());
+      {isMultiSelectMode && (
+        <MultiSelectBar
+          selectedCount={selectedIds.size}
+          onPrimaryAction={handleBatchDelete}
+          onCancel={() => {
+            setIsMultiSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+        />
+      )}
+
+      {/* Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={(open) => {
+          setArchiveDialogOpen(open);
+          if (!open) {
+            setArchiveTargetId(null);
+          }
         }}
+        onConfirm={() => {
+          if (!archiveTargetId) return;
+          archiveMutation.mutate({ id: archiveTargetId });
+        }}
+        title="Archive"
+        description="Archive this contact? You can restore it anytime from the archived view."
+        confirmLabel="Archive"
+        isDeleting={archiveMutation.isPending}
+      />
+
+      {/* Delete (Move to Rubbish) Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={deleteToRubbishDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteToRubbishDialogOpen(open);
+          if (!open) {
+            setDeleteToRubbishTargetId(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!deleteToRubbishTargetId) return;
+          deleteToRubbishMutation.mutate({ id: deleteToRubbishTargetId });
+        }}
+        title="Delete"
+        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        confirmLabel="Delete"
+        isDeleting={deleteToRubbishMutation.isPending}
+      />
+
+      {/* Batch Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={batchDeleteDialogOpen}
+        onOpenChange={setBatchDeleteDialogOpen}
+        onConfirm={() => {
+          const ids = Array.from(selectedIds);
+          ids.forEach((id) => deleteToRubbishMutation.mutate({ id }));
+          setSelectedIds(new Set());
+          setIsMultiSelectMode(false);
+        }}
+        title="Delete"
+        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        confirmLabel="Delete"
+        isDeleting={deleteToRubbishMutation.isPending}
+      />
+
+      {/* Batch Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={batchArchiveDialogOpen}
+        onOpenChange={setBatchArchiveDialogOpen}
+        onConfirm={() => {
+          const ids = Array.from(selectedIds);
+          ids.forEach((id) => archiveMutation.mutate({ id }));
+          setSelectedIds(new Set());
+          setIsMultiSelectMode(false);
+        }}
+        title="Archive"
+        description={`Archive ${selectedIds.size} contact${selectedIds.size > 1 ? "s" : ""}? You can restore them anytime.`}
+        confirmLabel="Archive"
+        isDeleting={archiveMutation.isPending}
       />
     </div>
   );

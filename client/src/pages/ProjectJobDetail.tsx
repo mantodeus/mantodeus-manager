@@ -27,7 +27,6 @@ export default function ProjectJobDetail() {
   const jobId = params?.jobId ? parseInt(params.jobId) : 0;
   const [editJobDialogOpen, setEditJobDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
 
   const { data: project, isLoading: projectLoading } = trpc.projects.getById.useQuery({ id: projectId });
   const { data: job, isLoading: jobLoading } = trpc.projects.jobs.get.useQuery({ projectId, jobId });
@@ -263,13 +262,9 @@ export default function ProjectJobDetail() {
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           onConfirm={confirmDeleteJob}
-          title="Permanently Delete Job"
-          description="This action cannot be undone. This will permanently delete the job and remove all associated data from our servers."
-          warning={`This will delete ${files?.length || 0} file${(files?.length || 0) !== 1 ? 's' : ''} associated with this job.`}
-          requireTypeToConfirm={job.title}
-          confirmValue={deleteConfirmValue}
-          onConfirmValueChange={setDeleteConfirmValue}
-          confirmLabel="Delete Job Permanently"
+          title="Delete permanently"
+          description="This action cannot be undone."
+          confirmLabel="Delete permanently"
           isDeleting={deleteJob.isPending}
         />
       )}

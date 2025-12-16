@@ -215,7 +215,7 @@ export default function Jobs() {
             setIsMultiSelectMode(false);
             setSelectedIds(new Set());
           }}
-          onDelete={handleBatchDelete}
+          onPrimaryAction={handleBatchDelete}
         />
       )}
 

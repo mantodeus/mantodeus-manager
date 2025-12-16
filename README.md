@@ -459,27 +459,19 @@ Max file size: **50 MB**
 
 ## Deployment
 
-### Infomaniak Deployment
+### Production Deployment (PM2)
 
-This project uses **Infomaniak's Node.js application manager** for process control.
+This project uses **PM2** for process control. The deployment script builds and restarts the running process.
 
 **Deployment Process:**
-1. **Deploy via SSH** (builds the application):
+1. **Deploy via SSH** (pull + install + build + restart):
    ```bash
    ssh mantodeus-server 'cd /srv/customer/sites/manager.mantodeus.com && bash infra/production/deploy-production.sh'
    ```
 
-2. **Restart in Infomaniak Control Panel**:
-   - Log into [Infomaniak control panel](https://www.infomaniak.com/)
-   - Navigate to: **Web Hosting** → **Node.js Applications**
-   - Find: `manager.mantodeus.com`
-   - Click: **"Restart Application"**
-
 **Important:**
-- Deployment scripts **only build** - they do NOT start the server
-- Server process management is handled **exclusively by Infomaniak**
-- The server reads `PORT` from `process.env.PORT` (set by Infomaniak)
-- Environment variables are loaded from `.env` file at runtime
+- Default PM2 process name: `mantodeus-manager`
+- Override with: `PM2_APP_NAME=<name> bash infra/production/deploy-production.sh`
 
 See **[INFOMANIAK_DEPLOYMENT.md](INFOMANIAK_DEPLOYMENT.md)** for detailed deployment instructions.
 

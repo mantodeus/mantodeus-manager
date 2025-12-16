@@ -45,11 +45,11 @@ pnpm run build  # Rebuild frontend and backend
 After rebuilding, deploy the new code to your Infomaniak server:
 
 ```bash
-# SSH to server (if possible) or use Infomaniak dashboard
+# SSH to server
 git pull origin main
 pnpm install
 pnpm run build
-# Restart the application via Infomaniak dashboard
+npx pm2 restart mantodeus-manager
 ```
 
 ### 4. Verify the Fix
