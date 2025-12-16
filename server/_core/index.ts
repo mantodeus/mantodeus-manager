@@ -46,6 +46,29 @@ async function startServer() {
     console.log(`Starting production server from: ${__dirname}`);
   }
 
+  // Initialize database schemas once at startup (not on every query)
+  try {
+    console.log("[Server] Initializing database schemas...");
+    const { 
+      ensureProjectsSchema, 
+      ensureContactsSchema, 
+      ensureFileMetadataSchema,
+      ensureImagesSchema,
+      ensureNotesSchema 
+    } = await import("./schemaGuards");
+    
+    await Promise.all([
+      ensureProjectsSchema(),
+      ensureContactsSchema(),
+      ensureFileMetadataSchema(),
+      ensureImagesSchema(),
+      ensureNotesSchema(),
+    ]);
+    console.log("[Server] ✅ Database schemas initialized");
+  } catch (error) {
+    console.error("[Server] ⚠️ Schema initialization failed (continuing anyway):", error);
+  }
+
   const app = express();
   const server = createServer(app);
 
