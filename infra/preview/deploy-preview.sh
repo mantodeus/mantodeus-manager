@@ -117,8 +117,21 @@ fi
 # Step 5: Restart application (PM2)
 echo ""
 echo "🔄 Restarting PM2 process: $PM2_APP_NAME"
-if ! npx pm2 restart "$PM2_APP_NAME"; then
-  error_exit "PM2 restart failed (process: $PM2_APP_NAME)"
+
+# Check if PM2 process exists, if not start it, otherwise restart
+if npx pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1; then
+  echo "📦 Process exists, restarting..."
+  if ! npx pm2 restart "$PM2_APP_NAME" --update-env; then
+    error_exit "PM2 restart failed (process: $PM2_APP_NAME)"
+  fi
+else
+  echo "📦 Process not found, starting new process..."
+  # Start the application with PM2
+  if ! npx pm2 start dist/index.js --name "$PM2_APP_NAME" --node-args="--env-file=.env"; then
+    error_exit "PM2 start failed (process: $PM2_APP_NAME)"
+  fi
+  # Save PM2 process list so it survives restarts
+  npx pm2 save || true
 fi
 
 echo ""

@@ -169,11 +169,22 @@ fi
 if [ "$DRY_RUN" = true ]; then
   json_output "{\"step\":\"restart\",\"status\":\"dry-run\"}"
 else
-  json_output "{\"step\":\"restart\",\"status\":\"restarting\"}"
-  if pm2 restart "$PM2_APP_NAME"; then
-    json_output "{\"step\":\"restart\",\"status\":\"success\"}"
+  # Check if PM2 process exists, if not start it, otherwise restart
+  if pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1; then
+    json_output "{\"step\":\"restart\",\"status\":\"restarting\"}"
+    if pm2 restart "$PM2_APP_NAME" --update-env; then
+      json_output "{\"step\":\"restart\",\"status\":\"success\"}"
+    else
+      error_exit "PM2 restart failed"
+    fi
   else
-    error_exit "PM2 restart failed"
+    json_output "{\"step\":\"restart\",\"status\":\"starting-new\"}"
+    if pm2 start dist/index.js --name "$PM2_APP_NAME" --node-args="--env-file=.env"; then
+      pm2 save || true
+      json_output "{\"step\":\"restart\",\"status\":\"success\"}"
+    else
+      error_exit "PM2 start failed"
+    fi
   fi
 fi
 
