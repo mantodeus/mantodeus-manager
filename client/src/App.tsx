@@ -17,6 +17,7 @@ import Contacts from "./pages/Contacts";
 import Invoices from "./pages/Invoices";
 import Notes from "./pages/Notes";
 import Maps from "./pages/Maps";
+import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import { useEffect } from "react";
 
@@ -107,6 +108,11 @@ function Router() {
       <Route path="/maps">
         <DashboardLayout>
           <Maps />
+        </DashboardLayout>
+      </Route>
+      <Route path="/settings">
+        <DashboardLayout>
+          <Settings />
         </DashboardLayout>
       </Route>
       <Route path="/404" component={NotFound} />

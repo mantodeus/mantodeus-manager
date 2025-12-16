@@ -28,6 +28,7 @@ import ProjectFileLightbox from "./ProjectFileLightbox";
 import { compressImage } from "@/lib/imageCompression";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { FileUploadDialog } from "@/components/FileUploadDialog";
 
 interface FileMetadata {
   id: number;
@@ -83,6 +84,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
   const [fileToDelete, setFileToDelete] = useState<number | null>(null);
   const [viewingFileId, setViewingFileId] = useState<number | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
 
@@ -118,20 +120,19 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
     },
   });
 
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files;
-    if (!selectedFiles || selectedFiles.length === 0) return;
+  const handleFileUpload = useCallback(async (files: File[], tags: string[]) => {
+    if (files.length === 0) return;
 
     setUploading(true);
     setUploadProgress(0);
     setUploadStatus("");
 
     try {
-      const totalFiles = selectedFiles.length;
+      const totalFiles = files.length;
       let completed = 0;
       let successCount = 0;
 
-      for (const file of Array.from(selectedFiles)) {
+      for (const file of files) {
         let fileToUpload = file;
         let mimeType = file.type;
 
@@ -173,6 +174,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
           filename: file.name, // Keep original name
           mimeType,
           base64Data,
+          tags: tags.length > 0 ? tags : undefined,
         });
 
         completed++;
@@ -182,6 +184,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
 
       if (successCount > 0) {
         toast.success(`${successCount} file${successCount > 1 ? 's' : ''} uploaded successfully`);
+        setUploadDialogOpen(false);
       }
     } catch (error) {
       console.error("Upload error:", error);
@@ -191,10 +194,6 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
       setUploading(false);
       setUploadProgress(0);
       setUploadStatus("");
-      // Reset input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
   }, [projectId, jobId, uploadFile]);
 
@@ -270,30 +269,19 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
               {uploadStatus}
             </span>
           )}
-          <div className="relative">
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={handleFileSelect}
-              disabled={uploading}
-              accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
-              multiple
-            />
-            <Button disabled={uploading}>
-              {uploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {uploadProgress}%
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Upload Files
-                </>
-              )}
-            </Button>
-          </div>
+          <Button onClick={() => setUploadDialogOpen(true)} disabled={uploading}>
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {uploadProgress}%
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4 mr-2" />
+                Upload Files
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -302,20 +290,10 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Upload className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">No files uploaded yet.</p>
-            <div className="relative">
-              <input
-                type="file"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                onChange={handleFileSelect}
-                disabled={uploading}
-                accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
-                multiple
-              />
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload First File
-              </Button>
-            </div>
+            <Button variant="outline" onClick={() => setUploadDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload First File
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -454,6 +432,12 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
           isDeleting={deleteFile.isPending}
         />
       )}
+      <FileUploadDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        onUpload={handleFileUpload}
+        isUploading={uploading}
+      />
     </div>
   );
 }

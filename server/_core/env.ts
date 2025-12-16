@@ -27,6 +27,16 @@ export const ENV = {
   s3Bucket: process.env.S3_BUCKET ?? "",
   s3AccessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
   s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
+
+  // PDF Service
+  puppeteerExecutablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+  pdfExpiryDefaultHours: Number(process.env.PDF_EXPIRY_DEFAULT_HOURS) || 168, // Default 7 days
+  defaultVatRate: Number(process.env.DEFAULT_VAT_RATE) || 19,
+  
+  // App configuration
+  appTitle: process.env.VITE_APP_TITLE || "Mantodeus Manager",
+  appLogo: process.env.VITE_APP_LOGO || "",
+  appUrl: process.env.VITE_APP_URL || process.env.OAUTH_SERVER_URL || "http://localhost:3000",
 };
 
 // Debug logging for env var presence (safe - doesn't expose secrets)

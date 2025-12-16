@@ -8,6 +8,7 @@ import { FileText, Plus, Upload, ExternalLink, Eye, Download } from "lucide-reac
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
+import { GenerateInvoiceDialog } from "@/components/GenerateInvoiceDialog";
 
 // Convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -35,11 +36,14 @@ export default function Invoices() {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [generateInvoiceDialogOpen, setGenerateInvoiceDialogOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
+  const { data: projects = [] } = trpc.projects.list.useQuery();
   const uploadMutation = trpc.invoices.upload.useMutation();
   const deleteMutation = trpc.invoices.delete.useMutation();
 
@@ -192,13 +196,35 @@ export default function Invoices() {
           <h1 className="text-3xl font-regular">Invoices</h1>
           <p className="text-gray-400 text-sm">Upload and manage invoice documents</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77]">
-              <Plus className="w-4 h-4 mr-2" />
-              Upload Invoice
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (projects.length === 0) {
+                toast.error("Please create a project first");
+                return;
+              }
+              if (projects.length === 1) {
+                setSelectedProjectId(projects[0].id);
+                setGenerateInvoiceDialogOpen(true);
+              } else {
+                // For multiple projects, show a selector
+                // For now, just use the first project
+                setSelectedProjectId(projects[0].id);
+                setGenerateInvoiceDialogOpen(true);
+              }
+            }}
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Generate Invoice
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77]">
+                <Plus className="w-4 h-4 mr-2" />
+                Upload Invoice
+              </Button>
+            </DialogTrigger>
           <DialogContent className="bg-[#1a1a1a] border-[#0D0E10]">
             <DialogHeader>
               <DialogTitle>Upload Invoice</DialogTitle>
@@ -413,6 +439,18 @@ export default function Invoices() {
             );
           })}
         </div>
+      )}
+      {selectedProjectId && (
+        <GenerateInvoiceDialog
+          open={generateInvoiceDialogOpen}
+          onOpenChange={(open) => {
+            setGenerateInvoiceDialogOpen(open);
+            if (!open) {
+              setSelectedProjectId(null);
+            }
+          }}
+          projectId={selectedProjectId}
+        />
       )}
     </div>
   );
