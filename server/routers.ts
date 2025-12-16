@@ -586,46 +586,70 @@ export const appRouter = router({
         notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        // Geocode address if provided and no coordinates given
-        let latitude = input.latitude;
-        let longitude = input.longitude;
-        
-        if (input.address && (!latitude || !longitude)) {
-          const geocodeResult = await geocodeAddress(input.address);
-          if (geocodeResult) {
-            latitude = geocodeResult.latitude;
-            longitude = geocodeResult.longitude;
+        try {
+          // Geocode address if provided and no coordinates given
+          let latitude = input.latitude;
+          let longitude = input.longitude;
+          
+          if (input.address && (!latitude || !longitude)) {
+            const geocodeResult = await geocodeAddress(input.address);
+            if (geocodeResult) {
+              latitude = geocodeResult.latitude;
+              longitude = geocodeResult.longitude;
+            }
           }
-        }
 
-        const result = await db.createContact({
-          name: input.name,
-          email: input.email || null,
-          phone: input.phone || null,
-          address: input.address || null,
-          latitude: latitude || null,
-          longitude: longitude || null,
-          notes: input.notes || null,
-          createdBy: ctx.user.id,
-        });
-        
-        const contactId = result[0].id;
-
-        // Auto-create map marker if coordinates exist
-        if (latitude && longitude) {
-          await db.createLocation({
+          const result = await db.createContact({
             name: input.name,
-            latitude,
-            longitude,
-            address: input.address,
-            type: "contact",
-            jobId: undefined,
-            contactId,
+            email: input.email || null,
+            phone: input.phone || null,
+            address: input.address || null,
+            latitude: latitude || null,
+            longitude: longitude || null,
+            notes: input.notes || null,
             createdBy: ctx.user.id,
           });
-        }
+          
+          if (!result || !result[0] || !result[0].id) {
+            console.error("[Contacts] createContact returned invalid result:", result);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to create contact: invalid response from database",
+            });
+          }
+          
+          const contactId = result[0].id;
 
-        return { success: true, id: contactId };
+          // Auto-create map marker if coordinates exist
+          if (latitude && longitude) {
+            try {
+              await db.createLocation({
+                name: input.name,
+                latitude,
+                longitude,
+                address: input.address,
+                type: "contact",
+                jobId: undefined,
+                contactId,
+                createdBy: ctx.user.id,
+              });
+            } catch (locationError) {
+              // Don't fail contact creation if location creation fails
+              console.warn("[Contacts] Failed to create location for contact:", locationError);
+            }
+          }
+
+          return { success: true, id: contactId };
+        } catch (error) {
+          console.error("[Contacts] createContact error:", error);
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: error instanceof Error ? error.message : "Failed to create contact",
+          });
+        }
       }),
     
     update: protectedProcedure
