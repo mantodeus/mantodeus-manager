@@ -62,17 +62,21 @@ fi
 echo ""
 echo "📦 Installing dependencies..."
 
-# Clean install to avoid corrupted node_modules issues (especially with optional deps like Tailwind)
-# Remove node_modules if it exists to force a clean install
-if [ -d "node_modules" ]; then
-  echo "🧹 Cleaning existing node_modules..."
-  rm -rf node_modules
-fi
-
+# Only clean node_modules if npm install fails (to avoid long cleanup times)
 # Use npm install with --no-audit --no-fund for shared hosting compatibility.
 # We must include devDependencies because Vite/esbuild are required to build.
 # --legacy-peer-deps helps with optional dependency issues
-npm install --no-audit --no-fund --include=dev --legacy-peer-deps || error_exit "npm install failed"
+if ! npm install --no-audit --no-fund --include=dev --legacy-peer-deps; then
+  echo "⚠️  First npm install failed, cleaning node_modules and retrying..."
+  # Use timeout to prevent hanging - 30 seconds max for cleanup
+  timeout 30 rm -rf node_modules 2>/dev/null || {
+    echo "⚠️  Cleanup timed out or failed, continuing anyway..."
+    # Try to remove just the problematic package if cleanup fails
+    rm -rf node_modules/@tailwindcss 2>/dev/null || true
+  }
+  echo "🔄 Retrying npm install..."
+  npm install --no-audit --no-fund --include=dev --legacy-peer-deps || error_exit "npm install failed after cleanup"
+fi
 
 # Step 4: Build the application
 echo ""
