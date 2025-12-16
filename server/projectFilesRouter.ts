@@ -436,7 +436,18 @@ export const projectFilesRouter = router({
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input, ctx }) => {
       await requireProjectAccess(ctx.user, input.projectId);
-      const files = await db.getFilesByProjectId(input.projectId);
+      const files = await db.getActiveFilesByProjectId(input.projectId);
+      return await Promise.all(files.map((file) => hydrateFileWithSignedUrls(file)));
+    }),
+
+  /**
+   * List files in Rubbish for a project
+   */
+  listTrashedByProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId);
+      const files = await db.getTrashedFilesByProjectId(input.projectId);
       return await Promise.all(files.map((file) => hydrateFileWithSignedUrls(file)));
     }),
 
@@ -448,28 +459,79 @@ export const projectFilesRouter = router({
     .query(async ({ input, ctx }) => {
       await requireProjectAccess(ctx.user, input.projectId);
       await verifyJobBelongsToProject(input.projectId, input.jobId);
-      const files = await db.getFilesByJobId(input.projectId, input.jobId);
+      const files = await db.getActiveFilesByJobId(input.projectId, input.jobId);
       return await Promise.all(files.map((file) => hydrateFileWithSignedUrls(file)));
     }),
 
   /**
-   * Delete a file from both S3 and the database
+   * List files in Rubbish for a job within a project
+   */
+  listTrashedByJob: protectedProcedure
+    .input(z.object({ projectId: z.number(), jobId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId);
+      await verifyJobBelongsToProject(input.projectId, input.jobId);
+      const files = await db.getTrashedFilesByJobId(input.projectId, input.jobId);
+      return await Promise.all(files.map((file) => hydrateFileWithSignedUrls(file)));
+    }),
+
+  /**
+   * Delete (move to Rubbish)
    */
   delete: protectedProcedure
     .input(z.object({ fileId: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const file = await db.getFileMetadataById(input.fileId);
-      
       if (!file) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: `File with id ${input.fileId} not found`,
         });
       }
-      
+
+      await requireProjectAccess(ctx.user, file.projectId);
+      await db.moveFileMetadataToTrash(input.fileId);
+      return { success: true };
+    }),
+
+  restoreFromTrash: protectedProcedure
+    .input(z.object({ fileId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const file = await db.getFileMetadataById(input.fileId);
+      if (!file) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `File with id ${input.fileId} not found`,
+        });
+      }
+
+      await requireProjectAccess(ctx.user, file.projectId);
+      await db.restoreFileMetadataFromTrash(input.fileId);
+      return { success: true };
+    }),
+
+  deletePermanently: protectedProcedure
+    .input(z.object({ fileId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const file = await db.getFileMetadataById(input.fileId);
+
+      if (!file) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `File with id ${input.fileId} not found`,
+        });
+      }
+
       // Verify project access
       await requireProjectAccess(ctx.user, file.projectId);
-      
+
+      if (!file.trashedAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Permanent delete is only allowed from Rubbish",
+        });
+      }
+
       // Delete from S3
       try {
         if (file.imageMetadata) {
@@ -480,12 +542,11 @@ export const projectFilesRouter = router({
       } catch (error) {
         console.error("[ProjectFiles] Failed to delete from S3:", error);
         // Continue with DB delete even if S3 delete fails
-        // The S3 file will be orphaned but we don't want to leave stale DB records
       }
-      
+
       // Delete from database
       await db.deleteFileMetadata(input.fileId);
-      
+
       return { success: true };
     }),
 

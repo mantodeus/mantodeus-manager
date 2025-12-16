@@ -560,6 +560,14 @@ export const appRouter = router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return await db.getContactsByUser(ctx.user.id);
     }),
+
+    listArchived: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getArchivedContactsByUser(ctx.user.id);
+    }),
+
+    listTrashed: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getTrashedContactsByUser(ctx.user.id);
+    }),
     
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -633,6 +641,13 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const { id, ...data } = input;
+        const existing = await db.getContactById(id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Contact not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to update this contact" });
+        }
         
         // Geocode address if being updated and no coordinates provided
         if (data.address && (!data.latitude || !data.longitude)) {
@@ -673,9 +688,75 @@ export const appRouter = router({
         return { success: true };
       }),
     
+    archive: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getContactById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Contact not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to archive this contact" });
+        }
+        await db.archiveContact(input.id);
+        return { success: true };
+      }),
+
+    restore: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getContactById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Contact not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to restore this contact" });
+        }
+        await db.restoreArchivedContact(input.id);
+        return { success: true };
+      }),
+
+    restoreFromTrash: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getContactById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Contact not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to restore this contact" });
+        }
+        await db.restoreContactFromTrash(input.id);
+        return { success: true };
+      }),
+
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getContactById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Contact not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to delete this contact" });
+        }
+        await db.moveContactToTrash(input.id);
+        return { success: true };
+      }),
+
+    deletePermanently: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getContactById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Contact not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to delete this contact" });
+        }
+        if (!existing.trashedAt) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Permanent delete is only allowed from Rubbish" });
+        }
         await db.deleteContact(input.id);
         return { success: true };
       }),
@@ -937,6 +1018,14 @@ export const appRouter = router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return await db.getNotesByUser(ctx.user.id);
     }),
+
+    listArchived: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getArchivedNotesByUser(ctx.user.id);
+    }),
+
+    listTrashed: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getTrashedNotesByUser(ctx.user.id);
+    }),
     
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -985,15 +1074,88 @@ export const appRouter = router({
         jobId: z.number().optional(),
         contactId: z.number().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { id, ...data } = input;
+        const existing = await db.getNoteById(id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to update this note" });
+        }
         await db.updateNote(id, data);
+        return { success: true };
+      }),
+
+    archive: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getNoteById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to archive this note" });
+        }
+        await db.archiveNote(input.id);
+        return { success: true };
+      }),
+
+    restore: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getNoteById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to restore this note" });
+        }
+        await db.restoreArchivedNote(input.id);
+        return { success: true };
+      }),
+
+    restoreFromTrash: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getNoteById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to restore this note" });
+        }
+        await db.restoreNoteFromTrash(input.id);
         return { success: true };
       }),
     
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getNoteById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to delete this note" });
+        }
+        await db.moveNoteToTrash(input.id);
+        return { success: true };
+      }),
+
+    deletePermanently: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getNoteById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to delete this note" });
+        }
+        if (!existing.trashedAt) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Permanent delete is only allowed from Rubbish" });
+        }
         await db.deleteNote(input.id);
         return { success: true };
       }),

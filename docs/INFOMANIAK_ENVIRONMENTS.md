@@ -261,49 +261,39 @@ The deployment script will:
 
 ## Process Management
 
-**⚠️ IMPORTANT: Process management is handled EXCLUSIVELY by Infomaniak's Node.js application manager.**
+**Process management is handled by PM2.**
 
-The deployment scripts **DO NOT** start or manage the server process. They only:
-- Pull latest code
-- Install dependencies
-- Build the application
+The deployment scripts will build and then restart the PM2 process.
 
 ### Starting/Stopping the Server
 
-**All server process management must be done via Infomaniak control panel:**
+Use PM2:
 
-1. Log into [Infomaniak control panel](https://www.infomaniak.com/)
-2. Navigate to: **Web Hosting** → **Node.js Applications**
-3. Find your application: `manager.mantodeus.com` (or preview)
-4. Use the control panel buttons:
-   - **Start Application**
-   - **Stop Application**
-   - **Restart Application** ← Use this after deployment
+```bash
+pm2 status
+pm2 logs mantodeus-manager --lines 200
+npx pm2 restart mantodeus-manager
+```
 
 ### After Deployment
 
-**After running the deployment script, you MUST restart the application in Infomaniak:**
+After running the deployment script, it will restart the PM2 process automatically. If you need to restart manually:
 
 ```bash
-# 1. Deploy (builds the app)
+# Deploy (pull + build + restart)
 cd ~/sites/manager.mantodeus.com
 bash infra/production/deploy-production.sh
-
-# 2. Then restart in Infomaniak control panel (see above)
 ```
 
-The server will:
-- Read `PORT` from `process.env.PORT` (set by Infomaniak automatically)
-- Load environment variables from `.env` file at runtime
-- Start via `npm start` (which runs `node dist/index.js`)
+The server loads environment variables from `.env` at runtime, and uses `process.env.PORT` if your host sets it.
 
 ### Disabled Scripts
 
 The following scripts are **disabled** and should NOT be used:
-- ❌ `infra/shared/run-background.sh` - Use Infomaniak restart instead
-- ❌ `infra/shared/stop-env.sh` - Use Infomaniak stop/restart instead
+- ❌ `infra/shared/run-background.sh` - Use PM2 + the deploy scripts instead
+- ❌ `infra/shared/stop-env.sh` - Use PM2 + the deploy scripts instead
 
-These scripts will exit with an error if called, directing you to use Infomaniak control panel.
+These scripts will exit with an error if called, directing you to use PM2.
 
 ---
 
@@ -361,9 +351,11 @@ In the Infomaniak control panel, configure the domain mappings:
 
 ### Server Won't Start
 
-1. **Check Infomaniak logs:**
-   - Infomaniak control panel → Node.js Application → Logs
-   - Or check application status in control panel
+1. **Check PM2 status/logs:**
+   ```bash
+   pm2 status
+   pm2 logs mantodeus-manager --lines 200
+   ```
 
 2. **Verify build output exists:**
    ```bash
@@ -375,9 +367,10 @@ In the Infomaniak control panel, configure the domain mappings:
    cat .env | grep -E "APP_ENV|VITE_SUPABASE|SUPABASE_SERVICE"
    ```
 
-4. **Restart in Infomaniak control panel:**
-   - Sometimes a restart fixes issues
-   - The control panel will show any startup errors
+4. **Restart via PM2:**
+   ```bash
+   npx pm2 restart mantodeus-manager
+   ```
 
 ### Build Fails
 
@@ -400,18 +393,15 @@ In the Infomaniak control panel, configure the domain mappings:
 
 ### Application Not Running
 
-If the application is not running in Infomaniak:
+If the application is not running under PM2:
 
-1. **Check Infomaniak control panel:**
-   - Navigate to Node.js Application
-   - Check application status
-   - View logs for errors
+1. **Check PM2 status/logs:**
+   ```bash
+   pm2 status
+   pm2 logs mantodeus-manager --lines 200
+   ```
 
-2. **Restart via Infomaniak control panel:**
-   - Click "Restart Application"
-   - Check logs after restart
-
-3. **Verify deployment completed:**
+2. **Verify deployment completed:**
    ```bash
    ls -la dist/index.js dist/public
    ```
@@ -472,16 +462,18 @@ ssh mantodeus-server 'tail -f /srv/customer/sites/manager-preview.mantodeus.com/
 ```
 
 ### Restart Production (After Deployment)
-1. Run deployment script (see "Deploy Production" above)
-2. Log into Infomaniak control panel
-3. Navigate to Node.js Application → manager.mantodeus.com
-4. Click "Restart Application"
+The production deploy script already restarts via PM2. If you need a manual restart:
+
+```bash
+ssh mantodeus-server 'npx pm2 restart mantodeus-manager'
+```
 
 ### Restart Preview (After Deployment)
-1. Run deployment script (see "Deploy Preview" above)
-2. Log into Infomaniak control panel
-3. Navigate to Node.js Application → manager-preview.mantodeus.com
-4. Click "Restart Application"
+The preview deploy script already restarts via PM2. If you need a manual restart:
+
+```bash
+ssh mantodeus-server 'npx pm2 restart mantodeus-manager'
+```
 
 ---
 
@@ -491,12 +483,12 @@ ssh mantodeus-server 'tail -f /srv/customer/sites/manager-preview.mantodeus.com/
 mantodeus-manager/
 ├── infra/
 │   ├── shared/
-│   │   ├── run-background.sh      # ⚠️ DISABLED - Use Infomaniak restart
-│   │   └── stop-env.sh            # ⚠️ DISABLED - Use Infomaniak stop/restart
+│   │   ├── run-background.sh      # ⚠️ DISABLED - Use PM2 instead
+│   │   └── stop-env.sh            # ⚠️ DISABLED - Use PM2 instead
 │   ├── production/
-│   │   └── deploy-production.sh   # Production deployment (builds only)
+│   │   └── deploy-production.sh   # Production deployment (build + restart)
 │   └── preview/
-│       └── deploy-preview.sh      # Preview deployment (builds only)
+│       └── deploy-preview.sh      # Preview deployment (build + restart)
 ├── scripts/
 │   ├── deploy-production-local.sh # Local helper (prints command)
 │   └── deploy-preview-local.sh     # Local helper (prints command)
@@ -510,9 +502,8 @@ mantodeus-manager/
 
 - All scripts use `#!/usr/bin/env bash` and `set -euo pipefail` for safety
 - Scripts output JSON status for easy parsing
-- **Process management is handled EXCLUSIVELY by Infomaniak** - deployment scripts only build
-- Both environments can run simultaneously (Infomaniak manages ports automatically)
+- **Process management is handled by PM2**
 - The preview environment defaults to the `main` branch but can be configured to use `develop` or any other branch
-- After deployment, always restart the application in Infomaniak control panel
-- The server reads `PORT` from `process.env.PORT` (set by Infomaniak), not from `.env` file
+- The deploy scripts restart the running PM2 process after building
+- The server reads `PORT` from `process.env.PORT` when provided by the host, otherwise falls back to `.env`/`3000`
 

@@ -13,9 +13,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Trash2, Copy, CheckSquare } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash } from "lucide-react";
 
-export type ItemAction = "edit" | "delete" | "duplicate" | "select";
+export type ItemAction =
+  | "edit"
+  | "delete"
+  | "duplicate"
+  | "select"
+  // Project lifecycle actions (Projects only)
+  | "archive"
+  | "restore"
+  | "moveToTrash"
+  | "deletePermanently";
 
 interface ItemActionsMenuProps {
   /** Callback when an action is selected */
@@ -44,6 +53,10 @@ export function ItemActionsMenu({
     delete: { icon: Trash2, label: "Delete", variant: "destructive" as const },
     duplicate: { icon: Copy, label: "Duplicate", variant: "default" as const },
     select: { icon: CheckSquare, label: "Select", variant: "default" as const },
+    archive: { icon: Archive, label: "Archive", variant: "default" as const },
+    restore: { icon: RotateCcw, label: "Restore", variant: "default" as const },
+    moveToTrash: { icon: Trash, label: "Delete", variant: "destructive" as const },
+    deletePermanently: { icon: Trash2, label: "Delete permanently (irreversible)", variant: "destructive" as const },
   };
 
   const handleAction = useCallback(

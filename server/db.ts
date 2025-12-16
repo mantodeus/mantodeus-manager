@@ -1,4 +1,4 @@
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, isNull, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { 
@@ -18,7 +18,7 @@ import {
   InsertInvoice, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate 
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
-import { ensureFileMetadataSchema, ensureProjectsSchema } from "./_core/schemaGuards";
+import { ensureContactsSchema, ensureFileMetadataSchema, ensureImagesSchema, ensureNotesSchema, ensureProjectsSchema } from "./_core/schemaGuards";
 
 type ProjectClientContact = Pick<Contact, "id" | "name" | "address" | "latitude" | "longitude">;
 export type ProjectWithClient = Project & { clientContact: ProjectClientContact | null };
@@ -31,9 +31,44 @@ const clientContactSelection = {
   longitude: contacts.longitude,
 };
 
+function safeJsonParse(value: unknown): unknown {
+  if (value == null) return null;
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeStringArray(value: unknown): string[] | null {
+  if (value == null) return null;
+  const parsed = safeJsonParse(value);
+  if (!Array.isArray(parsed)) return null;
+  const strings = parsed.filter((item): item is string => typeof item === "string");
+  return strings.length ? strings : [];
+}
+
+function normalizeProjectGeo(value: unknown): { lat: number; lng: number } | null {
+  if (value == null) return null;
+  const parsed = safeJsonParse(value);
+  if (!parsed || typeof parsed !== "object") return null;
+  const maybe = parsed as { lat?: unknown; lng?: unknown };
+  if (typeof maybe.lat !== "number" || typeof maybe.lng !== "number") return null;
+  return { lat: maybe.lat, lng: maybe.lng };
+}
+
 function mapProjectWithClient(row: { project: Project; clientContact: ProjectClientContact | null }): ProjectWithClient {
+  // MySQL JSON columns are frequently returned as strings by mysql2.
+  // Normalize them here so the API consistently returns typed JS values.
+  const projectAny = row.project as unknown as { scheduledDates?: unknown; geo?: unknown };
+  const scheduledDates = normalizeStringArray(projectAny.scheduledDates);
+  const geo = normalizeProjectGeo(projectAny.geo);
+
   return {
     ...row.project,
+    scheduledDates: scheduledDates ?? null,
+    geo: geo ?? null,
     clientContact: row.clientContact,
   };
 }
@@ -284,7 +319,7 @@ export async function deleteTask(taskId: number) {
 export async function createImage(image: InsertImage) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+  await ensureImagesSchema();
   const result = await db.insert(images).values(image);
   return result;
 }
@@ -503,12 +538,22 @@ export async function getAllUsers() {
 export async function getContactsByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(contacts).where(eq(contacts.createdBy, userId));
+  await ensureContactsSchema();
+  return db
+    .select()
+    .from(contacts)
+    .where(and(
+      eq(contacts.createdBy, userId),
+      isNull(contacts.archivedAt),
+      isNull(contacts.trashedAt)
+    ))
+    .orderBy(desc(contacts.updatedAt));
 }
 
 export async function getContactById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
+  await ensureContactsSchema();
   const result = await db.select().from(contacts).where(eq(contacts.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -516,6 +561,7 @@ export async function getContactById(id: number) {
 export async function createContact(data: InsertContact) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureContactsSchema();
   const result = await db.insert(contacts).values(data);
   return result;
 }
@@ -523,13 +569,84 @@ export async function createContact(data: InsertContact) {
 export async function updateContact(id: number, data: Partial<InsertContact>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureContactsSchema();
   return db.update(contacts).set(data).where(eq(contacts.id, id));
 }
 
 export async function deleteContact(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureContactsSchema();
   return db.delete(contacts).where(eq(contacts.id, id));
+}
+
+export async function getArchivedContactsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureContactsSchema();
+  return db
+    .select()
+    .from(contacts)
+    .where(and(
+      eq(contacts.createdBy, userId),
+      isNotNull(contacts.archivedAt),
+      isNull(contacts.trashedAt)
+    ))
+    .orderBy(desc(contacts.archivedAt), desc(contacts.updatedAt));
+}
+
+export async function getTrashedContactsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureContactsSchema();
+  return db
+    .select()
+    .from(contacts)
+    .where(and(
+      eq(contacts.createdBy, userId),
+      isNotNull(contacts.trashedAt)
+    ))
+    .orderBy(desc(contacts.trashedAt), desc(contacts.updatedAt));
+}
+
+export async function archiveContact(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureContactsSchema();
+  return db
+    .update(contacts)
+    .set({ archivedAt: new Date() })
+    .where(and(eq(contacts.id, id), isNull(contacts.archivedAt), isNull(contacts.trashedAt)));
+}
+
+export async function restoreArchivedContact(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureContactsSchema();
+  return db
+    .update(contacts)
+    .set({ archivedAt: null })
+    .where(and(eq(contacts.id, id), isNotNull(contacts.archivedAt), isNull(contacts.trashedAt)));
+}
+
+export async function moveContactToTrash(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureContactsSchema();
+  return db
+    .update(contacts)
+    .set({ trashedAt: new Date() })
+    .where(and(eq(contacts.id, id), isNull(contacts.trashedAt)));
+}
+
+export async function restoreContactFromTrash(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureContactsSchema();
+  return db
+    .update(contacts)
+    .set({ trashedAt: null })
+    .where(and(eq(contacts.id, id), isNotNull(contacts.trashedAt)));
 }
 
 // ===== JOB-CONTACT RELATIONSHIP QUERIES =====
@@ -596,24 +713,52 @@ export async function deleteInvoice(id: number) {
 export async function getNotesByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(notes).where(eq(notes.createdBy, userId));
+  await ensureNotesSchema();
+  return db
+    .select()
+    .from(notes)
+    .where(and(
+      eq(notes.createdBy, userId),
+      isNull(notes.archivedAt),
+      isNull(notes.trashedAt)
+    ))
+    .orderBy(desc(notes.updatedAt));
 }
 
 export async function getNotesByJob(jobId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(notes).where(eq(notes.jobId, jobId));
+  await ensureNotesSchema();
+  return db
+    .select()
+    .from(notes)
+    .where(and(
+      eq(notes.jobId, jobId),
+      isNull(notes.archivedAt),
+      isNull(notes.trashedAt)
+    ))
+    .orderBy(desc(notes.updatedAt));
 }
 
 export async function getNotesByContact(contactId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(notes).where(eq(notes.contactId, contactId));
+  await ensureNotesSchema();
+  return db
+    .select()
+    .from(notes)
+    .where(and(
+      eq(notes.contactId, contactId),
+      isNull(notes.archivedAt),
+      isNull(notes.trashedAt)
+    ))
+    .orderBy(desc(notes.updatedAt));
 }
 
 export async function getNoteById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
+  await ensureNotesSchema();
   const result = await db.select().from(notes).where(eq(notes.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -621,19 +766,91 @@ export async function getNoteById(id: number) {
 export async function createNote(data: InsertNote) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureNotesSchema();
   return db.insert(notes).values(data);
 }
 
 export async function updateNote(id: number, data: Partial<InsertNote>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureNotesSchema();
   return db.update(notes).set(data).where(eq(notes.id, id));
 }
 
 export async function deleteNote(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureNotesSchema();
   return db.delete(notes).where(eq(notes.id, id));
+}
+
+export async function getArchivedNotesByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureNotesSchema();
+  return db
+    .select()
+    .from(notes)
+    .where(and(
+      eq(notes.createdBy, userId),
+      isNotNull(notes.archivedAt),
+      isNull(notes.trashedAt)
+    ))
+    .orderBy(desc(notes.archivedAt), desc(notes.updatedAt));
+}
+
+export async function getTrashedNotesByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureNotesSchema();
+  return db
+    .select()
+    .from(notes)
+    .where(and(
+      eq(notes.createdBy, userId),
+      isNotNull(notes.trashedAt)
+    ))
+    .orderBy(desc(notes.trashedAt), desc(notes.updatedAt));
+}
+
+export async function archiveNote(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureNotesSchema();
+  return db
+    .update(notes)
+    .set({ archivedAt: new Date() })
+    .where(and(eq(notes.id, id), isNull(notes.archivedAt), isNull(notes.trashedAt)));
+}
+
+export async function restoreArchivedNote(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureNotesSchema();
+  return db
+    .update(notes)
+    .set({ archivedAt: null })
+    .where(and(eq(notes.id, id), isNotNull(notes.archivedAt), isNull(notes.trashedAt)));
+}
+
+export async function moveNoteToTrash(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureNotesSchema();
+  return db
+    .update(notes)
+    .set({ trashedAt: new Date() })
+    .where(and(eq(notes.id, id), isNull(notes.trashedAt)));
+}
+
+export async function restoreNoteFromTrash(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureNotesSchema();
+  return db
+    .update(notes)
+    .set({ trashedAt: null })
+    .where(and(eq(notes.id, id), isNotNull(notes.trashedAt)));
 }
 
 // ===== LOCATIONS QUERIES =====
@@ -904,7 +1121,11 @@ export async function getProjectsByUser(userId: number): Promise<ProjectWithClie
     })
     .from(projects)
     .leftJoin(contacts, eq(projects.clientId, contacts.id))
-    .where(eq(projects.createdBy, userId))
+    .where(and(
+      eq(projects.createdBy, userId),
+      isNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ))
     .orderBy(desc(projects.createdAt));
 
   return rows.map(mapProjectWithClient);
@@ -922,7 +1143,93 @@ export async function getAllProjects(): Promise<ProjectWithClient[]> {
     })
     .from(projects)
     .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(and(
+      isNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ))
     .orderBy(desc(projects.createdAt));
+
+  return rows.map(mapProjectWithClient);
+}
+
+export async function getArchivedProjectsByUser(userId: number): Promise<ProjectWithClient[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  const rows = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(and(
+      eq(projects.createdBy, userId),
+      isNotNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ))
+    .orderBy(desc(projects.archivedAt), desc(projects.updatedAt));
+
+  return rows.map(mapProjectWithClient);
+}
+
+export async function getAllArchivedProjects(): Promise<ProjectWithClient[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  const rows = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(and(
+      isNotNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ))
+    .orderBy(desc(projects.archivedAt), desc(projects.updatedAt));
+
+  return rows.map(mapProjectWithClient);
+}
+
+export async function getTrashedProjectsByUser(userId: number): Promise<ProjectWithClient[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  const rows = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(and(
+      eq(projects.createdBy, userId),
+      isNotNull(projects.trashedAt)
+    ))
+    .orderBy(desc(projects.trashedAt), desc(projects.updatedAt));
+
+  return rows.map(mapProjectWithClient);
+}
+
+export async function getAllTrashedProjects(): Promise<ProjectWithClient[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  const rows = await db
+    .select({
+      project: projects,
+      clientContact: clientContactSelection,
+    })
+    .from(projects)
+    .leftJoin(contacts, eq(projects.clientId, contacts.id))
+    .where(isNotNull(projects.trashedAt))
+    .orderBy(desc(projects.trashedAt), desc(projects.updatedAt));
 
   return rows.map(mapProjectWithClient);
 }
@@ -947,11 +1254,55 @@ export async function deleteProject(projectId: number) {
 export async function archiveProject(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   await ensureProjectsSchema();
   return await db.update(projects)
-    .set({ status: "archived" })
-    .where(eq(projects.id, projectId));
+    .set({ archivedAt: new Date() })
+    .where(and(
+      eq(projects.id, projectId),
+      isNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ));
+}
+
+export async function restoreArchivedProject(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  return await db.update(projects)
+    .set({ archivedAt: null })
+    .where(and(
+      eq(projects.id, projectId),
+      isNotNull(projects.archivedAt),
+      isNull(projects.trashedAt)
+    ));
+}
+
+export async function moveProjectToTrash(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  return await db.update(projects)
+    .set({ trashedAt: new Date() })
+    .where(and(
+      eq(projects.id, projectId),
+      isNull(projects.trashedAt)
+    ));
+}
+
+export async function restoreProjectFromTrash(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureProjectsSchema();
+  return await db.update(projects)
+    .set({ trashedAt: null })
+    .where(and(
+      eq(projects.id, projectId),
+      isNotNull(projects.trashedAt)
+    ));
 }
 
 // ===== PROJECT JOBS QUERIES =====
@@ -1042,6 +1393,66 @@ export async function getFilesByJobId(projectId: number, jobId: number) {
       eq(fileMetadata.jobId, jobId)
     ))
     .orderBy(desc(fileMetadata.uploadedAt));
+}
+
+export async function getActiveFilesByProjectId(projectId: number) {
+  const db = await getFileMetadataDb();
+  return await db
+    .select()
+    .from(fileMetadata)
+    .where(and(eq(fileMetadata.projectId, projectId), isNull(fileMetadata.trashedAt)))
+    .orderBy(desc(fileMetadata.uploadedAt));
+}
+
+export async function getTrashedFilesByProjectId(projectId: number) {
+  const db = await getFileMetadataDb();
+  return await db
+    .select()
+    .from(fileMetadata)
+    .where(and(eq(fileMetadata.projectId, projectId), isNotNull(fileMetadata.trashedAt)))
+    .orderBy(desc(fileMetadata.trashedAt), desc(fileMetadata.uploadedAt));
+}
+
+export async function getActiveFilesByJobId(projectId: number, jobId: number) {
+  const db = await getFileMetadataDb();
+  return await db
+    .select()
+    .from(fileMetadata)
+    .where(and(
+      eq(fileMetadata.projectId, projectId),
+      eq(fileMetadata.jobId, jobId),
+      isNull(fileMetadata.trashedAt)
+    ))
+    .orderBy(desc(fileMetadata.uploadedAt));
+}
+
+export async function getTrashedFilesByJobId(projectId: number, jobId: number) {
+  const db = await getFileMetadataDb();
+  return await db
+    .select()
+    .from(fileMetadata)
+    .where(and(
+      eq(fileMetadata.projectId, projectId),
+      eq(fileMetadata.jobId, jobId),
+      isNotNull(fileMetadata.trashedAt)
+    ))
+    .orderBy(desc(fileMetadata.trashedAt), desc(fileMetadata.uploadedAt));
+}
+
+export async function moveFileMetadataToTrash(fileId: number) {
+  const db = await getFileMetadataDb();
+  return await db
+    .update(fileMetadata)
+    .set({ trashedAt: new Date() })
+    .where(and(eq(fileMetadata.id, fileId), isNull(fileMetadata.trashedAt)));
+}
+
+export async function restoreFileMetadataFromTrash(fileId: number) {
+  const db = await getFileMetadataDb();
+  return await db
+    .update(fileMetadata)
+    .set({ trashedAt: null })
+    .where(and(eq(fileMetadata.id, fileId), isNotNull(fileMetadata.trashedAt)));
 }
 
 export async function deleteFileMetadata(fileId: number) {

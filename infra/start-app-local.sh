@@ -31,7 +31,7 @@ else
     echo "📦 Installing PM2 locally..."
     npm install pm2 --save-dev || {
       echo "❌ Failed to install PM2"
-      echo "   Trying alternative: Check if Infomaniak manages the process"
+      echo "   Trying alternative: use a global PM2 install or a different process manager"
       exit 1
     }
     PM2_CMD="./node_modules/.bin/pm2"

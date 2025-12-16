@@ -1,18 +1,19 @@
 /**
  * Projects List Page
  * 
- * Displays all projects for the current user with:
+ * Displays all active projects for the current user with:
  * - Grid of project cards
  * - Status badges
- * - Quick actions (edit, delete)
+ * - Quick actions (edit, archive, delete)
  * - Create new project button
+ * - Pull-down reveal for archived/rubbish navigation (Telegram-style)
  */
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen } from "lucide-react";
+import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen, Archive } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";
@@ -20,19 +21,30 @@ import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 
 type ProjectListItem = RouterOutputs["projects"]["list"][number];
 
 export default function Projects() {
   const [location, setLocation] = useLocation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const { data: projects, isLoading } = trpc.projects.list.useQuery();
+  
+  const { data: activeProjects, isLoading: activeLoading } = trpc.projects.list.useQuery();
   const utils = trpc.useUtils();
   const [prefillClientId, setPrefillClientId] = useState<number | null>(null);
 
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Delete confirmation dialogs
+  const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
+  const [deleteToRubbishTargetId, setDeleteToRubbishTargetId] = useState<number | null>(null);
+
+  // Archive confirmation dialog
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiveTargetId, setArchiveTargetId] = useState<number | null>(null);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -70,23 +82,29 @@ export default function Projects() {
     setLocation(`/contacts?returnTo=${encodeURIComponent(returnToPath)}`);
   };
 
-  const archiveProjectMutation = trpc.projects.archive.useMutation({
+  const invalidateProjectLists = () => {
+    utils.projects.list.invalidate();
+    utils.projects.listArchived.invalidate();
+    utils.projects.listTrashed.invalidate();
+  };
+
+  const archiveProjectMutation = trpc.projects.archiveProject.useMutation({
     onSuccess: () => {
-      toast.success("Project archived successfully");
-      utils.projects.list.invalidate();
+      toast.success("Archived. You can restore this later.");
+      invalidateProjectLists();
     },
     onError: (error) => {
       toast.error(`Failed to archive project: ${error.message}`);
     },
   });
 
-  const deleteProjectMutation = trpc.projects.delete.useMutation({
+  const moveProjectToTrashMutation = trpc.projects.moveProjectToTrash.useMutation({
     onSuccess: () => {
-      toast.success("Project deleted successfully");
-      utils.projects.list.invalidate();
+      toast.success("Deleted. You can restore this later from the Rubbish bin.");
+      invalidateProjectLists();
     },
     onError: (error) => {
-      toast.error(`Failed to delete project: ${error.message}`);
+      toast.error(`Failed to delete: ${error.message}`);
     },
   });
 
@@ -105,18 +123,18 @@ export default function Projects() {
     }
   };
 
-  const formatDate = (date: Date | null) => {
-    if (!date) return "Not set";
-    return new Date(date).toLocaleDateString();
-  };
-
   const handleItemAction = (action: ItemAction, projectId: number) => {
     switch (action) {
       case "edit":
         window.location.href = `/projects/${projectId}`;
         break;
-      case "delete":
-        handleArchiveProject(projectId);
+      case "archive":
+        setArchiveTargetId(projectId);
+        setArchiveDialogOpen(true);
+        break;
+      case "moveToTrash":
+        setDeleteToRubbishTargetId(projectId);
+        setDeleteToRubbishDialogOpen(true);
         break;
       case "select":
         setIsMultiSelectMode(true);
@@ -125,23 +143,16 @@ export default function Projects() {
     }
   };
 
-  const handleArchiveProject = (projectId: number) => {
-    if (confirm("Are you sure you want to archive this project? You can still view it in archived projects.")) {
-      archiveProjectMutation.mutate({ id: projectId });
-    }
+  const handleDeleteToRubbish = (projectId: number) => {
+    moveProjectToTrashMutation.mutate({ projectId });
   };
+
+  // Batch archive dialog
+  const [batchArchiveDialogOpen, setBatchArchiveDialogOpen] = useState(false);
 
   const handleBatchArchive = () => {
     if (selectedIds.size === 0) return;
-    
-    const count = selectedIds.size;
-    if (confirm(`Are you sure you want to archive ${count} project${count > 1 ? 's' : ''}?`)) {
-      selectedIds.forEach((id) => {
-        archiveProjectMutation.mutate({ id });
-      });
-      setSelectedIds(new Set());
-      setIsMultiSelectMode(false);
-    }
+    setBatchArchiveDialogOpen(true);
   };
 
   const toggleSelection = (projectId: number) => {
@@ -190,13 +201,125 @@ export default function Projects() {
     return { contact, label };
   };
 
-  if (isLoading) {
+  if (activeLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
+
+  const renderProjectCard = (project: ProjectListItem) => {
+    const isSelected = selectedIds.has(project.id);
+    const { contact, label: clientLabel } = resolveClientDisplay(project);
+    const schedule = getScheduleInfo(project);
+
+    return (
+      <div
+        key={project.id}
+        className="relative no-select"
+        onClick={(e) => {
+          if (isMultiSelectMode) {
+            e.preventDefault();
+            toggleSelection(project.id);
+          }
+        }}
+      >
+        {isMultiSelectMode && (
+          <div className="absolute top-2 left-2 z-10">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => toggleSelection(project.id)}
+              className="h-5 w-5 rounded border-2 border-primary accent-primary"
+            />
+          </div>
+        )}
+        <Link href={`/projects/${project.id}`}>
+          <Card
+            className={`hover:shadow-lg transition-all cursor-pointer h-full ${
+              isSelected ? "ring-2 ring-primary" : ""
+            }`}
+          >
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle className="text-xl">{project.name}</CardTitle>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
+                  {!isMultiSelectMode && (
+                    <ItemActionsMenu
+                      onAction={(action) => handleItemAction(action, project.id)}
+                      actions={["edit", "archive", "moveToTrash", "select"]}
+                      triggerClassName="text-muted-foreground hover:text-foreground"
+                    />
+                  )}
+                </div>
+              </div>
+              {clientLabel && (
+                <CardDescription>
+                  Client:{" "}
+                  {contact ? (
+                    <button
+                      type="button"
+                      className="underline decoration-dotted hover:text-primary transition-colors"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleContactClick(contact.id);
+                      }}
+                    >
+                      {contact.name}
+                    </button>
+                  ) : (
+                    clientLabel
+                  )}
+                </CardDescription>
+              )}
+              {project.description && (
+                <CardDescription className="line-clamp-2">{project.description}</CardDescription>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {project.address && (
+                <button
+                  type="button"
+                  className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors w-full text-left"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleAddressClick(project);
+                  }}
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  <span className="truncate underline decoration-dotted">{project.address}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className={`flex items-center text-sm w-full text-left transition-colors ${
+                  schedule.primaryDate
+                    ? "text-muted-foreground hover:text-primary"
+                    : "text-muted-foreground opacity-70 cursor-default"
+                }`}
+                disabled={!schedule.primaryDate}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleDateClick(project);
+                }}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                <span>{schedule.label}</span>
+              </button>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -211,134 +334,28 @@ export default function Projects() {
         </Button>
       </div>
 
-      {projects && projects.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-4">No projects yet. Create your first project to get started.</p>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Project
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {projects?.map((project) => {
-            const isSelected = selectedIds.has(project.id);
-            const { contact, label: clientLabel } = resolveClientDisplay(project);
-            const schedule = getScheduleInfo(project);
-            
-            return (
-              <div
-                key={project.id}
-                className="relative no-select"
-                onClick={(e) => {
-                  if (isMultiSelectMode) {
-                    e.preventDefault();
-                    toggleSelection(project.id);
-                  }
-                }}
-              >
-                {isMultiSelectMode && (
-                  <div className="absolute top-2 left-2 z-10">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelection(project.id)}
-                      className="h-5 w-5 rounded border-2 border-primary accent-primary"
-                    />
-                  </div>
-                )}
-                <Link href={`/projects/${project.id}`}>
-                  <Card 
-                    className={`hover:shadow-lg transition-all cursor-pointer h-full ${
-                      isSelected ? 'ring-2 ring-primary' : ''
-                    }`}
-                  >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-5 w-5 text-muted-foreground" />
-                          <CardTitle className="text-xl">{project.name}</CardTitle>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={getStatusColor(project.status)}>
-                            {project.status}
-                          </Badge>
-                          {!isMultiSelectMode && (
-                            <ItemActionsMenu
-                              onAction={(action) => handleItemAction(action, project.id)}
-                              actions={["edit", "delete", "select"]}
-                              triggerClassName="text-muted-foreground hover:text-foreground"
-                            />
-                          )}
-                        </div>
-                      </div>
-                      {clientLabel && (
-                        <CardDescription>
-                          Client:{" "}
-                          {contact ? (
-                            <button
-                              type="button"
-                              className="underline decoration-dotted hover:text-primary transition-colors"
-                              onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                handleContactClick(contact.id);
-                              }}
-                            >
-                              {contact.name}
-                            </button>
-                          ) : (
-                            clientLabel
-                          )}
-                        </CardDescription>
-                      )}
-                      {project.description && (
-                        <CardDescription className="line-clamp-2">{project.description}</CardDescription>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {project.address && (
-                        <button
-                          type="button"
-                          className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors w-full text-left"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            handleAddressClick(project);
-                          }}
-                        >
-                          <MapPin className="h-4 w-4 mr-2" />
-                          <span className="truncate underline decoration-dotted">{project.address}</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className={`flex items-center text-sm w-full text-left transition-colors ${
-                          schedule.primaryDate
-                            ? "text-muted-foreground hover:text-primary"
-                            : "text-muted-foreground opacity-70 cursor-default"
-                        }`}
-                        disabled={!schedule.primaryDate}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          handleDateClick(project);
-                        }}
-                      >
-                        <Calendar className="h-4 w-4 mr-2" />
-                        <span>{schedule.label}</span>
-                      </button>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Active Projects Grid */}
+      <div className="space-y-4">
+        {activeProjects && activeProjects.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-4">No projects yet. Create your first project to get started.</p>
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Project
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {activeProjects?.map((project) => renderProjectCard(project))}
+          </div>
+        )}
+      </div>
+
+      {/* Scroll-reveal footer for Archived/Rubbish navigation */}
+      <ScrollRevealFooter basePath="/projects" />
 
       {isMultiSelectMode && (
         <MultiSelectBar
@@ -347,7 +364,10 @@ export default function Projects() {
             setIsMultiSelectMode(false);
             setSelectedIds(new Set());
           }}
-          onDelete={handleBatchArchive}
+          onPrimaryAction={handleBatchArchive}
+          primaryLabel="Archive"
+          primaryIcon={Archive}
+          primaryVariant="outline"
         />
       )}
 
@@ -357,6 +377,61 @@ export default function Projects() {
         prefillClientId={prefillClientId ?? undefined}
         onPrefillConsumed={handlePrefillConsumed}
         onRequestAddContact={handleRequestAddContact}
+      />
+
+      {/* Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={(open) => {
+          setArchiveDialogOpen(open);
+          if (!open) {
+            setArchiveTargetId(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!archiveTargetId) return;
+          archiveProjectMutation.mutate({ projectId: archiveTargetId });
+        }}
+        title="Archive"
+        description="Archive this project? You can restore it anytime from the archived view."
+        confirmLabel="Archive"
+        isDeleting={archiveProjectMutation.isPending}
+      />
+
+      {/* Delete (Move to Rubbish) Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={deleteToRubbishDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteToRubbishDialogOpen(open);
+          if (!open) {
+            setDeleteToRubbishTargetId(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!deleteToRubbishTargetId) return;
+          handleDeleteToRubbish(deleteToRubbishTargetId);
+        }}
+        title="Delete"
+        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        confirmLabel="Delete"
+        isDeleting={moveProjectToTrashMutation.isPending}
+      />
+
+      {/* Batch Archive Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={batchArchiveDialogOpen}
+        onOpenChange={setBatchArchiveDialogOpen}
+        onConfirm={() => {
+          selectedIds.forEach((id) => {
+            archiveProjectMutation.mutate({ projectId: id });
+          });
+          setSelectedIds(new Set());
+          setIsMultiSelectMode(false);
+        }}
+        title="Archive"
+        description={`Archive ${selectedIds.size} project${selectedIds.size > 1 ? "s" : ""}? You can restore them anytime.`}
+        confirmLabel="Archive"
+        isDeleting={archiveProjectMutation.isPending}
       />
     </div>
   );
