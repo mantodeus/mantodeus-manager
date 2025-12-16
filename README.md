@@ -297,7 +297,10 @@ pnpm build            # Build frontend and backend for production
 pnpm start            # Start production server
 
 # Database
-pnpm db:push          # Generate and run database migrations
+pnpm db:push          # Generate and run database migrations (recommended)
+pnpm db:migrate       # Run existing migrations only
+# Note: Avoid using `drizzle-kit push` directly - it may fail with checkConstraint errors.
+# Use `pnpm db:push` instead, which uses the proper generate + migrate workflow.
 
 # Quality
 pnpm check            # TypeScript type checking
