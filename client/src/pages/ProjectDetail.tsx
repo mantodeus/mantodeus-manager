@@ -20,8 +20,11 @@ import { EditProjectDialog } from "@/components/EditProjectDialog";
 import { ProjectJobList } from "@/components/ProjectJobList";
 import { ProjectFileGallery } from "@/components/ProjectFileGallery";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { ProjectCheckIn } from "@/components/ProjectCheckIn";
+import { GenerateProjectReportDialog } from "@/components/GenerateProjectReportDialog";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
+import { FileText } from "lucide-react";
 
 export default function ProjectDetail() {
   const [, params] = useRoute("/projects/:id");
@@ -31,6 +34,7 @@ export default function ProjectDetail() {
   const [editProjectDialogOpen, setEditProjectDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   const { data: project, isLoading: projectLoading } = trpc.projects.getById.useQuery({ id: projectId });
   const { data: jobs, isLoading: jobsLoading } = trpc.projects.jobs.list.useQuery({ projectId });
@@ -177,6 +181,10 @@ export default function ProjectDetail() {
           </Button>
         </Link>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setReportDialogOpen(true)}>
+            <FileText className="h-4 w-4 mr-2" />
+            Generate Report
+          </Button>
           <Button variant="outline" onClick={() => setEditProjectDialogOpen(true)}>
             <Edit className="h-4 w-4 mr-2" />
             Edit
@@ -260,6 +268,7 @@ export default function ProjectDetail() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
+          <ProjectCheckIn projectId={projectId} />
           <Card>
             <CardHeader>
               <CardTitle>Project Information</CardTitle>
@@ -389,6 +398,11 @@ export default function ProjectDetail() {
           onRequestAddContact={handleRequestAddContact}
         />
       )}
+      <GenerateProjectReportDialog
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+        projectId={projectId}
+      />
     </div>
   );
 }

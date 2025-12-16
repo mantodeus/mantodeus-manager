@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, FileCheck, StickyNote, MapPin, FileJson, FolderOpen } from "lucide-react";
+import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, FileCheck, StickyNote, MapPin, FileJson, FolderOpen, Settings as SettingsIcon } from "lucide-react";
 import { DataExportImportDialog } from "./DataExportImportDialog";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -37,6 +37,7 @@ const menuItems = [
   { icon: StickyNote, label: "Notes", path: "/notes" },
   { icon: MapPin, label: "Maps", path: "/maps" },
   { icon: FileText, label: "Reports", path: "/reports" },
+  { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

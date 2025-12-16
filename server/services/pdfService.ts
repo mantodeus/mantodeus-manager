@@ -8,7 +8,7 @@ let browserInstance: Browser | null = null;
  */
 async function getBrowser(): Promise<Browser> {
   if (!browserInstance) {
-    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
+    const executablePath = ENV.puppeteerExecutablePath || undefined;
     
     browserInstance = await puppeteer.launch({
       headless: true,

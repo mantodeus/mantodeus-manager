@@ -1,6 +1,6 @@
 import { eq, desc, and, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import { 
   // User types
   InsertUser, users, 
@@ -38,8 +38,10 @@ function mapProjectWithClient(row: { project: Project; clientContact: ProjectCli
   };
 }
 
-let _db: ReturnType<typeof drizzle> | null = null;
-let _postgresClient: ReturnType<typeof postgres> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _db: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _pool: any = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
@@ -50,24 +52,20 @@ export async function getDb() {
     }
     
     try {
-      console.log("[Database] Connecting to PostgreSQL database...");
+      console.log("[Database] Connecting to MySQL database...");
       console.log("[Database] DATABASE_URL starts with:", process.env.DATABASE_URL.substring(0, 20) + "...");
       
-      // Create postgres client
-      _postgresClient = postgres(process.env.DATABASE_URL);
-      _db = drizzle(_postgresClient);
+      // Create MySQL connection pool
+      _pool = mysql.createPool(process.env.DATABASE_URL);
+      _db = drizzle(_pool);
       console.log("[Database] ✅ Database connection created");
       
       // Test the connection by running a simple query
-      // Note: We don't fail if the test fails - the connection might still work
-      // The test failure could be due to permissions or network issues, but the connection object is valid
       try {
         await _db.execute(sql`SELECT 1`);
         console.log("[Database] ✅ Database connection test successful");
       } catch (testError) {
         console.warn("[Database] ⚠️ Database connection test failed, but connection object created:", testError);
-        // Don't set _db = null here - the connection might still work for actual queries
-        // The test failure might be due to permissions, but the connection is valid
       }
     } catch (error) {
       console.error("[Database] ❌ Failed to create database connection:", error);
@@ -76,7 +74,7 @@ export async function getDb() {
         console.error("[Database] Error stack:", error.stack);
       }
       _db = null;
-      _postgresClient = null;
+      _pool = null;
     }
   }
   return _db;
@@ -145,8 +143,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onConflictDoUpdate({
-      target: users.supabaseId,
+    await db.insert(users).values(values).onDuplicateKeyUpdate({
       set: updateSet,
     });
   } catch (error) {
@@ -190,7 +187,7 @@ export async function createJob(job: InsertJob) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(jobs).values(job).returning();
+  const result = await db.insert(jobs).values(job);
   return result;
 }
 
@@ -228,7 +225,7 @@ export async function createJobDate(jobDate: InsertJobDate) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return await db.insert(jobDates).values(jobDate).returning();
+  return await db.insert(jobDates).values(jobDate);
 }
 
 export async function getJobDates(jobId: number) {
@@ -250,7 +247,7 @@ export async function createTask(task: InsertTask) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(tasks).values(task).returning();
+  const result = await db.insert(tasks).values(task);
   return result;
 }
 
@@ -288,7 +285,7 @@ export async function createImage(image: InsertImage) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(images).values(image).returning();
+  const result = await db.insert(images).values(image);
   return result;
 }
 
@@ -326,7 +323,7 @@ export async function createReport(report: InsertReport) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(reports).values(report).returning();
+  const result = await db.insert(reports).values(report);
   return result;
 }
 
@@ -349,7 +346,7 @@ export async function createComment(comment: InsertComment) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(comments).values(comment).returning();
+  const result = await db.insert(comments).values(comment);
   return result;
 }
 
@@ -519,7 +516,7 @@ export async function getContactById(id: number) {
 export async function createContact(data: InsertContact) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(contacts).values(data).returning();
+  const result = await db.insert(contacts).values(data);
   return result;
 }
 
@@ -578,7 +575,7 @@ export async function getInvoicesByContact(contactId: number) {
 export async function createInvoice(data: InsertInvoice) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(invoices).values(data).returning();
+  return db.insert(invoices).values(data);
 }
 
 export async function getInvoiceById(id: number) {
@@ -624,7 +621,7 @@ export async function getNoteById(id: number) {
 export async function createNote(data: InsertNote) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(notes).values(data).returning();
+  return db.insert(notes).values(data);
 }
 
 export async function updateNote(id: number, data: Partial<InsertNote>) {
@@ -668,7 +665,7 @@ export async function getLocationsByContact(contactId: number) {
 export async function createLocation(data: InsertLocation) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(locations).values(data).returning();
+  return db.insert(locations).values(data);
 }
 
 export async function updateLocation(id: number, data: Partial<InsertLocation>) {
@@ -869,7 +866,7 @@ export async function createProject(project: InsertProject) {
   if (!db) throw new Error("Database not available");
   
   await ensureProjectsSchema();
-  const result = await db.insert(projects).values(project).returning();
+  const result = await db.insert(projects).values(project);
   return result;
 }
 
@@ -963,7 +960,7 @@ export async function createProjectJob(job: InsertProjectJob) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(projectJobs).values(job).returning();
+  const result = await db.insert(projectJobs).values(job);
   return result;
 }
 
@@ -1005,7 +1002,7 @@ export async function createFileMetadata(file: InsertFileMetadata) {
   const db = await getFileMetadataDb();
   
   try {
-    const result = await db.insert(fileMetadata).values(file).returning();
+    const result = await db.insert(fileMetadata).values(file);
     return result;
   } catch (error) {
     console.error("[Database] Failed to create file metadata:", error);
@@ -1067,7 +1064,7 @@ export async function createSharedDocument(data: InsertSharedDocument) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return await db.insert(sharedDocuments).values(data).returning();
+  return await db.insert(sharedDocuments).values(data);
 }
 
 export async function getSharedDocumentByToken(token: string) {
@@ -1107,7 +1104,7 @@ export async function createCompanySettings(data: InsertCompanySettings) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return await db.insert(companySettings).values(data).returning();
+  return await db.insert(companySettings).values(data);
 }
 
 export async function updateCompanySettings(userId: number, data: Partial<InsertCompanySettings>) {
@@ -1144,7 +1141,7 @@ export async function createProjectCheckin(data: InsertProjectCheckin) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return await db.insert(projectCheckins).values(data).returning();
+  return await db.insert(projectCheckins).values(data);
 }
 
 export async function getProjectCheckinsByProjectId(projectId: number) {
