@@ -90,8 +90,16 @@ export async function getDb() {
       console.log("[Database] Connecting to MySQL database...");
       console.log("[Database] DATABASE_URL starts with:", process.env.DATABASE_URL.substring(0, 20) + "...");
       
-      // Create MySQL connection pool
-      _pool = mysql.createPool(process.env.DATABASE_URL);
+      // Create MySQL connection pool with proper configuration
+      // mysql2.createPool accepts connection string directly and pool options as second param
+      _pool = mysql.createPool(process.env.DATABASE_URL, {
+        connectionLimit: 10,
+        connectTimeout: 10000, // 10 seconds
+        acquireTimeout: 10000, // 10 seconds
+        timeout: 10000, // 10 seconds
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 0,
+      });
       _db = drizzle(_pool);
       console.log("[Database] ✅ Database connection created");
       
