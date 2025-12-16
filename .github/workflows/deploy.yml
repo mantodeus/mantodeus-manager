@@ -13,22 +13,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Build application
-        run: npm run build
-        env:
-          NODE_ENV: production
-          VITE_APP_TITLE: ${{ secrets.VITE_APP_TITLE || 'Mantodeus Manager' }}
-          VITE_APP_LOGO: ${{ secrets.VITE_APP_LOGO || '/mantodeus-logo.png' }}
-          VITE_ANALYTICS_ENDPOINT: ${{ secrets.VITE_ANALYTICS_ENDPOINT || '' }}
-          VITE_ANALYTICS_WEBSITE_ID: ${{ secrets.VITE_ANALYTICS_WEBSITE_ID || '' }}
+      # Note: Build happens on the server (deploy-production.sh), not in CI
+      # The server has .env with all required secrets
       
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -36,6 +22,7 @@ jobs:
           host: ${{ secrets.INFOMANIAK_HOST }}
           username: ${{ secrets.INFOMANIAK_USER }}
           key: ${{ secrets.INFOMANIAK_SSH_KEY }}
+          command_timeout: 10m
           script: |
             cd /srv/customer/sites/manager.mantodeus.com
             bash infra/production/deploy-production.sh
