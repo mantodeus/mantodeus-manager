@@ -572,15 +572,40 @@ export async function createContact(data: InsertContact) {
   
   try {
     const result = await db.insert(contacts).values(data);
+    console.log("[Database] createContact raw result:", JSON.stringify(result, null, 2));
+    console.log("[Database] createContact result type:", typeof result, Array.isArray(result));
+    
     // MySQL2 returns result as [ResultSetHeader] where ResultSetHeader has insertId
-    const insertId = (result as any)[0]?.insertId;
-    if (!insertId) {
-      console.error("[Database] createContact: No insertId returned", result);
+    // But Drizzle might wrap it differently - check both structures
+    let insertId: number | undefined;
+    
+    if (Array.isArray(result) && result[0]) {
+      insertId = (result[0] as any)?.insertId;
+    } else if (result && typeof result === 'object' && 'insertId' in result) {
+      insertId = (result as any).insertId;
+    } else if (result && typeof result === 'object' && '0' in result) {
+      insertId = (result as any)[0]?.insertId;
+    }
+    
+    console.log("[Database] createContact extracted insertId:", insertId);
+    
+    if (!insertId || insertId === 0) {
+      console.error("[Database] createContact: No valid insertId returned", {
+        result,
+        resultType: typeof result,
+        isArray: Array.isArray(result),
+        resultKeys: result && typeof result === 'object' ? Object.keys(result) : 'N/A'
+      });
       throw new Error("Failed to get insert ID from database");
     }
+    
+    console.log("[Database] createContact success, returning id:", insertId);
     return [{ id: insertId }];
   } catch (error) {
     console.error("[Database] createContact error:", error);
+    if (error instanceof Error) {
+      console.error("[Database] createContact error stack:", error.stack);
+    }
     throw error;
   }
 }
@@ -1103,15 +1128,41 @@ export async function createProject(project: InsertProject) {
   
   try {
     const result = await db.insert(projects).values(project);
+    console.log("[Database] createProject raw result:", JSON.stringify(result, null, 2));
+    console.log("[Database] createProject result type:", typeof result, Array.isArray(result));
+    console.log("[Database] createProject result[0]:", result?.[0]);
+    
     // MySQL2 returns result as [ResultSetHeader] where ResultSetHeader has insertId
-    const insertId = (result as any)[0]?.insertId;
-    if (!insertId) {
-      console.error("[Database] createProject: No insertId returned", result);
+    // But Drizzle might wrap it differently - check both structures
+    let insertId: number | undefined;
+    
+    if (Array.isArray(result) && result[0]) {
+      insertId = (result[0] as any)?.insertId;
+    } else if (result && typeof result === 'object' && 'insertId' in result) {
+      insertId = (result as any).insertId;
+    } else if (result && typeof result === 'object' && '0' in result) {
+      insertId = (result as any)[0]?.insertId;
+    }
+    
+    console.log("[Database] createProject extracted insertId:", insertId);
+    
+    if (!insertId || insertId === 0) {
+      console.error("[Database] createProject: No valid insertId returned", {
+        result,
+        resultType: typeof result,
+        isArray: Array.isArray(result),
+        resultKeys: result && typeof result === 'object' ? Object.keys(result) : 'N/A'
+      });
       throw new Error("Failed to get insert ID from database");
     }
+    
+    console.log("[Database] createProject success, returning id:", insertId);
     return [{ id: insertId }];
   } catch (error) {
     console.error("[Database] createProject error:", error);
+    if (error instanceof Error) {
+      console.error("[Database] createProject error stack:", error.stack);
+    }
     throw error;
   }
 }
