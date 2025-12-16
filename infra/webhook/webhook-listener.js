@@ -164,11 +164,18 @@ async function deploy(branch, commitId) {
       await fs.access(deployScript);
     } catch {
       await log('error', 'Deploy script not found, using fallback', { deployScript });
-      // Fallback: direct commands
+      // Fallback: direct commands with retry logic for npm install
+      // First try npm install, if it fails, clean up and retry
       const commands = [
         `cd ${APP_PATH}`,
         'git pull origin main',
-        'npm install --include=dev',
+        `npm install --no-audit --no-fund --include=dev --legacy-peer-deps || (` +
+          `echo "First npm install failed, cleaning up..." && ` +
+          `find node_modules -maxdepth 1 -name '.*' -type d 2>/dev/null | xargs rm -rf 2>/dev/null || true && ` +
+          `npm cache clean --force 2>/dev/null || true && ` +
+          `rm -rf node_modules && ` +
+          `npm install --no-audit --no-fund --include=dev --legacy-peer-deps` +
+        `)`,
         'npm run build',
         `pm2 restart ${PM2_APP_NAME}`,
       ].join(' && ');
