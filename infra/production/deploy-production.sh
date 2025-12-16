@@ -62,9 +62,17 @@ fi
 echo ""
 echo "📦 Installing dependencies..."
 
+# Clean install to avoid corrupted node_modules issues (especially with optional deps like Tailwind)
+# Remove node_modules if it exists to force a clean install
+if [ -d "node_modules" ]; then
+  echo "🧹 Cleaning existing node_modules..."
+  rm -rf node_modules
+fi
+
 # Use npm install with --no-audit --no-fund for shared hosting compatibility.
 # We must include devDependencies because Vite/esbuild are required to build.
-npm install --no-audit --no-fund --include=dev || error_exit "npm install failed"
+# --legacy-peer-deps helps with optional dependency issues
+npm install --no-audit --no-fund --include=dev --legacy-peer-deps || error_exit "npm install failed"
 
 # Step 4: Build the application
 echo ""
