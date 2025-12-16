@@ -11,13 +11,14 @@ export interface GeocodeResult {
  * @param address The address to geocode
  * @returns Coordinates and formatted address, or null if geocoding fails
  */
-export async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
+export async function geocodeAddress(address: string, timeoutMs: number = 5000): Promise<GeocodeResult | null> {
   if (!address || address.trim() === "") {
     return null;
   }
 
   try {
-    const response = await makeRequest<{
+    // Wrap in Promise.race to ensure we don't hang forever
+    const geocodePromise = makeRequest<{
       results: Array<{
         formatted_address: string;
         geometry: {
@@ -32,6 +33,12 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
       address: address,
     });
 
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Geocoding timeout after ${timeoutMs}ms`)), timeoutMs);
+    });
+
+    const response = await Promise.race([geocodePromise, timeoutPromise]);
+
     if (response.status === "OK" && response.results && response.results.length > 0) {
       const result = response.results[0];
       return {
@@ -44,7 +51,12 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
     console.warn(`[Geocoding] Failed to geocode address: ${address}, status: ${response.status}`);
     return null;
   } catch (error) {
-    console.error(`[Geocoding] Error geocoding address: ${address}`, error);
+    // Don't log timeout errors as errors - they're expected if the service is slow
+    if (error instanceof Error && error.message.includes('timeout')) {
+      console.warn(`[Geocoding] Timeout geocoding address: ${address}`);
+    } else {
+      console.error(`[Geocoding] Error geocoding address: ${address}`, error);
+    }
     return null;
   }
 }
