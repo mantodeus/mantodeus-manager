@@ -2,12 +2,25 @@ import puppeteer, { type Browser, type Page } from 'puppeteer';
 import { ENV } from '../_core/env';
 
 let browserInstance: Browser | null = null;
+let browserLaunchPromise: Promise<Browser> | null = null;
 
 /**
  * Get or create a singleton browser instance with connection pooling
+ * Uses a launch promise to prevent multiple concurrent launches
  */
 async function getBrowser(): Promise<Browser> {
-  if (!browserInstance) {
+  // Return existing browser if available and connected
+  if (browserInstance && browserInstance.connected) {
+    return browserInstance;
+  }
+  
+  // If already launching, wait for that promise
+  if (browserLaunchPromise) {
+    return browserLaunchPromise;
+  }
+  
+  // Launch new browser instance
+  browserLaunchPromise = (async () => {
     const executablePath = ENV.puppeteerExecutablePath || undefined;
     
     browserInstance = await puppeteer.launch({
@@ -20,19 +33,27 @@ async function getBrowser(): Promise<Browser> {
         '--no-first-run',
         '--no-zygote',
         '--disable-gpu',
+        '--single-process', // Reduces resource usage
       ],
       ...(executablePath ? { executablePath } : {}),
     });
 
     // Clean up browser on process exit
-    process.on('exit', async () => {
+    process.on('exit', () => {
       if (browserInstance) {
-        await browserInstance.close();
+        browserInstance.close().catch(() => {});
       }
     });
+    
+    return browserInstance;
+  })();
+  
+  try {
+    const browser = await browserLaunchPromise;
+    return browser;
+  } finally {
+    browserLaunchPromise = null;
   }
-
-  return browserInstance;
 }
 
 /**
@@ -40,6 +61,9 @@ async function getBrowser(): Promise<Browser> {
  * @param html - HTML content to convert to PDF
  * @param options - PDF generation options
  * @returns PDF buffer
+ * 
+ * PERFORMANCE: Uses 'domcontentloaded' instead of 'networkidle0' 
+ * since we're generating HTML locally without external resources
  */
 export async function generatePDF(
   html: string,
@@ -60,10 +84,11 @@ export async function generatePDF(
   try {
     page = await browser.newPage();
     
-    // Set content and wait for any images/fonts to load
+    // Set content - use 'domcontentloaded' for faster processing
+    // Our HTML is self-contained with inline styles, no external resources
     await page.setContent(html, {
-      waitUntil: 'networkidle0',
-      timeout: 30000,
+      waitUntil: 'domcontentloaded',
+      timeout: 15000, // Reduced timeout since we don't wait for network
     });
 
     // Generate PDF
@@ -82,7 +107,7 @@ export async function generatePDF(
     return Buffer.from(pdfBuffer);
   } finally {
     if (page) {
-      await page.close();
+      await page.close().catch(() => {});
     }
   }
 }
