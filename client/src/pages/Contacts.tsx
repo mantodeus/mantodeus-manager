@@ -50,7 +50,16 @@ export default function Contacts() {
   });
 
   const utils = trpc.useUtils();
-  const { data: activeContacts = [], isLoading: activeLoading } = trpc.contacts.list.useQuery();
+  const { data: activeContacts = [], isLoading: activeLoading, error: contactsError, isError, refetch } = trpc.contacts.list.useQuery(undefined, {
+    retry: 2,
+    retryDelay: 1000,
+  });
+  
+  // Log query status for debugging
+  if (isError) {
+    console.error("[Contacts] Query error:", contactsError);
+  }
+  
   const createMutation = trpc.contacts.create.useMutation();
   const updateMutation = trpc.contacts.update.useMutation();
   const archiveMutation = trpc.contacts.archive.useMutation({
@@ -304,6 +313,17 @@ export default function Contacts() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <p className="text-red-500">Failed to load contacts: {contactsError?.message || "Unknown error"}</p>
+        <Button onClick={() => refetch()} variant="outline">
+          Try Again
+        </Button>
       </div>
     );
   }

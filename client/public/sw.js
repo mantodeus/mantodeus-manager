@@ -1,10 +1,9 @@
 // Service Worker for Mantodeus Manager PWA
 // Version number - increment this to force update
-const VERSION = 'v3.0.1'; // Fixed: Skip Vite paths (@fs, @vite, @id)
+const VERSION = 'v3.1.0'; // CRITICAL: Never cache TRPC API responses
 const CACHE_NAME = `mantodeus-${VERSION}`;
-const RUNTIME_CACHE = `mantodeus-runtime-${VERSION}`;
 
-// Assets to cache on install
+// Assets to cache on install - only static assets
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -26,14 +25,14 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate event - clean up old caches and take control immediately
+// Activate event - clean up ALL old caches and take control immediately
 self.addEventListener('activate', (event) => {
   console.log(`[SW ${VERSION}] Activating...`);
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE)
+          .filter((name) => name !== CACHE_NAME)
           .map((name) => {
             console.log(`[SW ${VERSION}] Deleting old cache: ${name}`);
             return caches.delete(name);
@@ -46,7 +45,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - NETWORK FIRST for everything to always get fresh content
+// Fetch event - NETWORK ONLY for API, NETWORK FIRST for static assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -57,22 +56,24 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Skip Vite-specific paths - these should always go directly to Vite dev server
-  // /@fs/ - Vite's file system access for files outside project root
-  // /@vite/ - Vite's internal HMR and module resolution
-  // /node_modules/ - Vite's node_modules access
-  // /@id/ - Vite's virtual module IDs
   if (url.pathname.startsWith('/@fs/') || 
       url.pathname.startsWith('/@vite/') || 
       url.pathname.startsWith('/@id/') ||
       url.pathname.startsWith('/node_modules/') ||
       url.pathname.includes('?import') ||
       url.pathname.includes('&import')) {
-    return; // Let Vite handle these directly, no service worker interception
+    return; // Let Vite handle these directly
+  }
+
+  // CRITICAL: Never intercept API/TRPC requests - always go to network
+  // This ensures fresh data is always fetched and prevents stale cache issues
+  if (url.pathname.startsWith('/api/')) {
+    return; // Let browser handle API requests directly, no SW interception
   }
 
   // Never cache POST, PUT, DELETE, PATCH requests (mutations)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method)) {
-    return; // Let browser handle directly, no caching
+    return;
   }
 
   // Never cache OPTIONS requests (CORS preflight)
@@ -80,39 +81,34 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network first strategy for ALL requests
+  // Network first strategy for static assets only
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Only cache GET requests for static assets and API responses
+        // Cache successful GET responses for static assets
         if (response && response.ok && request.method === 'GET') {
           const responseClone = response.clone();
-          const cacheName = url.pathname.startsWith('/api/') ? RUNTIME_CACHE : CACHE_NAME;
-          caches.open(cacheName).then((cache) => {
+          caches.open(CACHE_NAME).then((cache) => {
             cache.put(request, responseClone);
           });
         }
         return response;
       })
       .catch(() => {
-        // Only fallback to cache if network fails (and it's a GET request)
+        // Fallback to cache only for static assets
         if (request.method === 'GET') {
           console.log(`[SW ${VERSION}] Network failed, trying cache for: ${url.pathname}`);
           return caches.match(request).then((cachedResponse) => {
             if (cachedResponse) {
               return cachedResponse;
             }
-            // Return offline page or error
             return new Response('Offline - content not available', {
               status: 503,
               statusText: 'Service Unavailable',
-              headers: new Headers({
-                'Content-Type': 'text/plain',
-              }),
+              headers: new Headers({ 'Content-Type': 'text/plain' }),
             });
           });
         }
-        // For non-GET requests, just let them fail
         throw new Error('Network request failed');
       })
   );

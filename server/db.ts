@@ -545,17 +545,39 @@ export async function getAllUsers() {
 // ===== CONTACTS QUERIES =====
 
 export async function getContactsByUser(userId: number) {
+  console.log(`[Database] getContactsByUser called with userId: ${userId}`);
+  const startTime = Date.now();
+  
   const db = await getDb();
-  if (!db) return [];
-  return db
-    .select()
-    .from(contacts)
-    .where(and(
-      eq(contacts.createdBy, userId),
-      isNull(contacts.archivedAt),
-      isNull(contacts.trashedAt)
-    ))
-    .orderBy(desc(contacts.updatedAt));
+  if (!db) {
+    console.error("[Database] getContactsByUser: Database not available!");
+    return [];
+  }
+  
+  try {
+    const result = await db
+      .select()
+      .from(contacts)
+      .where(and(
+        eq(contacts.createdBy, userId),
+        isNull(contacts.archivedAt),
+        isNull(contacts.trashedAt)
+      ))
+      .orderBy(desc(contacts.updatedAt));
+    
+    const duration = Date.now() - startTime;
+    console.log(`[Database] getContactsByUser returned ${result.length} contacts in ${duration}ms`);
+    return result;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`[Database] getContactsByUser FAILED after ${duration}ms:`, error);
+    if (error instanceof Error) {
+      console.error("[Database] Error message:", error.message);
+      console.error("[Database] Error stack:", error.stack);
+    }
+    // Re-throw so the error propagates to the client
+    throw error;
+  }
 }
 
 export async function getContactById(id: number) {
@@ -625,32 +647,54 @@ export async function deleteContact(id: number) {
 }
 
 export async function getArchivedContactsByUser(userId: number) {
+  console.log(`[Database] getArchivedContactsByUser called with userId: ${userId}`);
   const db = await getDb();
-  if (!db) return [];
+  if (!db) {
+    console.error("[Database] getArchivedContactsByUser: Database not available!");
+    return [];
+  }
   
-  return db
-    .select()
-    .from(contacts)
-    .where(and(
-      eq(contacts.createdBy, userId),
-      isNotNull(contacts.archivedAt),
-      isNull(contacts.trashedAt)
-    ))
-    .orderBy(desc(contacts.archivedAt), desc(contacts.updatedAt));
+  try {
+    const result = await db
+      .select()
+      .from(contacts)
+      .where(and(
+        eq(contacts.createdBy, userId),
+        isNotNull(contacts.archivedAt),
+        isNull(contacts.trashedAt)
+      ))
+      .orderBy(desc(contacts.archivedAt), desc(contacts.updatedAt));
+    console.log(`[Database] getArchivedContactsByUser returned ${result.length} contacts`);
+    return result;
+  } catch (error) {
+    console.error("[Database] getArchivedContactsByUser FAILED:", error);
+    throw error;
+  }
 }
 
 export async function getTrashedContactsByUser(userId: number) {
+  console.log(`[Database] getTrashedContactsByUser called with userId: ${userId}`);
   const db = await getDb();
-  if (!db) return [];
+  if (!db) {
+    console.error("[Database] getTrashedContactsByUser: Database not available!");
+    return [];
+  }
   
-  return db
-    .select()
-    .from(contacts)
-    .where(and(
-      eq(contacts.createdBy, userId),
-      isNotNull(contacts.trashedAt)
-    ))
-    .orderBy(desc(contacts.trashedAt), desc(contacts.updatedAt));
+  try {
+    const result = await db
+      .select()
+      .from(contacts)
+      .where(and(
+        eq(contacts.createdBy, userId),
+        isNotNull(contacts.trashedAt)
+      ))
+      .orderBy(desc(contacts.trashedAt), desc(contacts.updatedAt));
+    console.log(`[Database] getTrashedContactsByUser returned ${result.length} contacts`);
+    return result;
+  } catch (error) {
+    console.error("[Database] getTrashedContactsByUser FAILED:", error);
+    throw error;
+  }
 }
 
 export async function archiveContact(id: number) {
