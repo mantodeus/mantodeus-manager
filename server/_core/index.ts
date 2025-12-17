@@ -79,6 +79,27 @@ async function startServer() {
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
 
+  // Health check endpoint - returns version info to verify deployment
+  app.get("/api/health", async (req, res) => {
+    let gitCommit = "unknown";
+    try {
+      const { execSync } = await import("child_process");
+      gitCommit = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
+    } catch {
+      gitCommit = "unavailable";
+    }
+    
+    res.json({
+      status: "ok",
+      version: gitCommit,
+      timestamp: new Date().toISOString(),
+      node: process.version,
+      uptime: process.uptime(),
+      // This identifier will prove the new code is deployed
+      buildId: "perf-fix-2024-12-17",
+    });
+  });
+
   // Public shareable document endpoint
   app.get("/share/:token", async (req, res) => {
     try {
