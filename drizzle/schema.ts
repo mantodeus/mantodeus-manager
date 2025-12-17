@@ -72,6 +72,10 @@ export const projects = mysqlTable("projects", {
   /** Optional list of explicitly selected schedule dates */
   scheduledDates: json("scheduledDates").$type<string[] | null>(),
   status: mysqlEnum("status", ["planned", "active", "completed", "archived"]).default("planned").notNull(),
+  /** Timestamp when project was archived (null if active) */
+  archivedAt: timestamp("archivedAt"),
+  /** Timestamp when project was moved to trash (null if not trashed) */
+  trashedAt: timestamp("trashedAt"),
   createdBy: int("createdBy").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -79,6 +83,8 @@ export const projects = mysqlTable("projects", {
   index("projects_status_idx").on(table.status),
   index("projects_createdBy_idx").on(table.createdBy),
   index("projects_clientId_idx").on(table.clientId),
+  index("projects_archivedAt_idx").on(table.archivedAt),
+  index("projects_trashedAt_idx").on(table.trashedAt),
 ]);
 
 export type Project = typeof projects.$inferSelect;
@@ -128,11 +134,14 @@ export const fileMetadata = mysqlTable("file_metadata", {
   imageMetadata: json("imageMetadata").$type<StoredImageMetadata | null>(),
   /** Tags for photos: ["safety", "defect", "anchor", "quote", "before", "after"] */
   tags: json("tags").$type<string[] | null>(),
+  /** Timestamp when file was moved to trash (null if not trashed) */
+  trashedAt: timestamp("trashedAt"),
 }, (table) => [
   index("file_metadata_projectId_idx").on(table.projectId),
   index("file_metadata_jobId_idx").on(table.jobId),
   index("file_metadata_projectId_jobId_idx").on(table.projectId, table.jobId),
   index("file_metadata_uploadedBy_idx").on(table.uploadedBy),
+  index("file_metadata_trashedAt_idx").on(table.trashedAt),
 ]);
 
 export type FileMetadata = typeof fileMetadata.$inferSelect;
@@ -154,11 +163,17 @@ export const contacts = mysqlTable("contacts", {
   latitude: varchar("latitude", { length: 20 }),
   longitude: varchar("longitude", { length: 20 }),
   notes: text("notes"),
+  /** Timestamp when contact was archived (null if active) */
+  archivedAt: timestamp("archivedAt"),
+  /** Timestamp when contact was moved to trash (null if not trashed) */
+  trashedAt: timestamp("trashedAt"),
   createdBy: int("createdBy").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [
   index("contacts_createdBy_idx").on(table.createdBy),
+  index("contacts_archivedAt_idx").on(table.archivedAt),
+  index("contacts_trashedAt_idx").on(table.trashedAt),
 ]);
 
 export type Contact = typeof contacts.$inferSelect;
@@ -322,6 +337,10 @@ export const notes = mysqlTable("notes", {
   tags: varchar("tags", { length: 500 }),
   jobId: int("jobId").references(() => jobs.id),
   contactId: int("contactId").references(() => contacts.id),
+  /** Timestamp when note was archived (null if active) */
+  archivedAt: timestamp("archivedAt"),
+  /** Timestamp when note was moved to trash (null if not trashed) */
+  trashedAt: timestamp("trashedAt"),
   createdBy: int("createdBy").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -329,6 +348,8 @@ export const notes = mysqlTable("notes", {
   index("notes_createdBy_idx").on(table.createdBy),
   index("notes_jobId_idx").on(table.jobId),
   index("notes_contactId_idx").on(table.contactId),
+  index("notes_archivedAt_idx").on(table.archivedAt),
+  index("notes_trashedAt_idx").on(table.trashedAt),
 ]);
 
 export type Note = typeof notes.$inferSelect;
