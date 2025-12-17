@@ -1,196 +1,60 @@
 #!/bin/bash
 #
-# Mantodeus Manager - Deployment Script
-# Full deployment with backup, build, restart, and health check
+# Mantodeus Manager - Webhook Deploy Script
+# Designed to be run via nohup to survive PM2 restarts
 #
-# Usage:
-#   ./deploy.sh [--dry-run] [--no-backup] [--skip-health-check]
-#
-# Output: JSON format for programmatic parsing
+# Usage: nohup bash infra/deploy/deploy.sh > deploy.log 2>&1 &
 #
 
-set -euo pipefail
+set -e
 
 # Configuration
-PROJECT_DIR="/srv/customer/sites/manager.mantodeus.com"
-PM2_APP_NAME="mantodeus-manager"
-BACKUP_DIR="${PROJECT_DIR}/backups"
-HEALTH_CHECK_URL="http://localhost:3000/api/trpc/system.health"
-HEALTH_CHECK_RETRIES=5
-HEALTH_CHECK_DELAY=3
+APP_PATH="/srv/customer/sites/manager.mantodeus.com"
+PM2_NAME="mantodeus-manager"
 
-# Flags
-DRY_RUN=false
-NO_BACKUP=false
-SKIP_HEALTH_CHECK=false
+echo "============================================"
+echo "🚀 Mantodeus Manager - Auto Deploy"
+echo "============================================"
+echo "📅 Started at: $(date)"
+echo ""
 
-# Parse arguments
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    --dry-run)
-      DRY_RUN=true
-      shift
-      ;;
-    --no-backup)
-      NO_BACKUP=true
-      shift
-      ;;
-    --skip-health-check)
-      SKIP_HEALTH_CHECK=true
-      shift
-      ;;
-    *)
-      echo "{\"error\":\"Unknown option: $1\"}" >&2
-      exit 1
-      ;;
-  esac
-done
+# Step 1: Navigate to app directory
+echo "▶ Changing to app directory..."
+cd "$APP_PATH"
+echo "✅ Now in: $(pwd)"
+echo ""
 
-# Safety check: Don't run as root
-if [ "$(id -u)" -eq 0 ]; then
-  echo "{\"error\":\"This script should NOT be run as root\"}" >&2
-  exit 1
-fi
+# Step 2: Fetch latest code from origin
+echo "▶ Fetching latest code from origin..."
+git fetch origin
+echo "✅ Fetch complete"
+echo ""
 
-# Output JSON helper
-json_output() {
-  echo "$1"
-}
+# Step 3: Reset to origin/main (discard local changes)
+echo "▶ Resetting to origin/main..."
+git reset --hard origin/main
+echo "✅ Reset complete"
+echo ""
 
-# Error handler
-error_exit() {
-  json_output "{\"status\":\"error\",\"error\":\"$1\"}"
-  exit 1
-}
+# Step 4: Install dependencies
+echo "▶ Installing dependencies..."
+npm install --production=false --legacy-peer-deps
+echo "✅ Dependencies installed"
+echo ""
 
-# Check if project directory exists
-if [ ! -d "$PROJECT_DIR" ]; then
-  error_exit "Project directory not found: $PROJECT_DIR"
-fi
+# Step 5: Build the application
+echo "▶ Building application..."
+npm run build
+echo "✅ Build complete"
+echo ""
 
-cd "$PROJECT_DIR" || error_exit "Failed to change to project directory"
+# Step 6: Restart PM2 process
+echo "▶ Restarting PM2 process: $PM2_NAME..."
+npx pm2 restart "$PM2_NAME"
+echo "✅ PM2 restarted"
+echo ""
 
-# Create backup directory if it doesn't exist
-if [ "$NO_BACKUP" = false ]; then
-  mkdir -p "$BACKUP_DIR"
-fi
-
-# Generate backup filename
-BACKUP_FILE="${BACKUP_DIR}/backup-$(date +%Y%m%d-%H%M%S).tar.gz"
-
-# Step 1: Create backup
-if [ "$NO_BACKUP" = false ]; then
-  if [ "$DRY_RUN" = true ]; then
-    json_output "{\"step\":\"backup\",\"status\":\"dry-run\",\"backup_file\":\"$BACKUP_FILE\"}"
-  else
-    json_output "{\"step\":\"backup\",\"status\":\"creating\",\"backup_file\":\"$BACKUP_FILE\"}"
-    
-    # Backup: dist/, node_modules/, package-lock.json, .env (if exists)
-    tar -czf "$BACKUP_FILE" \
-      dist/ node_modules/ package-lock.json .env 2>/dev/null || true
-    
-    # Keep only last 5 backups
-    ls -t "$BACKUP_DIR"/backup-*.tar.gz 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null || true
-    
-    json_output "{\"step\":\"backup\",\"status\":\"success\",\"backup_file\":\"$BACKUP_FILE\"}"
-  fi
-fi
-
-# Step 2: Git pull
-if [ "$DRY_RUN" = true ]; then
-  json_output "{\"step\":\"git_pull\",\"status\":\"dry-run\"}"
-else
-  json_output "{\"step\":\"git_pull\",\"status\":\"pulling\"}"
-  if git pull origin main; then
-    json_output "{\"step\":\"git_pull\",\"status\":\"success\"}"
-  else
-    error_exit "Git pull failed"
-  fi
-fi
-
-# Step 3: Install dependencies
-if [ "$DRY_RUN" = true ]; then
-  json_output "{\"step\":\"install\",\"status\":\"dry-run\"}"
-else
-  json_output "{\"step\":\"install\",\"status\":\"installing\"}"
-  if ! npm install --no-audit --no-fund --include=dev --legacy-peer-deps; then
-    json_output "{\"step\":\"install\",\"status\":\"first-attempt-failed\"}"
-    
-    # Clean up temporary npm directories that cause ENOTEMPTY errors
-    # These are created when npm fails mid-install (e.g., .body-parser-oXjK4POA)
-    json_output "{\"step\":\"install\",\"status\":\"cleaning-temp-dirs\"}"
-    find node_modules -maxdepth 1 -name '.*' -type d 2>/dev/null | xargs rm -rf 2>/dev/null || true
-    
-    # Clear npm cache to avoid corrupted state
-    json_output "{\"step\":\"install\",\"status\":\"clearing-npm-cache\"}"
-    npm cache clean --force 2>/dev/null || true
-    
-    # Remove node_modules with timeout
-    json_output "{\"step\":\"install\",\"status\":\"removing-node-modules\"}"
-    timeout 60 rm -rf node_modules 2>/dev/null || {
-      # Try removing directories in smaller batches
-      rm -rf node_modules/.* 2>/dev/null || true
-      rm -rf node_modules/@* 2>/dev/null || true
-      rm -rf node_modules 2>/dev/null || true
-    }
-    
-    # Retry npm install
-    json_output "{\"step\":\"install\",\"status\":\"retrying\"}"
-    if ! npm install --no-audit --no-fund --include=dev --legacy-peer-deps; then
-      error_exit "npm install failed after cleanup"
-    fi
-  fi
-  json_output "{\"step\":\"install\",\"status\":\"success\"}"
-fi
-
-# Step 4: Build
-if [ "$DRY_RUN" = true ]; then
-  json_output "{\"step\":\"build\",\"status\":\"dry-run\"}"
-else
-  json_output "{\"step\":\"build\",\"status\":\"building\"}"
-  if npm run build; then
-    json_output "{\"step\":\"build\",\"status\":\"success\"}"
-  else
-    error_exit "Build failed"
-  fi
-fi
-
-# Step 5: Restart PM2
-if [ "$DRY_RUN" = true ]; then
-  json_output "{\"step\":\"restart\",\"status\":\"dry-run\"}"
-else
-  json_output "{\"step\":\"restart\",\"status\":\"restarting\"}"
-  if pm2 restart "$PM2_APP_NAME"; then
-    json_output "{\"step\":\"restart\",\"status\":\"success\"}"
-  else
-    error_exit "PM2 restart failed"
-  fi
-fi
-
-# Step 6: Health check
-if [ "$SKIP_HEALTH_CHECK" = false ]; then
-  if [ "$DRY_RUN" = true ]; then
-    json_output "{\"step\":\"health_check\",\"status\":\"dry-run\"}"
-  else
-    json_output "{\"step\":\"health_check\",\"status\":\"checking\"}"
-    
-    HEALTH_OK=false
-    for i in $(seq 1 $HEALTH_CHECK_RETRIES); do
-      sleep $HEALTH_CHECK_DELAY
-      if curl -sf "${HEALTH_CHECK_URL}?input=%7B%22timestamp%22%3A$(date +%s)%7D" > /dev/null 2>&1; then
-        HEALTH_OK=true
-        break
-      fi
-      json_output "{\"step\":\"health_check\",\"status\":\"retrying\",\"attempt\":$i,\"max_attempts\":$HEALTH_CHECK_RETRIES}"
-    done
-    
-    if [ "$HEALTH_OK" = true ]; then
-      json_output "{\"step\":\"health_check\",\"status\":\"healthy\"}"
-    else
-      error_exit "Health check failed after $HEALTH_CHECK_RETRIES attempts"
-    fi
-  fi
-fi
-
-# Success
-json_output "{\"status\":\"success\",\"git_pull\":\"success\",\"build\":\"success\",\"restart\":\"success\",\"health\":\"healthy\"}"
+echo "============================================"
+echo "✅ Deploy complete!"
+echo "📅 Finished at: $(date)"
+echo "============================================"
