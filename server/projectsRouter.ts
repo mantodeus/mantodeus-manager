@@ -295,6 +295,26 @@ export const projectsRouter = router({
   }),
 
   /**
+   * List archived projects for the current user
+   */
+  listArchived: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role === "admin") {
+      return await db.getAllArchivedProjects();
+    }
+    return await db.getArchivedProjectsByUser(ctx.user.id);
+  }),
+
+  /**
+   * List trashed projects for the current user
+   */
+  listTrashed: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role === "admin") {
+      return await db.getAllTrashedProjects();
+    }
+    return await db.getTrashedProjectsByUser(ctx.user.id);
+  }),
+
+  /**
    * Get a specific project by ID
    */
   getById: protectedProcedure
@@ -388,13 +408,57 @@ export const projectsRouter = router({
 
   /**
    * Archive a project (soft delete)
-   * Sets status to 'archived' instead of deleting
+   * Sets archivedAt timestamp
    */
   archive: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       await requireProjectAccess(ctx.user, input.id, "archive");
       await db.archiveProject(input.id);
+      return { success: true };
+    }),
+
+  /**
+   * Archive a project (alias for archive - used by Projects.tsx)
+   */
+  archiveProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "archive");
+      await db.archiveProject(input.projectId);
+      return { success: true };
+    }),
+
+  /**
+   * Restore an archived project
+   */
+  restoreArchivedProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "restore");
+      await db.restoreArchivedProject(input.projectId);
+      return { success: true };
+    }),
+
+  /**
+   * Move a project to trash (soft delete)
+   */
+  moveProjectToTrash: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "delete");
+      await db.moveProjectToTrash(input.projectId);
+      return { success: true };
+    }),
+
+  /**
+   * Restore a project from trash
+   */
+  restoreProjectFromTrash: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "restore");
+      await db.restoreProjectFromTrash(input.projectId);
       return { success: true };
     }),
 
@@ -407,6 +471,26 @@ export const projectsRouter = router({
     .mutation(async ({ input, ctx }) => {
       await requireProjectAccess(ctx.user, input.id, "delete");
       await db.deleteProject(input.id);
+      return { success: true };
+    }),
+
+  /**
+   * Permanently delete a project (only from trash)
+   */
+  deleteProjectPermanently: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const project = await requireProjectAccess(ctx.user, input.projectId, "delete");
+      
+      // Only allow permanent deletion from trash
+      if (!project.trashedAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Permanent delete is only allowed from Rubbish",
+        });
+      }
+      
+      await db.deleteProject(input.projectId);
       return { success: true };
     }),
 
