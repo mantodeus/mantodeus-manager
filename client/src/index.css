@@ -170,6 +170,58 @@
     user-select: none;
     -webkit-touch-callout: none;
   }
+  
+  /* Selection mode card styles */
+  .selectable-card {
+    transition: all 150ms ease-out;
+    position: relative;
+  }
+  
+  .selectable-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  /* Selection mode active - subtle indicator */
+  .selectable-card.selection-mode-active {
+    cursor: pointer;
+  }
+  
+  /* Selected card - neon green glow effect */
+  .selectable-card.selected {
+    box-shadow: 
+      0 0 0 2px oklch(0.85 0.25 155),
+      0 0 20px -5px oklch(0.85 0.25 155 / 0.5);
+  }
+  
+  .selectable-card.selected::before {
+    opacity: 1;
+    background: oklch(0.85 0.25 155 / 0.08);
+  }
+  
+  /* Long-press visual feedback */
+  .selectable-card.long-pressing {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+  
+  /* Checkbox animation in selection mode */
+  .selection-checkbox {
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 150ms ease-out, opacity 100ms ease-out;
+  }
+  
+  .selection-mode-active .selection-checkbox {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @layer components {
