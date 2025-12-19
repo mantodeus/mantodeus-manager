@@ -1,0 +1,340 @@
+# Mantodeus Manager — AI Knowledge Base
+# This file is automatically read by Cursor with every prompt.
+# Update this file as the app evolves to maintain context and accelerate development.
+# Last Updated: 2024-12-17
+
+## PROJECT OVERVIEW
+
+**Mantodeus Manager** is a modern, all-in-one SaaS web and mobile app for self-employed rope access technicians and rope-access companies. It is the "one app to rule all" for rope access teams.
+
+### Core Modules
+
+1. **Projects** — Sites / Jobs Overview (with nested Project Jobs)
+2. **Tasks** — Work Orders (within projects/jobs)
+3. **Calendar** — Schedule / Availability
+4. **Invoices & Quotes** — German-compliant billing with PDF generation
+5. **Expenses & Receipts** — Cost tracking with OCR (planned)
+6. **Reports** — Daily / Site Reports with PDF export
+7. **Equipment / PPE** — Inventory with inspection reminders (planned)
+8. **Risk Assessments / RAMS** — Safety documentation (planned)
+9. **Notes / Site Notes** — Quick capture with archive/trash workflow
+10. **Documents** — File management with S3 storage
+11. **Photos / Gallery** — Annotation, tagging (safety/defect/quote), responsive variants
+12. **Map / Sites Map** — Clickable addresses, deep links to Google/Apple Maps
+13. **Team / People** — Users, certs, CVs, availability (planned)
+14. **Messages / Chat** — Team communication (planned)
+15. **AI Assistant (Walter)** — Quotes, reports, form filling (in progress)
+
+---
+
+## TECH STACK
+
+| Layer | Technology |
+|-------|------------|
+| Database | **MySQL** via PlanetScale/Supabase |
+| ORM | **Drizzle ORM** |
+| Backend | Node.js + Express + **tRPC** |
+| Frontend | **React 18** + **TypeScript** + **Vite** |
+| Styling | **Tailwind CSS** + **shadcn/ui** |
+| State | **TanStack Query** (React Query) via tRPC |
+| Auth | **Supabase Auth** (OAuth + email) |
+| Storage | **AWS S3** / Supabase Storage |
+| PDF | `@react-pdf/renderer` |
+| Maps | Google Maps API |
+| Mobile | PWA-first, Capacitor planned |
+| Icons | Lucide React |
+| Forms | React Hook Form + Zod |
+
+---
+
+## ARCHITECTURE PATTERNS
+
+### File Structure
+```
+/workspace
+├── client/src/           # React frontend
+│   ├── pages/            # Route components
+│   ├── components/       # Reusable components
+│   │   └── ui/           # shadcn/ui primitives
+│   ├── hooks/            # Custom React hooks
+│   ├── lib/              # Utilities (trpc, supabase, utils)
+│   └── contexts/         # React contexts (theme, etc.)
+├── server/               # Node.js backend
+│   ├── _core/            # Core utilities (env, auth, trpc, storage)
+│   ├── routers.ts        # Main tRPC router aggregation
+│   ├── *Router.ts        # Feature-specific routers
+│   └── db.ts             # Database connection & queries
+├── drizzle/              # Database schema & migrations
+│   └── schema.ts         # Drizzle schema definitions
+└── shared/               # Shared types between client/server
+```
+
+### API Layer (tRPC)
+- All API routes use **tRPC** for type-safe client-server communication
+- Main router in `/server/routers.ts` aggregates sub-routers
+- Feature routers: `projectsRouter`, `projectFilesRouter`, `pdfRouter`, `settingsRouter`, `exportRouter`
+- Procedures: `publicProcedure` (unauthenticated), `protectedProcedure` (requires auth)
+
+### Database (Drizzle ORM)
+- Schema in `/drizzle/schema.ts`
+- Uses MySQL with Drizzle ORM
+- Migrations in `/drizzle/` folder
+- All queries in `/server/db.ts`
+
+### Frontend Patterns
+- Pages are route components in `/client/src/pages/`
+- Components use shadcn/ui as base
+- tRPC client in `/client/src/lib/trpc.ts`
+- Theme context for dark/light mode in `/client/src/contexts/ThemeContext.tsx`
+
+---
+
+## DATA MODELS (Current Schema)
+
+### Primary Tables (New Project-Based Structure)
+| Table | Purpose |
+|-------|---------|
+| `projects` | Top-level project entity (client work, sites) |
+| `projectJobs` | Work items nested under projects |
+| `fileMetadata` | Files/photos attached to projects/jobs |
+| `projectCheckins` | Time tracking with geolocation |
+
+### Supporting Tables
+| Table | Purpose |
+|-------|---------|
+| `users` | User accounts (synced with Supabase Auth) |
+| `contacts` | Client/vendor contact info |
+| `notes` | Quick notes with archive/trash |
+| `locations` | Map markers/pins |
+| `invoices` | Invoice file metadata |
+| `companySettings` | Per-user company/billing settings |
+| `sharedDocuments` | Shareable PDF links with expiry |
+
+### Legacy Tables (Being Migrated)
+| Table | Purpose | Replacement |
+|-------|---------|-------------|
+| `jobs` | Old job structure | → `projects` |
+| `tasks` | Old task structure | → `projectJobs` |
+| `images` | Old image storage | → `fileMetadata` |
+
+---
+
+## DESIGN SYSTEM
+
+### Theme
+- **Primary**: Dark theme with **neon green highlights** (`#00FF88` / `--primary`)
+- **Secondary**: Light theme (user preference via ThemeContext)
+- **Mobile-first**: All layouts designed for mobile, scaled up for desktop
+
+### UI Principles
+- Modern, minimal, elegant
+- Large touch targets for field use (gloves, outdoor conditions)
+- Clear visual hierarchy
+- Consistent spacing (Tailwind spacing scale)
+- Loading states, empty states, error states for all views
+- Toast notifications via Sonner
+
+### Component Patterns
+- Use shadcn/ui components as base (`/client/src/components/ui/`)
+- Extend with custom variants as needed
+- Icons: Lucide React
+- Forms: React Hook Form + Zod validation
+- Dialogs: shadcn Dialog + custom form dialogs
+
+### Available UI Components (shadcn)
+```
+accordion, alert, alert-dialog, avatar, badge, breadcrumb,
+button, button-group, calendar, card, carousel, chart, checkbox,
+collapsible, command, context-menu, dialog, drawer, dropdown-menu,
+empty, field, form, hover-card, input, input-group, input-otp,
+item, kbd, label, menubar, navigation-menu, pagination, popover,
+progress, radio-group, resizable, scroll-area, select, separator,
+sheet, sidebar, skeleton, slider, sonner, spinner, switch, table,
+tabs, textarea, toggle, toggle-group, tooltip
+```
+
+---
+
+## GERMAN LEGAL REQUIREMENTS
+
+### Invoicing (Kleinunternehmerregelung § 19 UStG)
+- Support for small business exemption (no VAT) via `isKleinunternehmer` flag
+- Configurable VAT rate (default 19%)
+- Required invoice fields stored in `companySettings`:
+  - `companyName`, `address` (full name and address)
+  - `steuernummer` or `ustIdNr`
+  - `invoicePrefix` + `nextInvoiceNumber` (sequential invoice number)
+  - `iban`, `bic` (bank details)
+
+### Export Formats
+- **PDF** export with German formatting
+- **DATEV CSV** export for accountants (planned)
+- Date format: DD.MM.YYYY
+- Number format: 1.234,56 €
+
+---
+
+## ROPE ACCESS WORKFLOWS
+
+### Field Technician Needs
+- ✅ Quick photo capture with responsive variants (thumb/preview/full)
+- ✅ Project check-in/check-out with geolocation
+- 🔄 Offline capability (PWA, sync when online)
+- ⬜ Equipment inspection checklists
+- ⬜ Daily report submission form
+- ✅ Time tracking per project
+
+### Back Office Needs
+- ✅ Project overview dashboard
+- ✅ Invoice PDF generation from projects
+- ⬜ Certificate/qualification tracking
+- ✅ Calendar view for scheduling
+- ✅ Project report PDF generation
+
+---
+
+## CURRENT STATE & RECENT CHANGES
+
+### Implemented Features ✅
+- Project management (CRUD, list, detail, archive/trash)
+- Project Jobs within projects
+- Project files/photos with S3 storage + responsive variants
+- Project check-in/check-out with geolocation
+- Basic invoicing with PDF export
+- Company settings for invoice customization
+- Contact management with archive/trash workflow
+- Notes system with archive/trash workflow
+- Map view with location markers
+- Calendar view
+- User authentication (Supabase Auth)
+- Dark/light theme toggle
+- PDF generation (project reports, invoices)
+- Image gallery with lightbox
+- File upload with S3 presigned URLs
+
+### In Progress 🔄
+- AI Assistant (Walter) - `AIChatBox.tsx` component exists
+- Data export/import functionality
+
+### Planned / TODO ⬜
+- Risk Assessments / RAMS module
+- Equipment/PPE inventory with inspection reminders
+- Team/People module with certifications
+- Messages/Chat
+- Offline sync (PWA service worker)
+- DATEV CSV export
+- Mobile app (Capacitor)
+- OCR for receipts/expenses
+
+---
+
+## AI ASSISTANT INSTRUCTIONS
+
+You are an **elite AI assistant** working at the level of a 40-year veteran software engineer. Act as the senior engineering and product partner for Mantodeus Manager.
+
+### When Given a Task, Provide:
+
+1. **Mission Statement** — Brief description of what this feature accomplishes
+2. **Implementation Plan** — Clear steps, components, modules
+3. **Code** — Clean, consistent, ready to integrate
+4. **UI/UX Notes** — Layout, states, validation, mobile-first, dark/light mode
+5. **Integration Notes** — Maps, PDFs, offline, AI, etc.
+
+### Code Quality Standards
+
+- TypeScript strict mode
+- Zod validation for all tRPC inputs
+- Error boundaries and proper error handling
+- Loading and empty states (use Skeleton, Spinner, Empty components)
+- Responsive design (mobile-first)
+- Accessible (ARIA labels, keyboard navigation)
+- Consistent naming conventions
+
+### Naming Conventions
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Components | PascalCase | `ProjectCard.tsx` |
+| Pages | PascalCase | `ProjectDetail.tsx` |
+| Hooks | useCamelCase | `useProjects.ts` |
+| Utils | camelCase | `formatCurrency.ts` |
+| Routers | camelCaseRouter | `projectsRouter.ts` |
+| Tests | *.test.ts(x) | `calendar.test.ts` |
+| DB tables | snake_case | `project_jobs` |
+| DB columns | camelCase | `projectId` |
+
+### Common Patterns
+
+**Creating a new page:**
+1. Add route component to `/client/src/pages/`
+2. Add route to App.tsx router
+3. Use `DashboardLayout` wrapper
+4. Query data with tRPC hooks
+
+**Adding a tRPC endpoint:**
+1. Add procedure to relevant router in `/server/`
+2. Define Zod input schema
+3. Implement with `protectedProcedure` or `publicProcedure`
+4. Types auto-propagate to client
+
+**Adding a database table:**
+1. Define in `/drizzle/schema.ts`
+2. Export types (`type X = typeof x.$inferSelect`)
+3. Run migration: `npx drizzle-kit push`
+4. Add CRUD functions to `/server/db.ts`
+
+---
+
+## KEY FILES REFERENCE
+
+| Purpose | Path |
+|---------|------|
+| Database schema | `/drizzle/schema.ts` |
+| Main tRPC router | `/server/routers.ts` |
+| Projects router | `/server/projectsRouter.ts` |
+| Project files router | `/server/projectFilesRouter.ts` |
+| PDF router | `/server/pdfRouter.ts` |
+| Storage utilities | `/server/storage.ts` |
+| Image processing | `/server/_core/imagePipeline.ts` |
+| Core env config | `/server/_core/env.ts` |
+| DB queries | `/server/db.ts` |
+| Main app entry | `/client/src/App.tsx` |
+| tRPC client | `/client/src/lib/trpc.ts` |
+| Theme context | `/client/src/contexts/ThemeContext.tsx` |
+| Dashboard layout | `/client/src/components/DashboardLayout.tsx` |
+
+---
+
+## CHANGELOG
+
+### 2024-12-17
+- Initial knowledge base created from codebase analysis
+- Documented project overview, tech stack (MySQL/Drizzle), architecture
+- Catalogued all existing database tables and relationships
+- Listed all implemented features vs. planned features
+- Added German legal requirements (Kleinunternehmerregelung)
+- Defined design system and code standards
+- Created key files reference
+
+<!-- 
+INSTRUCTIONS FOR UPDATING THIS FILE:
+- Add new entries at the TOP of the changelog with date
+- Update "Current State & Recent Changes" after implementing features
+- Move items from "In Progress" to "Implemented" when complete
+- Keep the file structure consistent
+- Be concise but specific in descriptions
+-->
+
+---
+
+## NOTES FOR AI
+
+- Always reference this file at the start of each conversation
+- Update the "Current State & Recent Changes" section after implementing features
+- Add to the changelog with date and brief description
+- Keep the "In Progress" and "Planned / TODO" sections current
+- Reference this file when making architectural decisions
+- Maintain consistency with established patterns
+- When creating new features, follow existing code patterns in the codebase
+- Prefer editing existing files over creating new ones
+- Use existing UI components from `/client/src/components/ui/`
