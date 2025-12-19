@@ -210,22 +210,19 @@ async function startServer() {
     if (event === "push" && (ref === "refs/heads/main" || ref === "refs/heads/master")) {
       console.log("[Webhook] Push to main detected, starting deployment...");
       
-      // Respond immediately
+      // Respond immediately before starting deploy
       res.status(200).send("Deployment started");
 
-      // Run deployment asynchronously
+      // Run deployment via detached shell script
+      // Using nohup ensures the deploy continues even if PM2 restarts this process
       const appPath = process.env.APP_PATH || "/srv/customer/sites/manager.mantodeus.com";
-      const pm2Name = process.env.PM2_APP_NAME || "mantodeus-manager";
+      const deployCmd = `nohup bash infra/deploy/deploy.sh > deploy.log 2>&1 &`;
       
-      const deployCmd = `cd ${appPath} && git pull && npm install && npm run build && npx pm2 restart ${pm2Name}`;
-      
-      exec(deployCmd, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+      exec(deployCmd, { cwd: appPath }, (err) => {
         if (err) {
-          console.error("[Webhook] Deployment failed:", err.message);
-          console.error("[Webhook] stderr:", stderr);
+          console.error("[Webhook] Failed to start deploy script:", err.message);
         } else {
-          console.log("[Webhook] Deployment successful!");
-          console.log("[Webhook] stdout:", stdout);
+          console.log("[Webhook] Deploy script started (detached). Check deploy.log for progress.");
         }
       });
     } else {
