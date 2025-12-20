@@ -222,7 +222,7 @@ export default function Contacts() {
     return (
       <Card
         key={contact.id}
-        className={`bg-[#0D0E10] border-[#0D0E10] p-4 hover:border-[#0D0E10] transition-all ${
+        className={`bg-surface border-subtle p-4 hover:border-subtle transition-all ${
           selectedIds.has(contact.id) ? "ring-2 ring-[#0D0E10]" : ""
         }`}
         onClick={handleCardClick}
@@ -283,7 +283,7 @@ export default function Contacts() {
         </div>
         
         {!isMultiSelectMode && contact.latitude && contact.longitude && (
-          <div className="mt-3 pt-3 border-t border-[#0D0E10]">
+          <div className="mt-3 pt-3 border-t border-subtle">
             <a href={`/maps?contactId=${contact.id}`}>
               <Button variant="outline" size="sm" className="w-full">
                 <Map className="h-3 w-3 mr-2" />
@@ -294,7 +294,7 @@ export default function Contacts() {
         )}
 
         {contact.notes && (
-          <p className="text-gray-500 text-xs mt-3 pt-3 border-t border-[#0D0E10]">{contact.notes}</p>
+          <p className="text-gray-500 text-xs mt-3 pt-3 border-t border-subtle">{contact.notes}</p>
         )}
       </Card>
     );
@@ -322,7 +322,7 @@ export default function Contacts() {
               New Contact
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#1a1a1a] border-[#0D0E10]">
+          <DialogContent className="bg-[#1a1a1a] border-subtle">
             <DialogHeader>
               <DialogTitle>{editingId ? "Edit Contact" : "Add New Contact"}</DialogTitle>
             </DialogHeader>
@@ -333,7 +333,7 @@ export default function Contacts() {
                   placeholder="Contact name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="bg-[#0D0E10] border-[#0D0E10]"
+                  className="bg-surface border-subtle"
                 />
               </div>
               <div>
@@ -343,7 +343,7 @@ export default function Contacts() {
                   placeholder="email@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="bg-[#0D0E10] border-[#0D0E10]"
+                  className="bg-surface border-subtle"
                 />
               </div>
               <div>
@@ -352,7 +352,7 @@ export default function Contacts() {
                   placeholder="+1 (555) 123-4567"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="bg-[#0D0E10] border-[#0D0E10]"
+                  className="bg-surface border-subtle"
                 />
               </div>
               <div>
@@ -361,7 +361,7 @@ export default function Contacts() {
                   placeholder="Street address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="bg-[#0D0E10] border-[#0D0E10]"
+                  className="bg-surface border-subtle"
                 />
               </div>
               <div>
@@ -370,7 +370,7 @@ export default function Contacts() {
                   placeholder="Additional notes..."
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="bg-[#0D0E10] border-[#0D0E10]"
+                  className="bg-surface border-subtle"
                   rows={3}
                 />
               </div>
@@ -398,14 +398,14 @@ export default function Contacts() {
           placeholder="Search contacts..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="bg-[#0D0E10] border-[#0D0E10]"
+          className="bg-surface border-subtle"
         />
       </div>
 
       {/* Active Contacts Grid */}
       <div className="space-y-4">
         {filteredActiveContacts.length === 0 ? (
-          <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+          <Card className="bg-surface border-subtle p-8 text-center">
             <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-gray-400">
               {searchTerm ? "No contacts found matching your search." : "No contacts found. Create your first contact to get started."}
