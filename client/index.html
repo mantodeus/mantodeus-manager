@@ -27,6 +27,40 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <!-- Critical CSS: Initialize theme BEFORE JavaScript loads -->
+    <style>
+      /* Initialize theme from localStorage immediately */
+      :root {
+        /* Default to Green Mantis */
+        --accent-solid: #0CF57E;
+        --primary: #0CF57E;
+      }
+    </style>
+    <script>
+      // Initialize theme IMMEDIATELY before any rendering
+      (function() {
+        var stored = localStorage.getItem('mantodeus.theme');
+        var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'green-mantis' : 'orchid-mantis');
+        document.documentElement.setAttribute('data-theme', theme);
+        
+        // Remove any .dark class from old theme system
+        document.documentElement.classList.remove('dark');
+        
+        // Set CSS variables immediately for Orchid Mantis
+        if (theme === 'orchid-mantis') {
+          var root = document.documentElement.style;
+          root.setProperty('--accent-solid', '#FF4FA3');
+          root.setProperty('--accent-gradient', 'linear-gradient(135deg, #FF4FA3 0%, #FF78C7 50%, #E83D8C 100%)');
+          root.setProperty('--primary', '#FF4FA3');
+          root.setProperty('--accent', '#FF4FA3');
+          root.setProperty('--ring', '#FF4FA3');
+          root.setProperty('--chart-1', '#FF4FA3');
+          root.setProperty('--chart-2', '#FF78C7');
+          root.setProperty('--chart-3', '#E83D8C');
+        }
+      })();
+    </script>
   </head>
 
   <body>
