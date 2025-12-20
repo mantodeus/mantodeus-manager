@@ -33,7 +33,7 @@ CREATE TABLE `projects` (
   INDEX `projects_createdBy_idx` (`createdBy`),
   CONSTRAINT `projects_createdBy_users_id_fk` FOREIGN KEY (`createdBy`) REFERENCES `users` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 );
-
+--> statement-breakpoint
 -- ============================================================================
 -- PROJECT_JOBS TABLE
 -- ============================================================================
@@ -61,7 +61,7 @@ CREATE TABLE `project_jobs` (
   INDEX `project_jobs_projectId_status_idx` (`projectId`, `status`),
   CONSTRAINT `project_jobs_projectId_projects_id_fk` FOREIGN KEY (`projectId`) REFERENCES `projects` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 );
-
+--> statement-breakpoint
 -- ============================================================================
 -- FILE_METADATA TABLE
 -- ============================================================================
