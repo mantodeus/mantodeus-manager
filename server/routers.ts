@@ -45,6 +45,7 @@ export const appRouter = router({
   export: exportRouter,
   pdf: pdfRouter,
   settings: settingsRouter,
+  invoices: invoiceRouter,
   
   // New project-based structure
   projects: projectsRouter,
