@@ -308,7 +308,7 @@ export default function Invoices() {
               {projects && projects.length > 0 ? (
                 projects.map((project) => (
                   <SelectItem key={project.id} value={String(project.id)}>
-                    {project.name || project.title}
+                    {project.name}
                   </SelectItem>
                 ))
               ) : (
@@ -351,7 +351,7 @@ export default function Invoices() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredInvoices.map((invoice) => {
-            const linkedJob = jobs.find((j) => j.id === invoice.jobId);
+            const linkedProject = projects.find((p) => p.id === invoice.jobId);
             const linkedContact = contacts.find((c) => c.id === invoice.contactId);
 
             return (
@@ -383,7 +383,7 @@ export default function Invoices() {
                   {linkedProject && (
                     <div className="flex items-center justify-between text-xs">
                       <span>
-                        <span className="text-gray-500">Project:</span> {linkedProject.name || linkedProject.title}
+                        <span className="text-gray-500">Project:</span> {linkedProject.name}
                       </span>
                       <a href={`/projects/${linkedProject.id}`}>
                         <Button variant="ghost" size="sm" className="h-6 px-2 text-[#00ff88] hover:text-[#00dd77]">
