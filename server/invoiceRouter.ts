@@ -77,14 +77,19 @@ export const invoiceRouter = router({
         : subtotal * (Number(companySettings.vatRate) / 100);
       const total = subtotal + vatAmount;
 
+      // Format decimals to 2 decimal places as strings
+      const formatDecimal = (value: number): string => {
+        return value.toFixed(2);
+      };
+
       // Create invoice as draft
       const invoice = await db.createInvoice({
         status: "draft",
         contactId: input.contactId || null,
-        items: items as any,
-        subtotal: subtotal.toString(),
-        vatAmount: vatAmount.toString(),
-        total: total.toString(),
+        items: JSON.stringify(items),
+        subtotal: formatDecimal(subtotal),
+        vatAmount: formatDecimal(vatAmount),
+        total: formatDecimal(total),
         notes: input.notes || null,
         invoiceDate: input.invoiceDate || new Date(),
         dueDate: input.dueDate || null,
@@ -149,6 +154,11 @@ export const invoiceRouter = router({
       let vatAmount = Number(invoice.vatAmount);
       let total = Number(invoice.total);
 
+      // Format decimals to 2 decimal places as strings
+      const formatDecimal = (value: number): string => {
+        return value.toFixed(2);
+      };
+
       if (input.items) {
         items = input.items.map((item) => ({
           ...item,
@@ -164,10 +174,10 @@ export const invoiceRouter = router({
       // Update invoice
       const updated = await db.updateInvoice(input.id, {
         contactId: input.contactId !== undefined ? input.contactId : invoice.contactId,
-        items: items as any,
-        subtotal: subtotal.toString(),
-        vatAmount: vatAmount.toString(),
-        total: total.toString(),
+        items: JSON.stringify(items),
+        subtotal: formatDecimal(subtotal),
+        vatAmount: formatDecimal(vatAmount),
+        total: formatDecimal(total),
         notes: input.notes !== undefined ? input.notes : invoice.notes,
         dueDate: input.dueDate !== undefined ? input.dueDate : invoice.dueDate,
         invoiceDate: input.invoiceDate || invoice.invoiceDate,
