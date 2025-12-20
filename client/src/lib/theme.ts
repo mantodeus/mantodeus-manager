@@ -267,5 +267,13 @@ export function getCurrentTheme(): ThemeName {
  */
 export function initializeTheme() {
   const theme = getCurrentTheme();
+  
+  // Remove any .dark class from old theme system
+  document.documentElement.classList.remove('dark');
+  
+  // Apply the new theme system
   applyTheme(theme);
+  
+  // Force immediate reflow to ensure CSS is applied
+  document.documentElement.offsetHeight;
 }
