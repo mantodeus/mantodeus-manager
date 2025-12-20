@@ -18,10 +18,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Save, Building2, Receipt, CreditCard, Info } from "lucide-react";
+import { Loader2, Save, Building2, Receipt, CreditCard, Info, Palette } from "lucide-react";
 import { toast } from "sonner";
+import { useTheme } from "@/hooks/useTheme";
+import { ThemeName } from "@/lib/theme";
 
 export default function Settings() {
+  const { theme, switchTheme, themes } = useTheme();
   const { data: settings, isLoading } = trpc.settings.get.useQuery();
   const updateMutation = trpc.settings.update.useMutation({
     onSuccess: () => {
@@ -90,6 +93,86 @@ export default function Settings() {
           Configure your company information and invoice settings
         </p>
       </div>
+
+      {/* Theme Settings */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-primary" />
+            <CardTitle>Theme</CardTitle>
+          </div>
+          <CardDescription>
+            Choose your preferred visual theme
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3">
+            {(Object.keys(themes) as ThemeName[]).map((themeName) => {
+              const themeConfig = themes[themeName];
+              const isSelected = theme === themeName;
+              
+              return (
+                <button
+                  key={themeName}
+                  type="button"
+                  onClick={() => switchTheme(themeName)}
+                  className={
+                    `relative flex items-start gap-4 p-4 rounded-lg border-2 transition-all ${
+                      isSelected
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50 bg-card'
+                    }`
+                  }
+                >
+                  {/* Radio indicator */}
+                  <div className="flex items-center justify-center w-5 h-5 mt-0.5 shrink-0">
+                    <div
+                      className={
+                        `w-4 h-4 rounded-full border-2 transition-all ${
+                          isSelected
+                            ? 'border-primary bg-primary'
+                            : 'border-muted-foreground/50'
+                        }`
+                      }
+                    >
+                      {isSelected && (
+                        <div className="w-full h-full rounded-full bg-primary-foreground scale-50" />
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Theme info */}
+                  <div className="flex-1 text-left">
+                    <div className="font-medium text-base">
+                      {themeConfig.displayName}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {themeConfig.description}
+                    </p>
+                  </div>
+                  
+                  {/* Visual preview */}
+                  <div className="flex gap-1.5 shrink-0">
+                    {themeName === 'green-mantis' ? (
+                      <>
+                        <div className="w-6 h-6 rounded-md" style={{ background: '#0CF57E' }} />
+                        <div className="w-6 h-6 rounded-md" style={{ background: '#2BFFA0' }} />
+                        <div className="w-6 h-6 rounded-md" style={{ background: '#07C964' }} />
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-6 h-6 rounded-md" style={{ background: '#FF4FA3' }} />
+                        <div className="w-6 h-6 rounded-md" style={{ background: '#FF78C7' }} />
+                        <div className="w-6 h-6 rounded-md" style={{ background: '#E83D8C' }} />
+                      </>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Company Information */}

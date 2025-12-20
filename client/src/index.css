@@ -40,9 +40,31 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* New theme tokens */
+  --color-bg-app: var(--bg-app);
+  --color-bg-page: var(--bg-page);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-disabled: var(--text-disabled);
+  --color-accent-start: var(--accent-start);
+  --color-accent-mid: var(--accent-mid);
+  --color-accent-end: var(--accent-end);
+  --color-accent-gradient: var(--accent-gradient);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-state-info: var(--state-info);
+  --color-state-warning: var(--state-warning);
+  --color-state-danger: var(--state-danger);
+  --color-state-success: var(--state-success);
 }
 
+/* Default theme tokens - Green Mantis (Dark Mode) */
 :root {
+  /* Legacy tokens for compatibility */
   --primary: oklch(0.85 0.25 155);
   --primary-foreground: oklch(0.1 0 0);
   --sidebar-primary: oklch(0.85 0.25 155);
@@ -76,8 +98,29 @@
   --sidebar-accent-foreground: oklch(0.85 0.25 155);
   --sidebar-border: oklch(0.15 0 0);
   --sidebar-ring: oklch(0.85 0.25 155);
+  
+  /* New theme system tokens - will be set by theme.ts */
+  --bg-app: linear-gradient(180deg, oklch(0.08 0.01 240) 0%, oklch(0.10 0 0) 100%);
+  --bg-page: oklch(0.10 0 0);
+  --bg-surface: #0D0E10;
+  --bg-elevated: oklch(0.12 0 0);
+  --text-primary: oklch(0.78 0 0);
+  --text-secondary: oklch(0.65 0 0);
+  --text-muted: oklch(0.50 0 0);
+  --text-disabled: oklch(0.35 0 0);
+  --accent-start: #0CF57E;
+  --accent-mid: #2BFFA0;
+  --accent-end: #07C964;
+  --accent-gradient: linear-gradient(135deg, #0CF57E 0%, #2BFFA0 50%, #07C964 100%);
+  --border-subtle: oklch(0.15 0 0);
+  --border-strong: oklch(0.25 0 0);
+  --state-info: oklch(0.65 0.20 240);
+  --state-warning: oklch(0.70 0.20 60);
+  --state-danger: oklch(0.60 0.25 25);
+  --state-success: oklch(0.65 0.20 155);
 }
 
+/* Legacy dark class for compatibility */
 .dark {
   --primary: oklch(0.85 0.25 155);
   --primary-foreground: oklch(0.1 0 0);
@@ -113,6 +156,15 @@
   --sidebar-ring: oklch(0.85 0.25 155);
 }
 
+/* Theme-specific styles */
+[data-theme="green-mantis"] {
+  /* Handled by theme.ts applyTheme function */
+}
+
+[data-theme="orchid-mantis"] {
+  /* Handled by theme.ts applyTheme function */
+}
+
 /* App loading screen animations - defined globally */
 @keyframes logo-bounce {
   0%, 100% {
@@ -137,7 +189,8 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background: var(--bg-app);
     font-family: 'Kanit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     font-weight: 100;
   }
@@ -193,16 +246,16 @@
     cursor: pointer;
   }
   
-  /* Selected card - neon green glow effect */
+  /* Selected card - theme-aware glow effect */
   .selectable-card.selected {
     box-shadow: 
-      0 0 0 2px oklch(0.85 0.25 155),
-      0 0 20px -5px oklch(0.85 0.25 155 / 0.5);
+      0 0 0 2px var(--accent-mid),
+      0 0 20px -5px color-mix(in srgb, var(--accent-mid) 50%, transparent);
   }
   
   .selectable-card.selected::before {
     opacity: 1;
-    background: oklch(0.85 0.25 155 / 0.08);
+    background: color-mix(in srgb, var(--accent-mid) 8%, transparent);
   }
   
   /* Long-press visual feedback */
@@ -221,6 +274,29 @@
   .selection-mode-active .selection-checkbox {
     transform: scale(1);
     opacity: 1;
+  }
+  
+  /* Gradient button styles */
+  .btn-gradient {
+    background: var(--accent-gradient);
+    color: var(--accent-foreground);
+    border: none;
+  }
+  
+  .btn-gradient:hover {
+    opacity: 0.9;
+  }
+  
+  /* Calendar selected day with gradient */
+  .calendar-day-selected {
+    background: var(--accent-gradient);
+    color: var(--accent-foreground);
+    font-weight: 400;
+  }
+  
+  /* Page header with subtle gradient */
+  .page-header-gradient {
+    background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-page) 100%);
   }
 }
 
