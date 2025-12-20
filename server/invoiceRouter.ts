@@ -86,7 +86,7 @@ export const invoiceRouter = router({
       const invoice = await db.createInvoice({
         status: "draft",
         contactId: input.contactId || null,
-        items: JSON.stringify(items),
+        items: items as any, // Drizzle json() handles serialization
         subtotal: formatDecimal(subtotal),
         vatAmount: formatDecimal(vatAmount),
         total: formatDecimal(total),
@@ -174,7 +174,7 @@ export const invoiceRouter = router({
       // Update invoice
       const updated = await db.updateInvoice(input.id, {
         contactId: input.contactId !== undefined ? input.contactId : invoice.contactId,
-        items: JSON.stringify(items),
+        items: items as any, // Drizzle json() handles serialization
         subtotal: formatDecimal(subtotal),
         vatAmount: formatDecimal(vatAmount),
         total: formatDecimal(total),
