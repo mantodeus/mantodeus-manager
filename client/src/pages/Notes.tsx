@@ -272,7 +272,7 @@ export default function Notes() {
       <Card
         key={note.id}
         className={`p-6 hover:shadow-lg transition-all ${
-          selectedIds.has(note.id) ? "ring-2 ring-[#00ff88]" : ""
+          selectedIds.has(note.id) ? "ring-2 ring-accent" : ""
         } ${!isMultiSelectMode ? "cursor-pointer" : ""}`}
         onClick={handleCardClick}
       >
@@ -313,7 +313,7 @@ export default function Notes() {
 
         {note.tags && (
           <div className="flex items-center gap-2 mb-3">
-            <Tag className="h-3 w-3 text-[#00ff88]" />
+            <Tag className="h-3 w-3 text-accent" />
             <span className="text-xs text-muted-foreground">{note.tags}</span>
           </div>
         )}
@@ -321,13 +321,13 @@ export default function Notes() {
         <div className="flex flex-col gap-1 text-xs text-muted-foreground">
           {getJobName(note.jobId) && (
             <div className="flex items-center gap-1">
-              <span className="text-[#00ff88]">Job:</span>
+              <span className="text-accent">Job:</span>
               <span>{getJobName(note.jobId)}</span>
             </div>
           )}
           {getContactName(note.contactId) && (
             <div className="flex items-center gap-1">
-              <span className="text-[#00ff88]">Contact:</span>
+              <span className="text-accent">Contact:</span>
               <span>{getContactName(note.contactId)}</span>
             </div>
           )}
@@ -369,7 +369,7 @@ export default function Notes() {
         </div>
         <Button
           onClick={() => setIsCreateDialogOpen(true)}
-          className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-medium"
+          className="font-medium"
         >
           <Plus className="mr-2 h-4 w-4" />
           New Note
@@ -545,7 +545,6 @@ export default function Notes() {
             <Button
               onClick={handleCreateNote}
               disabled={createNoteMutation.isPending}
-              className="bg-[#00ff88] text-black hover:bg-[#00dd77]"
             >
               {createNoteMutation.isPending ? "Creating..." : "Create Note"}
             </Button>
@@ -645,7 +644,6 @@ export default function Notes() {
             <Button
               onClick={handleUpdateNote}
               disabled={updateNoteMutation.isPending}
-              className="bg-[#00ff88] text-black hover:bg-[#00dd77]"
             >
               {updateNoteMutation.isPending ? "Updating..." : "Update Note"}
             </Button>

@@ -130,7 +130,7 @@ export default function NotesArchived() {
 
       {note.tags && (
         <div className="flex items-center gap-2 mb-3">
-          <Tag className="h-3 w-3 text-[#00ff88]" />
+          <Tag className="h-3 w-3 text-accent" />
           <span className="text-xs text-muted-foreground">{note.tags}</span>
         </div>
       )}
@@ -138,13 +138,13 @@ export default function NotesArchived() {
       <div className="flex flex-col gap-1 text-xs text-muted-foreground">
         {getJobName(note.jobId) && (
           <div className="flex items-center gap-1">
-            <span className="text-[#00ff88]">Job:</span>
+            <span className="text-accent">Job:</span>
             <span>{getJobName(note.jobId)}</span>
           </div>
         )}
         {getContactName(note.contactId) && (
           <div className="flex items-center gap-1">
-            <span className="text-[#00ff88]">Contact:</span>
+            <span className="text-accent">Contact:</span>
             <span>{getContactName(note.contactId)}</span>
           </div>
         )}

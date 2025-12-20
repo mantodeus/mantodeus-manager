@@ -222,8 +222,8 @@ export default function Contacts() {
     return (
       <Card
         key={contact.id}
-        className={`bg-surface border-subtle p-4 hover:border-subtle transition-all ${
-          selectedIds.has(contact.id) ? "ring-2 ring-[#0D0E10]" : ""
+        className={`p-4 transition-all ${
+          selectedIds.has(contact.id) ? "ring-2 ring-accent" : ""
         }`}
         onClick={handleCardClick}
       >
@@ -241,7 +241,7 @@ export default function Contacts() {
             {contact.address && (
               <a 
                 href={contact.latitude && contact.longitude ? `/maps?contactId=${contact.id}` : '#'}
-                className={`text-gray-400 text-sm flex items-center gap-1 mt-1 ${contact.latitude && contact.longitude ? 'hover:text-[#00ff88] cursor-pointer transition-colors' : ''}`}
+                className={`text-muted-foreground text-sm flex items-center gap-1 mt-1 ${contact.latitude && contact.longitude ? 'hover:text-accent cursor-pointer transition-colors' : ''}`}
                 onClick={(e) => {
                   if (!contact.latitude || !contact.longitude) {
                     e.preventDefault();
@@ -263,11 +263,11 @@ export default function Contacts() {
           )}
         </div>
 
-        <div className="space-y-2 text-sm text-gray-400">
+        <div className="space-y-2 text-sm text-muted-foreground">
           {contact.email && (
             <p className="flex items-center gap-2">
               <Mail className="w-3 h-3" />
-              <a href={`mailto:${contact.email}`} className="hover:text-[#00ff88] transition-colors">
+              <a href={`mailto:${contact.email}`} className="hover:text-accent transition-colors">
                 {contact.email}
               </a>
             </p>
@@ -275,7 +275,7 @@ export default function Contacts() {
           {contact.phone && (
             <p className="flex items-center gap-2">
               <Phone className="w-3 h-3" />
-              <a href={`tel:${contact.phone}`} className="hover:text-[#00ff88] transition-colors">
+              <a href={`tel:${contact.phone}`} className="hover:text-accent transition-colors">
                 {contact.phone}
               </a>
             </p>
@@ -283,7 +283,7 @@ export default function Contacts() {
         </div>
         
         {!isMultiSelectMode && contact.latitude && contact.longitude && (
-          <div className="mt-3 pt-3 border-t border-subtle">
+          <div className="mt-3 pt-3 border-t border-border">
             <a href={`/maps?contactId=${contact.id}`}>
               <Button variant="outline" size="sm" className="w-full">
                 <Map className="h-3 w-3 mr-2" />
@@ -294,7 +294,7 @@ export default function Contacts() {
         )}
 
         {contact.notes && (
-          <p className="text-gray-500 text-xs mt-3 pt-3 border-t border-subtle">{contact.notes}</p>
+          <p className="text-muted-foreground text-xs mt-3 pt-3 border-t border-border">{contact.notes}</p>
         )}
       </Card>
     );
@@ -313,16 +313,16 @@ export default function Contacts() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-regular">Contacts</h1>
-          <p className="text-gray-400 text-sm">Manage your clients and contacts</p>
+          <p className="text-muted-foreground text-sm">Manage your clients and contacts</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77]">
+            <Button>
               <Plus className="w-4 h-4 mr-2" />
               New Contact
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#1a1a1a] border-subtle">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingId ? "Edit Contact" : "Add New Contact"}</DialogTitle>
             </DialogHeader>
@@ -333,7 +333,6 @@ export default function Contacts() {
                   placeholder="Contact name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="bg-surface border-subtle"
                 />
               </div>
               <div>
@@ -343,7 +342,6 @@ export default function Contacts() {
                   placeholder="email@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="bg-surface border-subtle"
                 />
               </div>
               <div>
@@ -352,7 +350,6 @@ export default function Contacts() {
                   placeholder="+1 (555) 123-4567"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="bg-surface border-subtle"
                 />
               </div>
               <div>
@@ -361,7 +358,6 @@ export default function Contacts() {
                   placeholder="Street address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="bg-surface border-subtle"
                 />
               </div>
               <div>
@@ -370,14 +366,13 @@ export default function Contacts() {
                   placeholder="Additional notes..."
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="bg-surface border-subtle"
                   rows={3}
                 />
               </div>
               <Button
                 onClick={handleSave}
                 disabled={createMutation.isPending || updateMutation.isPending}
-                className="w-full bg-[#00ff88] text-black hover:bg-[#00dd77]"
+                className="w-full"
               >
                 {editingId
                   ? updateMutation.isPending
@@ -398,16 +393,15 @@ export default function Contacts() {
           placeholder="Search contacts..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="bg-surface border-subtle"
         />
       </div>
 
       {/* Active Contacts Grid */}
       <div className="space-y-4">
         {filteredActiveContacts.length === 0 ? (
-          <Card className="bg-surface border-subtle p-8 text-center">
+          <Card className="p-8 text-center">
             <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-gray-400">
+            <p className="text-muted-foreground">
               {searchTerm ? "No contacts found matching your search." : "No contacts found. Create your first contact to get started."}
             </p>
           </Card>

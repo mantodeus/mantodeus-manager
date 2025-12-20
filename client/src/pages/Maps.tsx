@@ -668,7 +668,7 @@ export default function Maps() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
-            className="pl-10 pr-10 bg-surface border-subtle focus:border-subtle"
+            className="pl-10 pr-10"
             style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
           />
           {searchQuery && (
@@ -686,16 +686,16 @@ export default function Maps() {
 
         {/* Search Results Dropdown */}
         {showSearchResults && (
-          <Card className="absolute z-50 w-full mt-2 bg-surface border-subtle max-h-96 overflow-y-auto">
+          <Card className="absolute z-50 w-full mt-2 max-h-96 overflow-y-auto">
             {searchResults.length > 0 ? (
               <div className="p-2">
                 {searchResults.map((result) => (
                   <button
                     key={result.id}
                     onClick={() => handleSearchSelect(result)}
-                    className="w-full text-left p-3 hover:bg-gray-800 rounded-md transition-colors flex items-start gap-3"
+                    className="w-full text-left p-3 hover:bg-muted rounded-md transition-colors flex items-start gap-3"
                   >
-                    <MapPin className="h-4 w-4 text-[#00ff88] mt-1 flex-shrink-0" />
+                    <MapPin className="h-4 w-4 text-accent mt-1 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium truncate" style={{ fontFamily: "Kanit, sans-serif" }}>
@@ -761,11 +761,11 @@ export default function Maps() {
                       console.error(error);
                     }
                   }}
-                  className="w-full text-left p-3 hover:bg-gray-800 rounded-md transition-colors flex items-start gap-3 border border-dashed border-subtle"
+                  className="w-full text-left p-3 hover:bg-muted rounded-md transition-colors flex items-start gap-3 border border-dashed border-border"
                 >
-                  <MapPin className="h-4 w-4 text-[#00ff88] mt-1 flex-shrink-0" />
+                  <MapPin className="h-4 w-4 text-accent mt-1 flex-shrink-0" />
                   <div className="flex-1">
-                    <span className="font-medium text-[#00ff88]" style={{ fontFamily: "Kanit, sans-serif" }}>
+                    <span className="font-medium text-accent" style={{ fontFamily: "Kanit, sans-serif" }}>
                       Add "{searchQuery}" as new location
                     </span>
                     <p className="text-xs text-muted-foreground mt-1" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
@@ -830,10 +830,10 @@ export default function Maps() {
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-start gap-2 flex-1 min-w-0">
-                            <MapPin className="h-4 w-4 text-[#00ff88] mt-1 flex-shrink-0" />
+                            <MapPin className="h-4 w-4 text-accent mt-1 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <h3
-                                className="font-semibold text-sm cursor-pointer hover:text-[#00ff88] transition-colors"
+                                className="font-semibold text-sm cursor-pointer hover:text-accent transition-colors"
                                 style={{ fontFamily: "Kanit, sans-serif" }}
                                 onClick={() => centerMapOnLocation(location)}
                               >
@@ -859,7 +859,7 @@ export default function Maps() {
                           )}
                         </div>
                         <div className="flex flex-col gap-1 text-xs">
-                          <span className="text-[#00ff88] uppercase">{location.type}</span>
+                          <span className="text-accent uppercase">{location.type}</span>
                           {getJobName(location.jobId) && (
                             <span className="text-muted-foreground">Job: {getJobName(location.jobId)}</span>
                           )}

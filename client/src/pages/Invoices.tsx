@@ -170,7 +170,7 @@ export default function Invoices() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-[#00ff88] hover:text-[#00dd77]"
+          className="h-7 px-2 text-accent hover:text-accent/90"
           onClick={handleView}
           title="View"
         >
@@ -179,7 +179,7 @@ export default function Invoices() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-[#0D0E10] hover:text-[#0D0E10]"
+          className="h-7 px-2"
           onClick={handleDownload}
           title="Download"
         >
@@ -194,7 +194,7 @@ export default function Invoices() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-regular">Invoices</h1>
-          <p className="text-gray-400 text-sm">Upload and manage invoice documents</p>
+          <p className="text-muted-foreground text-sm">Upload and manage invoice documents</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -220,19 +220,19 @@ export default function Invoices() {
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77]">
+              <Button>
                 <Plus className="w-4 h-4 mr-2" />
                 Upload Invoice
               </Button>
             </DialogTrigger>
-          <DialogContent className="bg-[#1a1a1a] border-subtle">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Upload Invoice</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Select File *</label>
-                <div className="border-2 border-dashed border-subtle rounded-lg p-6 text-center hover:border-subtle transition-colors">
+                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-accent/50 transition-colors">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -242,15 +242,15 @@ export default function Invoices() {
                     id="file-input"
                   />
                   <label htmlFor="file-input" className="cursor-pointer">
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-400">
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
                       {selectedFile ? (
-                        <span className="text-[#00ff88]">{selectedFile.name}</span>
+                        <span className="text-accent">{selectedFile.name}</span>
                       ) : (
                         "Click to select or drag and drop"
                       )}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       PDF, DOC, DOCX, XLS, XLSX up to 10MB
                     </p>
                   </label>
@@ -263,10 +263,10 @@ export default function Invoices() {
                   value={selectedJobId || "none"} 
                   onValueChange={(val) => setSelectedJobId(val === "none" ? "" : val)}
                 >
-                  <SelectTrigger className="bg-surface border-subtle">
+                  <SelectTrigger>
                     <SelectValue placeholder="Select a job..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-surface border-subtle">
+                  <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     {jobs && jobs.length > 0 ? (
                       jobs.map((job) => (
@@ -289,10 +289,10 @@ export default function Invoices() {
                   value={selectedContactId || "none"} 
                   onValueChange={(val) => setSelectedContactId(val === "none" ? "" : val)}
                 >
-                  <SelectTrigger className="bg-surface border-subtle">
+                  <SelectTrigger>
                     <SelectValue placeholder="Select a contact..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-surface border-subtle">
+                  <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     {contacts && contacts.length > 0 ? (
                       contacts.map((contact) => (
@@ -312,7 +312,7 @@ export default function Invoices() {
               <Button
                 onClick={handleUpload}
                 disabled={!selectedFile || isUploading}
-                className="w-full bg-[#00ff88] text-black hover:bg-[#00dd77]"
+                className="w-full"
               >
                 {isUploading ? "Uploading..." : "Upload Invoice"}
               </Button>
@@ -326,10 +326,10 @@ export default function Invoices() {
         <div>
           <label className="block text-sm font-medium mb-2">Filter by Job</label>
           <Select value={jobFilter || "all"} onValueChange={(val) => setJobFilter(val === "all" ? "" : val)}>
-            <SelectTrigger className="bg-surface border-subtle">
+            <SelectTrigger>
               <SelectValue placeholder="All jobs" />
             </SelectTrigger>
-            <SelectContent className="bg-surface border-subtle">
+            <SelectContent>
               <SelectItem value="all">All jobs</SelectItem>
               {jobs && jobs.length > 0 ? (
                 jobs.map((job) => (
@@ -349,10 +349,10 @@ export default function Invoices() {
         <div>
           <label className="block text-sm font-medium mb-2">Filter by Contact</label>
           <Select value={contactFilter || "all"} onValueChange={(val) => setContactFilter(val === "all" ? "" : val)}>
-            <SelectTrigger className="bg-surface border-subtle">
+            <SelectTrigger>
               <SelectValue placeholder="All contacts" />
             </SelectTrigger>
-            <SelectContent className="bg-surface border-subtle">
+            <SelectContent>
               <SelectItem value="all">All contacts</SelectItem>
               {contacts && contacts.length > 0 ? (
                 contacts.map((contact) => (
@@ -371,8 +371,8 @@ export default function Invoices() {
       </div>
 
       {filteredInvoices.length === 0 ? (
-        <Card className="bg-surface border-subtle p-8 text-center">
-          <p className="text-gray-400">No invoices found. Upload your first invoice to get started.</p>
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground">No invoices found. Upload your first invoice to get started.</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -381,15 +381,15 @@ export default function Invoices() {
             const linkedContact = contacts.find((c) => c.id === invoice.contactId);
 
             return (
-              <Card key={invoice.id} className="bg-surface border-subtle p-4 hover:border-subtle transition-colors">
+              <Card key={invoice.id} className="p-4 transition-colors">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-start gap-3 flex-1">
-                    <FileText className="w-5 h-5 text-[#00ff88] mt-1 flex-shrink-0" />
+                    <FileText className="w-5 h-5 text-accent mt-1 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-regular text-lg truncate" title={invoice.filename}>
                         {invoice.filename}
                       </h3>
-                      <p className="text-gray-400 text-xs">
+                      <p className="text-muted-foreground text-xs">
                         {formatDate(invoice.createdAt)} • {formatFileSize(invoice.fileSize)}
                       </p>
                     </div>
@@ -405,14 +405,14 @@ export default function Invoices() {
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm text-gray-400">
+                <div className="space-y-2 text-sm text-muted-foreground">
                   {linkedJob && (
                     <div className="flex items-center justify-between text-xs">
                       <span>
-                        <span className="text-gray-500">Job:</span> {linkedJob.title}
+                        <span className="text-muted-foreground/70">Job:</span> {linkedJob.title}
                       </span>
                       <a href={`/jobs/${linkedJob.id}`}>
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[#00ff88] hover:text-[#00dd77]">
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-accent hover:text-accent/90">
                           <ExternalLink className="h-3 w-3" />
                         </Button>
                       </a>
@@ -421,12 +421,12 @@ export default function Invoices() {
                   {linkedContact && (
                     <div className="flex items-center justify-between text-xs">
                       <span>
-                        <span className="text-gray-500">Contact:</span> {linkedContact.name}
+                        <span className="text-muted-foreground/70">Contact:</span> {linkedContact.name}
                       </span>
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-6 px-2 text-[#00ff88] hover:text-[#00dd77]"
+                        className="h-6 px-2 text-accent hover:text-accent/90"
                         onClick={() => {
                           window.location.href = '/contacts';
                         }}
