@@ -8,12 +8,12 @@
 -- this migration will fail - that's okay, just skip it.
 
 SET FOREIGN_KEY_CHECKS=0;
-
+--> statement-breakpoint
 -- Uncomment these lines if your table has columns named 'projectld' and 'jobld':
 -- ALTER TABLE `file_metadata` CHANGE COLUMN `projectld` `projectId` INT NOT NULL;
 -- ALTER TABLE `file_metadata` CHANGE COLUMN `jobld` `jobId` INT NULL;
 
 -- If the columns are already correctly named, you can verify with:
 -- DESCRIBE `file_metadata`;
-
+--> statement-breakpoint
 SET FOREIGN_KEY_CHECKS=1;

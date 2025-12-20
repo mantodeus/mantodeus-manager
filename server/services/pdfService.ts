@@ -1,5 +1,4 @@
 import puppeteer, { type Browser, type Page } from 'puppeteer';
-import { ENV } from '../_core/env';
 
 let browserInstance: Browser | null = null;
 let browserLaunchPromise: Promise<Browser> | null = null;
@@ -21,31 +20,40 @@ async function getBrowser(): Promise<Browser> {
   
   // Launch new browser instance
   browserLaunchPromise = (async () => {
-    const executablePath = ENV.puppeteerExecutablePath || undefined;
-    
-    browserInstance = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--single-process', // Reduces resource usage
-      ],
-      ...(executablePath ? { executablePath } : {}),
-    });
+    try {
+      console.log('[PDF Service] Launching Puppeteer with bundled Chromium...');
+      
+      browserInstance = await puppeteer.launch({
+        // Explicitly set to undefined to override PUPPETEER_EXECUTABLE_PATH env var
+        // Puppeteer reads this env var automatically, so we must override it
+        executablePath: undefined,
+        headless: "new",
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--no-zygote',
+          '--single-process',
+        ],
+      });
 
-    // Clean up browser on process exit
-    process.on('exit', () => {
-      if (browserInstance) {
-        browserInstance.close().catch(() => {});
-      }
-    });
-    
-    return browserInstance;
+      console.log('[PDF Service] ✓ Puppeteer browser launched successfully');
+
+      // Clean up browser on process exit
+      process.on('exit', () => {
+        if (browserInstance) {
+          browserInstance.close().catch(() => {});
+        }
+      });
+      
+      return browserInstance;
+    } catch (error) {
+      console.error('[PDF Service] ✗ FATAL: Failed to launch Puppeteer browser');
+      console.error('[PDF Service] Error details:', error);
+      console.error('[PDF Service] This may indicate missing dependencies or insufficient permissions');
+      throw new Error(`Puppeteer browser launch failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   })();
   
   try {
@@ -105,6 +113,10 @@ export async function generatePDF(
     });
 
     return Buffer.from(pdfBuffer);
+  } catch (error) {
+    console.error('[PDF Service] ✗ PDF generation failed');
+    console.error('[PDF Service] Error details:', error);
+    throw new Error(`PDF generation failed: ${error instanceof Error ? error.message : String(error)}`);
   } finally {
     if (page) {
       await page.close().catch(() => {});
@@ -121,4 +133,3 @@ export async function closeBrowser(): Promise<void> {
     browserInstance = null;
   }
 }
-

@@ -29,7 +29,6 @@ export const ENV = {
   s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
 
   // PDF Service
-  puppeteerExecutablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
   pdfExpiryDefaultHours: Number(process.env.PDF_EXPIRY_DEFAULT_HOURS) || 168, // Default 7 days
   defaultVatRate: Number(process.env.DEFAULT_VAT_RATE) || 19,
   
