@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { storageGet } from "../storage";
+import { supabaseAuth } from "./supabase";
 import crypto from "crypto";
 import { exec } from "child_process";
 import path from "path";
@@ -98,6 +99,89 @@ async function startServer() {
       // This identifier will prove the new code is deployed
       buildId: "perf-fix-2024-12-17",
     });
+  });
+
+  // PDF endpoints - require authentication
+  // Note: For invoices, use tRPC endpoint pdf.generateInvoice or create a shared document link
+  // This endpoint pattern can be extended for other document types
+
+  app.get("/api/projects/:id/pdf", async (req, res) => {
+    try {
+      const user = await supabaseAuth.authenticateRequest(req);
+      const projectId = parseInt(req.params.id, 10);
+      
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+
+      const { getProjectById, getProjectJobsByProjectId, getFilesByProjectId, getContactById, getCompanySettingsByUserId } = await import("../db");
+      const { generateProjectReportHTML } = await import("../templates/projectReport");
+      const { renderPDF } = await import("../services/pdfService");
+      const { createPresignedReadUrl } = await import("../storage");
+
+      const project = await getProjectById(projectId);
+      if (!project || project.userId !== user.id) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      let clientContact = null;
+      if (project.clientId) {
+        const contact = await getContactById(project.clientId);
+        if (contact) {
+          clientContact = {
+            name: contact.name,
+            address: contact.address,
+          };
+        }
+      }
+
+      const jobs = await getProjectJobsByProjectId(projectId);
+      const files = await getFilesByProjectId(projectId);
+      
+      const filesWithUrls = await Promise.all(
+        files
+          .filter((f: typeof files[0]) => f.mimeType?.startsWith('image/'))
+          .slice(0, 10)
+          .map(async (file: typeof files[0]) => {
+            try {
+              const signedUrl = await createPresignedReadUrl(file.s3Key, 3600);
+              return { ...file, signedUrl };
+            } catch {
+              return file;
+            }
+          })
+      );
+
+      const companySettings = await getCompanySettingsByUserId(user.id);
+      const companyName = companySettings?.companyName || 'Mantodeus Manager';
+
+      const html = generateProjectReportHTML({
+        project: {
+          ...project,
+          clientContact,
+        },
+        jobs,
+        files: filesWithUrls,
+        logoUrl: "",
+        companyName,
+      });
+
+      const pdfBuffer = await renderPDF(html);
+      const filename = `project-${projectId}-report.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Invalid or missing session")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      console.error("Project PDF error:", error);
+      res.status(500).json({ 
+        error: "Failed to generate PDF",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
   });
 
   // Public shareable document endpoint

@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
-import { generatePDF } from "./services/pdfService";
+import { renderPDF } from "./services/pdfService";
 import { generateProjectReportHTML } from "./templates/projectReport";
 import { generateInvoiceHTML } from "./templates/invoice";
 import { generateInspectionHTML } from "./templates/inspection";
@@ -79,7 +79,7 @@ export const pdfRouter = router({
       });
 
       // Generate PDF
-      const pdfBuffer = await generatePDF(html);
+      const pdfBuffer = await renderPDF(html);
 
       // Upload to S3
       const timestamp = Date.now();
@@ -194,7 +194,7 @@ export const pdfRouter = router({
       });
 
       // Generate PDF
-      const pdfBuffer = await generatePDF(html);
+      const pdfBuffer = await renderPDF(html);
 
       // Upload to S3
       const timestamp = Date.now();

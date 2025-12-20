@@ -29,6 +29,8 @@ export const ENV = {
   s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
 
   // PDF Service
+  pdfServiceUrl: process.env.PDF_SERVICE_URL || "https://pdf-service-withered-star-4195.fly.dev/render",
+  pdfServiceSecret: process.env.PDF_SERVICE_SECRET || "",
   pdfExpiryDefaultHours: Number(process.env.PDF_EXPIRY_DEFAULT_HOURS) || 168, // Default 7 days
   defaultVatRate: Number(process.env.DEFAULT_VAT_RATE) || 19,
   
