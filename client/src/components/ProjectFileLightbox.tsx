@@ -674,7 +674,7 @@ export default function ProjectFileLightbox({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col">
+    <div className="fixed inset-0 z-50 style={{ background: 'var(--overlay-heavy)' }} flex flex-col">
       {/* Hidden image for loading */}
       <img ref={imgRef} className="hidden" crossOrigin="anonymous" alt="" />
 
@@ -694,7 +694,7 @@ export default function ProjectFileLightbox({
       </div>
 
       {/* Toolbar - Horizontal scrollable on mobile */}
-      <div className="overflow-x-auto px-4 pb-4 bg-black/50">
+      <div className="overflow-x-auto px-4 pb-4 style={{ background: 'var(--overlay-medium)' }}">
         <div className="flex items-center justify-center gap-2 min-w-max">
           {/* Mode Toggle */}
           <Button

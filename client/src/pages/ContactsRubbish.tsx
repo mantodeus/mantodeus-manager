@@ -60,7 +60,7 @@ export default function ContactsRubbish() {
   }
 
   const renderRubbishItem = (contact: typeof trashedContacts[0]) => (
-    <Card key={contact.id} className="bg-[#0D0E10] border-[#0D0E10]">
+    <Card key={contact.id} className="bg-surface border-subtle">
       <div className="flex items-center justify-between p-4">
         <div className="min-w-0">
           <div className="font-medium truncate">{contact.name}</div>
@@ -119,7 +119,7 @@ export default function ContactsRubbish() {
       {/* Rubbish Items List */}
       <div className="space-y-3">
         {trashedContacts.length === 0 ? (
-          <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+          <Card className="bg-surface border-subtle p-8 text-center">
             <Trash2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-gray-400 mb-4">Rubbish bin is empty.</p>
             <Link href="/contacts">
