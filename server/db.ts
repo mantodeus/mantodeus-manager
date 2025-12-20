@@ -716,9 +716,8 @@ export async function unlinkJobContact(jobId: number, contactId: number) {
 // ===== INVOICES QUERIES =====
 
 export async function getInvoicesByUser(userId: number) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(invoices).where(eq(invoices.uploadedBy, userId));
+  // Legacy function - use getInvoicesByUserId instead
+  return getInvoicesByUserId(userId);
 }
 
 export async function getInvoicesByJob(jobId: number) {
@@ -733,17 +732,41 @@ export async function getInvoicesByContact(contactId: number) {
   return db.select().from(invoices).where(eq(invoices.contactId, contactId));
 }
 
-export async function createInvoice(data: InsertInvoice) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  return db.insert(invoices).values(data);
-}
-
 export async function getInvoiceById(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
   return result.length > 0 ? result[0] : null;
+}
+
+export async function getInvoicesByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.select().from(invoices)
+    .where(eq(invoices.userId, userId))
+    .orderBy(desc(invoices.createdAt));
+}
+
+export async function createInvoice(data: InsertInvoice) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(invoices).values(data);
+  const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
+  if (!insertId) {
+    throw new Error("Failed to create invoice: no insert ID returned");
+  }
+  const [invoice] = await db.select().from(invoices).where(eq(invoices.id, Number(insertId))).limit(1);
+  if (!invoice) {
+    throw new Error("Failed to retrieve created invoice");
+  }
+  return invoice;
+}
+
+export async function updateInvoice(id: number, data: Partial<InsertInvoice>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(invoices).set(data).where(eq(invoices.id, id));
+  return await getInvoiceById(id);
 }
 
 export async function deleteInvoice(id: number) {

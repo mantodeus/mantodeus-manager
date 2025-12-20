@@ -19,6 +19,7 @@ import { exportRouter } from "./exportRouter";
 import { projectsRouter } from "./projectsRouter";
 import { pdfRouter } from "./pdfRouter";
 import { settingsRouter } from "./settingsRouter";
+import { invoiceRouter } from "./invoiceRouter";
 import { geocodeAddress } from "./_core/geocoding";
 import { shouldProcessImage } from "./_core/imageProcessing";
 import { 
@@ -806,27 +807,23 @@ export const appRouter = router({
       }),
   }),
   
-  invoices: router({
-    // List all invoices for current user
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getInvoicesByUser(ctx.user.id);
-    }),
-    
-    // List invoices by job
+  // Legacy invoice file upload endpoints (kept for backward compatibility)
+  invoiceFiles: router({
+    // List invoices by job (legacy)
     getByJob: protectedProcedure
       .input(z.object({ jobId: z.number() }))
       .query(async ({ input }) => {
         return await db.getInvoicesByJob(input.jobId);
       }),
     
-    // List invoices by contact
+    // List invoices by contact (legacy)
     getByContact: protectedProcedure
       .input(z.object({ contactId: z.number() }))
       .query(async ({ input }) => {
         return await db.getInvoicesByContact(input.contactId);
       }),
 
-    // Get presigned read URL for viewing/downloading an invoice
+    // Get presigned read URL for viewing/downloading an invoice file
     getReadUrl: protectedProcedure
       .input(z.object({ fileKey: z.string() }))
       .query(async ({ input }) => {
@@ -856,7 +853,7 @@ export const appRouter = router({
         // Upload to S3 via server (no CORS needed)
         const { url } = await storagePut(fileKey, base64Data, contentType);
 
-        // Save metadata to database
+        // Save metadata to database (as legacy file upload)
         const result = await db.createInvoice({
           filename,
           fileKey,
@@ -866,9 +863,11 @@ export const appRouter = router({
           contactId: contactId || null,
           uploadDate: new Date(),
           uploadedBy: ctx.user.id,
+          userId: ctx.user.id,
+          status: "issued", // Legacy uploads are treated as issued
         });
 
-        return { success: true, id: result[0].id, url, fileKey };
+        return { success: true, id: result.id, url, fileKey };
       }),
 
     // Get a presigned URL for direct browser upload (requires CORS on bucket)
@@ -910,7 +909,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
-        const result = await db.createInvoice({
+        const invoice = await db.createInvoice({
           filename: input.filename,
           fileKey: input.fileKey,
           fileSize: input.fileSize || null,
@@ -919,26 +918,14 @@ export const appRouter = router({
           contactId: input.contactId || null,
           uploadDate: input.uploadDate || new Date(),
           uploadedBy: ctx.user.id,
+          userId: ctx.user.id,
+          status: "issued", // Legacy uploads are treated as issued
+          items: [],
+          subtotal: "0.00",
+          vatAmount: "0.00",
+          total: "0.00",
         });
-        return { success: true, id: result[0].id };
-      }),
-    
-    // Delete an invoice
-    delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        const invoice = await db.getInvoiceById(input.id);
-        if (invoice?.fileKey) {
-          try {
-            await deleteFromStorage(invoice.fileKey);
-          } catch (error) {
-            console.error("[Invoices] Failed to delete from S3:", error);
-            // Continue with DB delete even if S3 delete fails
-          }
-        }
-
-        await db.deleteInvoice(input.id);
-        return { success: true };
+        return { success: true, id: invoice.id };
       }),
   }),
 

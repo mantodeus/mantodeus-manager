@@ -309,19 +309,46 @@ export type JobContact = typeof jobContacts.$inferSelect;
 export type InsertJobContact = typeof jobContacts.$inferInsert;
 
 /**
- * Invoices table - stores invoice file references
+ * Invoices table - stores invoice data and metadata
  */
 export const invoices = mysqlTable("invoices", {
   id: int("id").primaryKey().autoincrement(),
-  filename: varchar("filename", { length: 255 }).notNull(),
-  fileKey: varchar("fileKey", { length: 500 }).notNull(),
+  // Invoice metadata
+  invoiceNumber: varchar("invoiceNumber", { length: 50 }),
+  status: mysqlEnum("status", ["draft", "issued", "paid", "cancelled"]).default("draft").notNull(),
+  // Client/Contact reference
+  contactId: int("contactId").references(() => contacts.id),
+  // Invoice dates
+  invoiceDate: timestamp("invoiceDate").defaultNow().notNull(),
+  dueDate: timestamp("dueDate"),
+  issuedAt: timestamp("issuedAt"),
+  // Invoice items (stored as JSON)
+  items: json("items").notNull().default("[]").$type<Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }>>(),
+  // Financial totals
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  vatAmount: decimal("vatAmount", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  // Additional fields
+  notes: text("notes"),
+  // PDF reference (only set when issued)
+  pdfFileKey: varchar("pdfFileKey", { length: 500 }),
+  // Legacy fields (for backward compatibility with file uploads)
+  filename: varchar("filename", { length: 255 }),
+  fileKey: varchar("fileKey", { length: 500 }),
   fileSize: int("fileSize"),
   mimeType: varchar("mimeType", { length: 100 }),
   jobId: int("jobId").references(() => jobs.id),
-  contactId: int("contactId").references(() => contacts.id),
   uploadDate: timestamp("uploadDate"),
-  uploadedBy: int("uploadedBy").notNull().references(() => users.id),
+  uploadedBy: int("uploadedBy").references(() => users.id), // Legacy, use userId instead
+  // Owner
+  userId: int("userId").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type Invoice = typeof invoices.$inferSelect;
