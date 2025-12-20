@@ -102,8 +102,175 @@ async function startServer() {
   });
 
   // PDF endpoints - require authentication
-  // Note: For invoices, use tRPC endpoint pdf.generateInvoice or create a shared document link
-  // This endpoint pattern can be extended for other document types
+  app.get("/api/invoices/:id/pdf", async (req, res) => {
+    try {
+      const user = await supabaseAuth.authenticateRequest(req);
+      const invoiceId = parseInt(req.params.id, 10);
+      const isPreview = req.query.preview === "true";
+      
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ error: "Invalid invoice ID" });
+      }
+
+      const { getInvoiceById, getCompanySettingsByUserId, getContactById } = await import("../db");
+      const { generateInvoiceHTML } = await import("../templates/invoice");
+      const { renderPDF } = await import("../services/pdfService");
+
+      const invoice = await getInvoiceById(invoiceId);
+      if (!invoice || invoice.userId !== user.id) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      const companySettings = await getCompanySettingsByUserId(user.id);
+      if (!companySettings) {
+        return res.status(500).json({ error: "Company settings not found" });
+      }
+
+      // Get client contact if linked
+      let client = null;
+      if (invoice.contactId) {
+        const contact = await getContactById(invoice.contactId);
+        if (contact) {
+          client = {
+            name: contact.name,
+            address: contact.address,
+          };
+        }
+      }
+
+      // Use draft invoice number or generate preview number
+      const invoiceNumber = invoice.invoiceNumber || (isPreview ? `DRAFT-${invoiceId}` : `PREVIEW-${invoiceId}`);
+
+      const html = generateInvoiceHTML({
+        invoiceNumber,
+        invoiceDate: invoice.invoiceDate,
+        dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        company: companySettings,
+        client,
+        items: invoice.items as Array<{
+          description: string;
+          quantity: number;
+          unitPrice: number;
+          total: number;
+        }>,
+        subtotal: Number(invoice.subtotal),
+        vatAmount: Number(invoice.vatAmount),
+        total: Number(invoice.total),
+        notes: invoice.notes || undefined,
+        logoUrl: "",
+      });
+
+      const pdfBuffer = await renderPDF(html);
+      const filename = `invoice-${invoiceNumber}.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", isPreview ? `inline; filename="${filename}"` : `attachment; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Invalid or missing session")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      console.error("Invoice PDF error:", error);
+      res.status(500).json({ 
+        error: "Failed to generate PDF",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.post("/api/invoices/:id/issue", async (req, res) => {
+    try {
+      const user = await supabaseAuth.authenticateRequest(req);
+      const invoiceId = parseInt(req.params.id, 10);
+      
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ error: "Invalid invoice ID" });
+      }
+
+      // Import required modules
+      const db = await import("../db");
+      const { generateInvoiceHTML } = await import("../templates/invoice");
+      const { renderPDF } = await import("../services/pdfService");
+      const { storagePut, generateFileKey } = await import("../storage");
+
+      // Get invoice
+      const invoice = await db.getInvoiceById(invoiceId);
+      if (!invoice || invoice.userId !== user.id) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      if (invoice.status !== "draft") {
+        return res.status(400).json({ error: "Only draft invoices can be issued" });
+      }
+
+      // Get company settings
+      const companySettings = await db.getCompanySettingsByUserId(user.id);
+      if (!companySettings) {
+        return res.status(500).json({ error: "Company settings not found" });
+      }
+
+      // Generate invoice number
+      const invoiceNumber = `${companySettings.invoicePrefix}-${new Date().getFullYear()}-${String(companySettings.nextInvoiceNumber).padStart(4, "0")}`;
+      await db.incrementInvoiceNumber(user.id);
+
+      // Get client contact if linked
+      let client = null;
+      if (invoice.contactId) {
+        const contact = await db.getContactById(invoice.contactId);
+        if (contact) {
+          client = {
+            name: contact.name,
+            address: contact.address,
+          };
+        }
+      }
+
+      // Generate PDF
+      const html = generateInvoiceHTML({
+        invoiceNumber,
+        invoiceDate: invoice.invoiceDate,
+        dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        company: companySettings,
+        client,
+        items: invoice.items as Array<{
+          description: string;
+          quantity: number;
+          unitPrice: number;
+          total: number;
+        }>,
+        subtotal: Number(invoice.subtotal),
+        vatAmount: Number(invoice.vatAmount),
+        total: Number(invoice.total),
+        notes: invoice.notes || undefined,
+        logoUrl: "",
+      });
+
+      const pdfBuffer = await renderPDF(html);
+
+      // Upload PDF to S3
+      const timestamp = Date.now();
+      const fileKey = generateFileKey("pdfs", user.id, `invoice-${invoiceNumber}-${timestamp}.pdf`);
+      await storagePut(fileKey, pdfBuffer, "application/pdf");
+
+      // Update invoice: set status, number, PDF reference, issued date
+      const updated = await db.updateInvoice(invoiceId, {
+        status: "issued",
+        invoiceNumber,
+        pdfFileKey: fileKey,
+        issuedAt: new Date(),
+      });
+
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Invalid or missing session")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      console.error("Issue invoice error:", error);
+      res.status(500).json({ 
+        error: "Failed to issue invoice",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   app.get("/api/projects/:id/pdf", async (req, res) => {
     try {

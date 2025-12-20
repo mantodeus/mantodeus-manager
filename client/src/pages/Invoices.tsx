@@ -2,135 +2,82 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Upload, ExternalLink, Eye, Download } from "lucide-react";
-import { useRef, useState } from "react";
+import { FileText, Plus, Eye, Edit, Send, Trash2, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
-import { GenerateInvoiceDialog } from "@/components/GenerateInvoiceDialog";
 
-// Convert file to base64
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      const result = reader.result as string;
-      // Remove the data:mime/type;base64, prefix
-      const base64 = result.split(",")[1];
-      resolve(base64);
-    };
-    reader.onerror = (error) => reject(error);
-  });
+interface InvoiceItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
 }
 
 export default function Invoices() {
   const { user } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedJobId, setSelectedJobId] = useState<string>("");
-  const [selectedContactId, setSelectedContactId] = useState<string>("");
-  const [jobFilter, setJobFilter] = useState<string>("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<number | null>(null);
   const [contactFilter, setContactFilter] = useState<string>("");
-  const [isUploading, setIsUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [generateInvoiceDialogOpen, setGenerateInvoiceDialogOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
-  const { data: jobs = [] } = trpc.jobs.list.useQuery();
-  const { data: projects = [] } = trpc.projects.list.useQuery();
-  const uploadMutation = trpc.invoices.upload.useMutation();
-  const deleteMutation = trpc.invoices.delete.useMutation();
+  
+  const createMutation = trpc.invoices.create.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice created");
+      setCreateDialogOpen(false);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create invoice");
+    },
+  });
+
+  const updateMutation = trpc.invoices.update.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice updated");
+      setEditDialogOpen(false);
+      setEditingInvoice(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update invoice");
+    },
+  });
+
+  const issueMutation = trpc.invoices.issue.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice issued successfully");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to issue invoice");
+    },
+  });
+
+  const deleteMutation = trpc.invoices.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice deleted");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete invoice");
+    },
+  });
 
   const filteredInvoices = invoices.filter((invoice) => {
-    if (jobFilter && invoice.jobId !== parseInt(jobFilter)) return false;
     if (contactFilter && invoice.contactId !== parseInt(contactFilter)) return false;
     return true;
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      // Validate file type
-      const allowedTypes = [
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Please select a valid document file (PDF, DOC, DOCX, XLS, XLSX)");
-        return;
-      }
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("File size must be less than 10MB");
-        return;
-      }
-      setSelectedFile(file);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      toast.error("Please select a file");
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      // Convert file to base64
-      const base64Data = await fileToBase64(selectedFile);
-
-      // Upload via server (bypasses CORS)
-      await uploadMutation.mutateAsync({
-        filename: selectedFile.name,
-        mimeType: selectedFile.type || "application/octet-stream",
-        fileSize: selectedFile.size,
-        base64Data,
-        jobId: selectedJobId ? parseInt(selectedJobId) : undefined,
-        contactId: selectedContactId ? parseInt(selectedContactId) : undefined,
-      });
-
-      toast.success("Invoice uploaded successfully");
-      setSelectedFile(null);
-      setSelectedJobId("");
-      setSelectedContactId("");
-      setIsDialogOpen(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      refetch();
-    } catch (error) {
-      console.error(error);
-      const message = error instanceof Error ? error.message : "Failed to upload invoice";
-      toast.error(message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleItemAction = async (action: ItemAction, id: number) => {
-    if (action === "delete") {
-      if (confirm("Are you sure you want to delete this invoice?")) {
-        try {
-          await deleteMutation.mutateAsync({ id });
-          toast.success("Invoice deleted successfully");
-          refetch();
-        } catch (error) {
-          toast.error("Failed to delete invoice");
-        }
-      }
-    }
-  };
-
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -138,233 +85,98 @@ export default function Invoices() {
     });
   };
 
-  const formatFileSize = (bytes: number | null) => {
-    if (!bytes) return "Unknown size";
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const formatCurrency = (amount: string | number) => {
+    const num = typeof amount === "string" ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat("de-DE", {
+      style: "currency",
+      currency: "EUR",
+    }).format(num);
   };
 
-  // Component to handle viewing invoice via file proxy (bypasses CORS)
-  function InvoiceViewButton({ fileKey, filename }: { fileKey: string; filename: string }) {
-    // Use file proxy instead of presigned URLs (CORS-free)
-    const viewUrl = `/api/file-proxy?key=${encodeURIComponent(fileKey)}&filename=${encodeURIComponent(filename)}`;
-    const downloadUrl = `/api/file-proxy?key=${encodeURIComponent(fileKey)}&filename=${encodeURIComponent(filename)}&download=true`;
-
-    const handleView = () => {
-      window.open(viewUrl, "_blank");
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      draft: "outline",
+      issued: "default",
+      paid: "secondary",
+      cancelled: "destructive",
     };
-
-    const handleDownload = () => {
-      // Create a link and trigger download
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    };
-
     return (
-      <div className="flex gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-accent hover:text-accent/90"
-          onClick={handleView}
-          title="View"
-        >
-          <Eye className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2"
-          onClick={handleDownload}
-          title="Download"
-        >
-          <Download className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+      <Badge variant={variants[status] || "default"} className="text-xs">
+        {status.toUpperCase()}
+      </Badge>
     );
-  }
+  };
+
+  const handlePreviewPDF = (invoiceId: number) => {
+    window.open(`/api/invoices/${invoiceId}/pdf?preview=true`, "_blank");
+  };
+
+  const handleIssueInvoice = async (invoiceId: number) => {
+    if (!confirm("Are you sure you want to issue this invoice? It will be locked and cannot be edited.")) {
+      return;
+    }
+    await issueMutation.mutateAsync({ id: invoiceId });
+  };
+
+  const handleEditInvoice = (invoice: typeof invoices[0]) => {
+    if (invoice.status !== "draft") {
+      toast.error("Only draft invoices can be edited");
+      return;
+    }
+    setEditingInvoice(invoice.id);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteInvoice = async (invoiceId: number) => {
+    if (!confirm("Are you sure you want to delete this invoice?")) {
+      return;
+    }
+    await deleteMutation.mutateAsync({ id: invoiceId });
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-regular">Invoices</h1>
-          <p className="text-muted-foreground text-sm">Upload and manage invoice documents</p>
+          <p className="text-muted-foreground text-sm">Create, edit, and manage invoices</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (projects.length === 0) {
-                toast.error("Please create a project first");
-                return;
-              }
-              if (projects.length === 1) {
-                setSelectedProjectId(projects[0].id);
-                setGenerateInvoiceDialogOpen(true);
-              } else {
-                // For multiple projects, show a selector
-                // For now, just use the first project
-                setSelectedProjectId(projects[0].id);
-                setGenerateInvoiceDialogOpen(true);
-              }
-            }}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Generate Invoice
-          </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Upload Invoice
-              </Button>
-            </DialogTrigger>
-          <DialogContent>
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Invoice
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Upload Invoice</DialogTitle>
+              <DialogTitle>Create Invoice</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Select File *</label>
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-accent/50 transition-colors">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="file-input"
-                  />
-                  <label htmlFor="file-input" className="cursor-pointer">
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      {selectedFile ? (
-                        <span className="text-accent">{selectedFile.name}</span>
-                      ) : (
-                        "Click to select or drag and drop"
-                      )}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      PDF, DOC, DOCX, XLS, XLSX up to 10MB
-                    </p>
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Link to Job (optional)</label>
-                <Select 
-                  value={selectedJobId || "none"} 
-                  onValueChange={(val) => setSelectedJobId(val === "none" ? "" : val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a job..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {jobs && jobs.length > 0 ? (
-                      jobs.map((job) => (
-                        <SelectItem key={job.id} value={String(job.id)}>
-                          {job.title}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-jobs" disabled>
-                        No jobs available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Link to Contact (optional)</label>
-                <Select 
-                  value={selectedContactId || "none"} 
-                  onValueChange={(val) => setSelectedContactId(val === "none" ? "" : val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a contact..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {contacts && contacts.length > 0 ? (
-                      contacts.map((contact) => (
-                        <SelectItem key={contact.id} value={String(contact.id)}>
-                          {contact.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-contacts" disabled>
-                        No contacts available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button
-                onClick={handleUpload}
-                disabled={!selectedFile || isUploading}
-                className="w-full"
-              >
-                {isUploading ? "Uploading..." : "Upload Invoice"}
-              </Button>
-            </div>
+            <CreateInvoiceForm
+              contacts={contacts}
+              onSubmit={(data) => {
+                createMutation.mutate(data);
+              }}
+              isLoading={createMutation.isPending}
+            />
           </DialogContent>
         </Dialog>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Filter by Job</label>
-          <Select value={jobFilter || "all"} onValueChange={(val) => setJobFilter(val === "all" ? "" : val)}>
-            <SelectTrigger>
-              <SelectValue placeholder="All jobs" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All jobs</SelectItem>
-              {jobs && jobs.length > 0 ? (
-                jobs.map((job) => (
-                  <SelectItem key={job.id} value={String(job.id)}>
-                    {job.title}
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="no-jobs" disabled>
-                  No jobs available
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">Filter by Contact</label>
+          <Label className="mb-2">Filter by Contact</Label>
           <Select value={contactFilter || "all"} onValueChange={(val) => setContactFilter(val === "all" ? "" : val)}>
             <SelectTrigger>
               <SelectValue placeholder="All contacts" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All contacts</SelectItem>
-              {contacts && contacts.length > 0 ? (
-                contacts.map((contact) => (
-                  <SelectItem key={contact.id} value={String(contact.id)}>
-                    {contact.name}
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="no-contacts" disabled>
-                  No contacts available
+              {contacts.map((contact) => (
+                <SelectItem key={contact.id} value={String(contact.id)}>
+                  {contact.name}
                 </SelectItem>
-              )}
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -372,68 +184,81 @@ export default function Invoices() {
 
       {filteredInvoices.length === 0 ? (
         <Card className="p-8 text-center">
-          <p className="text-muted-foreground">No invoices found. Upload your first invoice to get started.</p>
+          <p className="text-muted-foreground">No invoices found. Create your first invoice to get started.</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredInvoices.map((invoice) => {
-            const linkedJob = jobs.find((j) => j.id === invoice.jobId);
             const linkedContact = contacts.find((c) => c.id === invoice.contactId);
+            const items = (invoice.items as InvoiceItem[]) || [];
 
             return (
-              <Card key={invoice.id} className="p-4 transition-colors">
+              <Card key={invoice.id} className="p-4">
                 <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-start gap-3 flex-1">
-                    <FileText className="w-5 h-5 text-accent mt-1 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-regular text-lg truncate" title={invoice.filename}>
-                        {invoice.filename}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="w-5 h-5 text-accent" />
+                      <h3 className="font-regular text-lg">
+                        {invoice.invoiceNumber || `Draft #${invoice.id}`}
                       </h3>
-                      <p className="text-muted-foreground text-xs">
-                        {formatDate(invoice.createdAt)} • {formatFileSize(invoice.fileSize)}
-                      </p>
+                      {getStatusBadge(invoice.status)}
                     </div>
+                    <p className="text-muted-foreground text-xs">
+                      {formatDate(invoice.invoiceDate)}
+                      {invoice.dueDate && ` • Due: ${formatDate(invoice.dueDate)}`}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <InvoiceViewButton fileKey={invoice.fileKey} filename={invoice.filename} />
-                    <ItemActionsMenu
-                      onAction={(action) => handleItemAction(action, invoice.id)}
-                      actions={["delete"]}
-                      triggerClassName="text-muted-foreground hover:text-foreground"
-                      size="sm"
-                    />
+                  <ItemActionsMenu
+                    onAction={(action) => {
+                      if (action === "delete") handleDeleteInvoice(invoice.id);
+                      else if (action === "edit") handleEditInvoice(invoice);
+                    }}
+                    actions={invoice.status === "draft" ? ["edit", "delete"] : ["delete"]}
+                  />
+                </div>
+
+                {linkedContact && (
+                  <div className="text-sm text-muted-foreground mb-2">
+                    <span className="font-medium">Client:</span> {linkedContact.name}
+                  </div>
+                )}
+
+                <div className="space-y-1 text-sm mb-3">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Items:</span>
+                    <span>{items.length}</span>
+                  </div>
+                  <div className="flex justify-between font-medium">
+                    <span>Total:</span>
+                    <span>{formatCurrency(invoice.total)}</span>
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  {linkedJob && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span>
-                        <span className="text-muted-foreground/70">Job:</span> {linkedJob.title}
-                      </span>
-                      <a href={`/jobs/${linkedJob.id}`}>
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-accent hover:text-accent/90">
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
-                      </a>
-                    </div>
-                  )}
-                  {linkedContact && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span>
-                        <span className="text-muted-foreground/70">Contact:</span> {linkedContact.name}
-                      </span>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-6 px-2 text-accent hover:text-accent/90"
-                        onClick={() => {
-                          window.location.href = '/contacts';
-                        }}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    </div>
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handlePreviewPDF(invoice.id)}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    Preview
+                  </Button>
+                  {invoice.status === "draft" && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleIssueInvoice(invoice.id)}
+                      disabled={issueMutation.isPending}
+                    >
+                      {issueMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      Issue
+                    </Button>
                   )}
                 </div>
               </Card>
@@ -441,18 +266,367 @@ export default function Invoices() {
           })}
         </div>
       )}
-      {selectedProjectId && (
-        <GenerateInvoiceDialog
-          open={generateInvoiceDialogOpen}
+
+      {editingInvoice && (
+        <EditInvoiceDialog
+          open={editDialogOpen}
           onOpenChange={(open) => {
-            setGenerateInvoiceDialogOpen(open);
-            if (!open) {
-              setSelectedProjectId(null);
-            }
+            setEditDialogOpen(open);
+            if (!open) setEditingInvoice(null);
           }}
-          projectId={selectedProjectId}
+          invoiceId={editingInvoice}
+          contacts={contacts}
+          onSuccess={() => {
+            setEditDialogOpen(false);
+            setEditingInvoice(null);
+            refetch();
+          }}
         />
       )}
     </div>
+  );
+}
+
+function CreateInvoiceForm({
+  contacts,
+  onSubmit,
+  isLoading,
+}: {
+  contacts: Array<{ id: number; name: string }>;
+  onSubmit: (data: {
+    contactId?: number;
+    items: InvoiceItem[];
+    notes?: string;
+    dueDate?: Date;
+  }) => void;
+  isLoading: boolean;
+}) {
+  const [contactId, setContactId] = useState<string>("");
+  const [items, setItems] = useState<InvoiceItem[]>([
+    { description: "", quantity: 1, unitPrice: 0, total: 0 },
+  ]);
+  const [notes, setNotes] = useState("");
+  const [dueDate, setDueDate] = useState("");
+
+  const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [field]: value };
+    if (field === "quantity" || field === "unitPrice") {
+      newItems[index].total = newItems[index].quantity * newItems[index].unitPrice;
+    }
+    setItems(newItems);
+  };
+
+  const addItem = () => {
+    setItems([...items, { description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+  };
+
+  const removeItem = (index: number) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validItems = items.filter((item) => item.description && item.quantity > 0);
+    if (validItems.length === 0) {
+      toast.error("Please add at least one invoice item");
+      return;
+    }
+    onSubmit({
+      contactId: contactId ? parseInt(contactId) : undefined,
+      items: validItems,
+      notes: notes || undefined,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="contact">Client (optional)</Label>
+        <Select value={contactId || "none"} onValueChange={(val) => setContactId(val === "none" ? "" : val)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a client..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            {contacts.map((contact) => (
+              <SelectItem key={contact.id} value={String(contact.id)}>
+                {contact.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label>Invoice Items</Label>
+        <div className="space-y-2 mt-2">
+          {items.map((item, index) => (
+            <div key={index} className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Input
+                  placeholder="Description"
+                  value={item.description}
+                  onChange={(e) => updateItem(index, "description", e.target.value)}
+                />
+              </div>
+              <div className="w-20">
+                <Input
+                  type="number"
+                  placeholder="Qty"
+                  min="0"
+                  step="0.01"
+                  value={item.quantity}
+                  onChange={(e) => updateItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              <div className="w-24">
+                <Input
+                  type="number"
+                  placeholder="Price"
+                  min="0"
+                  step="0.01"
+                  value={item.unitPrice}
+                  onChange={(e) => updateItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              <div className="w-24 text-sm text-muted-foreground flex items-center h-10">
+                €{item.total.toFixed(2)}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeItem(index)}
+                disabled={items.length === 1}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={addItem} className="mt-2">
+          <Plus className="w-4 h-4 mr-2" />
+          Add Item
+        </Button>
+      </div>
+
+      <div>
+        <Label htmlFor="notes">Notes (optional)</Label>
+        <Input
+          id="notes"
+          placeholder="Additional notes..."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="dueDate">Due Date (optional)</Label>
+        <Input
+          id="dueDate"
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
+      </div>
+
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Creating...
+          </>
+        ) : (
+          "Create Invoice"
+        )}
+      </Button>
+    </form>
+  );
+}
+
+function EditInvoiceDialog({
+  open,
+  onOpenChange,
+  invoiceId,
+  contacts,
+  onSuccess,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  invoiceId: number;
+  contacts: Array<{ id: number; name: string }>;
+  onSuccess: () => void;
+}) {
+  const { data: invoice } = trpc.invoices.get.useQuery({ id: invoiceId }, { enabled: open });
+  const updateMutation = trpc.invoices.update.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice updated");
+      onSuccess();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update invoice");
+    },
+  });
+
+  if (!invoice) return null;
+
+  const items = (invoice.items as InvoiceItem[]) || [];
+  const [contactId, setContactId] = useState<string>(invoice.contactId ? String(invoice.contactId) : "");
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>(items);
+  const [notes, setNotes] = useState(invoice.notes || "");
+  const [dueDate, setDueDate] = useState(
+    invoice.dueDate ? new Date(invoice.dueDate).toISOString().split("T")[0] : ""
+  );
+
+  const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
+    const newItems = [...invoiceItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    if (field === "quantity" || field === "unitPrice") {
+      newItems[index].total = newItems[index].quantity * newItems[index].unitPrice;
+    }
+    setInvoiceItems(newItems);
+  };
+
+  const addItem = () => {
+    setInvoiceItems([...invoiceItems, { description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+  };
+
+  const removeItem = (index: number) => {
+    setInvoiceItems(invoiceItems.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validItems = invoiceItems.filter((item) => item.description && item.quantity > 0);
+    if (validItems.length === 0) {
+      toast.error("Please add at least one invoice item");
+      return;
+    }
+    updateMutation.mutate({
+      id: invoiceId,
+      contactId: contactId ? parseInt(contactId) : null,
+      items: validItems,
+      notes: notes || null,
+      dueDate: dueDate ? new Date(dueDate) : null,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Invoice</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="contact">Client</Label>
+            <Select value={contactId || "none"} onValueChange={(val) => setContactId(val === "none" ? "" : val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a client..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {contacts.map((contact) => (
+                  <SelectItem key={contact.id} value={String(contact.id)}>
+                    {contact.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Invoice Items</Label>
+            <div className="space-y-2 mt-2">
+              {invoiceItems.map((item, index) => (
+                <div key={index} className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Description"
+                      value={item.description}
+                      onChange={(e) => updateItem(index, "description", e.target.value)}
+                    />
+                  </div>
+                  <div className="w-20">
+                    <Input
+                      type="number"
+                      placeholder="Qty"
+                      min="0"
+                      step="0.01"
+                      value={item.quantity}
+                      onChange={(e) => updateItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="w-24">
+                    <Input
+                      type="number"
+                      placeholder="Price"
+                      min="0"
+                      step="0.01"
+                      value={item.unitPrice}
+                      onChange={(e) => updateItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="w-24 text-sm text-muted-foreground flex items-center h-10">
+                    €{item.total.toFixed(2)}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeItem(index)}
+                    disabled={invoiceItems.length === 1}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={addItem} className="mt-2">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Item
+            </Button>
+          </div>
+
+          <div>
+            <Label htmlFor="notes">Notes</Label>
+            <Input
+              id="notes"
+              placeholder="Additional notes..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="dueDate">Due Date</Label>
+            <Input
+              id="dueDate"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button type="submit" className="flex-1" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
