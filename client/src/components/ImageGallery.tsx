@@ -209,7 +209,8 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
                 </div>
               )}
               <div
-                className="absolute inset-0 bg-black/40 opacity-0 transition-opacity pointer-events-none group-hover:opacity-100"
+                className="absolute inset-0 opacity-0 transition-opacity pointer-events-none group-hover:opacity-100"
+                style={{ background: 'var(--overlay-light)' }}
                 aria-hidden="true"
               />
               <div className="absolute top-2 right-2 z-10">
@@ -220,7 +221,7 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
                 />
               </div>
               {image.caption && (
-                <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 truncate">
+                <div className="absolute bottom-0 left-0 right-0 text-white text-xs p-2 truncate" style={{ background: 'var(--overlay-medium)' }}>
                   {image.caption}
                 </div>
               )}

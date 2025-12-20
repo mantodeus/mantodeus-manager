@@ -153,19 +153,9 @@ export default function Settings() {
                   
                   {/* Visual preview */}
                   <div className="flex gap-1.5 shrink-0">
-                    {themeName === 'green-mantis' ? (
-                      <>
-                        <div className="w-6 h-6 rounded-md" style={{ background: '#0CF57E' }} />
-                        <div className="w-6 h-6 rounded-md" style={{ background: '#2BFFA0' }} />
-                        <div className="w-6 h-6 rounded-md" style={{ background: '#07C964' }} />
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-6 h-6 rounded-md" style={{ background: '#FF4FA3' }} />
-                        <div className="w-6 h-6 rounded-md" style={{ background: '#FF78C7' }} />
-                        <div className="w-6 h-6 rounded-md" style={{ background: '#E83D8C' }} />
-                      </>
-                    )}
+                    <div className="w-6 h-6 rounded-md" style={{ background: themeConfig.tokens.accentStart }} />
+                    <div className="w-6 h-6 rounded-md" style={{ background: themeConfig.tokens.accentMid }} />
+                    <div className="w-6 h-6 rounded-md" style={{ background: themeConfig.tokens.accentEnd }} />
                   </div>
                 </button>
               );
