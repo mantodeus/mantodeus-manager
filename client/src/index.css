@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* DISABLED: Tailwind dark mode - using data-theme attribute instead */
+/* @custom-variant dark (&:is(.dark *)); */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);

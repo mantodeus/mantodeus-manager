@@ -1,0 +1,163 @@
+/**
+ * Theme System Fixes v3.0.0
+ * Ensures Orchid Mantis (light mode) displays correctly with white/cream cards
+ * Prevents Tailwind dark: classes from interfering
+ */
+
+/* ============================================================================
+   ORCHID MANTIS (LIGHT MODE) - FORCE WHITE/CREAM CARDS
+   ============================================================================ */
+
+/* Override any dark backgrounds in Orchid Mantis mode */
+[data-theme="orchid-mantis"] * {
+  /* Disable Tailwind dark mode classes */
+  --tw-bg-opacity: 1 !important;
+}
+
+/* Force correct card colors in Orchid Mantis */
+[data-theme="orchid-mantis"] [data-slot="card"],
+[data-theme="orchid-mantis"] .bg-card,
+[data-theme="orchid-mantis"] .bg-surface {
+  background-color: #FFFFFF !important;
+  color: #1C1F23 !important;
+}
+
+/* Force correct elevated surfaces in Orchid Mantis */
+[data-theme="orchid-mantis"] .bg-elevated,
+[data-theme="orchid-mantis"] .bg-popover,
+[data-theme="orchid-mantis"] .bg-secondary {
+  background-color: #FBFAF8 !important;
+  color: #1C1F23 !important;
+}
+
+/* Force correct page background in Orchid Mantis */
+[data-theme="orchid-mantis"] .bg-background,
+[data-theme="orchid-mantis"] .bg-page {
+  background-color: #F2F1EE !important;
+  color: #1C1F23 !important;
+}
+
+/* Force correct input backgrounds in Orchid Mantis */
+[data-theme="orchid-mantis"] input,
+[data-theme="orchid-mantis"] textarea,
+[data-theme="orchid-mantis"] select,
+[data-theme="orchid-mantis"] .bg-input {
+  background-color: #FFFFFF !important;
+  color: #1C1F23 !important;
+  border-color: rgba(28,31,35,0.08) !important;
+}
+
+/* Force correct button colors in Orchid Mantis */
+[data-theme="orchid-mantis"] button[data-slot="button"]:not([class*="outline"]):not([class*="ghost"]):not([class*="link"]):not([class*="secondary"]):not([class*="destructive"]),
+[data-theme="orchid-mantis"] .btn-gradient {
+  background: linear-gradient(135deg, #FF4FA3 0%, #FF78C7 50%, #E83D8C 100%) !important;
+  color: #FFFFFF !important;
+}
+
+/* Force correct text colors in Orchid Mantis */
+[data-theme="orchid-mantis"] .text-foreground,
+[data-theme="orchid-mantis"] .text-primary {
+  color: #1C1F23 !important;
+}
+
+[data-theme="orchid-mantis"] .text-secondary,
+[data-theme="orchid-mantis"] .text-muted-foreground {
+  color: #4A5058 !important;
+}
+
+[data-theme="orchid-mantis"] .text-muted {
+  color: #7A8087 !important;
+}
+
+/* ============================================================================
+   GREEN MANTIS (DARK MODE) - ENSURE DARK CARDS
+   ============================================================================ */
+
+/* Force correct card colors in Green Mantis */
+[data-theme="green-mantis"] [data-slot="card"],
+[data-theme="green-mantis"] .bg-card,
+[data-theme="green-mantis"] .bg-surface {
+  background-color: #0F1620 !important;
+  color: #E6EDF3 !important;
+}
+
+/* Force correct elevated surfaces in Green Mantis */
+[data-theme="green-mantis"] .bg-elevated,
+[data-theme="green-mantis"] .bg-popover,
+[data-theme="green-mantis"] .bg-secondary {
+  background-color: #121C28 !important;
+  color: #E6EDF3 !important;
+}
+
+/* Force correct page background in Green Mantis */
+[data-theme="green-mantis"] .bg-background,
+[data-theme="green-mantis"] .bg-page {
+  background-color: #0A0F14 !important;
+  color: #E6EDF3 !important;
+}
+
+/* Force correct input backgrounds in Green Mantis */
+[data-theme="green-mantis"] input,
+[data-theme="green-mantis"] textarea,
+[data-theme="green-mantis"] select,
+[data-theme="green-mantis"] .bg-input {
+  background-color: #0F1620 !important;
+  color: #E6EDF3 !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+/* Force correct button colors in Green Mantis */
+[data-theme="green-mantis"] button[data-slot="button"]:not([class*="outline"]):not([class*="ghost"]):not([class*="link"]):not([class*="secondary"]):not([class*="destructive"]),
+[data-theme="green-mantis"] .btn-gradient {
+  background: linear-gradient(135deg, #0CF57E 0%, #2BFFA0 50%, #07C964 100%) !important;
+  color: #06080B !important;
+}
+
+/* Force correct text colors in Green Mantis */
+[data-theme="green-mantis"] .text-foreground,
+[data-theme="green-mantis"] .text-primary {
+  color: #E6EDF3 !important;
+}
+
+[data-theme="green-mantis"] .text-secondary,
+[data-theme="green-mantis"] .text-muted-foreground {
+  color: #A9B4BF !important;
+}
+
+[data-theme="green-mantis"] .text-muted {
+  color: #7D8A97 !important;
+}
+
+/* ============================================================================
+   CALENDAR SELECTED DAYS
+   ============================================================================ */
+
+[data-theme="orchid-mantis"] .calendar-day-selected {
+  background: linear-gradient(135deg, #FF4FA3 0%, #FF78C7 50%, #E83D8C 100%) !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="green-mantis"] .calendar-day-selected {
+  background: linear-gradient(135deg, #0CF57E 0%, #2BFFA0 50%, #07C964 100%) !important;
+  color: #06080B !important;
+}
+
+/* ============================================================================
+   DISABLE TAILWIND DARK MODE CLASSES
+   ============================================================================ */
+
+/* Prevent dark: classes from activating in Orchid Mantis */
+[data-theme="orchid-mantis"] .dark\:bg-card,
+[data-theme="orchid-mantis"] .dark\:bg-surface,
+[data-theme="orchid-mantis"] .dark\:bg-background,
+[data-theme="orchid-mantis"] .dark\:bg-elevated,
+[data-theme="orchid-mantis"] .dark\:bg-popover,
+[data-theme="orchid-mantis"] .dark\:bg-secondary,
+[data-theme="orchid-mantis"] .dark\:bg-input,
+[data-theme="orchid-mantis"] .dark\:text-foreground,
+[data-theme="orchid-mantis"] .dark\:text-primary,
+[data-theme="orchid-mantis"] .dark\:text-secondary,
+[data-theme="orchid-mantis"] .dark\:text-muted {
+  /* Disable all dark: classes in light mode */
+  all: unset !important;
+}
