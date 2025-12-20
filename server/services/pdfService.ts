@@ -1,135 +1,120 @@
-import puppeteer, { type Browser, type Page } from 'puppeteer';
+import { ENV } from "../_core/env";
 
-let browserInstance: Browser | null = null;
-let browserLaunchPromise: Promise<Browser> | null = null;
+export interface PDFOptions {
+  format?: "A4" | "Letter";
+  margin?: {
+    top?: string;
+    right?: string;
+    bottom?: string;
+    left?: string;
+  };
+  printBackground?: boolean;
+}
 
-/**
- * Get or create a singleton browser instance with connection pooling
- * Uses a launch promise to prevent multiple concurrent launches
- */
-async function getBrowser(): Promise<Browser> {
-  // Return existing browser if available and connected
-  if (browserInstance && browserInstance.connected) {
-    return browserInstance;
-  }
-  
-  // If already launching, wait for that promise
-  if (browserLaunchPromise) {
-    return browserLaunchPromise;
-  }
-  
-  // Launch new browser instance
-  browserLaunchPromise = (async () => {
-    try {
-      console.log('[PDF Service] Launching Puppeteer with bundled Chromium...');
-      
-      browserInstance = await puppeteer.launch({
-        // Explicitly set to undefined to override PUPPETEER_EXECUTABLE_PATH env var
-        // Puppeteer reads this env var automatically, so we must override it
-        executablePath: undefined,
-        headless: "new",
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--no-zygote',
-          '--single-process',
-        ],
-      });
-
-      console.log('[PDF Service] ✓ Puppeteer browser launched successfully');
-
-      // Clean up browser on process exit
-      process.on('exit', () => {
-        if (browserInstance) {
-          browserInstance.close().catch(() => {});
-        }
-      });
-      
-      return browserInstance;
-    } catch (error) {
-      console.error('[PDF Service] ✗ FATAL: Failed to launch Puppeteer browser');
-      console.error('[PDF Service] Error details:', error);
-      console.error('[PDF Service] This may indicate missing dependencies or insufficient permissions');
-      throw new Error(`Puppeteer browser launch failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  })();
-  
-  try {
-    const browser = await browserLaunchPromise;
-    return browser;
-  } finally {
-    browserLaunchPromise = null;
+export class PDFServiceError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode?: number,
+    public readonly originalError?: unknown
+  ) {
+    super(message);
+    this.name = "PDFServiceError";
   }
 }
 
 /**
- * Generate PDF from HTML string using Puppeteer
+ * Render HTML to PDF using the Fly.io PDF service
  * @param html - HTML content to convert to PDF
  * @param options - PDF generation options
  * @returns PDF buffer
- * 
- * PERFORMANCE: Uses 'domcontentloaded' instead of 'networkidle0' 
- * since we're generating HTML locally without external resources
+ * @throws PDFServiceError if generation fails
  */
-export async function generatePDF(
+export async function renderPDF(
   html: string,
-  options: {
-    format?: 'A4' | 'Letter';
-    margin?: {
-      top?: string;
-      right?: string;
-      bottom?: string;
-      left?: string;
-    };
-    printBackground?: boolean;
-  } = {}
+  options: PDFOptions = {}
 ): Promise<Buffer> {
-  const browser = await getBrowser();
-  let page: Page | null = null;
+  if (!ENV.pdfServiceUrl) {
+    throw new PDFServiceError("PDF service URL not configured");
+  }
+
+  if (!ENV.pdfServiceSecret) {
+    throw new PDFServiceError("PDF service secret not configured");
+  }
+
+  const timeout = 30000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    page = await browser.newPage();
-    
-    // Set content - use 'domcontentloaded' for faster processing
-    // Our HTML is self-contained with inline styles, no external resources
-    await page.setContent(html, {
-      waitUntil: 'domcontentloaded',
-      timeout: 15000, // Reduced timeout since we don't wait for network
-    });
-
-    // Generate PDF
-    const pdfBuffer = await page.pdf({
-      format: options.format || 'A4',
-      margin: options.margin || {
-        top: '20mm',
-        right: '15mm',
-        bottom: '20mm',
-        left: '15mm',
+    const response = await fetch(ENV.pdfServiceUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${ENV.pdfServiceSecret}`,
+        "Content-Type": "application/json",
       },
-      printBackground: options.printBackground !== false,
-      preferCSSPageSize: true,
+      body: JSON.stringify({
+        html,
+        options: {
+          format: options.format || "A4",
+          margin: options.margin || {
+            top: "10mm",
+            right: "10mm",
+            bottom: "10mm",
+            left: "10mm",
+          },
+          printBackground: options.printBackground !== false,
+        },
+      }),
+      signal: controller.signal,
     });
 
-    return Buffer.from(pdfBuffer);
-  } catch (error) {
-    console.error('[PDF Service] ✗ PDF generation failed');
-    console.error('[PDF Service] Error details:', error);
-    throw new Error(`PDF generation failed: ${error instanceof Error ? error.message : String(error)}`);
-  } finally {
-    if (page) {
-      await page.close().catch(() => {});
-    }
-  }
-}
+    clearTimeout(timeoutId);
 
-/**
- * Close the browser instance (useful for cleanup in tests or shutdown)
- */
-export async function closeBrowser(): Promise<void> {
-  if (browserInstance) {
-    await browserInstance.close();
-    browserInstance = null;
+    if (!response.ok) {
+      let errorMessage = `PDF service returned ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch {
+        const text = await response.text().catch(() => "");
+        if (text) errorMessage = text;
+      }
+
+      throw new PDFServiceError(
+        errorMessage,
+        response.status
+      );
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (error instanceof PDFServiceError) {
+      throw error;
+    }
+
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new PDFServiceError(
+        "PDF generation timed out. Please try again.",
+        408,
+        error
+      );
+    }
+
+    if (error instanceof Error && error.message.includes("fetch failed")) {
+      throw new PDFServiceError(
+        "PDF service is unavailable. Please try again in a moment.",
+        503,
+        error
+      );
+    }
+
+    throw new PDFServiceError(
+      `PDF generation failed: ${error instanceof Error ? error.message : String(error)}`,
+      500,
+      error
+    );
   }
 }
