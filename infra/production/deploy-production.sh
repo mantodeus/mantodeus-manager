@@ -92,7 +92,15 @@ if ! npm install --no-audit --no-fund --include=dev --legacy-peer-deps; then
   npm install --no-audit --no-fund --include=dev --legacy-peer-deps || error_exit "npm install failed after cleanup"
 fi
 
-# Step 4: Build the application
+# Step 4: Install Puppeteer browser (Chrome)
+echo ""
+echo "🌐 Installing Puppeteer browser (Chrome)..."
+if ! npx puppeteer browsers install chrome; then
+  echo "⚠️  Puppeteer browser installation failed, but continuing..."
+  echo "   PDF generation may not work until browser is installed"
+fi
+
+# Step 5: Build the application
 echo ""
 echo "🔨 Building application..."
 
@@ -110,7 +118,7 @@ if [ ! -d "dist/public" ]; then
   error_exit "Build output not found: dist/public"
 fi
 
-# Step 5: Restart application (PM2)
+# Step 6: Restart application (PM2)
 echo ""
 echo "🔄 Restarting PM2 process: $PM2_APP_NAME"
 if ! npx pm2 restart "$PM2_APP_NAME"; then
