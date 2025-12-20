@@ -4,6 +4,7 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
+    "postinstall": "npx puppeteer browsers install chrome || echo 'Puppeteer browser installation skipped'",
     "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "node build-debug.js",
     "build:split": "npm run build:frontend && npm run build:backend",
