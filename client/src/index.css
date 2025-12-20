@@ -8,6 +8,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  
+  /* Tailwind compatibility tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -41,7 +43,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   
-  /* New theme tokens */
+  /* Theme system tokens */
   --color-bg-app: var(--bg-app);
   --color-bg-page: var(--bg-page);
   --color-bg-surface: var(--bg-surface);
@@ -53,119 +55,61 @@
   --color-accent-start: var(--accent-start);
   --color-accent-mid: var(--accent-mid);
   --color-accent-end: var(--accent-end);
+  --color-accent-solid: var(--accent-solid);
   --color-accent-gradient: var(--accent-gradient);
   --color-border-subtle: var(--border-subtle);
   --color-border-strong: var(--border-strong);
+  --color-overlay-light: var(--overlay-light);
+  --color-overlay-medium: var(--overlay-medium);
+  --color-overlay-heavy: var(--overlay-heavy);
+  --color-shadow-soft: var(--shadow-soft);
+  --color-shadow-elevated: var(--shadow-elevated);
   --color-state-info: var(--state-info);
   --color-state-warning: var(--state-warning);
   --color-state-danger: var(--state-danger);
   --color-state-success: var(--state-success);
 }
 
-/* Default theme tokens - Green Mantis (Dark Mode) */
+/* Default theme tokens - will be set by theme.ts */
 :root {
-  /* Legacy tokens for compatibility */
-  --primary: oklch(0.85 0.25 155);
-  --primary-foreground: oklch(0.1 0 0);
-  --sidebar-primary: oklch(0.85 0.25 155);
-  --sidebar-primary-foreground: oklch(0.1 0 0);
-  --chart-1: oklch(0.85 0.25 155);
-  --chart-2: oklch(0.7 0.2 155);
-  --chart-3: oklch(0.5 0.15 155);
-  --chart-4: oklch(0.4 0.1 200);
-  --chart-5: oklch(0.3 0.05 200);
-  --radius: 0.5rem;
-  --background: oklch(0.1 0 0);
-  --foreground: oklch(0.78 0 0);
-  --card: #0D0E10;
-  --card-foreground: oklch(0.78 0 0);
-  --popover: oklch(0.12 0 0);
-  --popover-foreground: oklch(0.78 0 0);
-  --secondary: oklch(0.2 0 0);
-  --secondary-foreground: oklch(0.78 0 0);
-  --muted: oklch(0.18 0 0);
-  --muted-foreground: oklch(0.6 0 0);
-  --accent: oklch(0.85 0.25 155);
-  --accent-foreground: oklch(0.1 0 0);
-  --destructive: oklch(0.6 0.25 25);
-  --destructive-foreground: oklch(0.95 0 0);
-  --border: #0D0E10;
-  --input: oklch(0.2 0 0);
-  --ring: oklch(0.85 0.25 155);
-  --sidebar: oklch(0.08 0 0);
-  --sidebar-foreground: oklch(0.78 0 0);
-  --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(0.85 0.25 155);
-  --sidebar-border: oklch(0.15 0 0);
-  --sidebar-ring: oklch(0.85 0.25 155);
+  /* Chart colors */
+  --chart-1: #0CF57E;
+  --chart-2: #2BFFA0;
+  --chart-3: #07C964;
+  --chart-4: #3B82F6;
+  --chart-5: #8B5CF6;
   
-  /* New theme system tokens - will be set by theme.ts */
-  --bg-app: linear-gradient(180deg, oklch(0.08 0.01 240) 0%, oklch(0.10 0 0) 100%);
-  --bg-page: oklch(0.10 0 0);
-  --bg-surface: #0D0E10;
-  --bg-elevated: oklch(0.12 0 0);
-  --text-primary: oklch(0.78 0 0);
-  --text-secondary: oklch(0.65 0 0);
-  --text-muted: oklch(0.50 0 0);
-  --text-disabled: oklch(0.35 0 0);
+  /* Radius */
+  --radius: 0.5rem;
+  
+  /* Theme tokens - initialized by theme.ts applyTheme() */
+  --bg-app: #06080B;
+  --bg-page: #0A0F14;
+  --bg-surface: #0F1620;
+  --bg-elevated: #121C28;
+  --text-primary: #E6EDF3;
+  --text-secondary: #A9B4BF;
+  --text-muted: #7D8A97;
+  --text-disabled: #556070;
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-strong: rgba(12,245,126,0.35);
   --accent-start: #0CF57E;
   --accent-mid: #2BFFA0;
   --accent-end: #07C964;
+  --accent-solid: #0CF57E;
   --accent-gradient: linear-gradient(135deg, #0CF57E 0%, #2BFFA0 50%, #07C964 100%);
-  --border-subtle: oklch(0.15 0 0);
-  --border-strong: oklch(0.25 0 0);
-  --state-info: oklch(0.65 0.20 240);
-  --state-warning: oklch(0.70 0.20 60);
-  --state-danger: oklch(0.60 0.25 25);
-  --state-success: oklch(0.65 0.20 155);
+  --state-info: #3B82F6;
+  --state-warning: #F59E0B;
+  --state-danger: #EF4444;
+  --state-success: #10B981;
+  --overlay-light: rgba(0,0,0,0.4);
+  --overlay-medium: rgba(0,0,0,0.7);
+  --overlay-heavy: rgba(0,0,0,0.95);
+  --shadow-soft: 0 1px 3px 0 rgba(0,0,0,0.3);
+  --shadow-elevated: 0 4px 12px 0 rgba(0,0,0,0.4);
 }
 
-/* Legacy dark class for compatibility */
-.dark {
-  --primary: oklch(0.85 0.25 155);
-  --primary-foreground: oklch(0.1 0 0);
-  --sidebar-primary: oklch(0.85 0.25 155);
-  --sidebar-primary-foreground: oklch(0.1 0 0);
-  --background: oklch(0.1 0 0);
-  --foreground: oklch(0.78 0 0);
-  --card: #0D0E10;
-  --card-foreground: oklch(0.78 0 0);
-  --popover: oklch(0.12 0 0);
-  --popover-foreground: oklch(0.78 0 0);
-  --secondary: oklch(0.2 0 0);
-  --secondary-foreground: oklch(0.78 0 0);
-  --muted: oklch(0.18 0 0);
-  --muted-foreground: oklch(0.6 0 0);
-  --accent: oklch(0.85 0.25 155);
-  --accent-foreground: oklch(0.1 0 0);
-  --destructive: oklch(0.6 0.25 25);
-  --destructive-foreground: oklch(0.95 0 0);
-  --border: #0D0E10;
-  --input: oklch(0.2 0 0);
-  --ring: oklch(0.85 0.25 155);
-  --chart-1: oklch(0.85 0.25 155);
-  --chart-2: oklch(0.7 0.2 155);
-  --chart-3: oklch(0.5 0.15 155);
-  --chart-4: oklch(0.4 0.1 200);
-  --chart-5: oklch(0.3 0.05 200);
-  --sidebar: oklch(0.08 0 0);
-  --sidebar-foreground: oklch(0.78 0 0);
-  --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(0.85 0.25 155);
-  --sidebar-border: oklch(0.15 0 0);
-  --sidebar-ring: oklch(0.85 0.25 155);
-}
-
-/* Theme-specific styles */
-[data-theme="green-mantis"] {
-  /* Handled by theme.ts applyTheme function */
-}
-
-[data-theme="orchid-mantis"] {
-  /* Handled by theme.ts applyTheme function */
-}
-
-/* App loading screen animations - defined globally */
+/* App loading screen animations */
 @keyframes logo-bounce {
   0%, 100% {
     transform: translateY(0);
@@ -188,21 +132,44 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
   body {
     @apply text-foreground;
-    background: var(--bg-app);
     font-family: 'Kanit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     font-weight: 100;
+    margin: 0;
+    padding: 0;
   }
+  
+  /* App background with Exodus-style gradient depth */
+  body[data-theme="green-mantis"],
+  html[data-theme="green-mantis"] body {
+    background:
+      radial-gradient(circle at top right, rgba(46,107,255,0.14), transparent 55%),
+      linear-gradient(180deg, var(--bg-page) 0%, var(--bg-app) 100%);
+    background-attachment: fixed;
+  }
+  
+  body[data-theme="orchid-mantis"],
+  html[data-theme="orchid-mantis"] body {
+    background:
+      radial-gradient(circle at top right, rgba(255,79,163,0.12), transparent 55%),
+      linear-gradient(180deg, var(--bg-app) 0%, #EFEDEA 100%);
+    background-attachment: fixed;
+  }
+  
   h1, h2, h3, h4, h5, h6 {
     font-weight: 400;
   }
+  
   .font-bold, .font-semibold, .font-extrabold {
     font-weight: 400;
   }
+  
   .font-normal {
     font-weight: 100;
   }
+  
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
@@ -241,30 +208,27 @@
     z-index: 1;
   }
   
-  /* Selection mode active - subtle indicator */
   .selectable-card.selection-mode-active {
     cursor: pointer;
   }
   
-  /* Selected card - theme-aware glow effect */
+  /* Selected card - theme-aware glow */
   .selectable-card.selected {
     box-shadow: 
-      0 0 0 2px var(--accent-mid),
-      0 0 20px -5px color-mix(in srgb, var(--accent-mid) 50%, transparent);
+      0 0 0 2px var(--accent-solid),
+      0 0 20px -5px color-mix(in srgb, var(--accent-solid) 50%, transparent);
   }
   
   .selectable-card.selected::before {
     opacity: 1;
-    background: color-mix(in srgb, var(--accent-mid) 8%, transparent);
+    background: color-mix(in srgb, var(--accent-solid) 8%, transparent);
   }
   
-  /* Long-press visual feedback */
   .selectable-card.long-pressing {
     transform: scale(0.98);
     opacity: 0.9;
   }
   
-  /* Checkbox animation in selection mode */
   .selection-checkbox {
     transform: scale(0);
     opacity: 0;
@@ -276,49 +240,67 @@
     opacity: 1;
   }
   
-  /* Gradient button styles */
+  /* Premium gradient button */
   .btn-gradient {
     background: var(--accent-gradient);
-    color: var(--accent-foreground);
+    color: var(--primary-foreground);
     border: none;
+    box-shadow: var(--shadow-soft);
+    transition: all 200ms ease;
   }
   
   .btn-gradient:hover {
-    opacity: 0.9;
+    box-shadow: var(--shadow-elevated);
+    transform: translateY(-1px);
   }
   
-  /* Calendar selected day with gradient */
+  .btn-gradient:active {
+    box-shadow: var(--shadow-soft);
+    transform: translateY(0);
+  }
+  
+  /* Calendar selected day */
   .calendar-day-selected {
     background: var(--accent-gradient);
-    color: var(--accent-foreground);
+    color: var(--primary-foreground);
     font-weight: 400;
+    box-shadow: var(--shadow-soft);
   }
   
-  /* Page header with subtle gradient */
-  .page-header-gradient {
-    background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-page) 100%);
+  /* Professional card with depth */
+  .card-elevated {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-soft);
+    transition: all 200ms ease;
+  }
+  
+  .card-elevated:hover {
+    box-shadow: var(--shadow-elevated);
+    border-color: var(--border-strong);
+  }
+  
+  /* Tabs - selected state with tinted accent */
+  .tab-selected {
+    background: color-mix(in srgb, var(--accent-solid) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-solid) 35%, transparent);
+  }
+  
+  /* Input focus ring */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-solid) 45%, transparent);
   }
 }
 
 @layer components {
-  /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
-   */
   .container {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
+    padding-left: 1rem;
     padding-right: 1rem;
   }
 
@@ -329,20 +311,19 @@
 
   @media (min-width: 640px) {
     .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
+      padding-left: 1.5rem;
       padding-right: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
     .container {
-      padding-left: 2rem; /* 32px - desktop padding */
+      padding-left: 2rem;
       padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
+      max-width: 1280px;
     }
   }
 
-  /* App loading screen animation class */
   .logo-loading {
     animation: logo-fade-in 0.5s ease-out, logo-bounce 1.5s ease-in-out 0.5s infinite;
   }

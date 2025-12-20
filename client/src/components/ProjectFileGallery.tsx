@@ -325,7 +325,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                       )}
                       {/* Overlay on hover (desktop only, non-blocking on touch) */}
                       <div
-                        className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+                        className="absolute inset-0 flex items-center justify-center gap-2 style={{ background: 'var(--overlay-medium)' }} opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
                       >
                         <Button
                           variant="secondary"
@@ -349,7 +349,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                         />
                       </div>
                       {/* File name at bottom */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 truncate">
+                      <div className="absolute bottom-0 left-0 right-0 style={{ background: 'var(--overlay-medium)' }} text-white text-xs p-2 truncate">
                         {file.originalName}
                       </div>
                     </div>

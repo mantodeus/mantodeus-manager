@@ -73,7 +73,7 @@ export default function ContactsArchived() {
   const renderContactCard = (contact: typeof archivedContacts[0]) => (
     <Card
       key={contact.id}
-      className="bg-[#0D0E10] border-[#0D0E10] p-4 opacity-75"
+      className="bg-surface border-subtle p-4 opacity-75"
     >
       <div className="flex items-start gap-3 mb-3">
         <div className="flex-1">
@@ -108,7 +108,7 @@ export default function ContactsArchived() {
       </div>
 
       {contact.notes && (
-        <p className="text-gray-500 text-xs mt-3 pt-3 border-t border-[#0D0E10]">{contact.notes}</p>
+        <p className="text-gray-500 text-xs mt-3 pt-3 border-t border-subtle">{contact.notes}</p>
       )}
     </Card>
   );
@@ -133,7 +133,7 @@ export default function ContactsArchived() {
       {/* Archived Contacts Grid */}
       <div className="space-y-4">
         {archivedContacts.length === 0 ? (
-          <Card className="bg-[#0D0E10] border-[#0D0E10] p-8 text-center">
+          <Card className="bg-surface border-subtle p-8 text-center">
             <Archive className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-gray-400 mb-4">No archived contacts.</p>
             <Link href="/contacts">
