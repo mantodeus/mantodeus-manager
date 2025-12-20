@@ -40,14 +40,14 @@ export function ContextMenu({ x, y, onAction, onClose, actions = ["edit", "delet
   const actionConfig = {
     edit: { icon: Edit, label: "Edit", color: "text-foreground" },
     delete: { icon: Trash2, label: "Delete", color: "text-destructive" },
-    select: { icon: CheckSquare, label: "Select", color: "text-[#00ff88]" },
+    select: { icon: CheckSquare, label: "Select", color: "text-accent" },
     cancel: { icon: X, label: "Cancel", color: "text-muted-foreground" },
   };
 
   return (
     <Card
       ref={menuRef}
-      className="fixed z-50 min-w-[160px] p-1 shadow-lg border-2 border-[#00ff88]/20"
+      className="fixed z-50 min-w-[160px] p-1 shadow-lg border-2 border-accent/20"
       style={{ left: x, top: y }}
     >
       {actions.map((action) => {

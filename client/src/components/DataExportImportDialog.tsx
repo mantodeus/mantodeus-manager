@@ -166,8 +166,8 @@ export function DataExportImportDialog({ open, onOpenChange }: DataExportImportD
           {/* Import Section */}
           <div className="rounded-lg border border-border/50 p-4 space-y-3">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface/10">
-                <Upload className="h-5 w-5 text-[#0D0E10]" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <Upload className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="space-y-1">
                 <h4 className="font-medium">Import Data</h4>
