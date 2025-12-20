@@ -26,6 +26,7 @@ import Maps from "./pages/Maps";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import { useEffect } from "react";
+import { initializeTheme } from "@/lib/theme";
 
 function Router() {
   const { user, loading } = useAuth();
@@ -163,6 +164,11 @@ function Router() {
 // - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
 function App() {
+  // Initialize theme on app load
+  useEffect(() => {
+    initializeTheme();
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider
