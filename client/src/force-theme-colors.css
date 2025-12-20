@@ -1,0 +1,36 @@
+/**
+ * Force Theme Colors - Cache Buster v2.0.1
+ * Explicit rules to ensure buttons use correct theme colors
+ */
+
+/* Orchid Mantis - Force pink buttons */
+[data-theme="orchid-mantis"] button[data-slot="button"]:not([class*="outline"]):not([class*="ghost"]):not([class*="link"]):not([class*="secondary"]):not([class*="destructive"]),
+[data-theme="orchid-mantis"] .btn-gradient {
+  background: #FF4FA3 !important;
+  background: linear-gradient(135deg, #FF4FA3 0%, #FF78C7 50%, #E83D8C 100%) !important;
+}
+
+/* Green Mantis - Force green buttons */
+[data-theme="green-mantis"] button[data-slot="button"]:not([class*="outline"]):not([class*="ghost"]):not([class*="link"]):not([class*="secondary"]):not([class*="destructive"]),
+[data-theme="green-mantis"] .btn-gradient {
+  background: #0CF57E !important;
+  background: linear-gradient(135deg, #0CF57E 0%, #2BFFA0 50%, #07C964 100%) !important;
+}
+
+/* Ensure primary buttons use theme colors */
+[data-theme="orchid-mantis"] .bg-primary {
+  background-color: #FF4FA3 !important;
+}
+
+[data-theme="green-mantis"] .bg-primary {
+  background-color: #0CF57E !important;
+}
+
+/* Calendar selected days */
+[data-theme="orchid-mantis"] .calendar-day-selected {
+  background: linear-gradient(135deg, #FF4FA3 0%, #FF78C7 50%, #E83D8C 100%) !important;
+}
+
+[data-theme="green-mantis"] .calendar-day-selected {
+  background: linear-gradient(135deg, #0CF57E 0%, #2BFFA0 50%, #07C964 100%) !important;
+}

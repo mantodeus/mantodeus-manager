@@ -8,6 +8,7 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import { supabase } from "./lib/supabase";
 import "./index.css";
+import "./force-theme-colors.css";
 
 // Don't auto-sync auth on state changes - let Login component handle it
 // This prevents duplicate calls and race conditions

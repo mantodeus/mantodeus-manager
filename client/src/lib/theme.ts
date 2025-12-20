@@ -5,6 +5,8 @@
  * - Orchid Mantis (Light Mode)
  * 
  * All components MUST use CSS variables, never hard-coded colors.
+ * 
+ * Version: 2.0.1 - Fixed Orchid Mantis button colors
  */
 
 export type ThemeName = 'green-mantis' | 'orchid-mantis';
@@ -239,8 +241,12 @@ export function applyTheme(themeName: ThemeName) {
   root.style.setProperty('--sidebar-border', theme.tokens.borderSubtle);
   root.style.setProperty('--sidebar-ring', theme.tokens.accentSolid);
   
-  // Store preference
+  // Store preference with timestamp to force reapplication
   localStorage.setItem('mantodeus.theme', themeName);
+  localStorage.setItem('mantodeus.theme.version', '2.0.1');
+  
+  // Force browser to recognize CSS variable changes
+  root.style.setProperty('--theme-version', '2.0.1');
 }
 
 /**
