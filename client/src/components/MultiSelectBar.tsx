@@ -1,11 +1,19 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Trash2, X } from "lucide-react";
+import { Trash2, Archive, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+
+export interface MultiSelectAction {
+  label: string;
+  icon: LucideIcon;
+  onClick: () => void;
+  variant?: "default" | "destructive" | "outline" | "secondary";
+  disabled?: boolean;
+}
 
 interface MultiSelectBarProps {
   selectedCount: number;
-  onPrimaryAction: () => void;
+  onPrimaryAction?: () => void;
   onCancel: () => void;
   primaryLabel?: string;
   primaryIcon?: LucideIcon;
@@ -14,6 +22,10 @@ interface MultiSelectBarProps {
    * (Projects use this for "Archive", etc.)
    */
   primaryVariant?: "default" | "destructive" | "outline" | "secondary";
+  /**
+   * Array of actions to display. If provided, this takes precedence over onPrimaryAction.
+   */
+  actions?: MultiSelectAction[];
 }
 
 export function MultiSelectBar({
@@ -23,6 +35,7 @@ export function MultiSelectBar({
   primaryLabel = "Delete",
   primaryIcon: PrimaryIcon = Trash2,
   primaryVariant = "destructive",
+  actions,
 }: MultiSelectBarProps) {
   if (selectedCount === 0) return null;
 
@@ -36,15 +49,34 @@ export function MultiSelectBar({
           {selectedCount} selected
         </span>
         <div className="flex items-center gap-2">
-          <Button
-            variant={primaryVariant}
-            size="sm"
-            onClick={onPrimaryAction}
-            className="gap-2"
-          >
-            <PrimaryIcon className="h-4 w-4" />
-            {primaryLabel}
-          </Button>
+          {actions ? (
+            actions.map((action, index) => {
+              const Icon = action.icon;
+              return (
+                <Button
+                  key={index}
+                  variant={action.variant || "default"}
+                  size="sm"
+                  onClick={action.onClick}
+                  disabled={action.disabled}
+                  className="gap-2"
+                >
+                  <Icon className="h-4 w-4" />
+                  {action.label}
+                </Button>
+              );
+            })
+          ) : (
+            <Button
+              variant={primaryVariant}
+              size="sm"
+              onClick={onPrimaryAction}
+              className="gap-2"
+            >
+              <PrimaryIcon className="h-4 w-4" />
+              {primaryLabel}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -58,4 +90,36 @@ export function MultiSelectBar({
       </div>
     </Card>
   );
+}
+
+/**
+ * Creates a delete action for MultiSelectBar
+ */
+export function createDeleteAction(
+  onDelete: () => void,
+  isPending: boolean = false
+): MultiSelectAction {
+  return {
+    label: "Delete",
+    icon: Trash2,
+    onClick: onDelete,
+    variant: "destructive",
+    disabled: isPending,
+  };
+}
+
+/**
+ * Creates an archive action for MultiSelectBar
+ */
+export function createArchiveAction(
+  onArchive: () => void,
+  isPending: boolean = false
+): MultiSelectAction {
+  return {
+    label: "Archive",
+    icon: Archive,
+    onClick: onArchive,
+    variant: "default",
+    disabled: isPending,
+  };
 }
