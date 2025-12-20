@@ -174,7 +174,7 @@ export default function Calendar() {
             today
               ? 'border-accent/40 bg-accent/5'
               : selected
-              ? 'border-accent bg-accent/10'
+              ? 'calendar-day-selected border-0'
               : 'border-border hover:border-accent/50 hover:bg-muted/30'
           }`}
         >
@@ -233,7 +233,7 @@ export default function Calendar() {
             today
               ? 'border-accent/40 bg-accent/5'
               : selected
-              ? 'border-accent bg-accent/10'
+              ? 'calendar-day-selected border-0'
               : 'border-border hover:border-accent/50 hover:bg-muted/30'
           }`}
         >
