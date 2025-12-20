@@ -5,6 +5,53 @@
  */
 
 /* ============================================================================
+   ROOT LEVEL CSS VARIABLE OVERRIDES - HIGHEST PRIORITY
+   ============================================================================ */
+
+/* Override ALL green CSS variables in Orchid Mantis */
+:root[data-theme="orchid-mantis"] {
+  --chart-1: #FF4FA3 !important;
+  --chart-2: #FF78C7 !important;
+  --chart-3: #E83D8C !important;
+  --chart-4: #3B82F6 !important;
+  --chart-5: #8B5CF6 !important;
+  
+  --accent-start: #FF4FA3 !important;
+  --accent-mid: #FF78C7 !important;
+  --accent-end: #E83D8C !important;
+  --accent-solid: #FF4FA3 !important;
+  --accent-gradient: linear-gradient(135deg, #FF4FA3 0%, #FF78C7 50%, #E83D8C 100%) !important;
+  
+  --primary: #FF4FA3 !important;
+  --accent: #FF4FA3 !important;
+  --ring: #FF4FA3 !important;
+  
+  /* Keep success green but ensure it's not used for primary actions */
+  --state-success: #10B981 !important;
+}
+
+/* Ensure Green Mantis keeps green */
+:root[data-theme="green-mantis"] {
+  --chart-1: #0CF57E !important;
+  --chart-2: #2BFFA0 !important;
+  --chart-3: #07C964 !important;
+  --chart-4: #3B82F6 !important;
+  --chart-5: #8B5CF6 !important;
+  
+  --accent-start: #0CF57E !important;
+  --accent-mid: #2BFFA0 !important;
+  --accent-end: #07C964 !important;
+  --accent-solid: #0CF57E !important;
+  --accent-gradient: linear-gradient(135deg, #0CF57E 0%, #2BFFA0 50%, #07C964 100%) !important;
+  
+  --primary: #0CF57E !important;
+  --accent: #0CF57E !important;
+  --ring: #0CF57E !important;
+  
+  --state-success: #10B981 !important;
+}
+
+/* ============================================================================
    ORCHID MANTIS (LIGHT MODE) - FORCE WHITE/CREAM CARDS
    ============================================================================ */
 
@@ -160,4 +207,76 @@
 [data-theme="orchid-mantis"] .dark\:text-muted {
   /* Disable all dark: classes in light mode */
   all: unset !important;
+}
+
+
+/* ============================================================================
+   NUCLEAR OPTION: ELIMINATE ALL GREEN IN ORCHID MANTIS
+   ============================================================================ */
+
+/* Override any element using green colors directly */
+[data-theme="orchid-mantis"] *[style*="#0CF57E"],
+[data-theme="orchid-mantis"] *[style*="#2BFFA0"],
+[data-theme="orchid-mantis"] *[style*="#07C964"],
+[data-theme="orchid-mantis"] *[style*="rgb(12, 245, 126)"],
+[data-theme="orchid-mantis"] *[style*="rgb(43, 255, 160)"],
+[data-theme="orchid-mantis"] *[style*="rgb(7, 201, 100)"] {
+  color: #FF4FA3 !important;
+  background-color: transparent !important;
+  border-color: #FF4FA3 !important;
+}
+
+/* Override any class using bg-green */
+[data-theme="orchid-mantis"] .bg-green-50,
+[data-theme="orchid-mantis"] .bg-green-100,
+[data-theme="orchid-mantis"] .bg-green-200,
+[data-theme="orchid-mantis"] .bg-green-300,
+[data-theme="orchid-mantis"] .bg-green-400,
+[data-theme="orchid-mantis"] .bg-green-500,
+[data-theme="orchid-mantis"] .bg-green-600,
+[data-theme="orchid-mantis"] .bg-green-700,
+[data-theme="orchid-mantis"] .bg-green-800,
+[data-theme="orchid-mantis"] .bg-green-900 {
+  background-color: #FF4FA3 !important;
+}
+
+/* Override any class using text-green */
+[data-theme="orchid-mantis"] .text-green-50,
+[data-theme="orchid-mantis"] .text-green-100,
+[data-theme="orchid-mantis"] .text-green-200,
+[data-theme="orchid-mantis"] .text-green-300,
+[data-theme="orchid-mantis"] .text-green-400,
+[data-theme="orchid-mantis"] .text-green-500,
+[data-theme="orchid-mantis"] .text-green-600,
+[data-theme="orchid-mantis"] .text-green-700,
+[data-theme="orchid-mantis"] .text-green-800,
+[data-theme="orchid-mantis"] .text-green-900 {
+  color: #FF4FA3 !important;
+}
+
+/* Override any class using border-green */
+[data-theme="orchid-mantis"] .border-green-50,
+[data-theme="orchid-mantis"] .border-green-100,
+[data-theme="orchid-mantis"] .border-green-200,
+[data-theme="orchid-mantis"] .border-green-300,
+[data-theme="orchid-mantis"] .border-green-400,
+[data-theme="orchid-mantis"] .border-green-500,
+[data-theme="orchid-mantis"] .border-green-600,
+[data-theme="orchid-mantis"] .border-green-700,
+[data-theme="orchid-mantis"] .border-green-800,
+[data-theme="orchid-mantis"] .border-green-900 {
+  border-color: #FF4FA3 !important;
+}
+
+/* Override SVG fills and strokes */
+[data-theme="orchid-mantis"] svg [fill="#0CF57E"],
+[data-theme="orchid-mantis"] svg [fill="#2BFFA0"],
+[data-theme="orchid-mantis"] svg [fill="#07C964"] {
+  fill: #FF4FA3 !important;
+}
+
+[data-theme="orchid-mantis"] svg [stroke="#0CF57E"],
+[data-theme="orchid-mantis"] svg [stroke="#2BFFA0"],
+[data-theme="orchid-mantis"] svg [stroke="#07C964"] {
+  stroke: #FF4FA3 !important;
 }
