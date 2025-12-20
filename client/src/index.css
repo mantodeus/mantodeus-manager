@@ -46,16 +46,26 @@
   --color-bg-page: var(--bg-page);
   --color-bg-surface: var(--bg-surface);
   --color-bg-elevated: var(--bg-elevated);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-bg-sidebar-hover: var(--bg-sidebar-hover);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
   --color-text-disabled: var(--text-disabled);
+  --color-text-sidebar: var(--text-sidebar);
+  --color-text-sidebar-active: var(--text-sidebar-active);
   --color-accent-start: var(--accent-start);
   --color-accent-mid: var(--accent-mid);
   --color-accent-end: var(--accent-end);
   --color-accent-gradient: var(--accent-gradient);
+  --color-accent-subtle: var(--accent-subtle);
   --color-border-subtle: var(--border-subtle);
   --color-border-strong: var(--border-strong);
+  --color-border-sidebar: var(--border-sidebar);
+  --color-shadow-sm: var(--shadow-sm);
+  --color-shadow-md: var(--shadow-md);
+  --color-shadow-lg: var(--shadow-lg);
+  --color-shadow-sidebar: var(--shadow-sidebar);
   --color-state-info: var(--state-info);
   --color-state-warning: var(--state-warning);
   --color-state-danger: var(--state-danger);
@@ -104,16 +114,26 @@
   --bg-page: oklch(0.10 0 0);
   --bg-surface: #0D0E10;
   --bg-elevated: oklch(0.12 0 0);
+  --bg-sidebar: oklch(0.07 0.005 240);
+  --bg-sidebar-hover: oklch(0.10 0.005 240);
   --text-primary: oklch(0.78 0 0);
   --text-secondary: oklch(0.65 0 0);
   --text-muted: oklch(0.50 0 0);
   --text-disabled: oklch(0.35 0 0);
+  --text-sidebar: oklch(0.75 0 0);
+  --text-sidebar-active: oklch(0.95 0 0);
   --accent-start: #0CF57E;
   --accent-mid: #2BFFA0;
   --accent-end: #07C964;
   --accent-gradient: linear-gradient(135deg, #0CF57E 0%, #2BFFA0 50%, #07C964 100%);
+  --accent-subtle: oklch(0.12 0.08 155);
   --border-subtle: oklch(0.15 0 0);
   --border-strong: oklch(0.25 0 0);
+  --border-sidebar: oklch(0.12 0.005 240);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-sidebar: 2px 0 8px 0 rgb(0 0 0 / 0.3);
   --state-info: oklch(0.65 0.20 240);
   --state-warning: oklch(0.70 0.20 60);
   --state-danger: oklch(0.60 0.25 25);
@@ -276,27 +296,81 @@
     opacity: 1;
   }
   
-  /* Gradient button styles */
+  /* Premium gradient button with depth */
   .btn-gradient {
     background: var(--accent-gradient);
     color: var(--accent-foreground);
     border: none;
+    box-shadow: var(--shadow-sm);
+    transition: all 200ms ease;
   }
   
   .btn-gradient:hover {
-    opacity: 0.9;
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
   }
   
-  /* Calendar selected day with gradient */
+  .btn-gradient:active {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(0);
+  }
+  
+  /* Calendar selected day with gradient and depth */
   .calendar-day-selected {
     background: var(--accent-gradient);
     color: var(--accent-foreground);
     font-weight: 400;
+    box-shadow: var(--shadow-sm);
   }
   
   /* Page header with subtle gradient */
   .page-header-gradient {
     background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-page) 100%);
+  }
+  
+  /* Professional card with depth */
+  .card-elevated {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-sm);
+    transition: all 200ms ease;
+  }
+  
+  .card-elevated:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-strong);
+  }
+  
+  /* Sidebar with proper theming and depth */
+  [data-sidebar] {
+    background: var(--bg-sidebar) !important;
+    border-right: 1px solid var(--border-sidebar) !important;
+    box-shadow: var(--shadow-sidebar) !important;
+  }
+  
+  /* Sidebar menu items with proper theming */
+  [data-sidebar] [data-sidebar-menu-button] {
+    color: var(--text-sidebar) !important;
+    transition: all 150ms ease;
+  }
+  
+  [data-sidebar] [data-sidebar-menu-button]:hover {
+    background: var(--bg-sidebar-hover) !important;
+    color: var(--text-sidebar-active) !important;
+  }
+  
+  [data-sidebar] [data-sidebar-menu-button][data-active="true"] {
+    background: var(--accent-subtle) !important;
+    color: var(--text-sidebar-active) !important;
+    font-weight: 400;
+    border-left: 3px solid var(--accent-mid);
+  }
+  
+  /* Sidebar header and footer */
+  [data-sidebar] [data-sidebar-header],
+  [data-sidebar] [data-sidebar-footer] {
+    background: var(--bg-sidebar) !important;
+    border-color: var(--border-sidebar) !important;
   }
 }
 
