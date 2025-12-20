@@ -30,12 +30,16 @@ export function ThemeProvider({
   });
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    // DISABLED: Old light/dark theme system
+    // Now using data-theme attribute with green-mantis/orchid-mantis
+    // DO NOT add .dark class as it conflicts with new theme system
+    
+    // const root = document.documentElement;
+    // if (theme === "dark") {
+    //   root.classList.add("dark");
+    // } else {
+    //   root.classList.remove("dark");
+    // }
 
     if (switchable) {
       localStorage.setItem("theme", theme);
