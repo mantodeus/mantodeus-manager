@@ -102,6 +102,11 @@ async function startServer() {
   app.get("/api/invoices/:id/pdf", async (req, res) => {
     try {
       const user = await supabaseAuth.authenticateRequest(req);
+
+      // The authenticateRequest function throws on failure, but we add a check for clarity
+      if (!user || !user.id) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
       const invoiceId = parseInt(req.params.id, 10);
       const isPreview = req.query.preview === "true";
       
