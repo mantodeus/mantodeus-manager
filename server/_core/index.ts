@@ -42,10 +42,7 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 async function startServer() {
-  // Log environment info for debugging
-  if (process.env.NODE_ENV === "production") {
-    console.log(`Starting production server from: ${__dirname}`);
-  }
+  console.log(`Starting server from: ${__dirname}`);
 
   // Initialize database schemas once at startup (not on every query)
   try {
@@ -491,12 +488,8 @@ async function startServer() {
     })
   );
 
-  // Development mode uses Vite, production mode uses static files
-  if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+  // Serve static files (production-only system)
+  serveStatic(app);
 
   // ===== INFOMANIAK-READY PORT FIX =====
   const port = parseInt(process.env.PORT || "3000", 10);

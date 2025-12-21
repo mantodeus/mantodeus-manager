@@ -157,17 +157,9 @@ if (document.readyState === "loading") {
   initializeApp();
 }
 
-// Service Worker - only in production, simplified for development
+// Service Worker registration
 if ('serviceWorker' in navigator) {
-  if (import.meta.env.PROD) {
-    // Production: register service worker
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(console.error);
-    });
-  } else {
-    // Development: just unregister, no page reload
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      registrations.forEach(r => r.unregister());
-    });
-  }
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(console.error);
+  });
 }
