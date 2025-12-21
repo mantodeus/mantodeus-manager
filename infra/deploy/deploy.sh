@@ -1,19 +1,21 @@
 #!/bin/bash
+# =============================================================================
+# MANTODEUS MANAGER - CANONICAL DEPLOY SCRIPT
+# =============================================================================
+# This is the ONLY deployment mechanism for Mantodeus Manager.
+# Triggered by: git push origin main → GitHub Webhook → this script
 #
-# Mantodeus Manager - Webhook Deploy Script
-# Designed to be run via nohup to survive PM2 restarts
-#
-# Usage: nohup bash infra/deploy/deploy.sh > deploy.log 2>&1 &
-#
+# Usage: bash infra/deploy/deploy.sh
+# =============================================================================
 
-set -e
+set -euo pipefail
 
 # Configuration
 APP_PATH="/srv/customer/sites/manager.mantodeus.com"
 PM2_NAME="mantodeus-manager"
 
 echo "============================================"
-echo "🚀 Mantodeus Manager - Auto Deploy"
+echo "🚀 Mantodeus Manager - Production Deploy"
 echo "============================================"
 echo "📅 Started at: $(date)"
 echo ""
@@ -24,31 +26,43 @@ cd "$APP_PATH"
 echo "✅ Now in: $(pwd)"
 echo ""
 
-# Step 2: Fetch latest code from origin
-echo "▶ Fetching latest code from origin..."
+# Step 2: Fetch latest code
+echo "▶ Fetching latest code from origin/main..."
 git fetch origin
-echo "✅ Fetch complete"
-echo ""
-
-# Step 3: Reset to origin/main (discard local changes)
-echo "▶ Resetting to origin/main..."
 git reset --hard origin/main
-echo "✅ Reset complete"
+echo "✅ Code updated"
 echo ""
 
-# Step 4: Install dependencies
+# Step 3: Install dependencies
 echo "▶ Installing dependencies..."
-npm install --production=false --legacy-peer-deps
+npm install --no-audit --no-fund --include=dev --legacy-peer-deps || {
+  echo "⚠️  npm install failed, cleaning and retrying..."
+  rm -rf node_modules
+  npm install --no-audit --no-fund --include=dev --legacy-peer-deps
+}
 echo "✅ Dependencies installed"
 echo ""
 
-# Step 5: Build the application
+# Step 4: Install Puppeteer browser
+echo "▶ Installing Puppeteer browser..."
+npx puppeteer browsers install chrome || echo "⚠️  Puppeteer browser install failed (PDF may not work)"
+echo ""
+
+# Step 5: Build
 echo "▶ Building application..."
 npm run build
 echo "✅ Build complete"
 echo ""
 
-# Step 6: Restart PM2 process
+# Step 6: Verify build
+if [ ! -f "dist/index.js" ] || [ ! -d "dist/public" ]; then
+  echo "❌ Build verification failed!"
+  exit 1
+fi
+echo "✅ Build verified"
+echo ""
+
+# Step 7: Restart PM2
 echo "▶ Restarting PM2 process: $PM2_NAME..."
 npx pm2 restart "$PM2_NAME"
 echo "✅ PM2 restarted"
