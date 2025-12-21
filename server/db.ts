@@ -732,11 +732,23 @@ export async function getInvoicesByContact(contactId: number) {
   return db.select().from(invoices).where(eq(invoices.contactId, contactId));
 }
 
-export async function getInvoiceById(id: number) {
+export async function getInvoiceById(invoiceId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
-  return result.length > 0 ? result[0] : null;
+
+  const result = await db.select().from(invoices).where(eq(invoices.id, invoiceId)).limit(1);
+  if (!result || result.length === 0) return null;
+  
+  const invoice = result[0];
+  // Fix for TypeError: u.map is not a function. 
+  // The 'items' JSON column can sometimes be returned as an empty object {} instead of an array []
+  // when the default value is not correctly applied.
+  if (invoice.items && typeof invoice.items === 'object' && !Array.isArray(invoice.items)) {
+    // Force it to be an empty array if it's an object but not an array
+    invoice.items = [];
+  }
+  
+  return invoice;
 }
 
 export async function getInvoicesByUserId(userId: number) {
