@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { FileText, Plus, Eye, Edit, Send, Trash2, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 
@@ -470,15 +470,22 @@ function EditInvoiceDialog({
     },
   });
 
-  if (!invoice) return null;
+  const [contactId, setContactId] = useState<string>("");
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
+  const [notes, setNotes] = useState("");
+  const [dueDate, setDueDate] = useState("");
 
-  const items = (invoice.items as InvoiceItem[]) || [];
-  const [contactId, setContactId] = useState<string>(invoice.contactId ? String(invoice.contactId) : "");
-  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>(items);
-  const [notes, setNotes] = useState(invoice.notes || "");
-  const [dueDate, setDueDate] = useState(
-    invoice.dueDate ? new Date(invoice.dueDate).toISOString().split("T")[0] : ""
-  );
+  useEffect(() => {
+    if (invoice) {
+      const items = (invoice.items as InvoiceItem[]) || [];
+      setContactId(invoice.contactId ? String(invoice.contactId) : "");
+      setInvoiceItems(items);
+      setNotes(invoice.notes || "");
+      setDueDate(invoice.dueDate ? new Date(invoice.dueDate).toISOString().split("T")[0] : "");
+    }
+  }, [invoice]);
+
+  if (!invoice) return null;
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
     const newItems = [...invoiceItems];
