@@ -43,9 +43,7 @@ process.on("unhandledRejection", (reason, promise) => {
 
 async function startServer() {
   // Log environment info for debugging
-  if (process.env.NODE_ENV === "production") {
-    console.log(`Starting production server from: ${__dirname}`);
-  }
+  console.log(`Starting server from: ${__dirname}`);
 
   // Initialize database schemas once at startup (not on every query)
   try {
@@ -105,6 +103,12 @@ async function startServer() {
   app.get("/api/invoices/:id/pdf", async (req, res) => {
     try {
       const user = await supabaseAuth.authenticateRequest(req);
+      
+      // Explicit check for authenticated user object
+      if (!user || !user.id) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
       const invoiceId = parseInt(req.params.id, 10);
       const isPreview = req.query.preview === "true";
       
@@ -125,6 +129,25 @@ async function startServer() {
       if (!companySettings) {
         return res.status(500).json({ error: "Company settings not found" });
       }
+
+      // Get invoice items (new structure uses lineItems table)
+      const { getInvoiceItemsByInvoiceId } = await import("../db");
+      const lineItems = await getInvoiceItemsByInvoiceId(invoiceId);
+      
+      // Convert lineItems to legacy format for PDF template
+      const itemsForPDF = lineItems.length > 0
+        ? lineItems.map((item) => ({
+            description: item.name + (item.description ? ` - ${item.description}` : ""),
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.unitPrice),
+            total: Number(item.lineTotal),
+          }))
+        : (invoice.items as Array<{
+            description: string;
+            quantity: number;
+            unitPrice: number;
+            total: number;
+          }>) || [];
 
       // Get client contact if linked
       let client = null;
@@ -147,12 +170,7 @@ async function startServer() {
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         company: companySettings,
         client,
-        items: invoice.items as Array<{
-          description: string;
-          quantity: number;
-          unitPrice: number;
-          total: number;
-        }>,
+        items: itemsForPDF,
         subtotal: Number(invoice.subtotal),
         vatAmount: Number(invoice.vatAmount),
         total: Number(invoice.total),
@@ -491,12 +509,8 @@ async function startServer() {
     })
   );
 
-  // Development mode uses Vite, production mode uses static files
-  if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+  // Always serve static files (production-only system)
+  serveStatic(app);
 
   // ===== INFOMANIAK-READY PORT FIX =====
   const port = parseInt(process.env.PORT || "3000", 10);
@@ -511,7 +525,7 @@ async function startServer() {
     if (error.code === "EADDRINUSE") {
       console.error(`❌ Port ${port} is already in use.`);
       console.error(`   Kill the process using: netstat -ano | findstr :${port}`);
-      console.error(`   Or change PORT in .env.local`);
+      console.error(`   Or change PORT in .env`);
     } else {
       console.error("❌ Server error:", error);
     }
