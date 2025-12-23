@@ -168,6 +168,7 @@ mantodeus-manager/
 ├── drizzle/              # Database schema and migrations
 ├── infra/                # Infrastructure and deployment
 │   └── deploy/           # Canonical deploy script
+├── docs/                 # Documentation
 ├── .env.example          # Environment template
 └── package.json          # Dependencies and scripts
 ```
@@ -183,6 +184,15 @@ mantodeus-manager/
 - **One production database** - No test/dev/staging databases
 - **Migrations via Drizzle** - `pnpm db:push` generates and runs migrations
 - **Direct push blocked** - Use `db:push` workflow, not `drizzle-kit push`
+
+## Documentation
+
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Deployment, PM2, SSH, troubleshooting
+- **[Database Guide](docs/DATABASE.md)** - Schema management, migrations, backups
+- **[Technical Overview](docs/TECHNICAL_OVERVIEW.md)** - Architecture and codebase structure
+- **[User Guide](docs/USER_GUIDE.md)** - End-user documentation
+- **[Theme System](docs/THEME_SYSTEM.md)** - Design system and theming
+- **[S3 Integration](docs/S3_INTEGRATION.md)** - File storage implementation
 
 ## Philosophy
 

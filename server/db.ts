@@ -829,11 +829,18 @@ export async function getInvoicesByUserId(userId: number) {
 async function getHighestInvoiceCounter(userId: number, invoiceYear: number): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db
-    .select({ maxCounter: sql<number>`COALESCE(MAX(${invoices.invoiceCounter}), 0)` })
-    .from(invoices)
-    .where(and(eq(invoices.userId, userId), eq(invoices.invoiceYear, invoiceYear)));
-  return result?.maxCounter ?? 0;
+  try {
+    const result = await db
+      .select({ maxCounter: sql<number>`COALESCE(MAX(${invoices.invoiceCounter}), 0)`.as("maxCounter") })
+      .from(invoices)
+      .where(and(eq(invoices.userId, userId), eq(invoices.invoiceYear, invoiceYear)))
+      .limit(1);
+    return result[0]?.maxCounter ?? 0;
+  } catch (error) {
+    console.error("[getHighestInvoiceCounter] Error:", error);
+    // Fallback: if query fails, return 0 (no invoices exist yet)
+    return 0;
+  }
 }
 
 export async function ensureUniqueInvoiceNumber(userId: number, invoiceNumber: string, currentInvoiceId?: number) {

@@ -17,6 +17,26 @@
 git push origin main → GitHub Webhook → infra/deploy/deploy.sh → PM2 restart
 ```
 
+## Automated Deployment
+
+The preferred deployment method is via GitHub webhook:
+
+1. Push to `main` branch
+2. GitHub webhook triggers deployment automatically
+3. Server pulls latest code and restarts
+
+### Webhook Setup
+
+The webhook listener runs on port 9000 and is managed by PM2:
+
+```bash
+# Check webhook status
+pm2 status webhook-listener
+
+# View webhook logs
+pm2 logs webhook-listener
+```
+
 ## Manual Deployment
 
 If the webhook isn't configured or you need to deploy manually:
@@ -35,11 +55,10 @@ bash infra/deploy/deploy.sh
 ## What the Deploy Script Does
 
 1. **Fetch** - `git fetch origin && git reset --hard origin/main`
-2. **Install** - `npm install --include=dev`
-3. **Browser** - `npx puppeteer browsers install chrome`
-4. **Build** - `npm run build`
-5. **Verify** - Check `dist/index.js` and `dist/public/` exist
-6. **Restart** - `npx pm2 restart mantodeus-manager`
+2. **Install** - `pnpm install --frozen-lockfile`
+3. **Build** - `pnpm build`
+4. **Verify** - Check `dist/index.js` and `dist/public/` exist
+5. **Restart** - `pm2 restart mantodeus-manager`
 
 ## PM2 Commands
 
@@ -47,14 +66,20 @@ bash infra/deploy/deploy.sh
 # View status
 pm2 status
 
-# View logs
+# View application logs
 pm2 logs mantodeus-manager --lines 200
+
+# View all logs including errors
+pm2 logs mantodeus-manager --err --lines 100
 
 # Restart manually
 pm2 restart mantodeus-manager
 
 # Stop
 pm2 stop mantodeus-manager
+
+# Force restart (if stuck)
+pm2 delete mantodeus-manager && pm2 start ecosystem.config.js
 ```
 
 ## Environment Setup
@@ -90,9 +115,48 @@ S3_SECRET_ACCESS_KEY=your_secret
 PORT=3000
 VITE_APP_TITLE=Mantodeus Manager
 VITE_APP_URL=https://manager.mantodeus.com
+
+# PDF Service (optional)
+PDF_SERVICE_URL=https://pdf-service-withered-star-4195.fly.dev/render
+PDF_SERVICE_SECRET=your_pdf_secret
 ```
 
 **The app fails fast if any required variable is missing.**
+
+## SSH Configuration
+
+Add to `~/.ssh/config`:
+
+```
+Host mantodeus-server
+    HostName 57-105224.ssh.hosting-ik.com
+    User M4S5mQQMRhu_mantodeus
+    Port 22
+    IdentityFile ~/.ssh/mantodeus_deploy_key
+    IdentitiesOnly yes
+    StrictHostKeyChecking accept-new
+```
+
+Then connect with:
+
+```bash
+ssh mantodeus-server
+```
+
+### SSH Troubleshooting
+
+**Permission denied (publickey)**:
+- Verify your SSH key is added to the server
+- Check `~/.ssh/config` has correct path to private key
+- Test connection: `ssh -v mantodeus-server`
+
+**Connection timeout**:
+- Verify you're not behind a firewall blocking port 22
+- Check server is reachable: `ping 57-105224.ssh.hosting-ik.com`
+
+**Host key verification failed**:
+- Remove old key: `ssh-keygen -R 57-105224.ssh.hosting-ik.com`
+- Reconnect to accept new key
 
 ## Troubleshooting
 
@@ -101,18 +165,28 @@ VITE_APP_URL=https://manager.mantodeus.com
 1. Check PM2 logs: `pm2 logs mantodeus-manager --lines 200`
 2. Verify build exists: `ls -la dist/index.js dist/public`
 3. Check env vars: `cat .env | grep -E "SUPABASE|DATABASE"`
+4. Check Node version: `node --version` (should be 22.x)
 
 ### Build Fails
 
-1. Check Node version: `node --version` (should be 22.x)
-2. Clear node_modules: `rm -rf node_modules && npm install`
-3. Check for TypeScript errors: `npm run check`
+1. Check for TypeScript errors: `pnpm check`
+2. Clear and reinstall: `rm -rf node_modules && pnpm install`
+3. Check disk space: `df -h`
+4. Review build logs in PM2 output
 
 ### Database Connection Issues
 
 1. Verify `DATABASE_URL` in `.env`
-2. Test connection manually
-3. Check migrations: `npm run db:migrate`
+2. Test connection: `pnpm db:check-url`
+3. Check migrations: `pnpm db:migrate`
+4. Verify database server is running
+
+### Deployment Fails
+
+1. Check webhook logs: `pm2 logs webhook-listener`
+2. Verify git repository is clean: `git status`
+3. Check for merge conflicts: `git diff`
+4. Try manual deployment: `bash infra/deploy/deploy.sh`
 
 ## Health Check
 
@@ -137,6 +211,24 @@ Returns:
 - JWT tokens for authentication
 - S3 presigned URLs for file access
 - Fail-fast on missing configuration
+- Webhook requires secret for authentication
+
+## Rollback Procedure
+
+If a deployment causes issues:
+
+```bash
+# View recent commits
+git log --oneline -10
+
+# Rollback to specific commit
+git reset --hard <commit-hash>
+
+# Rebuild and restart
+pnpm build && pm2 restart mantodeus-manager
+```
+
+**Always test rollbacks in a backup before production.**
 
 ## Philosophy
 
