@@ -130,8 +130,8 @@ async function startServer() {
 
       // Get client contact if linked
       let client = null;
-      if (invoice.contactId) {
-        const contact = await getContactById(invoice.contactId);
+      if (invoice.contactId || invoice.clientId) {
+        const contact = await getContactById(invoice.contactId || invoice.clientId);
         if (contact) {
           client = {
             name: contact.name,
@@ -142,22 +142,23 @@ async function startServer() {
 
       // Use draft invoice number or generate preview number
       const invoiceNumber = invoice.invoiceNumber || (isPreview ? `DRAFT-${invoiceId}` : `PREVIEW-${invoiceId}`);
+      const items = (invoice.items as Array<any>).map((item) => ({
+        description: item.name || item.description || "",
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        total: Number(item.lineTotal ?? item.total ?? 0),
+      }));
 
       const html = generateInvoiceHTML({
         invoiceNumber,
-        invoiceDate: invoice.invoiceDate,
+        invoiceDate: invoice.issueDate ?? new Date(),
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         company: companySettings,
         client,
-        items: invoice.items as Array<{
-          description: string;
-          quantity: number;
-          unitPrice: number;
-          total: number;
-        }>,
-        subtotal: Number(invoice.subtotal),
-        vatAmount: Number(invoice.vatAmount),
-        total: Number(invoice.total),
+        items,
+        subtotal: Number(invoice.subtotal ?? 0),
+        vatAmount: Number(invoice.vatAmount ?? 0),
+        total: Number(invoice.total ?? 0),
         notes: invoice.notes || undefined,
         logoUrl: "",
       });
@@ -210,14 +211,18 @@ async function startServer() {
         return res.status(500).json({ error: "Company settings not found" });
       }
 
-      // Generate invoice number
-      const invoiceNumber = `${companySettings.invoicePrefix}-${new Date().getFullYear()}-${String(companySettings.nextInvoiceNumber).padStart(4, "0")}`;
-      await db.incrementInvoiceNumber(user.id);
+      const issueDate = invoice.issueDate ?? new Date();
+      const { invoiceNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
+        user.id,
+        issueDate,
+        companySettings.invoicePrefix || "RE"
+      );
+      await db.ensureUniqueInvoiceNumber(user.id, invoiceNumber, invoice.id);
 
       // Get client contact if linked
       let client = null;
-      if (invoice.contactId) {
-        const contact = await db.getContactById(invoice.contactId);
+      if (invoice.contactId || invoice.clientId) {
+        const contact = await db.getContactById(invoice.contactId || invoice.clientId);
         if (contact) {
           client = {
             name: contact.name,
@@ -226,22 +231,24 @@ async function startServer() {
         }
       }
 
+      const items = (invoice.items as Array<any>).map((item) => ({
+        description: item.name || item.description || "",
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        total: Number(item.lineTotal ?? item.total ?? 0),
+      }));
+
       // Generate PDF
       const html = generateInvoiceHTML({
         invoiceNumber,
-        invoiceDate: invoice.invoiceDate,
+        invoiceDate: issueDate,
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         company: companySettings,
         client,
-        items: invoice.items as Array<{
-          description: string;
-          quantity: number;
-          unitPrice: number;
-          total: number;
-        }>,
-        subtotal: Number(invoice.subtotal),
-        vatAmount: Number(invoice.vatAmount),
-        total: Number(invoice.total),
+        items,
+        subtotal: Number(invoice.subtotal ?? 0),
+        vatAmount: Number(invoice.vatAmount ?? 0),
+        total: Number(invoice.total ?? 0),
         notes: invoice.notes || undefined,
         logoUrl: "",
       });
@@ -255,10 +262,12 @@ async function startServer() {
 
       // Update invoice: set status, number, PDF reference, issued date
       const updated = await db.updateInvoice(invoiceId, {
-        status: "issued",
+        status: "sent",
         invoiceNumber,
+        invoiceCounter,
+        invoiceYear,
         pdfFileKey: fileKey,
-        issuedAt: new Date(),
+        issueDate,
       });
 
       res.json(updated);
