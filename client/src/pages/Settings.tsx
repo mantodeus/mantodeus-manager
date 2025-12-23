@@ -143,7 +143,7 @@ export default function Settings() {
                   
                   {/* Theme info */}
                   <div className="flex-1 text-left">
-                    <div className="font-medium text-base">
+                    <div className="text-base">
                       {themeConfig.displayName}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">
@@ -315,7 +315,7 @@ export default function Settings() {
             {/* Kleinunternehmer Toggle */}
             <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
               <div className="space-y-0.5 flex-1">
-                <Label htmlFor="kleinunternehmer" className="text-base font-medium cursor-pointer">
+                <Label htmlFor="kleinunternehmer" className="text-base cursor-pointer">
                   Kleinunternehmerregelung
                 </Label>
                 <p className="text-sm text-muted-foreground">

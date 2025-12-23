@@ -81,7 +81,7 @@ export default function ProjectsRubbish() {
     <Card key={project.id}>
       <CardContent className="flex items-center justify-between py-4">
         <div className="min-w-0">
-          <div className="font-medium truncate">{project.name}</div>
+          <div className="truncate">{project.name}</div>
           <div className="text-sm text-muted-foreground">
             Deleted{" "}
             {project.trashedAt ? new Date(project.trashedAt).toLocaleDateString() : "—"}
@@ -112,20 +112,20 @@ export default function ProjectsRubbish() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/projects">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Trash2 className="h-8 w-8 text-muted-foreground" />
-            Rubbish Bin
-          </h1>
-          <p className="text-muted-foreground">
-            Deleted projects. Items here can be restored or permanently deleted.
-          </p>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Link href="/projects">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-regular flex items-center gap-3">
+              <Trash2 className="h-8 w-8 text-muted-foreground" />
+              Rubbish Bin
+            </h1>
+            <p className="text-muted-foreground text-sm">Deleted projects. Items here can be restored or permanently deleted.</p>
+          </div>
         </div>
       </div>
 

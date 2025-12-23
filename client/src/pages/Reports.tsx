@@ -51,7 +51,7 @@ export default function Reports() {
                     <div className="flex items-center gap-3">
                       <FileText className="h-5 w-5 group-hover:text-accent-foreground text-muted-foreground transition-colors" />
                       <div>
-                        <p className="font-medium group-hover:text-accent-foreground transition-colors">{project.name || project.name}</p>
+                        <p className="group-hover:text-accent-foreground transition-colors">{project.name || project.name}</p>
                         <p className="text-sm group-hover:text-accent-foreground/80 text-muted-foreground transition-colors">
                           Status: {project.status.replace("_", " ")}
                         </p>
@@ -80,25 +80,25 @@ export default function Reports() {
           <CardContent>
             <div className="grid gap-3 md:grid-cols-2">
               <div className="p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer group">
-                <h3 className="font-semibold mb-2 group-hover:text-accent-foreground transition-colors">Daily Report</h3>
+                <h3 className="mb-2 group-hover:text-accent-foreground transition-colors">Daily Report</h3>
                 <p className="text-sm group-hover:text-accent-foreground/80 text-muted-foreground transition-colors">
                   Summary of daily activities, tasks completed, and progress updates
                 </p>
               </div>
               <div className="p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer group">
-                <h3 className="font-semibold mb-2 group-hover:text-accent-foreground transition-colors">Task Summary</h3>
+                <h3 className="mb-2 group-hover:text-accent-foreground transition-colors">Task Summary</h3>
                 <p className="text-sm group-hover:text-accent-foreground/80 text-muted-foreground transition-colors">
                   Overview of all tasks with status, priority, and assignments
                 </p>
               </div>
               <div className="p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer group">
-                <h3 className="font-semibold mb-2 group-hover:text-accent-foreground transition-colors">Progress Report</h3>
+                <h3 className="mb-2 group-hover:text-accent-foreground transition-colors">Progress Report</h3>
                 <p className="text-sm group-hover:text-accent-foreground/80 text-muted-foreground transition-colors">
                   Detailed progress tracking with timeline and milestones
                 </p>
               </div>
               <div className="p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer group">
-                <h3 className="font-semibold mb-2 group-hover:text-accent-foreground transition-colors">Image Documentation</h3>
+                <h3 className="mb-2 group-hover:text-accent-foreground transition-colors">Image Documentation</h3>
                 <p className="text-sm group-hover:text-accent-foreground/80 text-muted-foreground transition-colors">
                   Collection of all uploaded images with captions and timestamps
                 </p>

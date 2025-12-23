@@ -105,10 +105,7 @@ export default function NotesArchived() {
     >
       <div className="flex items-start gap-3 mb-3">
         <div className="flex-1 min-w-0">
-          <h3
-            className="text-lg font-semibold line-clamp-1"
-            style={{ fontFamily: "Kanit, sans-serif" }}
-          >
+          <h3 className="text-lg line-clamp-1">
             {note.title}
           </h3>
         </div>
@@ -120,10 +117,7 @@ export default function NotesArchived() {
       </div>
 
       {note.content && (
-        <p
-          className="text-sm text-muted-foreground mb-3 line-clamp-3"
-          style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
-        >
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
           {note.content}
         </p>
       )}
@@ -157,20 +151,20 @@ export default function NotesArchived() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="flex items-center gap-4 mb-8">
-        <Link href="/notes">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold mb-2 flex items-center gap-3" style={{ fontFamily: "Kanit, sans-serif" }}>
-            <Archive className="h-8 w-8 text-muted-foreground" />
-            Archived Notes
-          </h1>
-          <p className="text-muted-foreground" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
-            Notes you've archived. You can restore them anytime.
-          </p>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Link href="/notes">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-regular flex items-center gap-3">
+              <Archive className="h-8 w-8 text-muted-foreground" />
+              Archived Notes
+            </h1>
+            <p className="text-muted-foreground text-sm">Notes you've archived. You can restore them anytime.</p>
+          </div>
         </div>
       </div>
 
@@ -179,7 +173,7 @@ export default function NotesArchived() {
         {archivedNotes.length === 0 ? (
           <Card className="p-12 text-center">
             <Archive className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground mb-4" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+            <p className="text-muted-foreground mb-4">
               No archived notes.
             </p>
             <Link href="/notes">

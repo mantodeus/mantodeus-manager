@@ -172,7 +172,7 @@ export default function JobDetail() {
 
         <TabsContent value="tasks" className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Tasks</h2>
+            <h2 className="text-2xl">Tasks</h2>
             <Button onClick={() => setCreateTaskDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               New Task
@@ -193,7 +193,7 @@ export default function JobDetail() {
 
         <TabsContent value="reports" className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Reports</h2>
+            <h2 className="text-2xl">Reports</h2>
             <Button>
               <FileText className="h-4 w-4 mr-2" />
               Generate Report

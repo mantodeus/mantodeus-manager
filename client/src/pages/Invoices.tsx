@@ -180,7 +180,7 @@ export default function Invoices() {
                     <span className="text-muted-foreground">Items:</span>
                     <span>{items.length}</span>
                   </div>
-                  <div className="flex justify-between font-medium">
+                  <div className="flex justify-between">
                     <span>Total:</span>
                     <span>{formatCurrency(invoice.total)}</span>
                   </div>
@@ -508,7 +508,7 @@ function InvoiceForm({
             <Card key={index} className="p-3 flex items-start justify-between gap-2">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <p className="font-medium">{item.name || "Untitled"}</p>
+                  <p>{item.name || "Untitled"}</p>
                   {item.category && <Badge variant="outline">{item.category}</Badge>}
                 </div>
                 {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
@@ -517,7 +517,7 @@ function InvoiceForm({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <p className="font-semibold">{formatCurrency(item.quantity * item.unitPrice)}</p>
+                <p>{formatCurrency(item.quantity * item.unitPrice)}</p>
                 {isDraft && (
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openItemEditor(index)}>
@@ -558,7 +558,7 @@ function InvoiceForm({
           <span>VAT (pending)</span>
           <span>{formatCurrency(totals.vat)}</span>
         </div>
-        <div className="flex justify-between text-lg font-semibold">
+        <div className="flex justify-between text-lg">
           <span>Total</span>
           <span>{formatCurrency(totals.total)}</span>
         </div>
@@ -667,7 +667,7 @@ function LineItemModal({
           </div>
           <div className="flex justify-between items-center p-3 bg-muted rounded-md">
             <span className="text-sm text-muted-foreground">Line Total</span>
-            <span className="text-lg font-semibold">{formatCurrency(lineTotal)}</span>
+            <span className="text-lg">{formatCurrency(lineTotal)}</span>
           </div>
           <div className="flex gap-2">
             <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
