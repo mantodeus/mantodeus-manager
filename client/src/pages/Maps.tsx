@@ -726,7 +726,7 @@ export default function Maps() {
               </div>
             ) : searchQuery.trim().length >= 3 ? (
               <div className="p-2">
-                <div className="p-3 text-center text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+                <div className="p-3 text-center text-muted-foreground mb-2">
                   <p className="text-sm">No locations found matching "{searchQuery}"</p>
                 </div>
                 <button
@@ -759,10 +759,10 @@ export default function Maps() {
                 >
                   <MapPin className="h-4 w-4 text-accent mt-1 flex-shrink-0" />
                   <div className="flex-1">
-                    <span className="font-medium text-accent" style={{ fontFamily: "Kanit, sans-serif" }}>
+                    <span className="text-accent">
                       Add "{searchQuery}" as new location
                     </span>
-                    <p className="text-xs text-muted-foreground mt-1" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+                    <p className="text-xs text-muted-foreground mt-1">
                       Geocode this address and add to map
                     </p>
                   </div>
@@ -786,20 +786,20 @@ export default function Maps() {
               />
             </div>
           </Card>
-          <p className="text-xs text-muted-foreground mt-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+          <p className="text-xs text-muted-foreground mt-2">
             Click anywhere on the map to add a new location marker
           </p>
         </div>
 
         {/* Locations List */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold" style={{ fontFamily: "Kanit, sans-serif" }}>
+          <h2 className="text-xl">
             Saved Locations ({locations.length})
           </h2>
           {locations.length === 0 ? (
             <Card className="p-6 text-center">
               <MapPin className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+              <p className="text-sm text-muted-foreground">
                 No locations yet. Click on the map to add one.
               </p>
             </Card>
@@ -827,17 +827,13 @@ export default function Maps() {
                             <MapPin className="h-4 w-4 text-accent mt-1 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <h3
-                                className="font-semibold text-sm cursor-pointer hover:text-accent transition-colors"
-                                style={{ fontFamily: "Kanit, sans-serif" }}
+                                className="text-sm cursor-pointer hover:text-accent transition-colors"
                                 onClick={() => centerMapOnLocation(location)}
                               >
                                 {location.name}
                               </h3>
                               {location.address && (
-                                <p
-                                  className="text-xs text-muted-foreground mt-1"
-                                  style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
-                                >
+                                <p className="text-xs text-muted-foreground mt-1">
                                   {location.address}
                                 </p>
                               )}
@@ -887,8 +883,8 @@ export default function Maps() {
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Kanit, sans-serif" }}>Add Location</DialogTitle>
-            <DialogDescription style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+            <DialogTitle>Add Location</DialogTitle>
+            <DialogDescription>
               {selectedLocation
                 ? `Add a marker at coordinates: ${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`
                 : "Click on the map to select a location"}
@@ -988,8 +984,8 @@ export default function Maps() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Kanit, sans-serif" }}>Edit Location</DialogTitle>
-            <DialogDescription style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+            <DialogTitle>Edit Location</DialogTitle>
+            <DialogDescription>
               Update location details
             </DialogDescription>
           </DialogHeader>
