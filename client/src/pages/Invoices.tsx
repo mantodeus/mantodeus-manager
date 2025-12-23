@@ -115,7 +115,7 @@ export default function Invoices() {
               Create Invoice
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[min(1100px,95vw)] max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Invoice</DialogTitle>
             </DialogHeader>
@@ -216,7 +216,7 @@ export default function Invoices() {
 
       {editingInvoice && (
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[min(1100px,95vw)] max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Invoice</DialogTitle>
             </DialogHeader>
@@ -389,43 +389,45 @@ function InvoiceForm({
   const editingItem = itemEditor.index !== null ? items[itemEditor.index] : defaultLineItem;
 
   return (
-    <form onSubmit={handleSave} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-3">
-          <div>
-            <Label>Invoice Number</Label>
-            <Input
-              value={formState.invoiceNumber}
-              onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
-              placeholder="RE-2025-0007"
-              disabled={!isDraft}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Invoice numbers must be unique and sequential (German tax requirement).
-            </p>
+    <form onSubmit={handleSave} className="space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Invoice Number</Label>
+              <Input
+                value={formState.invoiceNumber}
+                onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                placeholder="RE-2025-0007"
+                disabled={!isDraft}
+              />
+              <p className="text-xs text-muted-foreground">
+                Invoice numbers must be unique and sequential (German tax requirement).
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Client (optional)</Label>
+              <Select
+                value={formState.clientId ?? "none"}
+                onValueChange={(val) => setFormState((prev) => ({ ...prev, clientId: val === "none" ? undefined : val }))}
+                disabled={!isDraft}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={String(contact.id)}>
+                      {contact.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div>
-            <Label>Client (optional)</Label>
-            <Select
-              value={formState.clientId ?? "none"}
-              onValueChange={(val) => setFormState((prev) => ({ ...prev, clientId: val === "none" ? undefined : val }))}
-              disabled={!isDraft}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a client" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {contacts.map((contact) => (
-                  <SelectItem key={contact.id} value={String(contact.id)}>
-                    {contact.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-2">
               <Label>Issue Date</Label>
               <Input
                 type="date"
@@ -434,7 +436,7 @@ function InvoiceForm({
                 disabled={!isDraft}
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Due Date (optional)</Label>
               <Input
                 type="date"
@@ -443,12 +445,23 @@ function InvoiceForm({
                 disabled={!isDraft}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Order / Reference Number</Label>
+              <Input
+                value={formState.referenceNumber ?? ""}
+                onChange={(e) => setFormState((prev) => ({ ...prev, referenceNumber: e.target.value }))}
+                placeholder="Optional reference"
+                disabled={!isDraft}
+              />
+            </div>
           </div>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
           <div>
-            <Label>Service Period</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center justify-between">
+              <Label>Service Period</Label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
               <Input
                 type="date"
                 value={formState.servicePeriodStart ?? ""}
@@ -462,15 +475,6 @@ function InvoiceForm({
                 disabled={!isDraft}
               />
             </div>
-          </div>
-          <div>
-            <Label>Order / Reference Number</Label>
-            <Input
-              value={formState.referenceNumber ?? ""}
-              onChange={(e) => setFormState((prev) => ({ ...prev, referenceNumber: e.target.value }))}
-              placeholder="Optional reference"
-              disabled={!isDraft}
-            />
           </div>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
@@ -499,7 +503,7 @@ function InvoiceForm({
             </Button>
           )}
         </div>
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {items.map((item, index) => (
             <Card key={index} className="p-3 flex items-start justify-between gap-2">
               <div className="space-y-1">

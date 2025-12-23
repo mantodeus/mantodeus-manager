@@ -161,12 +161,6 @@ async function startServer() {
 
       // Use draft invoice number or generate preview number
       const invoiceNumber = invoice.invoiceNumber || (isPreview ? `DRAFT-${invoiceId}` : `PREVIEW-${invoiceId}`);
-      const items = (invoice.items as Array<any>).map((item) => ({
-        description: item.name || item.description || "",
-        quantity: Number(item.quantity),
-        unitPrice: Number(item.unitPrice),
-        total: Number(item.lineTotal ?? item.total ?? 0),
-      }));
 
       const html = generateInvoiceHTML({
         invoiceNumber,
