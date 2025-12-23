@@ -286,10 +286,7 @@ export default function Notes() {
             />
           )}
           <div className="flex-1 min-w-0">
-            <h3
-              className="text-lg font-semibold line-clamp-1"
-              style={{ fontFamily: "Kanit, sans-serif" }}
-            >
+            <h3 className="text-lg line-clamp-1">
               {note.title}
             </h3>
           </div>
