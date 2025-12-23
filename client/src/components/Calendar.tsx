@@ -178,7 +178,7 @@ export default function Calendar() {
               : 'border-border hover:border-accent/50 hover:bg-muted/30'
           }`}
         >
-          <div className={`font-medium mb-0.5 ${today ? 'text-accent/80' : ''}`}>{day}</div>
+          <div className={`mb-0.5 ${today ? 'text-accent/80' : ''}`}>{day}</div>
           <div className="space-y-0.5 overflow-hidden">
             {dayEvents.slice(0, 1).map(event => (
               <div
@@ -207,7 +207,7 @@ export default function Calendar() {
     return (
       <div className="grid grid-cols-7 gap-1">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="font-medium text-center text-muted-foreground text-xs py-1">
+          <div key={day} className="text-center text-muted-foreground text-xs py-1">
             {day}
           </div>
         ))}
@@ -237,7 +237,7 @@ export default function Calendar() {
               : 'border-border hover:border-accent/50 hover:bg-muted/30'
           }`}
         >
-          <div className={`font-medium text-xs mb-2 ${today ? 'text-accent/80' : ''}`}>
+          <div className={`text-xs mb-2 ${today ? 'text-accent/80' : ''}`}>
             {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
           <div className="space-y-1">
@@ -271,7 +271,7 @@ export default function Calendar() {
     return (
       <div className="space-y-3">
         <div className={`p-3 rounded-lg border ${today ? 'bg-accent/5 border-accent/40' : 'bg-muted/5 border-border'}`}>
-          <h3 className={`text-base font-medium ${today ? 'text-accent/80' : ''}`}>
+          <h3 className={`text-base ${today ? 'text-accent/80' : ''}`}>
             {currentDate.toLocaleDateString('en-US', {
               weekday: 'long',
               month: 'long',
@@ -297,7 +297,7 @@ export default function Calendar() {
                 <CardContent className="p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <h4 className="font-medium">{event.title}</h4>
+                      <h4>{event.title}</h4>
                       {event.description && (
                         <p className="text-xs text-muted-foreground mt-1">{event.description}</p>
                       )}
@@ -327,10 +327,10 @@ export default function Calendar() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-medium tracking-tight">Calendar</h1>
+          <h1 className="text-3xl font-regular">Calendar</h1>
           <p className="text-muted-foreground text-sm">View jobs and tasks by date</p>
         </div>
       </div>
@@ -384,7 +384,7 @@ export default function Calendar() {
             </>
           )}
         </div>
-        <div className="text-sm font-medium">{monthName}</div>
+        <div className="text-sm">{monthName}</div>
         <div className="w-16"></div>
       </div>
 
