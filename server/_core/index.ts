@@ -168,11 +168,7 @@ async function startServer() {
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         company: companySettings,
         client,
-
         items: itemsForPDF,
-
-        items: itemsForPDF,
-
         subtotal: Number(invoice.subtotal ?? 0),
         vatAmount: Number(invoice.vatAmount ?? 0),
         total: Number(invoice.total ?? 0),
@@ -248,6 +244,12 @@ async function startServer() {
         }
       }
 
+      const items = (invoice.items as Array<any>).map((item) => ({
+        description: item.name || item.description || "",
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        total: Number(item.lineTotal ?? item.total ?? 0),
+      }));
 
       // Generate PDF
       const html = generateInvoiceHTML({
@@ -256,7 +258,7 @@ async function startServer() {
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         company: companySettings,
         client,
-        items: itemsForPDF,
+        items,
         subtotal: Number(invoice.subtotal ?? 0),
         vatAmount: Number(invoice.vatAmount ?? 0),
         total: Number(invoice.total ?? 0),
