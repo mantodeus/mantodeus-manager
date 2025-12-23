@@ -34,27 +34,22 @@ echo "✅ Code updated"
 echo ""
 
 # Step 3: Install dependencies
-echo "▶ Installing dependencies..."
-npm install --no-audit --no-fund --include=dev --legacy-peer-deps || {
-  echo "⚠️  npm install failed, cleaning and retrying..."
+echo "▶ Installing dependencies with pnpm..."
+pnpm install --frozen-lockfile || {
+  echo "⚠️  pnpm install failed, cleaning and retrying..."
   rm -rf node_modules
-  npm install --no-audit --no-fund --include=dev --legacy-peer-deps
+  pnpm install --frozen-lockfile
 }
 echo "✅ Dependencies installed"
 echo ""
 
-# Step 4: Install Puppeteer browser
-echo "▶ Installing Puppeteer browser..."
-npx puppeteer browsers install chrome || echo "⚠️  Puppeteer browser install failed (PDF may not work)"
-echo ""
-
-# Step 5: Build
+# Step 4: Build
 echo "▶ Building application..."
-npm run build
+pnpm build
 echo "✅ Build complete"
 echo ""
 
-# Step 6: Verify build
+# Step 5: Verify build
 if [ ! -f "dist/index.js" ] || [ ! -d "dist/public" ]; then
   echo "❌ Build verification failed!"
   exit 1
@@ -62,9 +57,9 @@ fi
 echo "✅ Build verified"
 echo ""
 
-# Step 7: Restart PM2
+# Step 6: Restart PM2
 echo "▶ Restarting PM2 process: $PM2_NAME..."
-npx pm2 restart "$PM2_NAME"
+pnpm pm2 restart "$PM2_NAME"
 echo "✅ PM2 restarted"
 echo ""
 

@@ -166,19 +166,17 @@ async function deploy(branch, commitId) {
       await fs.access(deployScript);
     } catch {
       await log('error', 'Deploy script not found, using fallback', { deployScript });
-      // Fallback: direct commands with retry logic for npm install
-      // First try npm install, if it fails, clean up and retry
+      // Fallback: direct commands with retry logic for pnpm install
+      // Use --frozen-lockfile to ensure reproducible builds
       const commands = [
         `cd ${APP_PATH}`,
         'git pull origin main',
-        `npm install --no-audit --no-fund --include=dev --legacy-peer-deps || (` +
-          `echo "First npm install failed, cleaning up..." && ` +
-          `find node_modules -maxdepth 1 -name '.*' -type d 2>/dev/null | xargs rm -rf 2>/dev/null || true && ` +
-          `npm cache clean --force 2>/dev/null || true && ` +
+        `pnpm install --frozen-lockfile || (` +
+          `echo "First pnpm install failed, cleaning up..." && ` +
           `rm -rf node_modules && ` +
-          `npm install --no-audit --no-fund --include=dev --legacy-peer-deps` +
+          `pnpm install --frozen-lockfile` +
         `)`,
-        'npm run build',
+        'pnpm build',
         `pm2 restart ${PM2_APP_NAME}`,
       ].join(' && ');
       

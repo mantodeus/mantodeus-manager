@@ -806,6 +806,7 @@ async function attachInvoiceItems(invoiceList: Invoice[]): Promise<InvoiceWithIt
 export async function getInvoiceById(invoiceId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
 
   const result = await db.select().from(invoices).where(eq(invoices.id, invoiceId)).limit(1);
   if (!result || result.length === 0) return null;
@@ -817,6 +818,7 @@ export async function getInvoiceById(invoiceId: number) {
 export async function getInvoicesByUserId(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
   const invoiceRows = await db
     .select()
     .from(invoices)
@@ -867,6 +869,7 @@ export async function generateInvoiceNumber(userId: number, issueDate: Date, pre
 export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
 
   const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
   
@@ -932,6 +935,7 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
 export async function updateInvoice(id: number, data: Partial<InsertInvoice> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
 
   const { items, ...invoiceData } = data;
   const updates = {
