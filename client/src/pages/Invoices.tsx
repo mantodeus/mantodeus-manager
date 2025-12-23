@@ -1,137 +1,104 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Eye, Edit, Send, Trash2, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { FileText, Plus, Eye, Edit, Send, Trash2, Loader2, PencilLine, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
+import { ItemActionsMenu } from "@/components/ItemActionsMenu";
+import { Switch } from "@/components/ui/switch";
 
-interface InvoiceItem {
-  description: string;
+interface InvoiceLineItem {
+  name: string;
+  description?: string | null;
+  category?: string | null;
   quantity: number;
   unitPrice: number;
-  total: number;
+  currency: string;
+  lineTotal?: number;
+}
+
+interface InvoiceFormState {
+  invoiceNumber: string;
+  clientId?: string;
+  issueDate: string;
+  dueDate?: string;
+  notes?: string;
+  servicePeriodStart?: string;
+  servicePeriodEnd?: string;
+  referenceNumber?: string;
+  partialInvoice: boolean;
+}
+
+const defaultLineItem: InvoiceLineItem = {
+  name: "",
+  description: "",
+  category: "",
+  quantity: 1,
+  unitPrice: 0,
+  currency: "EUR",
+};
+
+function formatCurrency(amount: number | string) {
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+  }).format(num || 0);
 }
 
 export default function Invoices() {
-  const { user } = useAuth();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<number | null>(null);
-  const [contactFilter, setContactFilter] = useState<string>("");
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
-  
-  const createMutation = trpc.invoices.create.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice created");
-      setCreateDialogOpen(false);
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to create invoice");
-    },
-  });
-
-  const updateMutation = trpc.invoices.update.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice updated");
-      setEditDialogOpen(false);
-      setEditingInvoice(null);
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to update invoice");
-    },
-  });
-
   const issueMutation = trpc.invoices.issue.useMutation({
     onSuccess: () => {
-      toast.success("Invoice issued successfully");
+      toast.success("Invoice sent");
       refetch();
     },
-    onError: (error) => {
-      toast.error(error.message || "Failed to issue invoice");
-    },
+    onError: (err) => toast.error(err.message),
   });
-
   const deleteMutation = trpc.invoices.delete.useMutation({
     onSuccess: () => {
       toast.success("Invoice deleted");
       refetch();
     },
-    onError: (error) => {
-      toast.error(error.message || "Failed to delete invoice");
-    },
+    onError: (err) => toast.error(err.message),
   });
-
-  const filteredInvoices = invoices.filter((invoice) => {
-    if (contactFilter && invoice.contactId !== parseInt(contactFilter)) return false;
-    return true;
-  });
-
-  const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const formatCurrency = (amount: string | number) => {
-    const num = typeof amount === "string" ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat("de-DE", {
-      style: "currency",
-      currency: "EUR",
-    }).format(num);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      draft: "outline",
-      issued: "default",
-      paid: "secondary",
-      cancelled: "destructive",
-    };
-    return (
-      <Badge variant={variants[status] || "default"} className="text-xs">
-        {status.toUpperCase()}
-      </Badge>
-    );
-  };
 
   const handlePreviewPDF = (invoiceId: number) => {
     window.open(`/api/invoices/${invoiceId}/pdf?preview=true`, "_blank");
   };
 
   const handleIssueInvoice = async (invoiceId: number) => {
-    if (!confirm("Are you sure you want to issue this invoice? It will be locked and cannot be edited.")) {
-      return;
-    }
+    if (!confirm("Send this invoice? This locks the invoice number.")) return;
     await issueMutation.mutateAsync({ id: invoiceId });
   };
 
-  const handleEditInvoice = (invoice: typeof invoices[0]) => {
-    if (invoice.status !== "draft") {
-      toast.error("Only draft invoices can be edited");
-      return;
-    }
-    setEditingInvoice(invoice.id);
-    setEditDialogOpen(true);
+  const handleDeleteInvoice = async (invoiceId: number) => {
+    if (!confirm("Are you sure you want to delete this draft invoice?")) return;
+    await deleteMutation.mutateAsync({ id: invoiceId });
   };
 
-  const handleDeleteInvoice = async (invoiceId: number) => {
-    if (!confirm("Are you sure you want to delete this invoice?")) {
-      return;
-    }
-    await deleteMutation.mutateAsync({ id: invoiceId });
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      draft: "outline",
+      sent: "default",
+      paid: "secondary",
+    };
+    return (
+      <Badge variant={variants[status] || "default"} className="text-xs">
+        {status.toUpperCase()}
+      </Badge>
+    );
   };
 
   return (
@@ -148,82 +115,67 @@ export default function Invoices() {
               Create Invoice
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[min(1100px,95vw)] max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Invoice</DialogTitle>
             </DialogHeader>
-            <CreateInvoiceForm
+            <InvoiceForm
+              mode="create"
               contacts={contacts}
-              onSubmit={(data) => {
-                createMutation.mutate(data);
+              onClose={() => setCreateDialogOpen(false)}
+              onSuccess={() => {
+                toast.success("Invoice created");
+                setCreateDialogOpen(false);
+                refetch();
               }}
-              isLoading={createMutation.isPending}
             />
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <Label className="mb-2">Filter by Contact</Label>
-          <Select value={contactFilter || "all"} onValueChange={(val) => setContactFilter(val === "all" ? "" : val)}>
-            <SelectTrigger>
-              <SelectValue placeholder="All contacts" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All contacts</SelectItem>
-              {contacts.map((contact) => (
-                <SelectItem key={contact.id} value={String(contact.id)}>
-                  {contact.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {filteredInvoices.length === 0 ? (
+      {invoices.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-muted-foreground">No invoices found. Create your first invoice to get started.</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredInvoices.map((invoice) => {
-            const linkedContact = contacts.find((c) => c.id === invoice.contactId);
-            const items = (invoice.items as InvoiceItem[]) || [];
+          {invoices.map((invoice) => {
+            const linkedContact = contacts.find(
+              (contact: { id: number }) => contact.id === invoice.clientId || contact.id === invoice.contactId
+            );
+            const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
+            const items = (invoice.items as InvoiceLineItem[]) || [];
 
             return (
-              <Card key={invoice.id} className="p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
+              <Card key={invoice.id} className="p-4 flex flex-col gap-3">
+                <div className="flex justify-between items-start">
+                  <div>
                     <div className="flex items-center gap-2 mb-2">
                       <FileText className="w-5 h-5 text-accent" />
-                      <h3 className="font-regular text-lg">
-                        {invoice.invoiceNumber || `Draft #${invoice.id}`}
-                      </h3>
+                      <h3 className="font-regular text-lg">{invoice.invoiceNumber}</h3>
                       {getStatusBadge(invoice.status)}
                     </div>
                     <p className="text-muted-foreground text-xs">
-                      {formatDate(invoice.invoiceDate)}
-                      {invoice.dueDate && ` • Due: ${formatDate(invoice.dueDate)}`}
+                      {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
+                      {invoice.dueDate ? ` • Due: ${new Date(invoice.dueDate).toLocaleDateString("de-DE")}` : ""}
                     </p>
+                    {linkedContact && (
+                      <p className="text-xs text-muted-foreground mt-1">Client: {linkedContact.name}</p>
+                    )}
                   </div>
                   <ItemActionsMenu
+                    actions={invoice.status === "draft" ? ["edit", "delete"] : ["delete"]}
                     onAction={(action) => {
                       if (action === "delete") handleDeleteInvoice(invoice.id);
-                      else if (action === "edit") handleEditInvoice(invoice);
+                      if (action === "edit" && invoice.status === "draft") {
+                        setEditingInvoice(invoice.id);
+                        setEditDialogOpen(true);
+                      }
                     }}
-                    actions={invoice.status === "draft" ? ["edit", "delete"] : ["delete"]}
                   />
                 </div>
 
-                {linkedContact && (
-                  <div className="text-sm text-muted-foreground mb-2">
-                    <span className="font-medium">Client:</span> {linkedContact.name}
-                  </div>
-                )}
-
-                <div className="space-y-1 text-sm mb-3">
+                <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Items:</span>
                     <span>{items.length}</span>
@@ -234,13 +186,8 @@ export default function Invoices() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handlePreviewPDF(invoice.id)}
-                  >
+                <div className="flex gap-2 mt-auto">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handlePreviewPDF(invoice.id)}>
                     <Eye className="w-4 h-4 mr-2" />
                     Preview
                   </Button>
@@ -257,7 +204,7 @@ export default function Invoices() {
                       ) : (
                         <Send className="w-4 h-4 mr-2" />
                       )}
-                      Issue
+                      Send
                     </Button>
                   )}
                 </div>
@@ -268,368 +215,466 @@ export default function Invoices() {
       )}
 
       {editingInvoice && (
-        <EditInvoiceDialog
-          open={editDialogOpen}
-          onOpenChange={(open) => {
-            setEditDialogOpen(open);
-            if (!open) setEditingInvoice(null);
-          }}
-          invoiceId={editingInvoice}
-          contacts={contacts}
-          onSuccess={() => {
-            setEditDialogOpen(false);
-            setEditingInvoice(null);
-            refetch();
-          }}
-        />
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="w-[min(1100px,95vw)] max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Invoice</DialogTitle>
+            </DialogHeader>
+            <InvoiceForm
+              mode="edit"
+              invoiceId={editingInvoice}
+              contacts={contacts}
+              onClose={() => {
+                setEditDialogOpen(false);
+                setEditingInvoice(null);
+              }}
+              onSuccess={() => {
+                toast.success("Invoice updated");
+                setEditDialogOpen(false);
+                setEditingInvoice(null);
+                refetch();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
 }
 
-function CreateInvoiceForm({
+function InvoiceForm({
+  mode,
+  invoiceId,
   contacts,
-  onSubmit,
-  isLoading,
+  onClose,
+  onSuccess,
 }: {
+  mode: "create" | "edit";
+  invoiceId?: number;
   contacts: Array<{ id: number; name: string }>;
-  onSubmit: (data: {
-    contactId?: number;
-    items: InvoiceItem[];
-    notes?: string;
-    dueDate?: Date;
-  }) => void;
-  isLoading: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
 }) {
-  const [contactId, setContactId] = useState<string>("");
-  const [items, setItems] = useState<InvoiceItem[]>([
-    { description: "", quantity: 1, unitPrice: 0, total: 0 },
-  ]);
-  const [notes, setNotes] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const isCreate = mode === "create";
+  const [formState, setFormState] = useState<InvoiceFormState>(() => ({
+    invoiceNumber: "",
+    clientId: undefined,
+    issueDate: new Date().toISOString().split("T")[0],
+    dueDate: undefined,
+    notes: "",
+    servicePeriodStart: undefined,
+    servicePeriodEnd: undefined,
+    referenceNumber: "",
+    partialInvoice: false,
+  }));
+  const [items, setItems] = useState<InvoiceLineItem[]>([defaultLineItem]);
+  const [itemEditor, setItemEditor] = useState<{ open: boolean; index: number | null }>({ open: false, index: null });
 
-  const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    if (field === "quantity" || field === "unitPrice") {
-      newItems[index].total = newItems[index].quantity * newItems[index].unitPrice;
+  const nextNumberQuery = trpc.invoices.nextNumber.useQuery({ issueDate: new Date(formState.issueDate) }, { enabled: isCreate });
+  const getInvoiceQuery = trpc.invoices.get.useQuery({ id: invoiceId! }, { enabled: !isCreate && !!invoiceId });
+
+  useEffect(() => {
+    if (isCreate && nextNumberQuery.data?.invoiceNumber) {
+      setFormState((prev) => ({ ...prev, invoiceNumber: nextNumberQuery.data!.invoiceNumber }));
     }
-    setItems(newItems);
-  };
+  }, [isCreate, nextNumberQuery.data]);
 
-  const addItem = () => {
-    setItems([...items, { description: "", quantity: 1, unitPrice: 0, total: 0 }]);
-  };
+  useEffect(() => {
+    if (!isCreate && getInvoiceQuery.data) {
+      const invoice = getInvoiceQuery.data;
+      setFormState({
+        invoiceNumber: invoice.invoiceNumber,
+        clientId: invoice.clientId ? String(invoice.clientId) : invoice.contactId ? String(invoice.contactId) : undefined,
+        issueDate: invoice.issueDate ? new Date(invoice.issueDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split("T")[0] : undefined,
+        notes: invoice.notes || "",
+        servicePeriodStart: invoice.servicePeriodStart
+          ? new Date(invoice.servicePeriodStart).toISOString().split("T")[0]
+          : undefined,
+        servicePeriodEnd: invoice.servicePeriodEnd
+          ? new Date(invoice.servicePeriodEnd).toISOString().split("T")[0]
+          : undefined,
+        referenceNumber: invoice.referenceNumber || "",
+        partialInvoice: Boolean(invoice.partialInvoice),
+      });
+      const normalizedItems = (invoice.items as InvoiceLineItem[]).map((item) => ({
+        ...item,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        currency: item.currency || "EUR",
+      }));
+      setItems(normalizedItems.length ? normalizedItems : [defaultLineItem]);
+    }
+  }, [getInvoiceQuery.data, isCreate]);
 
-  const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
-  };
+  const totals = useMemo(() => {
+    const subtotal = items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0);
+    return {
+      subtotal,
+      vat: 0,
+      total: subtotal,
+    };
+  }, [items]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const createMutation = trpc.invoices.create.useMutation({
+    onSuccess,
+    onError: (err) => toast.error(err.message || "Failed to save invoice"),
+  });
+
+  const updateMutation = trpc.invoices.update.useMutation({
+    onSuccess,
+    onError: (err) => toast.error(err.message || "Failed to save invoice"),
+  });
+
+  const invoice = getInvoiceQuery.data ?? null;
+
+  if (!isCreate && !invoice) {
+    return <div className="text-sm text-muted-foreground">Loading invoice...</div>;
+  }
+
+  const isLoading = createMutation.isPending || updateMutation.isPending;
+  const isDraft = isCreate || invoice?.status === "draft";
+
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const validItems = items.filter((item) => item.description && item.quantity > 0);
-    if (validItems.length === 0) {
-      toast.error("Please add at least one invoice item");
+    if (!formState.invoiceNumber.trim()) {
+      toast.error("Invoice number is required");
       return;
     }
-    onSubmit({
-      contactId: contactId ? parseInt(contactId) : undefined,
-      items: validItems,
-      notes: notes || undefined,
-      dueDate: dueDate ? new Date(dueDate) : undefined,
-    });
+    const validItems = items.filter((item) => item.name && item.quantity > 0);
+    if (!validItems.length) {
+      toast.error("Add at least one line item");
+      return;
+    }
+
+    const payload = {
+      invoiceNumber: formState.invoiceNumber.trim(),
+      clientId: formState.clientId ? parseInt(formState.clientId) : undefined,
+      issueDate: new Date(formState.issueDate),
+      dueDate: formState.dueDate ? new Date(formState.dueDate) : undefined,
+      notes: formState.notes?.trim() || undefined,
+      servicePeriodStart: formState.servicePeriodStart ? new Date(formState.servicePeriodStart) : undefined,
+      servicePeriodEnd: formState.servicePeriodEnd ? new Date(formState.servicePeriodEnd) : undefined,
+      referenceNumber: formState.referenceNumber?.trim() || undefined,
+      partialInvoice: formState.partialInvoice,
+      items: validItems.map((item) => ({
+        name: item.name,
+        description: item.description || undefined,
+        category: item.category || undefined,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        currency: item.currency || "EUR",
+      })),
+    };
+
+    if (isCreate) {
+      createMutation.mutate(payload);
+    } else if (invoiceId) {
+      updateMutation.mutate({ id: invoiceId, ...payload });
+    }
   };
 
+  const openItemEditor = (index: number | null = null) => setItemEditor({ open: true, index });
+  const closeItemEditor = () => setItemEditor({ open: false, index: null });
+
+  const handleSaveItem = (item: InvoiceLineItem) => {
+    if (itemEditor.index === null) {
+      setItems((prev) => [...prev, item]);
+    } else {
+      setItems((prev) => prev.map((existing, idx) => (idx === itemEditor.index ? item : existing)));
+    }
+    closeItemEditor();
+  };
+
+  const editingItem = itemEditor.index !== null ? items[itemEditor.index] : defaultLineItem;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="contact">Client (optional)</Label>
-        <Select value={contactId || "none"} onValueChange={(val) => setContactId(val === "none" ? "" : val)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a client..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            {contacts.map((contact) => (
-              <SelectItem key={contact.id} value={String(contact.id)}>
-                {contact.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <form onSubmit={handleSave} className="space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Invoice Number</Label>
+              <Input
+                value={formState.invoiceNumber}
+                onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                placeholder="RE-2025-0007"
+                disabled={!isDraft}
+              />
+              <p className="text-xs text-muted-foreground">
+                Invoice numbers must be unique and sequential (German tax requirement).
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Client (optional)</Label>
+              <Select
+                value={formState.clientId ?? "none"}
+                onValueChange={(val) => setFormState((prev) => ({ ...prev, clientId: val === "none" ? undefined : val }))}
+                disabled={!isDraft}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={String(contact.id)}>
+                      {contact.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <Label>Issue Date</Label>
+              <Input
+                type="date"
+                value={formState.issueDate}
+                onChange={(e) => setFormState((prev) => ({ ...prev, issueDate: e.target.value }))}
+                disabled={!isDraft}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Due Date (optional)</Label>
+              <Input
+                type="date"
+                value={formState.dueDate ?? ""}
+                onChange={(e) => setFormState((prev) => ({ ...prev, dueDate: e.target.value || undefined }))}
+                disabled={!isDraft}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Order / Reference Number</Label>
+              <Input
+                value={formState.referenceNumber ?? ""}
+                onChange={(e) => setFormState((prev) => ({ ...prev, referenceNumber: e.target.value }))}
+                placeholder="Optional reference"
+                disabled={!isDraft}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
+          <div>
+            <div className="flex items-center justify-between">
+              <Label>Service Period</Label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+              <Input
+                type="date"
+                value={formState.servicePeriodStart ?? ""}
+                onChange={(e) => setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))}
+                disabled={!isDraft}
+              />
+              <Input
+                type="date"
+                value={formState.servicePeriodEnd ?? ""}
+                onChange={(e) => setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))}
+                disabled={!isDraft}
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label>Partial Invoice</Label>
+              <p className="text-xs text-muted-foreground">Flag invoice as partial (future use).</p>
+            </div>
+            <Switch
+              checked={formState.partialInvoice}
+              onCheckedChange={(val) => setFormState((prev) => ({ ...prev, partialInvoice: val }))}
+              disabled={!isDraft}
+            />
+          </div>
+        </div>
       </div>
 
-      <div>
-        <Label>Invoice Items</Label>
-        <div className="space-y-2 mt-2">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>Line Items</Label>
+            <p className="text-xs text-muted-foreground">Add services or products via the dedicated modal.</p>
+          </div>
+          {isDraft && (
+            <Button type="button" variant="outline" onClick={() => openItemEditor(null)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Add Line Item
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {items.map((item, index) => (
-            <div key={index} className="flex gap-2 items-end">
-              <div className="flex-1">
-                <Input
-                  placeholder="Description"
-                  value={item.description}
-                  onChange={(e) => updateItem(index, "description", e.target.value)}
-                />
+            <Card key={index} className="p-3 flex items-start justify-between gap-2">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{item.name || "Untitled"}</p>
+                  {item.category && <Badge variant="outline">{item.category}</Badge>}
+                </div>
+                {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
+                <p className="text-sm text-muted-foreground">
+                  {item.quantity} × {formatCurrency(item.unitPrice)}
+                </p>
               </div>
-              <div className="w-20">
-                <Input
-                  type="number"
-                  placeholder="Qty"
-                  min="0"
-                  step="0.01"
-                  value={item.quantity}
-                  onChange={(e) => updateItem(index, "quantity", parseFloat(e.target.value) || 0)}
-                />
+              <div className="flex items-center gap-2">
+                <p className="font-semibold">{formatCurrency(item.quantity * item.unitPrice)}</p>
+                {isDraft && (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => openItemEditor(index)}>
+                      <PencilLine className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                      disabled={items.length === 1}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="w-24">
-                <Input
-                  type="number"
-                  placeholder="Price"
-                  min="0"
-                  step="0.01"
-                  value={item.unitPrice}
-                  onChange={(e) => updateItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
-                />
-              </div>
-              <div className="w-24 text-sm text-muted-foreground flex items-center h-10">
-                €{item.total.toFixed(2)}
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeItem(index)}
-                disabled={items.length === 1}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
+            </Card>
           ))}
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={addItem} className="mt-2">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Item
+      </div>
+
+      <div className="space-y-3">
+        <Label>Notes (optional)</Label>
+        <Textarea
+          value={formState.notes ?? ""}
+          onChange={(e) => setFormState((prev) => ({ ...prev, notes: e.target.value }))}
+          placeholder="Additional notes or terms"
+          disabled={!isDraft}
+        />
+      </div>
+
+      <div className="border rounded-lg p-4 space-y-2 bg-muted/30">
+        <div className="flex justify-between text-sm">
+          <span>Subtotal</span>
+          <span>{formatCurrency(totals.subtotal)}</span>
+        </div>
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>VAT (pending)</span>
+          <span>{formatCurrency(totals.vat)}</span>
+        </div>
+        <div className="flex justify-between text-lg font-semibold">
+          <span>Total</span>
+          <span>{formatCurrency(totals.total)}</span>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" className="flex-1" onClick={onClose} disabled={isLoading}>
+          Cancel
+        </Button>
+        <Button type="submit" className="flex-1" disabled={isLoading || !isDraft}>
+          {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+          {isCreate ? "Save Invoice (Draft)" : "Save Changes"}
         </Button>
       </div>
 
-      <div>
-        <Label htmlFor="notes">Notes (optional)</Label>
-        <Input
-          id="notes"
-          placeholder="Additional notes..."
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="dueDate">Due Date (optional)</Label>
-        <Input
-          id="dueDate"
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-        />
-      </div>
-
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Creating...
-          </>
-        ) : (
-          "Create Invoice"
-        )}
-      </Button>
+      <LineItemModal
+        open={itemEditor.open}
+        onOpenChange={(open) => (open ? openItemEditor(itemEditor.index) : closeItemEditor())}
+        item={editingItem}
+        onSave={handleSaveItem}
+      />
     </form>
   );
 }
 
-function EditInvoiceDialog({
+function LineItemModal({
   open,
   onOpenChange,
-  invoiceId,
-  contacts,
-  onSuccess,
+  item,
+  onSave,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  invoiceId: number;
-  contacts: Array<{ id: number; name: string }>;
-  onSuccess: () => void;
+  item: InvoiceLineItem;
+  onSave: (item: InvoiceLineItem) => void;
 }) {
-  const { data: invoice } = trpc.invoices.get.useQuery({ id: invoiceId }, { enabled: open });
-  const updateMutation = trpc.invoices.update.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice updated");
-      onSuccess();
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to update invoice");
-    },
-  });
-
-  const [contactId, setContactId] = useState<string>("");
-  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
-  const [notes, setNotes] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [draft, setDraft] = useState<InvoiceLineItem>(item);
 
   useEffect(() => {
-    if (invoice) {
-      const items = (invoice.items as InvoiceItem[]) || [];
-      setContactId(invoice.contactId ? String(invoice.contactId) : "");
-      setInvoiceItems(items);
-      setNotes(invoice.notes || "");
-      setDueDate(invoice.dueDate ? new Date(invoice.dueDate).toISOString().split("T")[0] : "");
-    }
-  }, [invoice]);
+    setDraft(item);
+  }, [item]);
 
-  if (!invoice) return null;
-
-  const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
-    const newItems = [...invoiceItems];
-    newItems[index] = { ...newItems[index], [field]: value };
-    if (field === "quantity" || field === "unitPrice") {
-      newItems[index].total = newItems[index].quantity * newItems[index].unitPrice;
-    }
-    setInvoiceItems(newItems);
-  };
-
-  const addItem = () => {
-    setInvoiceItems([...invoiceItems, { description: "", quantity: 1, unitPrice: 0, total: 0 }]);
-  };
-
-  const removeItem = (index: number) => {
-    setInvoiceItems(invoiceItems.filter((_, i) => i !== index));
-  };
+  const lineTotal = useMemo(() => Number(draft.quantity || 0) * Number(draft.unitPrice || 0), [draft]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const validItems = invoiceItems.filter((item) => item.description && item.quantity > 0);
-    if (validItems.length === 0) {
-      toast.error("Please add at least one invoice item");
+    if (!draft.name.trim()) {
+      toast.error("Item name is required");
       return;
     }
-    updateMutation.mutate({
-      id: invoiceId,
-      contactId: contactId ? parseInt(contactId) : null,
-      items: validItems,
-      notes: notes || null,
-      dueDate: dueDate ? new Date(dueDate) : null,
-    });
+    onSave({ ...draft, lineTotal });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit Invoice</DialogTitle>
+          <DialogTitle>Add Line Item</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="contact">Client</Label>
-            <Select value={contactId || "none"} onValueChange={(val) => setContactId(val === "none" ? "" : val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a client..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {contacts.map((contact) => (
-                  <SelectItem key={contact.id} value={String(contact.id)}>
-                    {contact.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Item Name</Label>
+            <Input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} />
           </div>
-
           <div>
-            <Label>Invoice Items</Label>
-            <div className="space-y-2 mt-2">
-              {invoiceItems.map((item, index) => (
-                <div key={index} className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Description"
-                      value={item.description}
-                      onChange={(e) => updateItem(index, "description", e.target.value)}
-                    />
-                  </div>
-                  <div className="w-20">
-                    <Input
-                      type="number"
-                      placeholder="Qty"
-                      min="0"
-                      step="0.01"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(index, "quantity", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="w-24">
-                    <Input
-                      type="number"
-                      placeholder="Price"
-                      min="0"
-                      step="0.01"
-                      value={item.unitPrice}
-                      onChange={(e) => updateItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="w-24 text-sm text-muted-foreground flex items-center h-10">
-                    €{item.total.toFixed(2)}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeItem(index)}
-                    disabled={invoiceItems.length === 1}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
+            <Label>Item Description (optional)</Label>
+            <Textarea
+              value={draft.description ?? ""}
+              onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))}
+              rows={2}
+            />
+          </div>
+          <div>
+            <Label>Category (optional)</Label>
+            <Input
+              value={draft.category ?? ""}
+              onChange={(e) => setDraft((prev) => ({ ...prev, category: e.target.value }))}
+              placeholder="Consulting, Materials, ..."
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Unit Price</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={draft.unitPrice}
+                onChange={(e) => setDraft((prev) => ({ ...prev, unitPrice: parseFloat(e.target.value) || 0 }))}
+              />
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={addItem} className="mt-2">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Item
-            </Button>
+            <div>
+              <Label>Quantity</Label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={draft.quantity}
+                onChange={(e) => setDraft((prev) => ({ ...prev, quantity: parseFloat(e.target.value) || 0 }))}
+              />
+            </div>
           </div>
-
           <div>
-            <Label htmlFor="notes">Notes</Label>
-            <Input
-              id="notes"
-              placeholder="Additional notes..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
+            <Label>Currency</Label>
+            <Input value={draft.currency} disabled />
           </div>
-
-          <div>
-            <Label htmlFor="dueDate">Due Date</Label>
-            <Input
-              id="dueDate"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
+          <div className="flex justify-between items-center p-3 bg-muted rounded-md">
+            <span className="text-sm text-muted-foreground">Line Total</span>
+            <span className="text-lg font-semibold">{formatCurrency(lineTotal)}</span>
           </div>
-
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
+            <Button type="submit" className="flex-1">
+              Save Item
             </Button>
           </div>
         </form>

@@ -165,27 +165,48 @@ export const pdfRouter = router({
         }
       }
 
-      // Generate invoice number
-      const invoiceNumber = `${companySettings.invoicePrefix}-${new Date().getFullYear()}-${String(companySettings.nextInvoiceNumber).padStart(4, '0')}`;
-      await db.incrementInvoiceNumber(ctx.user.id);
+      const issueDate = new Date();
+      const { invoiceNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
+        ctx.user.id,
+        issueDate,
+        companySettings.invoicePrefix || 'RE'
+      );
+      await db.ensureUniqueInvoiceNumber(ctx.user.id, invoiceNumber);
 
       // Calculate totals
-      const items = input.items.map(item => ({
-        ...item,
-        total: item.quantity * item.unitPrice,
-      }));
-      const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+      const normalizedItems = input.items.map(item => {
+        const quantity = Number(item.quantity);
+        const unitPrice = Number(item.unitPrice);
+        const lineTotal = Number((quantity * unitPrice).toFixed(2));
+        return {
+          name: item.description,
+          description: item.description,
+          category: null,
+          quantity,
+          unitPrice,
+          lineTotal,
+          currency: 'EUR',
+        };
+      });
+      const subtotal = normalizedItems.reduce((sum, item) => sum + item.lineTotal, 0);
       const vatAmount = companySettings.isKleinunternehmer ? 0 : subtotal * (Number(companySettings.vatRate) / 100);
       const total = subtotal + vatAmount;
+
+      const itemsForPdf = normalizedItems.map((item) => ({
+        description: item.name || item.description || "",
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        total: item.lineTotal,
+      }));
 
       // Generate HTML
       const html = generateInvoiceHTML({
         invoiceNumber,
-        invoiceDate: new Date(),
+        invoiceDate: issueDate,
         dueDate: input.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // Default 14 days
         company: companySettings,
         client,
-        items,
+        items: itemsForPdf,
         subtotal,
         vatAmount,
         total,
@@ -300,4 +321,3 @@ export const pdfRouter = router({
       };
     }),
 });
-
