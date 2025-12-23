@@ -869,7 +869,9 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
   if (!db) throw new Error("Database not available");
 
   const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
-  const normalizedData: Omit<InsertInvoice, "id"> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> } = {
+  
+  // Prepare invoice data (excluding items which go in a separate table)
+  const invoiceData: Omit<InsertInvoice, "id" | "createdAt" | "updatedAt"> = {
     contactId: data.contactId ?? data.clientId ?? null,
     clientId: data.clientId ?? data.contactId ?? null,
     jobId: data.jobId ?? null,
@@ -895,23 +897,20 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     uploadDate: data.uploadDate ?? null,
     uploadedBy: data.uploadedBy ?? null,
     userId: data.userId,
-    createdAt: data.createdAt ?? undefined,
-    updatedAt: data.updatedAt ?? undefined,
-    items: data.items,
   };
 
-  if (!normalizedData.invoiceNumber || !normalizedData.invoiceCounter) {
+  if (!invoiceData.invoiceNumber || !invoiceData.invoiceCounter) {
     const { invoiceNumber, invoiceCounter, invoiceYear } = await generateInvoiceNumber(
-      normalizedData.userId,
+      invoiceData.userId,
       issueDate,
       "RE"
     );
-    normalizedData.invoiceNumber = normalizedData.invoiceNumber || invoiceNumber;
-    normalizedData.invoiceCounter = normalizedData.invoiceCounter || invoiceCounter;
-    normalizedData.invoiceYear = normalizedData.invoiceYear || invoiceYear;
+    invoiceData.invoiceNumber = invoiceData.invoiceNumber || invoiceNumber;
+    invoiceData.invoiceCounter = invoiceData.invoiceCounter || invoiceCounter;
+    invoiceData.invoiceYear = invoiceData.invoiceYear || invoiceYear;
   }
 
-  const result = await db.insert(invoices).values(normalizedData);
+  const result = await db.insert(invoices).values(invoiceData);
   const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
   if (!insertId) {
     throw new Error("Failed to create invoice: no insert ID returned");
