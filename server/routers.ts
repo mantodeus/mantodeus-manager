@@ -854,6 +854,14 @@ export const appRouter = router({
         // Upload to S3 via server (no CORS needed)
         const { url } = await storagePut(fileKey, base64Data, contentType);
 
+        // Generate compliant invoice number for legacy upload
+        const issueDate = new Date();
+        const { invoiceNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
+          ctx.user.id,
+          issueDate,
+          "RE"
+        );
+
         // Save metadata to database (as legacy file upload)
         const result = await db.createInvoice({
           filename,
@@ -862,10 +870,19 @@ export const appRouter = router({
           mimeType: contentType,
           jobId: jobId || null,
           contactId: contactId || null,
+          clientId: contactId || null,
+          invoiceNumber,
+          invoiceCounter,
+          invoiceYear,
+          issueDate,
           uploadDate: new Date(),
           uploadedBy: ctx.user.id,
           userId: ctx.user.id,
-          status: "issued", // Legacy uploads are treated as issued
+          status: "sent", // Legacy uploads are treated as issued
+          subtotal: "0.00",
+          vatAmount: "0.00",
+          total: "0.00",
+          items: [],
         });
 
         return { success: true, id: result.id, url, fileKey };
@@ -910,6 +927,13 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
+        const issueDate = input.uploadDate || new Date();
+        const { invoiceNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
+          ctx.user.id,
+          issueDate instanceof Date ? issueDate : new Date(issueDate),
+          "RE"
+        );
+
         const invoice = await db.createInvoice({
           filename: input.filename,
           fileKey: input.fileKey,
@@ -917,10 +941,15 @@ export const appRouter = router({
           mimeType: input.mimeType || null,
           jobId: input.jobId || null,
           contactId: input.contactId || null,
+          clientId: input.contactId || null,
+          invoiceNumber,
+          invoiceCounter,
+          invoiceYear,
+          issueDate: issueDate instanceof Date ? issueDate : new Date(issueDate),
           uploadDate: input.uploadDate || new Date(),
           uploadedBy: ctx.user.id,
           userId: ctx.user.id,
-          status: "issued", // Legacy uploads are treated as issued
+          status: "sent", // Legacy uploads are treated as issued
           items: [],
           subtotal: "0.00",
           vatAmount: "0.00",
