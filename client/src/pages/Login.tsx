@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/lib/supabase";
 import { APP_TITLE, APP_LOGO } from "@/const";
 import { Loader2 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -13,9 +14,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
-
-  // Auth state changes are handled by App.tsx Router
-  // No redirects needed here - let the app handle routing
+  const utils = trpc.useUtils();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +23,7 @@ export default function Login() {
 
     try {
       // Step 1: Sign in with Supabase
+      let signInResult;
       if (isSignUp) {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
@@ -31,22 +31,79 @@ export default function Login() {
         });
         if (signUpError) throw signUpError;
 
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        signInResult = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (signInError) throw signInError;
+        if (signInResult.error) throw signInResult.error;
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        signInResult = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (signInError) throw signInError;
+        if (signInResult.error) throw signInResult.error;
       }
 
-      // Force page reload to refresh auth state
-      // This ensures the tRPC client picks up the new session
-      window.location.href = "/";
+      // Step 2: Get the session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Failed to get session after login");
+      }
+
+      // Step 3: Sync session with server by calling the callback endpoint
+      console.log("[Login] Syncing session with server...");
+      const callbackResponse = await fetch("/api/auth/callback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ access_token: session.access_token }),
+        credentials: "include",
+      });
+
+      if (!callbackResponse.ok) {
+        const errorData = await callbackResponse.json().catch(() => ({ error: "Unknown error" }));
+        console.error("[Login] Callback failed:", callbackResponse.status, errorData);
+        throw new Error(errorData.error || `Server error: ${callbackResponse.status}`);
+      }
+
+      console.log("[Login] Session synced successfully");
+
+      // Step 4: Verify authentication by calling auth.me
+      // Use direct fetch with Authorization header to ensure it works in Cursor browser
+      // (which may have cookie issues)
+      console.log("[Login] Verifying authentication...");
+      const verifyResponse = await fetch("/api/trpc/auth.me?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%7D%7D", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        credentials: "include",
+      });
+
+      if (!verifyResponse.ok) {
+        const errorText = await verifyResponse.text();
+        console.error("[Login] auth.me verification failed:", verifyResponse.status, errorText);
+        throw new Error("Authentication verification failed. Please try again.");
+      }
+
+      const verifyData = await verifyResponse.json();
+      const userData = verifyData[0]?.result?.data;
+
+      if (!userData) {
+        console.error("[Login] auth.me returned null after sync");
+        throw new Error("Authentication verification failed. Please try again.");
+      }
+
+      console.log("[Login] Authentication verified, user:", userData.id);
+
+      // Step 5: Invalidate tRPC cache so useAuth hook picks up the new user
+      await utils.auth.me.invalidate();
+      
+      // Step 6: Router will handle redirect automatically when user state updates
+      // No need to manually redirect - App.tsx Router will detect the user and redirect
+      // Clear loading state - Router will redirect shortly
+      setLoading(false);
     } catch (err: any) {
       console.error("[Login] Authentication error:", err);
       // Provide more specific error messages
