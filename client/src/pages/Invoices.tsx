@@ -56,6 +56,7 @@ export default function Invoices() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<number | null>(null);
+  const [previewingInvoice, setPreviewingInvoice] = useState<number | null>(null);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -74,8 +75,44 @@ export default function Invoices() {
     onError: (err) => toast.error(err.message),
   });
 
-  const handlePreviewPDF = (invoiceId: number) => {
-    window.open(`/api/invoices/${invoiceId}/pdf?preview=true`, "_blank");
+  const handlePreviewPDF = async (invoiceId: number) => {
+    setPreviewingInvoice(invoiceId);
+    try {
+      // Get the session token from Supabase
+      const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+
+      if (!session?.access_token) {
+        toast.error("Please log in to preview invoices");
+        return;
+      }
+
+      // Fetch the PDF with credentials
+      const response = await fetch(`/api/invoices/${invoiceId}/pdf?preview=true`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        toast.error(errorData.error || 'Failed to generate preview');
+        return;
+      }
+
+      // Create a blob URL and open it in a new tab
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+
+      // Clean up the blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (error) {
+      console.error('Preview error:', error);
+      toast.error('Failed to open preview');
+    } finally {
+      setPreviewingInvoice(null);
+    }
   };
 
   const handleIssueInvoice = async (invoiceId: number) => {
@@ -187,8 +224,18 @@ export default function Invoices() {
                 </div>
 
                 <div className="flex gap-2 mt-auto">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handlePreviewPDF(invoice.id)}>
-                    <Eye className="w-4 h-4 mr-2" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handlePreviewPDF(invoice.id)}
+                    disabled={previewingInvoice === invoice.id}
+                  >
+                    {previewingInvoice === invoice.id ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Eye className="w-4 h-4 mr-2" />
+                    )}
                     Preview
                   </Button>
                   {invoice.status === "draft" && (
