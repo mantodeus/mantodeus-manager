@@ -128,6 +128,25 @@ async function startServer() {
         return res.status(500).json({ error: "Company settings not found" });
       }
 
+      // Get invoice items (new structure uses lineItems table)
+      const { getInvoiceItemsByInvoiceId } = await import("../db");
+      const lineItems = await getInvoiceItemsByInvoiceId(invoiceId);
+      
+      // Convert lineItems to legacy format for PDF template
+      const itemsForPDF = lineItems.length > 0
+        ? lineItems.map((item) => ({
+            description: item.name + (item.description ? ` - ${item.description}` : ""),
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.unitPrice),
+            total: Number(item.lineTotal),
+          }))
+        : (invoice.items as Array<{
+            description: string;
+            quantity: number;
+            unitPrice: number;
+            total: number;
+          }>) || [];
+
       // Get client contact if linked
       let client = null;
       if (invoice.contactId || invoice.clientId) {
@@ -142,12 +161,6 @@ async function startServer() {
 
       // Use draft invoice number or generate preview number
       const invoiceNumber = invoice.invoiceNumber || (isPreview ? `DRAFT-${invoiceId}` : `PREVIEW-${invoiceId}`);
-      const items = (invoice.items as Array<any>).map((item) => ({
-        description: item.name || item.description || "",
-        quantity: Number(item.quantity),
-        unitPrice: Number(item.unitPrice),
-        total: Number(item.lineTotal ?? item.total ?? 0),
-      }));
 
       const html = generateInvoiceHTML({
         invoiceNumber,
@@ -155,7 +168,11 @@ async function startServer() {
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         company: companySettings,
         client,
-        items,
+
+        items: itemsForPDF,
+
+        items: itemsForPDF,
+
         subtotal: Number(invoice.subtotal ?? 0),
         vatAmount: Number(invoice.vatAmount ?? 0),
         total: Number(invoice.total ?? 0),
@@ -231,12 +248,6 @@ async function startServer() {
         }
       }
 
-      const items = (invoice.items as Array<any>).map((item) => ({
-        description: item.name || item.description || "",
-        quantity: Number(item.quantity),
-        unitPrice: Number(item.unitPrice),
-        total: Number(item.lineTotal ?? item.total ?? 0),
-      }));
 
       // Generate PDF
       const html = generateInvoiceHTML({
@@ -245,7 +256,7 @@ async function startServer() {
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         company: companySettings,
         client,
-        items,
+        items: itemsForPDF,
         subtotal: Number(invoice.subtotal ?? 0),
         vatAmount: Number(invoice.vatAmount ?? 0),
         total: Number(invoice.total ?? 0),
@@ -518,7 +529,7 @@ async function startServer() {
     if (error.code === "EADDRINUSE") {
       console.error(`❌ Port ${port} is already in use.`);
       console.error(`   Kill the process using: netstat -ano | findstr :${port}`);
-      console.error(`   Or change PORT in .env.local`);
+      console.error(`   Or change PORT in .env`);
     } else {
       console.error("❌ Server error:", error);
     }
