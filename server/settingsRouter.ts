@@ -86,6 +86,7 @@ export const settingsRouter = router({
       if (input.isKleinunternehmer !== undefined) normalizedInput.isKleinunternehmer = input.isKleinunternehmer;
       if (input.vatRate !== undefined) normalizedInput.vatRate = normalizeString(input.vatRate);
       if (input.invoicePrefix !== undefined) normalizedInput.invoicePrefix = normalizeString(input.invoicePrefix);
+      if (normalizedInput.vatRate === null) normalizedInput.vatRate = undefined;
       
       if (existing) {
         // Update existing settings
@@ -112,4 +113,3 @@ export const settingsRouter = router({
       return { success: true };
     }),
 });
-
