@@ -77,7 +77,7 @@ export default function NotesRubbish() {
     <Card key={note.id}>
       <div className="flex items-center justify-between p-4">
         <div className="min-w-0">
-          <div className="font-medium truncate">{note.title}</div>
+          <div className="truncate">{note.title}</div>
           <div className="text-sm text-muted-foreground">
             Deleted{" "}
             {note.trashedAt ? new Date(note.trashedAt).toLocaleDateString() : "—"}
@@ -112,21 +112,21 @@ export default function NotesRubbish() {
   );
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex items-center gap-4 mb-8">
-        <Link href="/notes">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold mb-2 flex items-center gap-3" style={{ fontFamily: "Kanit, sans-serif" }}>
-            <Trash2 className="h-8 w-8 text-muted-foreground" />
-            Rubbish Bin
-          </h1>
-          <p className="text-muted-foreground" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
-            Deleted notes. Items here can be restored or permanently deleted.
-          </p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Link href="/notes">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-regular flex items-center gap-3">
+              <Trash2 className="h-8 w-8 text-muted-foreground" />
+              Rubbish Bin
+            </h1>
+            <p className="text-muted-foreground text-sm">Deleted notes. Items here can be restored or permanently deleted.</p>
+          </div>
         </div>
       </div>
 
@@ -135,7 +135,7 @@ export default function NotesRubbish() {
         {trashedNotes.length === 0 ? (
           <Card className="p-12 text-center">
             <Trash2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground mb-4" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+            <p className="text-muted-foreground mb-4">
               Rubbish bin is empty.
             </p>
             <Link href="/notes">

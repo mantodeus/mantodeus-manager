@@ -133,18 +133,20 @@ export default function ProjectsArchived() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/projects">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Archive className="h-8 w-8 text-muted-foreground" />
-            Archived Projects
-          </h1>
-          <p className="text-muted-foreground">Projects you've archived. You can restore them anytime.</p>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Link href="/projects">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-regular flex items-center gap-3">
+              <Archive className="h-8 w-8 text-muted-foreground" />
+              Archived Projects
+            </h1>
+            <p className="text-muted-foreground text-sm">Projects you've archived. You can restore them anytime.</p>
+          </div>
         </div>
       </div>
 

@@ -276,7 +276,7 @@ export default function ProjectDetail() {
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <label className="text-sm text-muted-foreground">Status</label>
                   <p className="mt-1">
                     <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
                   </p>
@@ -320,7 +320,7 @@ export default function ProjectDetail() {
 
         <TabsContent value="jobs" className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Jobs</h2>
+            <h2 className="text-2xl">Jobs</h2>
             <Button onClick={() => setCreateJobDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               New Job

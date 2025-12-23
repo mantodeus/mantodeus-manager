@@ -300,10 +300,7 @@ export default function Notes() {
         </div>
 
         {note.content && (
-          <p
-            className="text-sm text-muted-foreground mb-3 line-clamp-3"
-            style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
-          >
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
             {note.content}
           </p>
         )}
@@ -419,7 +416,7 @@ export default function Notes() {
         {filteredActiveNotes.length === 0 ? (
           <Card className="p-12 text-center">
             <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground mb-2" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+            <p className="text-muted-foreground mb-2">
               {searchQuery || filterJob !== "all" || filterContact !== "all"
                 ? "No notes found matching your filters"
                 : "No notes yet"}
@@ -448,8 +445,8 @@ export default function Notes() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Kanit, sans-serif" }}>Create New Note</DialogTitle>
-            <DialogDescription style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+            <DialogTitle>Create New Note</DialogTitle>
+            <DialogDescription>
               Add a new note with optional links to projects and contacts
             </DialogDescription>
           </DialogHeader>
@@ -547,8 +544,8 @@ export default function Notes() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Kanit, sans-serif" }}>Edit Note</DialogTitle>
-            <DialogDescription style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+            <DialogTitle>Edit Note</DialogTitle>
+            <DialogDescription>
               Update note details and links
             </DialogDescription>
           </DialogHeader>

@@ -126,7 +126,7 @@ export default function ContactsArchived() {
             <Archive className="h-8 w-8 text-muted-foreground" />
             Archived Contacts
           </h1>
-          <p className="text-gray-400 text-sm">Contacts you've archived. You can restore them anytime.</p>
+          <p className="text-muted-foreground text-sm">Contacts you've archived. You can restore them anytime.</p>
         </div>
       </div>
 

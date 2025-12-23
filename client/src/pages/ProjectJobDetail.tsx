@@ -199,7 +199,7 @@ export default function ProjectJobDetail() {
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <label className="text-sm text-muted-foreground">Status</label>
                   <p className="mt-1">
                     <Badge className={getStatusColor(job.status)}>{formatStatus(job.status)}</Badge>
                   </p>

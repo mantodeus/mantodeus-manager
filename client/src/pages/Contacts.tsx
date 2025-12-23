@@ -328,7 +328,7 @@ export default function Contacts() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Name *</label>
+                <label className="block text-sm mb-2">Name *</label>
                 <Input
                   placeholder="Contact name"
                   value={formData.name}
@@ -336,7 +336,7 @@ export default function Contacts() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
+                <label className="block text-sm mb-2">Email</label>
                 <Input
                   type="email"
                   placeholder="email@example.com"
@@ -345,7 +345,7 @@ export default function Contacts() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Phone</label>
+                <label className="block text-sm mb-2">Phone</label>
                 <Input
                   placeholder="+1 (555) 123-4567"
                   value={formData.phone}
@@ -353,7 +353,7 @@ export default function Contacts() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Address</label>
+                <label className="block text-sm mb-2">Address</label>
                 <Input
                   placeholder="Street address"
                   value={formData.address}
@@ -361,7 +361,7 @@ export default function Contacts() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Notes</label>
+                <label className="block text-sm mb-2">Notes</label>
                 <Textarea
                   placeholder="Additional notes..."
                   value={formData.notes}

@@ -63,7 +63,7 @@ export default function ContactsRubbish() {
     <Card key={contact.id}>
       <div className="flex items-center justify-between p-4">
         <div className="min-w-0">
-          <div className="font-medium truncate">{contact.name}</div>
+          <div className="truncate">{contact.name}</div>
           <div className="text-sm text-muted-foreground">
             Deleted{" "}
             {contact.trashedAt ? new Date(contact.trashedAt).toLocaleDateString() : "—"}
@@ -110,9 +110,7 @@ export default function ContactsRubbish() {
             <Trash2 className="h-8 w-8 text-muted-foreground" />
             Rubbish Bin
           </h1>
-          <p className="text-gray-400 text-sm">
-            Deleted contacts. Items here can be restored or permanently deleted.
-          </p>
+          <p className="text-muted-foreground text-sm">Deleted contacts. Items here can be restored or permanently deleted.</p>
         </div>
       </div>
 
