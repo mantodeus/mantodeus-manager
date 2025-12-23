@@ -2,6 +2,8 @@
 
 A comprehensive construction project management application for tracking projects, jobs, contacts, invoices, and documentation.
 
+**Mantodeus Manager is a production-only system by design.**
+
 ![Mantodeus Manager](client/public/mantodeus-logo.png)
 
 ## Features
@@ -22,8 +24,21 @@ A comprehensive construction project management application for tracking project
 - **Frontend**: React 19 + Tailwind CSS 4 + Vite 7
 - **Backend**: Node.js 22 + Express + tRPC
 - **Database**: MySQL 8.0 / MariaDB 10.5+
-- **Storage**: AWS S3 compatible
-- **Authentication**: OAuth 2.0 (Manus)
+- **Storage**: AWS S3 compatible (Infomaniak)
+- **Authentication**: Supabase Auth
+- **Hosting**: Infomaniak (manager.mantodeus.com)
+
+## Architecture
+
+This is a **single-environment, production-only system**:
+
+- **ONE** domain: `manager.mantodeus.com`
+- **ONE** database
+- **ONE** S3 bucket
+- **ONE** `.env` file
+- **ONE** deployment path: `git push main` → webhook → `infra/deploy/deploy.sh`
+
+There is no staging, no preview, no dev/prod branching.
 
 ## Quick Start
 
@@ -32,7 +47,7 @@ A comprehensive construction project management application for tracking project
 - Node.js 22.x or higher
 - pnpm (recommended) or npm
 - MySQL 8.0 or MariaDB 10.5+
-- S3-compatible storage (optional)
+- S3-compatible storage
 
 ### Installation
 
@@ -44,263 +59,95 @@ cd mantodeus-manager
 # Install dependencies
 pnpm install
 
-# Configure environment variables
+# Configure environment
 cp .env.example .env
-# Edit .env with your configuration
+# Edit .env with your production credentials
 
 # Run database migrations
 pnpm db:push
 
-# Start development server
-pnpm dev
+# Build and start
+pnpm build
+pnpm start
 ```
 
 The application will be available at `http://localhost:3000`
 
-## Development Workflow
-
-### Local Development Setup
-
-This project is configured for **local development with instant hot reload** and **automatic environment separation**.
-
-#### Quick Start
-
-1. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
-
-2. **Set up local environment:**
-   ```bash
-   cp .env.local.example .env.local
-   # Edit .env.local with your local/staging credentials
-   ```
-
-3. **Start development server:**
-   ```bash
-   pnpm dev
-   ```
-
-4. **Open in browser:**
-   ```
-   http://localhost:3000
-   ```
-
-The development server supports **hot module replacement (HMR)** - changes to your code will automatically reload in the browser.
-
-#### Environment Files
-
-The project uses **two separate environment files**:
-
-- **`.env.local`** - For local/staging development (gitignored)
-  - Used automatically when running `pnpm dev`
-  - Contains staging database, staging S3 bucket, test credentials
-  - **Never commit this file** - it's already in `.gitignore`
-
-- **`.env`** - For production deployment (gitignored)
-  - Used only in production builds
-  - Contains production database, production S3 bucket, production credentials
-  - Managed separately on your production server (Infomaniak)
-
-#### How It Works
-
-1. **Development Mode** (`pnpm dev`):
-   - Server automatically loads `.env.local` first, then falls back to `.env`
-   - Frontend (Vite) reads environment variables from `.env.local`
-   - Hot reload enabled for instant previews
-   - Uses staging/test resources
-
-2. **Production Mode** (`pnpm build` + `pnpm start`):
-   - Server loads only `.env` file
-   - Frontend is built with production environment variables
-   - No hot reload (static files served)
-   - Uses production resources
-
-#### Cursor AI Assistant Behavior
-
-The project includes `.cursor/config.json` that configures Cursor to:
-
-- ✅ **Never attempt automatic deployment**
-- ✅ **Always assume you're running `pnpm dev` locally**
-- ✅ **Always use `.env.local` for environment variables**
-- ✅ **Never modify `.env` unless you explicitly ask**
-- ✅ **Only modify local files**
-- ✅ **Show diffs for approval before changes**
-
-Deployment only happens when **you explicitly push to GitHub** - Cursor will never deploy automatically.
-
-#### Staging vs Production
-
-| Aspect | Local Development | Production |
-|--------|------------------|------------|
-| Environment File | `.env.local` | `.env` |
-| Database | Staging/local MySQL | Production MySQL |
-| S3 Bucket | Staging bucket | Production bucket |
-| OAuth | Staging app ID (if available) | Production app ID |
-| Hot Reload | ✅ Enabled | ❌ Disabled |
-| Port | 3000 (configurable) | 3000 (or server default) |
-
-#### Avoiding Environment Mix-ups
-
-**Best Practices:**
-
-1. ✅ Always use `.env.local` for local development
-2. ✅ Never copy production credentials to `.env.local`
-3. ✅ Use different S3 buckets for staging vs production
-4. ✅ Use different database instances for staging vs production
-5. ✅ Never commit `.env` or `.env.local` (already gitignored)
-6. ✅ Test changes locally before pushing to GitHub
-
-**What NOT to do:**
-
-1. ❌ Don't use production database credentials in `.env.local`
-2. ❌ Don't use production S3 bucket in `.env.local`
-3. ❌ Don't modify `.env` during local development
-4. ❌ Don't commit environment files
-
-#### Production Deployment
-
-Production deployment happens **only when you push to GitHub**:
-
-1. **Push to GitHub:**
-   ```bash
-   git add .
-   git commit -m "Your changes"
-   git push origin main
-   ```
-
-2. **GitHub Webhook** (if configured):
-   - Automatically triggers deployment on the server
-   - Runs `deploy.sh` script
-   - Pulls latest code, installs dependencies, builds, restarts
-
-3. **Manual Deployment** (if webhook not configured):
-   - SSH into production server
-   - Run `./deploy.sh` manually
-
-**The `deploy.sh` script:**
-- Pulls latest code from GitHub
-- Installs production dependencies (`npm install --omit=dev`)
-- Builds the application (`npm run build`)
-- Restarts the application with PM2
-
-See `deploy.sh` for the complete deployment script.
-
-#### Troubleshooting
-
-**Issue: Changes not reflecting in browser**
-- Make sure you're running `pnpm dev` (not `pnpm start`)
-- Check that hot reload is enabled (you should see Vite HMR messages in console)
-- Hard refresh browser (Ctrl+Shift+R or Cmd+Shift+R)
-
-**Issue: Wrong environment variables being used**
-- Check that `.env.local` exists and has correct values
-- Verify you're running in development mode (`NODE_ENV=development`)
-- Restart the dev server after changing `.env.local`
-
-**Issue: Can't connect to database**
-- Verify `DATABASE_URL` in `.env.local` is correct
-- Check that your local MySQL server is running
-- Ensure database credentials are correct
-
 ## Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory. **All variables are required** unless marked optional:
 
 ```env
-# Database
-DATABASE_URL=mysql://user:password@localhost:3306/mantodeus_manager
+# Database (REQUIRED)
+DATABASE_URL=mysql://user:password@host:3306/mantodeus_manager
 
-# JWT Secret
-JWT_SECRET=your_random_jwt_secret_here
+# Authentication (REQUIRED)
+JWT_SECRET=generate_a_random_32_character_string
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+OWNER_SUPABASE_ID=your_owner_supabase_id
 
-# OAuth Configuration
+# OAuth (REQUIRED)
 OAUTH_SERVER_URL=https://api.manus.im
 VITE_OAUTH_PORTAL_URL=https://portal.manus.im
 VITE_APP_ID=your_app_id
 
-# Application
-VITE_APP_TITLE=Mantodeus Manager
-VITE_APP_LOGO=/mantodeus-logo.png
-PORT=3000
-NODE_ENV=production
-
-# S3 Storage (optional)
+# S3 Storage (REQUIRED)
 S3_ENDPOINT=https://s3.pub1.infomaniak.cloud
 S3_REGION=us-east-1
 S3_BUCKET=mantodeus-manager-files
 S3_ACCESS_KEY_ID=your_access_key
 S3_SECRET_ACCESS_KEY=your_secret_key
 
-# Owner
-OWNER_OPEN_ID=your_owner_open_id
-OWNER_NAME=Your Name
+# Application (REQUIRED)
+PORT=3000
+VITE_APP_TITLE=Mantodeus Manager
+VITE_APP_URL=https://manager.mantodeus.com
+
+# Optional
+# VITE_APP_LOGO=/mantodeus-logo.png
+# PDF_SERVICE_URL=https://pdf-service-withered-star-4195.fly.dev/render
 ```
 
-## Image Upload Pipeline
-
-User-facing photo uploads now follow a two-step optimization process:
-
-1. **Client-side preparation** – Photos are converted to high-quality JPEG with EXIF removed, constrained to 2000px on the long edge, and targeted to 300–800KB before they ever leave the browser. This keeps uploads snappy on mobile connections.
-2. **Server-side processing** – The tRPC upload handlers feed every image through Sharp to auto-orient, strip metadata, and generate three responsive variants (`thumb_300.jpg`, `preview_1200.jpg`, `full.jpg`). Objects are stored under `projects/{projectId}/images/project_<projectId>_<timestamp>/`.
-3. **Signed delivery** – The API returns short-lived signed URLs for each variant. The UI uses thumbs for grids, previews for lightboxes, and fetches the full asset only on explicit download, ensuring fast browsing with correct MIME types.
-
-Legacy proxy endpoints have been removed; all consumers should rely on `projects.files.*` and `images.*` procedures for generating signed URLs.
+The app **fails fast** if any required variable is missing.
 
 ## Deployment
 
-### Option 1: Railway (Recommended for Quick Deployment)
+### The Only Deployment Path
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template)
+```
+git push origin main → GitHub Webhook → infra/deploy/deploy.sh → PM2 restart
+```
 
-1. Click the button above
-2. Configure environment variables
-3. Railway will automatically provision MySQL and deploy your app
+### Manual Deployment
 
-### Option 2: Render
+```bash
+ssh mantodeus-server
+cd /srv/customer/sites/manager.mantodeus.com
+bash infra/deploy/deploy.sh
+```
 
-1. Create a new Web Service on [Render](https://render.com)
-2. Connect your GitHub repository
-3. Configure:
-   - **Build Command**: `pnpm install && pnpm build`
-   - **Start Command**: `pnpm start`
-4. Add a MySQL database from Render's dashboard
-5. Set environment variables in Render dashboard
+### What the Deploy Script Does
 
-### Option 3: Vercel + PlanetScale
-
-1. Deploy frontend to Vercel:
-   ```bash
-   vercel
-   ```
-
-2. Set up PlanetScale database:
-   ```bash
-   pscale database create mantodeus-manager
-   pscale connect mantodeus-manager main
-   ```
-
-3. Configure environment variables in Vercel dashboard
-
-### Option 4: Self-Hosted VPS
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed self-hosting instructions.
+1. Fetches latest code from `origin/main`
+2. Installs dependencies
+3. Builds the application
+4. Restarts PM2 process
 
 ## Scripts
 
 ```bash
-# Development
-pnpm dev              # Start development server with hot reload
+# Development (local testing only)
+pnpm dev              # Start server with file watching
 
 # Production
-pnpm build            # Build frontend and backend for production
+pnpm build            # Build frontend and backend
 pnpm start            # Start production server
 
 # Database
-pnpm db:push          # Generate and run database migrations (recommended)
+pnpm db:push          # Generate and run migrations
 pnpm db:migrate       # Run existing migrations only
-# Note: Avoid using `drizzle-kit push` directly - it may fail with checkConstraint errors.
-# Use `pnpm db:push` instead, which uses the proper generate + migrate workflow.
 
 # Quality
 pnpm check            # TypeScript type checking
@@ -314,234 +161,34 @@ pnpm test             # Run test suite
 mantodeus-manager/
 ├── client/                 # Frontend React application
 │   ├── src/               # Source code
-│   ├── public/            # Static assets
-│   └── index.html         # Entry HTML
-├── server/                # Backend Node.js/Express application
-│   ├── _core/            # Core server functionality
-│   ├── routers.ts        # tRPC routers
-│   ├── projectsRouter.ts # Projects & Jobs CRUD
-│   ├── projectFilesRouter.ts # File upload/download
-│   └── db.ts             # Database queries
-├── shared/               # Shared types and constants
+│   └── public/            # Static assets
+├── server/                # Backend Express + tRPC
+│   ├── _core/            # Core server modules
+│   └── routers/          # tRPC routers
 ├── drizzle/              # Database schema and migrations
-├── scripts/              # Utility scripts (backfill, etc.)
-├── dist/                 # Production build output
-└── docs/                 # Documentation
+├── infra/                # Infrastructure and deployment
+│   └── deploy/           # Canonical deploy script
+├── .env.example          # Environment template
+└── package.json          # Dependencies and scripts
 ```
 
-## Database Schema
+## Image Upload Pipeline
 
-The application uses a hierarchical data model:
+1. **Client-side** - Photos converted to JPEG, constrained to 2000px, targeted 300-800KB
+2. **Server-side** - Sharp generates three variants: `thumb_300.jpg`, `preview_1200.jpg`, `full.jpg`
+3. **Delivery** - Signed URLs for each variant
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         PROJECTS                            │
-│  - id, name, client, description                           │
-│  - status (planned|active|completed|archived)              │
-│  - start_date, end_date, address, geo (lat/lng)            │
-│  - created_by → users.id                                   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              │ has many
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      PROJECT_JOBS                           │
-│  - id, project_id → projects.id                            │
-│  - title, category, description                            │
-│  - status (pending|in_progress|done|cancelled)             │
-│  - assigned_users (JSON array)                             │
-│  - start_time, end_time                                    │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              │ has many
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      FILE_METADATA                          │
-│  - id, project_id → projects.id                            │
-│  - job_id → project_jobs.id (nullable)                     │
-│  - s3_key, original_name, mime_type                        │
-│  - uploaded_by → users.id                                  │
-│  - uploaded_at                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+## Database
 
-### Legacy Tables (Deprecated)
+- **One production database** - No test/dev/staging databases
+- **Migrations via Drizzle** - `pnpm db:push` generates and runs migrations
+- **Direct push blocked** - Use `db:push` workflow, not `drizzle-kit push`
 
-The following tables are deprecated and will be removed after data migration:
-- `jobs` - Use `projects` instead
-- `tasks` - Use `project_jobs` instead
+## Philosophy
 
-See [docs/BACKUP_AND_MIGRATION.md](docs/BACKUP_AND_MIGRATION.md) for migration instructions.
-
-## API Routes (tRPC Procedures)
-
-### Projects
-
-| Procedure | Description |
-|-----------|-------------|
-| `projects.list` | List all projects for current user |
-| `projects.getById` | Get project by ID |
-| `projects.create` | Create a new project |
-| `projects.update` | Update project details |
-| `projects.archive` | Archive a project (soft delete) |
-| `projects.delete` | Delete a project permanently |
-
-### Jobs (nested under projects)
-
-| Procedure | Description |
-|-----------|-------------|
-| `projects.jobs.list` | List jobs for a project |
-| `projects.jobs.get` | Get job by ID |
-| `projects.jobs.create` | Create a job under a project |
-| `projects.jobs.update` | Update job details |
-| `projects.jobs.delete` | Delete a job |
-
-### Files (nested under projects)
-
-| Procedure | Description |
-|-----------|-------------|
-| `projects.files.presignUpload` | Get presigned URL for upload |
-| `projects.files.register` | Register uploaded file metadata |
-| `projects.files.getPresignedUrl` | Get presigned URL for viewing |
-| `projects.files.listByProject` | List files for a project |
-| `projects.files.listByJob` | List files for a job |
-| `projects.files.delete` | Delete a file |
-| `projects.files.upload` | Server-side upload (base64) |
-
-## S3 Key Conventions
-
-Files are stored in S3 with the following key pattern:
-
-```
-projects/{projectId}/jobs/{jobId}/{timestamp}-{uuid}-{filename}
-```
-
-- `{projectId}` - The project ID (integer)
-- `{jobId}` - The job ID, or `_project` if file is project-level
-- `{timestamp}` - Unix timestamp in milliseconds
-- `{uuid}` - 12-character unique identifier
-- `{filename}` - Sanitized original filename
-
-Example:
-```
-projects/42/jobs/123/1701432000000-abc123def456-document.pdf
-projects/42/_project/1701432000000-xyz789abc012-project-plan.pdf
-```
-
-## File Upload Flow
-
-```
-┌──────────┐     ┌────────────┐     ┌─────────────┐     ┌────────────┐
-│  Client  │────▶│ presignUp  │────▶│   S3 PUT    │────▶│  register  │
-│          │     │   load     │     │   Upload    │     │    file    │
-└──────────┘     └────────────┘     └─────────────┘     └────────────┘
-     │                │                    │                  │
-     │                ▼                    ▼                  ▼
-     │         { uploadUrl,          Direct upload     { id, s3Key,
-     │           s3Key }             to S3 bucket       originalName,
-     │                                                  mimeType, ... }
-     │
-     └─────────────────────────────────────────────────────────────────▶
-                              File ready to view via
-                            getPresignedUrl → S3 GET
-```
-
-1. **presignUpload** - Client requests a presigned URL for upload
-2. **S3 PUT** - Client uploads file directly to S3 using the URL
-3. **register** - Client registers the uploaded file in the database
-4. **getPresignedUrl** - To view, client requests a presigned GET URL
-
-### Supported File Types
-
-- Images: `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `image/svg+xml`
-- Documents: `application/pdf`, `application/msword`, `application/vnd.openxmlformats-*`
-- Text: `text/plain`, `text/csv`
-- Archives: `application/zip`, `application/gzip`
-
-Max file size: **50 MB**
-
-## Deployment
-
-### Production Deployment (PM2)
-
-This project uses **PM2** for process control. The deployment script builds and restarts the running process.
-
-**Deployment Process:**
-1. **Deploy via SSH** (pull + install + build + restart):
-   ```bash
-   ssh mantodeus-server 'cd /srv/customer/sites/manager.mantodeus.com && bash infra/production/deploy-production.sh'
-   ```
-
-**Important:**
-- Default PM2 process name: `mantodeus-manager`
-- Override with: `PM2_APP_NAME=<name> bash infra/production/deploy-production.sh`
-
-See **[INFOMANIAK_DEPLOYMENT.md](INFOMANIAK_DEPLOYMENT.md)** for detailed deployment instructions.
-
-### Pre-Deployment Checklist
-
-1. **Backup Database**
-   ```bash
-   mysqldump -u root -p mantodeus_manager > backup-$(date +%Y%m%d-%H%M%S).sql
-   ```
-
-2. **Run Migrations**
-   ```bash
-   npm run db:migrate
-   ```
-
-3. **Run Backfill (if migrating from legacy)**
-   ```bash
-   npm run db:backfill:dry  # Preview changes
-   npm run db:backfill       # Execute migration
-   ```
-
-4. **Run Tests**
-   ```bash
-   npm test
-   ```
-
-5. **Build Application**
-   ```bash
-   npm run build
-   ```
-
-### Staging vs Production
-
-| Environment | Actions |
-|-------------|---------|
-| Staging | Run migrations, run backfill with `--dry-run`, verify |
-| Production | Backup DB, run migrations, run backfill, health check |
-
-**Important**: CI only builds, tests, and prepares PRs. Deployment is manual.
-
-## Documentation
-
-- **[User Guide](USER_GUIDE.md)** - End-user documentation
-- **[Deployment Guide](DEPLOYMENT.md)** - Detailed deployment instructions
-- **[Backup & Migration](docs/BACKUP_AND_MIGRATION.md)** - Database backup and data migration guide
-- **[Todo List](todo.md)** - Development history and roadmap
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+> Complexity is the enemy. Safety comes from clarity, not environments.
+> If something breaks, we fix it directly in production — fast, deliberately, and cleanly.
 
 ## License
 
-MIT License - see LICENSE file for details
-
-## Support
-
-For issues or questions:
-- Open an issue on GitHub
-- Check the documentation
-- Review the deployment guide
-
-## Acknowledgments
-
-Built with modern web technologies and best practices for construction project management.
-
----
-
-**Version**: 2.0.0  
-**Last Updated**: December 2025
+MIT
