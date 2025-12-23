@@ -109,10 +109,10 @@ export default function Jobs() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Jobs</h1>
-          <p className="text-muted-foreground">Manage your construction projects and job sites</p>
+          <h1 className="text-3xl font-regular">Jobs</h1>
+          <p className="text-muted-foreground text-sm">Manage your construction projects and job sites</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
