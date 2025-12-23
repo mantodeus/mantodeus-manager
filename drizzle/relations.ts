@@ -13,6 +13,7 @@ import {
   contacts,
   jobContacts,
   invoices,
+  invoiceItems,
   notes,
   locations,
   jobDates,
@@ -199,18 +200,26 @@ export const jobContactsRelations = relations(jobContacts, ({ one }) => ({
   }),
 }));
 
-export const invoicesRelations = relations(invoices, ({ one }) => ({
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
   job: one(jobs, {
     fields: [invoices.jobId],
     references: [jobs.id],
   }),
-  contact: one(contacts, {
-    fields: [invoices.contactId],
+  client: one(contacts, {
+    fields: [invoices.clientId],
     references: [contacts.id],
   }),
   uploadedByUser: one(users, {
     fields: [invoices.uploadedBy],
     references: [users.id],
+  }),
+  items: many(invoiceItems),
+}));
+
+export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
+  invoice: one(invoices, {
+    fields: [invoiceItems.invoiceId],
+    references: [invoices.id],
   }),
 }));
 
