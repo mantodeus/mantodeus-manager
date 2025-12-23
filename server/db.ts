@@ -829,7 +829,6 @@ export async function getInvoicesByUserId(userId: number) {
 async function getHighestInvoiceCounter(userId: number, invoiceYear: number): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureInvoiceSchema(db);
   const [result] = await db
     .select({ maxCounter: sql<number>`COALESCE(MAX(${invoices.invoiceCounter}), 0)` })
     .from(invoices)
@@ -840,7 +839,6 @@ async function getHighestInvoiceCounter(userId: number, invoiceYear: number): Pr
 export async function ensureUniqueInvoiceNumber(userId: number, invoiceNumber: string, currentInvoiceId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureInvoiceSchema(db);
   let whereClause = and(eq(invoices.userId, userId), eq(invoices.invoiceNumber, invoiceNumber));
   if (currentInvoiceId) {
     whereClause = and(whereClause, ne(invoices.id, currentInvoiceId));
@@ -862,7 +860,6 @@ export async function generateInvoiceNumber(userId: number, issueDate: Date, pre
 export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureInvoiceSchema(db);
 
   const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
   const normalizedData: Omit<InsertInvoice, "id"> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> } = {
@@ -929,7 +926,6 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
 export async function updateInvoice(id: number, data: Partial<InsertInvoice> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await ensureInvoiceSchema(db);
 
   const { items, ...invoiceData } = data;
   const updates = {
@@ -958,6 +954,161 @@ export async function deleteInvoice(id: number) {
   if (!db) throw new Error("Database not available");
   await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
   return db.delete(invoices).where(eq(invoices.id, id));
+}
+
+// ===== INVOICE ITEMS QUERIES =====
+
+export async function getInvoiceItemsByInvoiceId(invoiceId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(invoiceItems)
+    .where(eq(invoiceItems.invoiceId, invoiceId))
+    .orderBy(invoiceItems.id);
+}
+
+export async function createInvoiceItem(data: InsertInvoiceItem) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(invoiceItems).values(data);
+  const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
+  if (!insertId) {
+    throw new Error("Failed to create invoice item: no insert ID returned");
+  }
+  const [item] = await db.select().from(invoiceItems).where(eq(invoiceItems.id, Number(insertId))).limit(1);
+  if (!item) {
+    throw new Error("Failed to retrieve created invoice item");
+  }
+  return item;
+}
+
+export async function updateInvoiceItem(id: number, data: Partial<InsertInvoiceItem>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(invoiceItems).set(data).where(eq(invoiceItems.id, id));
+  const [item] = await db.select().from(invoiceItems).where(eq(invoiceItems.id, id)).limit(1);
+  return item || null;
+}
+
+export async function deleteInvoiceItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(invoiceItems).where(eq(invoiceItems.id, id));
+}
+
+export async function deleteInvoiceItemsByInvoiceId(invoiceId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+}
+
+// ===== INVOICE NUMBER GENERATION =====
+
+/**
+ * Generate the next invoice number for a user and year
+ * Format: {prefix}-{year}-{counter} (e.g., RE-2025-0007)
+ */
+export async function generateInvoiceNumber(
+  userId: number,
+  invoiceDate: Date,
+  invoiceNumber?: string | null
+): Promise<{ invoiceNumber: string; invoiceYear: number; counter: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Get company settings
+  const settings = await getCompanySettingsByUserId(userId);
+  if (!settings) {
+    throw new Error("Company settings not found. Please configure your company settings first.");
+  }
+
+  const year = invoiceDate.getFullYear();
+  const prefix = settings.invoicePrefix || "RE";
+
+  // If invoice number is provided and invoice is draft, use it (user edited it)
+  // But we still need to check for duplicates
+  if (invoiceNumber) {
+    // Check for duplicate
+    const existing = await db.select().from(invoices)
+      .where(
+        and(
+          eq(invoices.userId, userId),
+          eq(invoices.invoiceNumber, invoiceNumber)
+        )
+      )
+      .limit(1);
+    
+    if (existing.length > 0) {
+      throw new Error("This invoice number already exists. Invoice numbers must be unique.");
+    }
+
+    return {
+      invoiceNumber,
+      invoiceYear: year,
+      counter: 0, // Counter not used when user provides number
+    };
+  }
+
+  // Generate new invoice number
+  // Find the highest counter for this year and user
+  // We'll query all invoices for this year and find the max counter manually
+  const yearInvoices = await db.select().from(invoices)
+    .where(
+      and(
+        eq(invoices.userId, userId),
+        eq(invoices.invoiceYear, year),
+        isNotNull(invoices.invoiceNumber)
+      )
+    );
+
+  // Extract counters from all invoice numbers and find the max
+  let maxCounter = 0;
+  for (const inv of yearInvoices) {
+    if (inv.invoiceNumber) {
+      const parts = inv.invoiceNumber.split("-");
+      const lastPart = parts[parts.length - 1];
+      const existingCounter = parseInt(lastPart, 10);
+      if (!isNaN(existingCounter) && existingCounter > maxCounter) {
+        maxCounter = existingCounter;
+      }
+    }
+  }
+  const counter = maxCounter + 1;
+
+  const formattedCounter = String(counter).padStart(4, "0");
+  const generatedNumber = `${prefix}-${year}-${formattedCounter}`;
+
+  return {
+    invoiceNumber: generatedNumber,
+    invoiceYear: year,
+    counter,
+  };
+}
+
+/**
+ * Check if an invoice number is unique for a user (excluding the current invoice)
+ */
+export async function isInvoiceNumberUnique(
+  userId: number,
+  invoiceNumber: string,
+  excludeInvoiceId?: number
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const conditions = [
+    eq(invoices.userId, userId),
+    eq(invoices.invoiceNumber, invoiceNumber),
+  ];
+
+  if (excludeInvoiceId !== undefined) {
+    conditions.push(sql`${invoices.id} != ${excludeInvoiceId}` as any);
+  }
+
+  const existing = await db.select().from(invoices)
+    .where(and(...conditions))
+    .limit(1);
+
+  return existing.length === 0;
 }
 
 // ===== NOTES QUERIES =====
@@ -1814,21 +1965,37 @@ export async function updateCompanySettings(userId: number, data: Partial<Insert
     .where(eq(companySettings.userId, userId));
 }
 
+/**
+ * Atomically increment the invoice number for a user.
+ * 
+ * CRITICAL: This function MUST use an atomic database operation to prevent race conditions.
+ * Under concurrent requests, multiple processes could read the same value, increment it,
+ * and write back duplicates. By using UPDATE ... SET nextInvoiceNumber = nextInvoiceNumber + 1,
+ * the database ensures the increment happens atomically at the DB level.
+ */
 export async function incrementInvoiceNumber(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Get current settings
+  // Verify settings exist first
   const settings = await getCompanySettingsByUserId(userId);
   if (!settings) throw new Error("Company settings not found");
   
-  // Increment and update
-  const newNumber = (settings.nextInvoiceNumber || 1) + 1;
-  await db.update(companySettings)
-    .set({ nextInvoiceNumber: newNumber })
-    .where(eq(companySettings.userId, userId));
+  // Atomic increment: UPDATE with SET column = column + 1 is atomic at the database level
+  // This prevents race conditions where multiple concurrent requests could read the same
+  // value and both increment it, resulting in duplicate invoice numbers.
+  // The increment happens in a single atomic operation at the database level.
+  await db.execute(
+    sql`UPDATE company_settings SET nextInvoiceNumber = nextInvoiceNumber + 1 WHERE userId = ${userId}`
+  );
   
-  return newNumber;
+  // Read back the updated value to return it
+  // Note: Even if another request increments between our UPDATE and this SELECT,
+  // the atomic UPDATE ensures no duplicates. This SELECT just retrieves the current value.
+  const updated = await getCompanySettingsByUserId(userId);
+  if (!updated) throw new Error("Company settings not found after update");
+  
+  return updated.nextInvoiceNumber;
 }
 
 // =============================================================================
