@@ -356,20 +356,14 @@ export default function Notes() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold mb-2" style={{ fontFamily: "Kanit, sans-serif" }}>
-            Notes
-          </h1>
-          <p className="text-muted-foreground" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
-            Create and manage your notes
-          </p>
+          <h1 className="text-3xl font-regular">Notes</h1>
+          <p className="text-muted-foreground text-sm">Create and manage your notes</p>
         </div>
         <Button
           onClick={() => setIsCreateDialogOpen(true)}
-          className="font-medium"
         >
           <Plus className="mr-2 h-4 w-4" />
           New Note

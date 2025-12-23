@@ -23,10 +23,10 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
-          <p className="text-muted-foreground">Generate and download project reports</p>
+          <h1 className="text-3xl font-regular">Reports</h1>
+          <p className="text-muted-foreground text-sm">Generate and download project reports</p>
         </div>
       </div>
 

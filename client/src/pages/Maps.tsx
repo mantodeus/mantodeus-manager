@@ -645,16 +645,11 @@ export default function Maps() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold mb-2" style={{ fontFamily: "Kanit, sans-serif" }}>
-            Maps
-          </h1>
-          <p className="text-muted-foreground" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
-            View and manage job locations on the map
-          </p>
+          <h1 className="text-3xl font-regular">Maps</h1>
+          <p className="text-muted-foreground text-sm">View and manage job locations on the map</p>
         </div>
       </div>
 
@@ -669,7 +664,6 @@ export default function Maps() {
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
             className="pl-10 pr-10"
-            style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
           />
           {searchQuery && (
             <button
@@ -698,7 +692,7 @@ export default function Maps() {
                     <MapPin className="h-4 w-4 text-accent mt-1 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium truncate" style={{ fontFamily: "Kanit, sans-serif" }}>
+                        <span className="truncate">
                           {result.name}
                         </span>
                         <span
@@ -722,7 +716,7 @@ export default function Maps() {
                         </span>
                       </div>
                       {result.address && (
-                        <p className="text-sm text-muted-foreground truncate" style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}>
+                        <p className="text-sm text-muted-foreground truncate">
                           {result.address}
                         </p>
                       )}

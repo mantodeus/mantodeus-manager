@@ -86,12 +86,12 @@ export default function Settings() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-regular">Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Configure your company information and invoice settings
-        </p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-regular">Settings</h1>
+          <p className="text-muted-foreground text-sm">Configure your company information and invoice settings</p>
+        </div>
       </div>
 
       {/* Theme Settings */}
