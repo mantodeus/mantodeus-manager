@@ -27,7 +27,22 @@ The preferred deployment method is via GitHub webhook:
 
 ### Webhook Setup
 
-The webhook listener runs on port 9000 and is managed by PM2:
+The webhook listener runs on port 9000 and is managed by PM2.
+
+**Prerequisites:**
+1. Generate a webhook secret:
+   ```bash
+   openssl rand -hex 32
+   ```
+2. Add `WEBHOOK_SECRET=<generated-secret>` to `.env` file
+3. Configure the same secret in GitHub repository settings:
+   - Go to Settings → Webhooks → Add webhook
+   - Payload URL: `http://your-server:9000/webhook`
+   - Content type: `application/json`
+   - Secret: (paste the generated secret)
+   - Events: Just the push event
+
+**Managing the webhook listener:**
 
 ```bash
 # Check webhook status
@@ -35,7 +50,15 @@ pm2 status webhook-listener
 
 # View webhook logs
 pm2 logs webhook-listener
+
+# Start webhook listener (if not running)
+pm2 start infra/webhook/webhook-listener.js --name webhook-listener
+
+# Restart webhook listener
+pm2 restart webhook-listener
 ```
+
+**Security:** The webhook listener will fail to start if `WEBHOOK_SECRET` is not set. All requests without valid signatures are rejected with HTTP 401.
 
 ## Manual Deployment
 
@@ -119,9 +142,14 @@ VITE_APP_URL=https://manager.mantodeus.com
 # PDF Service (optional)
 PDF_SERVICE_URL=https://pdf-service-withered-star-4195.fly.dev/render
 PDF_SERVICE_SECRET=your_pdf_secret
+
+# Webhook (required for automated deployment)
+WEBHOOK_SECRET=your_webhook_secret_here
 ```
 
 **The app fails fast if any required variable is missing.**
+
+**Note:** `WEBHOOK_SECRET` is required to start the webhook listener. Generate with `openssl rand -hex 32`.
 
 ## SSH Configuration
 

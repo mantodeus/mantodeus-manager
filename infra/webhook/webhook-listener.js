@@ -32,6 +32,14 @@ const SECRET = process.env.WEBHOOK_SECRET;
 const APP_PATH = process.env.APP_PATH || '/srv/customer/sites/manager.mantodeus.com';
 const PM2_APP_NAME = process.env.PM2_APP_NAME || 'mantodeus-manager';
 
+// CRITICAL: Fail fast if WEBHOOK_SECRET is not set
+if (!SECRET) {
+  console.error('❌ FATAL ERROR: WEBHOOK_SECRET environment variable is required for security.');
+  console.error('   Set WEBHOOK_SECRET in your environment before starting the webhook listener.');
+  console.error('   Generate a secret: openssl rand -hex 32');
+  process.exit(1);
+}
+
 // Log directory
 const LOG_DIR = path.join(APP_PATH, 'logs');
 const WEBHOOK_LOG = path.join(LOG_DIR, 'webhook.log');
@@ -55,13 +63,9 @@ async function log(level, message, data = {}) {
 
 // Verify GitHub signature
 function verifySignature(payload, signature) {
-  if (!SECRET) {
-    return false;
-  }
-  
   const hmac = crypto.createHmac('sha256', SECRET);
   const digest = 'sha256=' + hmac.update(payload).digest('hex');
-  
+
   // Timing-safe comparison
   return crypto.timingSafeEqual(
     Buffer.from(signature),
@@ -96,20 +100,18 @@ app.post('/webhook', async (req, res) => {
     hasSignature: !!signature,
   });
   
-  // Verify signature
-  if (SECRET) {
-    if (!signature) {
-      await log('error', 'Missing signature');
-      return res.status(401).json({ error: 'Missing signature' });
-    }
-    
-    if (!verifySignature(req.rawBody, signature)) {
-      await log('error', 'Invalid signature');
-      return res.status(401).json({ error: 'Invalid signature' });
-    }
-  } else {
-    await log('warning', 'Webhook secret not configured, skipping signature verification');
+  // Verify signature (always required)
+  if (!signature) {
+    await log('error', 'Missing signature', { deliveryId });
+    return res.status(401).json({ error: 'Missing signature' });
   }
+
+  if (!verifySignature(req.rawBody, signature)) {
+    await log('error', 'Invalid signature', { deliveryId });
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  await log('info', 'Signature verified successfully', { deliveryId });
   
   // Handle ping event
   if (event === 'ping') {
@@ -211,16 +213,10 @@ async function deploy(branch, commitId) {
 }
 
 // Start server
-if (!SECRET) {
-  console.warn('⚠️  WARNING: WEBHOOK_SECRET not set. Webhook will accept requests without signature verification.');
-}
-
 app.listen(PORT, () => {
   console.log(`🚀 Webhook listener started on port ${PORT}`);
   console.log(`📝 Logs: ${WEBHOOK_LOG}`);
-  if (!SECRET) {
-    console.log('⚠️  Set WEBHOOK_SECRET environment variable for production use.');
-  }
+  console.log(`✅ Webhook secret configured and signature verification enabled`);
 });
 
 // Graceful shutdown
