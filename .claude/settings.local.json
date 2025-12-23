@@ -4,7 +4,8 @@
       "Bash(find:*)",
       "Bash(mkdir:*)",
       "Bash(ls:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)"
     ]
   }
 }
