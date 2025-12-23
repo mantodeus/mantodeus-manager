@@ -313,46 +313,56 @@ export type InsertJobContact = typeof jobContacts.$inferInsert;
  */
 export const invoices = mysqlTable("invoices", {
   id: int("id").primaryKey().autoincrement(),
-  // Invoice metadata
-  invoiceNumber: varchar("invoiceNumber", { length: 50 }),
-  status: mysqlEnum("status", ["draft", "issued", "paid", "cancelled"]).default("draft").notNull(),
-  // Client/Contact reference
+  userId: int("userId").notNull().references(() => users.id),
+  clientId: int("clientId").references(() => contacts.id),
   contactId: int("contactId").references(() => contacts.id),
-  // Invoice dates
-  invoiceDate: timestamp("invoiceDate").defaultNow().notNull(),
+  jobId: int("jobId").references(() => jobs.id),
+  invoiceNumber: varchar("invoiceNumber", { length: 50 }).notNull(),
+  invoiceYear: int("invoiceYear").notNull(),
+  invoiceCounter: int("invoiceCounter").notNull(),
+  status: mysqlEnum("status", ["draft", "sent", "paid"]).default("draft").notNull(),
+  issueDate: timestamp("issueDate").defaultNow().notNull(),
   dueDate: timestamp("dueDate"),
-  issuedAt: timestamp("issuedAt"),
-  // Invoice items (stored as JSON)
-  items: json("items").notNull().default("[]").$type<Array<{
-    description: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-  }>>(),
-  // Financial totals
-  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull().default("0.00"),
-  vatAmount: decimal("vatAmount", { precision: 10, scale: 2 }).notNull().default("0.00"),
-  total: decimal("total", { precision: 10, scale: 2 }).notNull().default("0.00"),
-  // Additional fields
   notes: text("notes"),
-  // PDF reference (only set when issued)
+  servicePeriodStart: timestamp("servicePeriodStart"),
+  servicePeriodEnd: timestamp("servicePeriodEnd"),
+  referenceNumber: varchar("referenceNumber", { length: 100 }),
+  partialInvoice: boolean("partialInvoice").default(false).notNull(),
+  subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  vatAmount: decimal("vatAmount", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  total: decimal("total", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  // File metadata (legacy/backwards compatibility)
   pdfFileKey: varchar("pdfFileKey", { length: 500 }),
-  // Legacy fields (for backward compatibility with file uploads)
   filename: varchar("filename", { length: 255 }),
   fileKey: varchar("fileKey", { length: 500 }),
   fileSize: int("fileSize"),
   mimeType: varchar("mimeType", { length: 100 }),
-  jobId: int("jobId").references(() => jobs.id),
   uploadDate: timestamp("uploadDate"),
-  uploadedBy: int("uploadedBy").references(() => users.id), // Legacy, use userId instead
-  // Owner
-  userId: int("userId").notNull().references(() => users.id),
+  uploadedBy: int("uploadedBy").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex("invoice_number_per_user").on(table.userId, table.invoiceNumber),
+]);
 
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoice = typeof invoices.$inferInsert;
+
+export const invoiceItems = mysqlTable("invoice_items", {
+  id: int("id").primaryKey().autoincrement(),
+  invoiceId: int("invoiceId").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 120 }),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  unitPrice: decimal("unitPrice", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
+  lineTotal: decimal("lineTotal", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
+export type InsertInvoiceItem = typeof invoiceItems.$inferInsert;
 
 /**
  * Notes table - stores user notes

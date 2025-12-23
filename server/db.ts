@@ -1,4 +1,4 @@
-import { eq, desc, and, sql, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, and, sql, isNull, isNotNull, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { 
@@ -15,7 +15,8 @@ import {
   // Legacy types (kept for backward compatibility)
   jobs, tasks, images, reports, comments, contacts, invoices, invoiceItems, notes, locations, 
   InsertJob, InsertTask, InsertImage, InsertReport, InsertComment, InsertContact, 
-  InsertInvoice, InsertInvoiceItem, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate 
+  InsertInvoice, InsertInvoiceItem, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate,
+  type Invoice, type InvoiceItem
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 // Schema guards removed from hot path - initialized once at server startup
@@ -720,72 +721,190 @@ export async function getInvoicesByUser(userId: number) {
   return getInvoicesByUserId(userId);
 }
 
+export type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
+
 export async function getInvoicesByJob(jobId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(invoices).where(eq(invoices.jobId, jobId));
+  return db.select().from(invoices).where(eq(invoices.jobId!, jobId));
 }
 
 export async function getInvoicesByContact(contactId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(invoices).where(eq(invoices.contactId, contactId));
+  return db.select().from(invoices).where(eq(invoices.clientId, contactId));
 }
 
-export async function getInvoiceById(id: number) {
+async function attachInvoiceItems(invoiceList: Invoice[]): Promise<InvoiceWithItems[]> {
+  if (invoiceList.length === 0) return [] as InvoiceWithItems[];
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
-  if (result.length === 0) {
-    return null;
-  }
-  
-  const invoice = result[0];
-  
-  // Normalize items field: ensure it's always an array
-  // Some database drivers return empty JSON columns as {} instead of []
-  if (invoice.items && typeof invoice.items === 'object' && !Array.isArray(invoice.items)) {
-    invoice.items = [];
-  } else if (!invoice.items) {
-    invoice.items = [];
-  }
-  
-  return invoice;
+
+  const invoiceIds = invoiceList.map((invoice) => invoice.id);
+  const rows = await db.select().from(invoiceItems).where(inArray(invoiceItems.invoiceId, invoiceIds));
+  const grouped = new Map<number, InsertInvoiceItem[]>();
+  rows.forEach((item) => {
+    const list = grouped.get(item.invoiceId) ?? [];
+    list.push(item);
+    grouped.set(item.invoiceId, list);
+  });
+
+  return invoiceList.map((invoice) => ({
+    ...invoice,
+    items: grouped.get(invoice.id) ?? [],
+  }));
+}
+
+export async function getInvoiceById(invoiceId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(invoices).where(eq(invoices.id, invoiceId)).limit(1);
+  if (!result || result.length === 0) return null;
+
+  const [withItems] = await attachInvoiceItems(result as any);
+  return withItems ?? null;
 }
 
 export async function getInvoicesByUserId(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return await db.select().from(invoices)
+  const invoiceRows = await db
+    .select()
+    .from(invoices)
     .where(eq(invoices.userId, userId))
     .orderBy(desc(invoices.createdAt));
+
+  return attachInvoiceItems(invoiceRows as any);
 }
 
-export async function createInvoice(data: InsertInvoice) {
+async function getHighestInvoiceCounter(userId: number, invoiceYear: number): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(invoices).values(data);
+  const [result] = await db
+    .select({ maxCounter: sql<number>`COALESCE(MAX(${invoices.invoiceCounter}), 0)` })
+    .from(invoices)
+    .where(and(eq(invoices.userId, userId), eq(invoices.invoiceYear, invoiceYear)));
+  return result?.maxCounter ?? 0;
+}
+
+export async function ensureUniqueInvoiceNumber(userId: number, invoiceNumber: string, currentInvoiceId?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  let whereClause = and(eq(invoices.userId, userId), eq(invoices.invoiceNumber, invoiceNumber));
+  if (currentInvoiceId) {
+    whereClause = and(whereClause, ne(invoices.id, currentInvoiceId));
+  }
+
+  const existing = await db.select({ id: invoices.id }).from(invoices).where(whereClause).limit(1);
+  if (existing.length > 0) {
+    throw new Error("This invoice number already exists. Invoice numbers must be unique.");
+  }
+}
+
+export async function generateInvoiceNumber(userId: number, issueDate: Date, prefix: string) {
+  const invoiceYear = issueDate.getFullYear();
+  const nextCounter = (await getHighestInvoiceCounter(userId, invoiceYear)) + 1;
+  const invoiceNumber = `${prefix}-${invoiceYear}-${String(nextCounter).padStart(4, "0")}`;
+  return { invoiceNumber, invoiceCounter: nextCounter, invoiceYear };
+}
+
+export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
+  const normalizedData: Omit<InsertInvoice, "id"> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> } = {
+    contactId: data.contactId ?? data.clientId ?? null,
+    clientId: data.clientId ?? data.contactId ?? null,
+    jobId: data.jobId ?? null,
+    invoiceNumber: data.invoiceNumber ?? "",
+    invoiceCounter: data.invoiceCounter ?? 0,
+    invoiceYear: data.invoiceYear ?? issueDate.getFullYear(),
+    status: data.status ?? "draft",
+    issueDate,
+    dueDate: data.dueDate ?? null,
+    notes: data.notes ?? null,
+    servicePeriodStart: data.servicePeriodStart ?? null,
+    servicePeriodEnd: data.servicePeriodEnd ?? null,
+    referenceNumber: data.referenceNumber ?? null,
+    partialInvoice: data.partialInvoice ?? false,
+    subtotal: data.subtotal ?? "0.00",
+    vatAmount: data.vatAmount ?? "0.00",
+    total: data.total ?? "0.00",
+    pdfFileKey: data.pdfFileKey ?? null,
+    filename: data.filename ?? null,
+    fileKey: data.fileKey ?? null,
+    fileSize: data.fileSize ?? null,
+    mimeType: data.mimeType ?? null,
+    uploadDate: data.uploadDate ?? null,
+    uploadedBy: data.uploadedBy ?? null,
+    userId: data.userId,
+    createdAt: data.createdAt ?? undefined,
+    updatedAt: data.updatedAt ?? undefined,
+    items: data.items,
+  };
+
+  if (!normalizedData.invoiceNumber || !normalizedData.invoiceCounter) {
+    const { invoiceNumber, invoiceCounter, invoiceYear } = await generateInvoiceNumber(
+      normalizedData.userId,
+      issueDate,
+      "RE"
+    );
+    normalizedData.invoiceNumber = normalizedData.invoiceNumber || invoiceNumber;
+    normalizedData.invoiceCounter = normalizedData.invoiceCounter || invoiceCounter;
+    normalizedData.invoiceYear = normalizedData.invoiceYear || invoiceYear;
+  }
+
+  const result = await db.insert(invoices).values(normalizedData);
   const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
   if (!insertId) {
     throw new Error("Failed to create invoice: no insert ID returned");
   }
-  const [invoice] = await db.select().from(invoices).where(eq(invoices.id, Number(insertId))).limit(1);
-  if (!invoice) {
-    throw new Error("Failed to retrieve created invoice");
+
+  const itemsToInsert = (data.items || []).map((item) => ({
+    ...item,
+    invoiceId: Number(insertId),
+  }));
+  if (itemsToInsert.length > 0) {
+    await db.insert(invoiceItems).values(itemsToInsert);
   }
-  return invoice;
+
+  const created = await getInvoiceById(Number(insertId));
+  if (!created) throw new Error("Failed to retrieve created invoice");
+  return created;
 }
 
-export async function updateInvoice(id: number, data: Partial<InsertInvoice>) {
+export async function updateInvoice(id: number, data: Partial<InsertInvoice> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(invoices).set(data).where(eq(invoices.id, id));
-  return await getInvoiceById(id);
+
+  const { items, ...invoiceData } = data;
+  const updates = {
+    ...invoiceData,
+    contactId: invoiceData.contactId ?? invoiceData.clientId,
+    clientId: invoiceData.clientId ?? invoiceData.contactId,
+  };
+  await db.update(invoices).set(updates).where(eq(invoices.id, id));
+
+  if (items) {
+    await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
+    if (items.length > 0) {
+      const itemsToInsert = items.map((item) => ({
+        ...item,
+        invoiceId: id,
+      }));
+      await db.insert(invoiceItems).values(itemsToInsert);
+    }
+  }
+
+  return getInvoiceById(id);
 }
 
 export async function deleteInvoice(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
   return db.delete(invoices).where(eq(invoices.id, id));
 }
 
