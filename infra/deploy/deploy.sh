@@ -8,9 +8,9 @@
 # Usage: bash infra/deploy/deploy.sh
 #
 # Requirements:
-# - Node.js 22.x (includes corepack)
-# - pnpm 10.4.1 (enabled via corepack)
-# - PM2 installed globally
+# - Node.js (preferably 22.x with corepack, but works with any version)
+# - pnpm 10.4.1 (will be set up automatically)
+# - PM2 (will use npx if not globally installed)
 # =============================================================================
 
 set -euo pipefail
@@ -35,26 +35,51 @@ cd "$APP_PATH" || {
 echo "✅ Now in: $(pwd)"
 echo ""
 
-# Step 2: Ensure pnpm is available via corepack
+# Step 2: Ensure pnpm is available (Infomaniak shared hosting compatible)
 echo "▶ Ensuring pnpm is available..."
-if ! command -v pnpm &> /dev/null; then
+PNPM_CMD=""
+
+if command -v pnpm &> /dev/null; then
+  # pnpm is already available
+  PNPM_CMD="pnpm"
+  PNPM_VERSION_ACTUAL=$(pnpm --version)
+  echo "✅ pnpm ${PNPM_VERSION_ACTUAL} is already available"
+elif command -v corepack &> /dev/null; then
+  # Try to enable via corepack (Node.js 16.10+)
   echo "   pnpm not found, enabling via corepack..."
-  if ! command -v corepack &> /dev/null; then
-    echo "❌ corepack not found. Node.js 22.x is required."
+  corepack enable || true
+  corepack prepare pnpm@${PNPM_VERSION} --activate || true
+  
+  if command -v pnpm &> /dev/null; then
+    PNPM_CMD="pnpm"
+    PNPM_VERSION_ACTUAL=$(pnpm --version)
+    echo "✅ pnpm ${PNPM_VERSION_ACTUAL} enabled via corepack"
+  fi
+fi
+
+# If still not available, try installing globally (may fail on shared hosting)
+if [ -z "$PNPM_CMD" ] && command -v npm &> /dev/null; then
+  echo "   Attempting to install pnpm globally..."
+  npm install -g pnpm@${PNPM_VERSION} 2>/dev/null || true
+  
+  if command -v pnpm &> /dev/null; then
+    PNPM_CMD="pnpm"
+    PNPM_VERSION_ACTUAL=$(pnpm --version)
+    echo "✅ pnpm ${PNPM_VERSION_ACTUAL} installed globally"
+  fi
+fi
+
+# Final fallback: use npx pnpm (works without global install)
+if [ -z "$PNPM_CMD" ]; then
+  if command -v npx &> /dev/null; then
+    PNPM_CMD="npx -y pnpm@${PNPM_VERSION}"
+    echo "✅ Will use npx pnpm (no global install required)"
+  else
+    echo "❌ Cannot find pnpm, corepack, npm, or npx. Please install Node.js."
     exit 1
   fi
-  corepack enable
-  corepack prepare pnpm@${PNPM_VERSION} --activate
 fi
 
-# Verify pnpm is available
-if ! command -v pnpm &> /dev/null; then
-  echo "❌ pnpm is still not available after corepack setup"
-  exit 1
-fi
-
-PNPM_VERSION_ACTUAL=$(pnpm --version)
-echo "✅ pnpm ${PNPM_VERSION_ACTUAL} is available"
 echo ""
 
 # Step 3: Fetch latest code
@@ -67,17 +92,17 @@ echo ""
 
 # Step 4: Install dependencies
 echo "▶ Installing dependencies with pnpm..."
-pnpm install --frozen-lockfile || {
+$PNPM_CMD install --frozen-lockfile || {
   echo "⚠️  pnpm install failed, cleaning node_modules and retrying..."
   rm -rf node_modules
-  pnpm install --frozen-lockfile
+  $PNPM_CMD install --frozen-lockfile
 }
 echo "✅ Dependencies installed"
 echo ""
 
 # Step 5: Build
 echo "▶ Building application..."
-pnpm build
+$PNPM_CMD build
 echo "✅ Build complete"
 echo ""
 
@@ -96,14 +121,20 @@ fi
 echo "✅ Build verified (dist/index.js and dist/public exist)"
 echo ""
 
-# Step 7: Restart PM2
+# Step 7: Restart PM2 (Infomaniak shared hosting compatible)
 echo "▶ Restarting PM2 process: $PM2_NAME..."
-if ! command -v pm2 &> /dev/null; then
-  echo "❌ pm2 not found. Install with: npm install -g pm2"
+PM2_CMD=""
+
+if command -v pm2 &> /dev/null; then
+  PM2_CMD="pm2"
+elif command -v npx &> /dev/null; then
+  PM2_CMD="npx pm2"
+else
+  echo "❌ pm2 not found and npx is not available"
   exit 1
 fi
 
-pm2 restart "$PM2_NAME" || {
+$PM2_CMD restart "$PM2_NAME" || {
   echo "❌ PM2 restart failed"
   exit 1
 }
