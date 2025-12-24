@@ -1026,6 +1026,19 @@ export async function restoreInvoice(id: number) {
     .where(eq(invoices.id, id));
 }
 
+export async function revertInvoiceStatus(id: number, targetStatus: 'draft' | 'sent') {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  // Update status field
+  // Note: Clear sent/paid timestamps if needed (implementation depends on your schema)
+  return db
+    .update(invoices)
+    .set({ status: targetStatus })
+    .where(eq(invoices.id, id));
+}
+
 // ===== INVOICE ITEMS QUERIES =====
 
 export async function getInvoiceItemsByInvoiceId(invoiceId: number) {
