@@ -24,6 +24,7 @@ export default function Login() {
 
     try {
       // Step 1: Sign in with Supabase
+      let signInResult;
       if (isSignUp) {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
@@ -31,20 +32,45 @@ export default function Login() {
         });
         if (signUpError) throw signUpError;
 
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        signInResult = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (signInError) throw signInError;
+        if (signInResult.error) throw signInResult.error;
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        signInResult = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (signInError) throw signInError;
+        if (signInResult.error) throw signInResult.error;
       }
 
-      // Force page reload to refresh auth state
+      // Step 2: Get the access token from the session
+      const session = signInResult.data?.session;
+      if (!session?.access_token) {
+        throw new Error("Failed to get session token after login");
+      }
+
+      // Step 3: Set the session cookie on the backend
+      const callbackResponse = await fetch("/api/auth/callback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // Important: include cookies
+        body: JSON.stringify({
+          access_token: session.access_token,
+        }),
+      });
+
+      if (!callbackResponse.ok) {
+        const errorData = await callbackResponse.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to set session cookie: ${callbackResponse.statusText}`
+        );
+      }
+
+      // Step 4: Force page reload to refresh auth state
       // This ensures the tRPC client picks up the new session
       window.location.href = "/";
     } catch (err: any) {
