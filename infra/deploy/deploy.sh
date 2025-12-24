@@ -39,27 +39,36 @@ echo ""
 echo "▶ Ensuring pnpm is available..."
 PNPM_CMD=""
 
+# Priority 1: Check if pnpm is already available
 if command -v pnpm &> /dev/null; then
-  # pnpm is already available
   PNPM_CMD="pnpm"
   PNPM_VERSION_ACTUAL=$(pnpm --version)
   echo "✅ pnpm ${PNPM_VERSION_ACTUAL} is already available"
+# Priority 2: Use npx pnpm (best for shared hosting - no global install needed)
+elif command -v npx &> /dev/null; then
+  PNPM_CMD="npx -y pnpm@${PNPM_VERSION}"
+  echo "✅ Will use npx pnpm (no global install required - shared hosting compatible)"
+# Priority 3: Try corepack (may fail on shared hosting with read-only filesystem)
 elif command -v corepack &> /dev/null; then
-  # Try to enable via corepack (Node.js 16.10+)
-  echo "   pnpm not found, enabling via corepack..."
-  corepack enable || true
-  corepack prepare pnpm@${PNPM_VERSION} --activate || true
+  echo "   Attempting to enable via corepack (may fail on shared hosting)..."
+  # Suppress errors from corepack enable (read-only filesystem on shared hosting)
+  corepack enable 2>/dev/null || true
+  corepack prepare pnpm@${PNPM_VERSION} --activate 2>/dev/null || true
   
   if command -v pnpm &> /dev/null; then
     PNPM_CMD="pnpm"
     PNPM_VERSION_ACTUAL=$(pnpm --version)
     echo "✅ pnpm ${PNPM_VERSION_ACTUAL} enabled via corepack"
+  else
+    # Corepack failed, fall back to npx if available
+    if command -v npx &> /dev/null; then
+      PNPM_CMD="npx -y pnpm@${PNPM_VERSION}"
+      echo "✅ Corepack unavailable, using npx pnpm instead"
+    fi
   fi
-fi
-
-# If still not available, try installing globally (may fail on shared hosting)
-if [ -z "$PNPM_CMD" ] && command -v npm &> /dev/null; then
-  echo "   Attempting to install pnpm globally..."
+# Priority 4: Try global npm install (usually fails on shared hosting)
+elif command -v npm &> /dev/null; then
+  echo "   Attempting to install pnpm globally (may fail on shared hosting)..."
   npm install -g pnpm@${PNPM_VERSION} 2>/dev/null || true
   
   if command -v pnpm &> /dev/null; then
@@ -69,15 +78,10 @@ if [ -z "$PNPM_CMD" ] && command -v npm &> /dev/null; then
   fi
 fi
 
-# Final fallback: use npx pnpm (works without global install)
+# Final check: ensure we have a pnpm command
 if [ -z "$PNPM_CMD" ]; then
-  if command -v npx &> /dev/null; then
-    PNPM_CMD="npx -y pnpm@${PNPM_VERSION}"
-    echo "✅ Will use npx pnpm (no global install required)"
-  else
-    echo "❌ Cannot find pnpm, corepack, npm, or npx. Please install Node.js."
-    exit 1
-  fi
+  echo "❌ Cannot find pnpm, npx, corepack, or npm. Please install Node.js."
+  exit 1
 fi
 
 echo ""
