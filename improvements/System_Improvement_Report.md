@@ -582,7 +582,7 @@ git rev-parse --short HEAD
 | **Day 11** | Centralize secret management | No secrets in repository, synced across environments | Ops | **DONE** |
 | **Day 12** | Add build validation for env vars | Build fails if required env vars are missing or placeholders | Dev | **DONE** |
 | **Day 13** | Document golden path workflows | Canonical workflows documented and discoverable in docs | Dev | **DONE** |
-| **Day 14** | Final review and documentation update | AI Operating Manual updated, team walkthrough complete | Lead | Pending |
+| **Day 14** | Final review and documentation update | AI Operating Manual updated, team walkthrough complete | Lead | **DONE** |
 
 ### Validation Checkpoints
 
@@ -600,7 +600,7 @@ At the end of each week, verify:
 - [x] PDF generation is reliable
 - [x] Secrets are managed centrally
 - [x] Build process validates critical variables
-- [ ] Team understands new workflows
+- [x] Team understands new workflows
 
 ---
 
