@@ -1,60 +1,95 @@
-# Server Update Instructions
+# Server Update Instructions - ENV Import Fix
 
 ## Problem
-The server's git repository is behind the remote. You just pushed the fix from your local machine, but the server hasn't pulled it yet.
+The server crashes on startup with "ReferenceError: ENV is not defined" error. This is because the `server/_core/index.ts` file was missing the import statement for the ENV object.
 
 ## Solution
 
-Run these commands on your server:
-
-```bash
-# 1. Pull the latest code (includes the build-debug.js fix)
-git fetch origin
-git reset --hard origin/main
-
-# 2. Now run the build (it should only complain about OWNER_SUPABASE_ID)
-npm run build
-
-# 3. If build still fails with OWNER_SUPABASE_ID missing, add it to .env:
-nano .env
-# Add this line:
-# OWNER_SUPABASE_ID=your_actual_supabase_user_id
-
-# 4. After fixing .env, rebuild and restart:
-npm run build
-pm2 restart mantodeus-manager
-```
-
-## OR Use the Automated Deploy Script
-
-Instead of manual steps, just run:
+The fix has been pushed to the main branch. Run the deployment script to pull the latest code and restart:
 
 ```bash
 cd /srv/customer/sites/manager.mantodeus.com
 bash infra/deploy/deploy.sh
 ```
 
-This script will:
-- Pull latest code
-- Install dependencies
-- Build the project
-- Restart PM2
+## What the Deploy Script Will Do
 
-## Getting your OWNER_SUPABASE_ID
+1. Pull latest code from GitHub (includes the ENV import fix)
+2. Install dependencies with pnpm
+3. Build the project with `npm run build`
+4. Restart PM2 with the new code
 
-If you don't know your OWNER_SUPABASE_ID, you can find it by:
+## Verify Deployment
 
-1. **From Supabase Dashboard:**
-   - Go to https://supabase.com/dashboard
-   - Select your project
-   - Go to Authentication → Users
-   - Find your user and copy the ID
+After deployment completes, check that the server is running:
 
-2. **From Database:**
-   ```sql
-   SELECT id FROM auth.users WHERE email = 'your@email.com';
-   ```
+```bash
+# Check PM2 status - should show "online" with stable uptime
+pm2 status
 
-3. **From Your App (after logging in):**
-   - Check browser console: `localStorage` or session data
-   - The auth token contains the user ID
+# View recent logs
+pm2 logs mantodeus-manager --lines 50
+
+# Test the health endpoint
+curl https://manager.mantodeus.com/api/health
+```
+
+Expected health check response:
+```json
+{
+  "status": "ok",
+  "version": "64c6848",
+  "timestamp": "2025-12-25T...",
+  "node": "v22.x.x",
+  "uptime": 123,
+  "buildId": "perf-fix-2024-12-17"
+}
+```
+
+## Manual Steps (if deploy script fails)
+
+If the automated deploy script fails, run these commands manually:
+
+```bash
+cd /srv/customer/sites/manager.mantodeus.com
+
+# 1. Pull the latest code
+git fetch origin
+git reset --hard origin/main
+
+# 2. Install dependencies
+npx pnpm install
+
+# 3. Build the project
+npm run build
+
+# 4. Restart PM2
+pm2 restart mantodeus-manager
+
+# 5. Check logs
+pm2 logs mantodeus-manager
+```
+
+## What Was Fixed
+
+**File**: `server/_core/index.ts`
+**Change**: Added `import { ENV } from "./env.js";` after the load-env import
+
+**Before** (broken):
+```typescript
+import "./load-env.js";
+
+import express from "express";
+// ... other imports
+```
+
+**After** (fixed):
+```typescript
+import "./load-env.js";
+import { ENV } from "./env.js";
+
+import express from "express";
+// ... other imports
+```
+
+The `ENV` object is exported from `server/_core/env.ts` and contains all validated environment configuration. It was being referenced in the code (lines 475, 519, 548) but never imported, causing the ReferenceError when the server tried to start.
