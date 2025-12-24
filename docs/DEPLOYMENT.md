@@ -145,11 +145,17 @@ PDF_SERVICE_SECRET=your_pdf_secret
 
 # Webhook (required for automated deployment)
 WEBHOOK_SECRET=your_webhook_secret_here
+
+# Logging (optional - Axiom log aggregation)
+AXIOM_DATASET=mantodeus-manager-logs
+AXIOM_TOKEN=xaat-your-token-here
 ```
 
 **The app fails fast if any required variable is missing.**
 
 **Note:** `WEBHOOK_SECRET` is required to start the webhook listener. Generate with `openssl rand -hex 32`.
+
+**Optional:** Axiom variables enable cloud log aggregation. Without them, logs go to stdout/PM2.
 
 ## SSH Configuration
 
@@ -215,6 +221,82 @@ ssh mantodeus-server
 2. Verify git repository is clean: `git status`
 3. Check for merge conflicts: `git diff`
 4. Try manual deployment: `bash infra/deploy/deploy.sh`
+
+## Logging and Monitoring
+
+### Structured Logging
+
+The application uses [Pino](https://getpino.io) for structured JSON logging with the following features:
+
+- **Development**: Pretty-printed colorized logs for readability
+- **Production**: Structured JSON logs for machine parsing
+- **Request tracking**: Automatic request ID generation and correlation
+- **Sensitive data redaction**: Passwords, tokens, and auth headers are automatically removed
+- **HTTP logging**: All requests/responses logged with status codes and timing
+
+### Log Aggregation with Axiom (Optional)
+
+For centralized log management in production, integrate with [Axiom](https://axiom.co) (free tier: 500MB/month):
+
+**1. Create Axiom Account:**
+- Sign up at https://axiom.co
+- Create a dataset (e.g., `mantodeus-manager-logs`)
+- Generate an API token with ingest permissions
+
+**2. Configure Environment Variables:**
+
+Add to `.env`:
+```env
+AXIOM_DATASET=mantodeus-manager-logs
+AXIOM_TOKEN=xaat-your-token-here
+```
+
+**3. Restart Application:**
+```bash
+pm2 restart mantodeus-manager
+```
+
+The logger will automatically detect Axiom configuration and stream logs to the cloud. You can query logs in the Axiom dashboard with filters like:
+- `level == "error"` - Find all errors
+- `req.method == "POST"` - Filter by HTTP method
+- `requestId == "uuid"` - Trace a specific request
+
+### Viewing Logs
+
+**PM2 Logs (Local):**
+```bash
+# Real-time logs
+pm2 logs mantodeus-manager
+
+# Last 200 lines
+pm2 logs mantodeus-manager --lines 200
+
+# Error logs only
+pm2 logs mantodeus-manager --err --lines 100
+
+# Filter by pattern
+pm2 logs mantodeus-manager | grep "error"
+```
+
+**Axiom Dashboard (Cloud):**
+- Advanced querying with APL (Axiom Processing Language)
+- Real-time log streaming
+- Alerts and dashboards
+- 30-day retention on free tier
+
+### Log Levels
+
+- `fatal` - Application cannot continue
+- `error` - Error occurred but app continues
+- `warn` - Warning conditions
+- `info` - General information (default in production)
+- `debug` - Detailed debugging (default in development)
+- `trace` - Very detailed tracing
+
+Set custom log level:
+```env
+LOG_LEVEL=debug
+```
 
 ## Health Check
 

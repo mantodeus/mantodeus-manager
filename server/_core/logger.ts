@@ -10,25 +10,47 @@ import { randomUUID } from 'crypto';
  * - Request ID tracking
  * - Timestamps and log levels
  * - Context-aware logging
+ * - Optional Axiom log aggregation in production
  */
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
+const hasAxiomConfig = !!(process.env.AXIOM_DATASET && process.env.AXIOM_TOKEN);
+
+// Determine transport configuration based on environment
+function getTransport() {
+  // Development: Use pretty printing
+  if (isDevelopment) {
+    return {
+      target: 'pino-pretty',
+      options: {
+        colorize: true,
+        translateTime: 'HH:MM:ss Z',
+        ignore: 'pid,hostname',
+      },
+    };
+  }
+
+  // Production with Axiom: Send logs to Axiom cloud
+  if (hasAxiomConfig) {
+    return {
+      target: '@axiomhq/pino',
+      options: {
+        dataset: process.env.AXIOM_DATASET,
+        token: process.env.AXIOM_TOKEN,
+      },
+    };
+  }
+
+  // Production without Axiom: Default JSON to stdout
+  return undefined;
+}
 
 // Create base logger instance
 export const logger = pino({
   level: process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info'),
 
-  // Pretty print in development for better readability
-  transport: isDevelopment
-    ? {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'HH:MM:ss Z',
-          ignore: 'pid,hostname',
-        },
-      }
-    : undefined,
+  // Configure transport based on environment
+  transport: getTransport(),
 
   // Base configuration
   formatters: {
@@ -54,6 +76,15 @@ export const logger = pino({
     remove: true,
   },
 });
+
+// Log the logging configuration on startup
+if (isDevelopment) {
+  logger.debug('Logger initialized in development mode with pretty printing');
+} else if (hasAxiomConfig) {
+  logger.info({ dataset: process.env.AXIOM_DATASET }, 'Logger initialized with Axiom log aggregation');
+} else {
+  logger.info('Logger initialized with JSON output to stdout');
+}
 
 /**
  * Create a child logger with additional context
