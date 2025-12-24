@@ -14,6 +14,8 @@ import crypto from "crypto";
 import { exec } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
+import pinoHttp from "pino-http";
+import { logger, generateRequestId } from "./logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,37 +26,36 @@ let serverStarted = false;
 // Set up uncaught exception handler early to catch module-load-time errors
 // (e.g., Supabase initialization errors)
 process.on("uncaughtException", (error) => {
-  console.error("Uncaught Exception:", error);
-  console.error("Stack:", error.stack);
-  
+  logger.fatal({ err: error }, "Uncaught Exception");
+
   // Exit with delay to prevent rapid restart loops
   // This gives time for logs to be written
   setTimeout(() => {
-    console.error("Exiting due to uncaught exception...");
+    logger.fatal("Exiting due to uncaught exception");
     process.exit(1);
   }, serverStarted ? 5000 : 2000); // Shorter delay if server hasn't started
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  logger.error({ reason, promise }, "Unhandled Rejection");
   // Log but don't exit immediately for unhandled rejections
   // They're often recoverable, but log for debugging
 });
 
 async function startServer() {
-  console.log(`Starting server from: ${__dirname}`);
+  logger.info({ dirname: __dirname }, "Starting server");
 
   // Initialize database schemas once at startup (not on every query)
   try {
-    console.log("[Server] Initializing database schemas...");
-    const { 
-      ensureProjectsSchema, 
-      ensureContactsSchema, 
+    logger.info("Initializing database schemas");
+    const {
+      ensureProjectsSchema,
+      ensureContactsSchema,
       ensureFileMetadataSchema,
       ensureImagesSchema,
-      ensureNotesSchema 
+      ensureNotesSchema
     } = await import("./schemaGuards");
-    
+
     await Promise.all([
       ensureProjectsSchema(),
       ensureContactsSchema(),
@@ -62,13 +63,38 @@ async function startServer() {
       ensureImagesSchema(),
       ensureNotesSchema(),
     ]);
-    console.log("[Server] ✅ Database schemas initialized");
+    logger.info("Database schemas initialized successfully");
   } catch (error) {
-    console.error("[Server] ⚠️ Schema initialization failed (continuing anyway):", error);
+    logger.warn({ err: error }, "Schema initialization failed (continuing anyway)");
   }
 
   const app = express();
   const server = createServer(app);
+
+  // Add request logging middleware (before routes)
+  app.use(
+    pinoHttp({
+      logger,
+      genReqId: (req) => req.headers['x-request-id']?.toString() || generateRequestId(),
+      customLogLevel: (req, res, err) => {
+        if (res.statusCode >= 500 || err) return 'error';
+        if (res.statusCode >= 400) return 'warn';
+        return 'info';
+      },
+      customSuccessMessage: (req, res) => {
+        return `${req.method} ${req.url} ${res.statusCode}`;
+      },
+      customErrorMessage: (req, res, err) => {
+        return `${req.method} ${req.url} ${res.statusCode} - ${err?.message}`;
+      },
+      autoLogging: {
+        ignore: (req) => {
+          // Don't log health check requests to reduce noise
+          return req.url === '/api/health';
+        },
+      },
+    })
+  );
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
@@ -186,8 +212,8 @@ async function startServer() {
       if (error instanceof Error && error.message.includes("Invalid or missing session")) {
         return res.status(401).json({ error: "Unauthorized" });
       }
-      console.error("Invoice PDF error:", error);
-      res.status(500).json({ 
+      req.log.error({ err: error }, "Invoice PDF generation failed");
+      res.status(500).json({
         error: "Failed to generate PDF",
         message: error instanceof Error ? error.message : "Unknown error"
       });
