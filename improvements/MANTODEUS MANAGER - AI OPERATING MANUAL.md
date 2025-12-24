@@ -1,6 +1,6 @@
 # MANTODEUS MANAGER - AI OPERATING MANUAL
 
-**Last Updated**: 2025-12-21
+**Last Updated**: 2025-12-24
 
 This document provides persistent context for AI agents (Cursor, Manus, etc.) working on the Mantodeus Manager project. Paste this into your project context to avoid repetitive questions about project structure, commands, and workflows.
 
@@ -46,6 +46,8 @@ mantodeus-manager/
 │   ├── ssh/          # SSH configuration and key management
 │   ├── env/          # Environment variable management
 │   └── webhook/      # GitHub webhook listener
+docs/             # Documentation
+  GOLDEN_PATH_WORKFLOWS.md  # Canonical workflows
 ├── services/
 │   └── pdf-service/  # Fly.io PDF generator (wkhtmltopdf)
 ├── shared/           # Shared types and constants
@@ -61,6 +63,7 @@ mantodeus-manager/
 | Install dependencies | `pnpm install` | Never use `npm install` |
 | Start dev server | `pnpm dev` | Hot reload enabled |
 | Build for production | `pnpm build` | Runs build-debug.js |
+| Build check (CI-safe) | `pnpm build:check` | Runs build.js |
 | Run tests | `pnpm test` | Vitest |
 | Type check | `pnpm check` | TypeScript noEmit |
 | Generate migration | `pnpm db:generate` | After schema.ts changes |
@@ -88,6 +91,13 @@ Required variables (see `.env.example` for template):
 | `S3_SECRET_ACCESS_KEY` | S3 secret key | From Infomaniak |
 | `PDF_SERVICE_URL` | Fly.io PDF endpoint | `https://pdf-service-xxx.fly.dev/render` |
 | `PDF_SERVICE_SECRET` | PDF service auth token | Random string |
+| `AXIOM_DATASET` | Axiom dataset name (optional) | `mantodeus-manager-logs` |
+| `AXIOM_TOKEN` | Axiom ingestion token (optional) | `x-axiom-token` |
+| `WEBHOOK_SECRET` | GitHub webhook signature secret | 64 hex chars |
+| `OWNER_SUPABASE_ID` | Owner user Supabase ID | UUID |
+| `OAUTH_SERVER_URL` | OAuth API base URL | `https://api.manus.im` |
+| `VITE_OAUTH_PORTAL_URL` | OAuth portal URL | `https://portal.manus.im` |
+| `VITE_APP_ID` | OAuth app id | `your_app_id` |
 
 ---
 
@@ -129,6 +139,7 @@ mantodeus-manager
 | Webhook logs | `./logs/webhook.log` | `tail -f logs/webhook.log` |
 | PM2 combined | N/A | `pm2 logs mantodeus-manager` |
 | PM2 errors only | N/A | `pm2 logs mantodeus-manager --err` |
+| Axiom logs | Axiom dataset | `AXIOM_DATASET` + `AXIOM_TOKEN` |
 
 ---
 
@@ -197,7 +208,7 @@ git rev-parse --short HEAD
 | PM2 namespace conflict | "Process already exists" error | Run `pm2 delete mantodeus-manager` then restart |
 | Database connection timeout | "ETIMEDOUT" or "ECONNREFUSED" in logs | Check DATABASE_URL format; verify MySQL server is accessible |
 | S3 upload fails | "AccessDenied" or "InvalidAccessKeyId" | Verify S3 credentials in `.env`; check bucket policy |
-| Invoice number duplicates | Same invoice number issued to multiple invoices | Known race condition bug - needs atomic increment fix in `server/db.ts` |
+| Invoice number duplicates | Same invoice number issued to multiple invoices | Fixed by atomic increment in `server/db.ts` (verify migrations applied) |
 | Build fails with env error | "VITE_SUPABASE_URL is REPLACE_ME" | Replace placeholder values in `.env` with actual Supabase credentials |
 | Webhook not triggering | Pushes to main don't deploy | Check webhook secret matches; verify webhook listener is running |
 
@@ -215,6 +226,7 @@ git rev-parse --short HEAD
 | Check logs after deployment | Assume deployment succeeded without verification |
 | Use feature branches for development | Push directly to main for large changes |
 | Review generated SQL migrations | Blindly commit auto-generated migrations |
+| Use `infra/env/env-update.sh` for secrets | Edit production `.env` by hand |
 
 ---
 

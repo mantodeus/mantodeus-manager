@@ -102,6 +102,9 @@ fi
 
 # Step 6: Install dependencies
 echo "▶ Installing dependencies with npm..."
+echo "   ⚠️  This may take 5-15 minutes."
+echo "   💡 If SSH disconnects, use: bash infra/deploy/install-deps.sh"
+echo ""
 
 # Determine install command based on lock file
 if [ -f "package-lock.json" ]; then
