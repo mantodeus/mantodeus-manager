@@ -255,11 +255,14 @@ git rev-parse --short HEAD
 | Database operations | `server/db.ts` |
 | Environment config | `server/_core/env.ts` |
 | PDF service client | `server/services/pdfService.ts` |
+| Logger configuration | `server/_core/logger.ts` |
 | S3 storage operations | `server/storage.ts` |
 | PM2 configuration | `ecosystem.config.js` |
 | Build script | `build-debug.js` |
+| Build validation | `build.js` |
 | Deploy script | `infra/deploy/deploy.sh` |
 | Webhook listener | `infra/webhook/webhook-listener.js` |
+| Golden path workflows | `docs/GOLDEN_PATH_WORKFLOWS.md` |
 
 ---
 

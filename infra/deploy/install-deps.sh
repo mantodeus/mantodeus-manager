@@ -1,10 +1,21 @@
 #!/bin/bash
 # Install dependencies in a way that survives SSH disconnection
-# Usage: bash infra/deploy/install-deps.sh
+# Usage: bash infra/deploy/install-deps.sh [path]
+# If no path provided, uses current directory or detects server path
 
 set -euo pipefail
 
-APP_PATH="${1:-/srv/customer/sites/manager.mantodeus.com}"
+# Detect if we're on the server or local
+if [ -n "${1:-}" ]; then
+  # Path provided as argument
+  APP_PATH="$1"
+elif [ -d "/srv/customer/sites/manager.mantodeus.com" ]; then
+  # On server - use server path
+  APP_PATH="/srv/customer/sites/manager.mantodeus.com"
+else
+  # Local development - use current directory (where script is run from)
+  APP_PATH="$(pwd)"
+fi
 
 echo "============================================"
 echo "📦 Installing Dependencies (SSH-Safe)"
@@ -12,10 +23,25 @@ echo "============================================"
 echo "📅 Started at: $(date)"
 echo ""
 
-cd "$APP_PATH" || {
-  echo "❌ Failed to change to directory: $APP_PATH"
-  exit 1
-}
+# Change to the target directory if needed
+CURRENT_DIR="$(pwd)"
+if [ "$APP_PATH" != "$CURRENT_DIR" ]; then
+  if [ -d "$APP_PATH" ]; then
+    cd "$APP_PATH" || {
+      echo "❌ Failed to change to directory: $APP_PATH"
+      echo "   Current directory: $CURRENT_DIR"
+      exit 1
+    }
+    echo "Changed to: $APP_PATH"
+  else
+    echo "⚠️  Target directory doesn't exist: $APP_PATH"
+    echo "   Using current directory: $CURRENT_DIR"
+    APP_PATH="$CURRENT_DIR"
+  fi
+else
+  echo "Using current directory: $APP_PATH"
+fi
+echo ""
 
 echo "Current directory: $(pwd)"
 echo ""
@@ -60,8 +86,9 @@ else
 fi
 echo ""
 
-# Create log file
-LOG_FILE="${APP_PATH}/npm-install-$(date +%Y%m%d-%H%M%S).log"
+# Create log file in current directory
+CURRENT_DIR="$(pwd)"
+LOG_FILE="${CURRENT_DIR}/npm-install-$(date +%Y%m%d-%H%M%S).log"
 echo "📝 Log file: $LOG_FILE"
 echo ""
 
