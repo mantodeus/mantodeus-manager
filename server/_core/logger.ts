@@ -1,5 +1,6 @@
 import pino from 'pino';
 import { randomUUID } from 'crypto';
+import { ENV } from './env';
 
 /**
  * Centralized logging configuration using Pino
@@ -13,8 +14,8 @@ import { randomUUID } from 'crypto';
  * - Optional Axiom log aggregation in production
  */
 
-const isDevelopment = process.env.NODE_ENV !== 'production';
-const hasAxiomConfig = !!(process.env.AXIOM_DATASET && process.env.AXIOM_TOKEN);
+const isDevelopment = ENV.isDevelopment;
+const hasAxiomConfig = !!(ENV.axiomDataset && ENV.axiomToken);
 
 // Determine transport configuration based on environment
 function getTransport() {
@@ -35,8 +36,8 @@ function getTransport() {
     return {
       target: '@axiomhq/pino',
       options: {
-        dataset: process.env.AXIOM_DATASET,
-        token: process.env.AXIOM_TOKEN,
+        dataset: ENV.axiomDataset,
+        token: ENV.axiomToken,
       },
     };
   }
@@ -47,7 +48,7 @@ function getTransport() {
 
 // Create base logger instance
 export const logger = pino({
-  level: process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info'),
+  level: ENV.logLevel || (isDevelopment ? 'debug' : 'info'),
 
   // Configure transport based on environment
   transport: getTransport(),
@@ -81,7 +82,7 @@ export const logger = pino({
 if (isDevelopment) {
   logger.debug('Logger initialized in development mode with pretty printing');
 } else if (hasAxiomConfig) {
-  logger.info({ dataset: process.env.AXIOM_DATASET }, 'Logger initialized with Axiom log aggregation');
+  logger.info({ dataset: ENV.axiomDataset }, 'Logger initialized with Axiom log aggregation');
 } else {
   logger.info('Logger initialized with JSON output to stdout');
 }

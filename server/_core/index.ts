@@ -472,10 +472,10 @@ async function startServer() {
 
   // GitHub Webhook endpoint for auto-deployment
   app.post("/api/github-webhook", express.raw({ type: "application/json" }), async (req, res) => {
-    const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
-    
+    const WEBHOOK_SECRET = ENV.webhookSecret;
+
     if (!WEBHOOK_SECRET) {
-      logger.warn("No GITHUB_WEBHOOK_SECRET configured, skipping signature verification");
+      logger.warn("No WEBHOOK_SECRET configured, skipping signature verification");
     } else {
       // Verify GitHub signature
       const signature = req.headers["x-hub-signature-256"] as string;
@@ -516,7 +516,7 @@ async function startServer() {
 
       // Run deployment via detached shell script
       // Using nohup ensures the deploy continues even if PM2 restarts this process
-      const appPath = process.env.APP_PATH || "/srv/customer/sites/manager.mantodeus.com";
+      const appPath = ENV.appPath;
       const deployCmd = `nohup bash infra/deploy/deploy.sh > deploy.log 2>&1 &`;
 
       exec(deployCmd, { cwd: appPath }, (err) => {
@@ -545,7 +545,7 @@ async function startServer() {
   serveStatic(app);
 
   // ===== INFOMANIAK-READY PORT FIX =====
-  const port = parseInt(process.env.PORT || "3000", 10);
+  const port = ENV.port;
 
   server.listen(port, () => {
     logger.info({ port }, "Server running");
