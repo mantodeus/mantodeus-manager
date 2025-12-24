@@ -77,67 +77,93 @@ pnpm db:migrate
 
 ## Database Backups
 
-### Manual Backup
+### Automated Backups (Recommended)
+
+The project includes automated backup scripts that run daily and store backups both locally and in S3.
+
+**Features:**
+- Daily automated backups at 3 AM
+- Compressed SQL dumps (gzip)
+- 30-day retention policy
+- Optional S3 upload for off-site storage
+- Detailed logging
+
+**Setup:**
+
+1. **Configure cron job** on the server:
+   ```bash
+   ssh mantodeus-server
+   crontab -e
+   ```
+
+2. **Add the following line**:
+   ```bash
+   0 3 * * * /srv/customer/sites/manager.mantodeus.com/scripts/backup-db.sh >> /srv/customer/sites/manager.mantodeus.com/logs/backup.log 2>&1
+   ```
+
+3. **Verify cron job**:
+   ```bash
+   crontab -l
+   ```
+
+**Manual backup:**
+```bash
+ssh mantodeus-server
+cd /srv/customer/sites/manager.mantodeus.com
+bash scripts/backup-db.sh
+```
+
+**Backup location:**
+- Local: `/srv/customer/sites/manager.mantodeus.com/backups/db/`
+- S3: `s3://mantodeus-manager-files/backups/db/` (if configured)
+
+### Restore from Backup
+
+**Using the restore script (recommended):**
+
+```bash
+ssh mantodeus-server
+cd /srv/customer/sites/manager.mantodeus.com
+
+# List available backups
+ls -lh backups/db/
+
+# Restore from a specific backup
+bash scripts/restore-db.sh backups/db/mantodeus-20251223-030000.sql.gz
+```
+
+**Manual restore:**
 
 ```bash
 # SSH into server
 ssh mantodeus-server
 
-# Backup database
-mysqldump -h host -u user -p database_name > backup_$(date +%Y%m%d_%H%M%S).sql
+# Decompress backup
+gunzip -c backups/db/mantodeus-YYYYMMDD-HHMMSS.sql.gz > backup.sql
 
-# Compress backup
-gzip backup_*.sql
+# Stop application
+pnpm pm2 stop mantodeus-manager
+
+# Restore database
+mysql -h host -u user -p database_name < backup.sql
+
+# Restart application
+pnpm pm2 restart mantodeus-manager
 ```
 
-### Restore from Backup
+### Backup Testing
+
+Test your backup setup before relying on it:
 
 ```bash
-# Decompress
-gunzip backup_YYYYMMDD_HHMMSS.sql.gz
+# 1. Create a test backup
+bash scripts/backup-db.sh
 
-# Restore
-mysql -h host -u user -p database_name < backup_YYYYMMDD_HHMMSS.sql
-```
+# 2. Verify backup was created
+ls -lh backups/db/
 
-### Automated Backups (Recommended)
-
-Set up a cron job on the server:
-
-```bash
-# Edit crontab
-crontab -e
-
-# Add daily backup at 3 AM
-0 3 * * * /path/to/backup-script.sh
-```
-
-Example backup script:
-
-```bash
-#!/bin/bash
-set -e
-
-BACKUP_DIR="/srv/customer/sites/manager.mantodeus.com/backups"
-DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="$BACKUP_DIR/mantodeus_$DATE.sql.gz"
-
-# Load environment variables
-source /srv/customer/sites/manager.mantodeus.com/.env
-
-# Extract DB credentials from DATABASE_URL
-DB_USER=$(echo $DATABASE_URL | sed -E 's|mysql://([^:]+):.*|\1|')
-DB_PASS=$(echo $DATABASE_URL | sed -E 's|mysql://[^:]+:([^@]+)@.*|\1|')
-DB_HOST=$(echo $DATABASE_URL | sed -E 's|mysql://[^@]+@([^:]+):.*|\1|')
-DB_NAME=$(echo $DATABASE_URL | sed -E 's|mysql://[^/]+/(.+)|\1|')
-
-# Create backup
-mysqldump -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" | gzip > "$BACKUP_FILE"
-
-# Keep only last 30 backups
-ls -t "$BACKUP_DIR"/*.sql.gz | tail -n +31 | xargs -r rm
-
-echo "Backup completed: $BACKUP_FILE"
+# 3. Test restore to a temporary database (optional but recommended)
+# Create a test database first, then restore to it
 ```
 
 ## Key Tables
