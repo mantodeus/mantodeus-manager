@@ -33,23 +33,55 @@ git reset --hard origin/main
 echo "✅ Code updated"
 echo ""
 
-# Step 3: Install dependencies
-echo "▶ Installing dependencies with pnpm..."
-pnpm install --frozen-lockfile || {
-  echo "⚠️  pnpm install failed, cleaning and retrying..."
-  rm -rf node_modules
-  pnpm install --frozen-lockfile
-}
+# Step 3: Ensure pnpm is available
+echo "▶ Checking for pnpm..."
+if ! command -v pnpm &> /dev/null; then
+  echo "⚠️  pnpm not found, attempting to enable via corepack..."
+  if command -v corepack &> /dev/null; then
+    corepack enable
+    corepack prepare pnpm@10.4.1 --activate
+    echo "✅ pnpm enabled via corepack"
+  else
+    echo "⚠️  corepack not available, installing pnpm globally..."
+    npm install -g pnpm@10.4.1 || {
+      echo "❌ Failed to install pnpm. Falling back to npm..."
+      USE_NPM=true
+    }
+  fi
+fi
+
+# Step 4: Install dependencies
+if [ "${USE_NPM:-false}" = "true" ] || ! command -v pnpm &> /dev/null; then
+  echo "▶ Installing dependencies with npm..."
+  npm install --legacy-peer-deps --no-audit --no-fund || {
+    echo "⚠️  npm install failed, cleaning and retrying..."
+    rm -rf node_modules
+    npm install --legacy-peer-deps --no-audit --no-fund
+  }
+  PACKAGE_MANAGER="npm"
+else
+  echo "▶ Installing dependencies with pnpm..."
+  pnpm install --frozen-lockfile || {
+    echo "⚠️  pnpm install failed, cleaning and retrying..."
+    rm -rf node_modules
+    pnpm install --frozen-lockfile
+  }
+  PACKAGE_MANAGER="pnpm"
+fi
 echo "✅ Dependencies installed"
 echo ""
 
-# Step 4: Build
+# Step 5: Build
 echo "▶ Building application..."
-pnpm build
+if [ "$PACKAGE_MANAGER" = "npm" ]; then
+  npm run build
+else
+  pnpm build
+fi
 echo "✅ Build complete"
 echo ""
 
-# Step 5: Verify build
+# Step 6: Verify build
 if [ ! -f "dist/index.js" ] || [ ! -d "dist/public" ]; then
   echo "❌ Build verification failed!"
   exit 1
@@ -57,9 +89,13 @@ fi
 echo "✅ Build verified"
 echo ""
 
-# Step 6: Restart PM2
+# Step 7: Restart PM2
 echo "▶ Restarting PM2 process: $PM2_NAME..."
-pnpm pm2 restart "$PM2_NAME"
+if [ "$PACKAGE_MANAGER" = "npm" ]; then
+  npx pm2 restart "$PM2_NAME"
+else
+  pnpm pm2 restart "$PM2_NAME"
+fi
 echo "✅ PM2 restarted"
 echo ""
 
