@@ -70,15 +70,23 @@ npm install
 
 The project uses `pnpm` but the server may not have it. You can:
 
-1. **Install pnpm globally**:
+1. **Install pnpm using corepack** (recommended, Node.js 16.10+):
    ```bash
-   npm install -g pnpm
+   corepack enable
+   corepack prepare pnpm@10.4.1 --activate
    ```
 
-2. **Or use npm instead** (may require removing `pnpm-lock.yaml` temporarily):
+2. **Install pnpm globally via npm**:
+   ```bash
+   npm install -g pnpm@10.4.1
+   ```
+
+3. **Or use npm instead** (fallback, may not respect pnpm-lock.yaml exactly):
    ```bash
    npm install
    ```
+
+**Note**: The wrapper script (`start-webhook.sh`) will automatically try to install pnpm if it's missing.
 
 ### Checking Logs
 
