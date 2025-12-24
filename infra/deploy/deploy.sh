@@ -86,15 +86,44 @@ fi
 
 echo ""
 
-# Step 3: Fetch latest code
+# Step 3: Ensure git remote uses HTTPS (not SSH)
+echo "▶ Checking git remote configuration..."
+CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
+if echo "$CURRENT_REMOTE" | grep -qE "git@|ssh://"; then
+  echo "⚠️  Git remote uses SSH, changing to HTTPS..."
+  git remote set-url origin https://github.com/mantodeus/mantodeus-manager.git
+  echo "✅ Git remote updated to HTTPS"
+fi
+echo ""
+
+# Step 4: Fetch latest code
 echo "▶ Fetching latest code from origin/main..."
-git fetch origin
-git reset --hard origin/main
+if ! git fetch origin; then
+  echo "❌ Git fetch failed. Checking network connectivity..."
+  if ! ping -c 1 github.com &> /dev/null; then
+    echo "❌ Cannot reach github.com. Check network connection."
+    exit 1
+  fi
+  echo "⚠️  Retrying git fetch with verbose output..."
+  git fetch origin --verbose || {
+    echo "❌ Git fetch failed. Possible causes:"
+    echo "   - Network connectivity issues"
+    echo "   - Git credentials not configured"
+    echo "   - Repository access permissions"
+    exit 1
+  }
+fi
+
+if ! git reset --hard origin/main; then
+  echo "❌ Git reset failed"
+  exit 1
+fi
+
 GIT_COMMIT=$(git rev-parse --short HEAD)
 echo "✅ Code updated to commit: ${GIT_COMMIT}"
 echo ""
 
-# Step 4: Install dependencies
+# Step 5: Install dependencies
 echo "▶ Installing dependencies with pnpm..."
 $PNPM_CMD install --frozen-lockfile || {
   echo "⚠️  pnpm install failed, cleaning node_modules and retrying..."
@@ -104,13 +133,13 @@ $PNPM_CMD install --frozen-lockfile || {
 echo "✅ Dependencies installed"
 echo ""
 
-# Step 5: Build
+# Step 6: Build
 echo "▶ Building application..."
 $PNPM_CMD build
 echo "✅ Build complete"
 echo ""
 
-# Step 6: Verify build
+# Step 7: Verify build
 echo "▶ Verifying build artifacts..."
 if [ ! -f "dist/index.js" ]; then
   echo "❌ Build verification failed: dist/index.js not found"
@@ -125,7 +154,7 @@ fi
 echo "✅ Build verified (dist/index.js and dist/public exist)"
 echo ""
 
-# Step 7: Restart PM2 (Infomaniak shared hosting compatible)
+# Step 8: Restart PM2 (Infomaniak shared hosting compatible)
 echo "▶ Restarting PM2 process: $PM2_NAME..."
 PM2_CMD=""
 
