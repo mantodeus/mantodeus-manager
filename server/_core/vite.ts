@@ -140,7 +140,12 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // fall through to index.html for SPA routing
-  app.use("*", (req, res) => {
+  // BUT: exclude API routes - they should be handled by API middleware
+  app.use("*", (req, res, next) => {
+    // Don't serve index.html for API routes
+    if (req.path?.startsWith("/api/")) {
+      return next(); // Let API middleware handle it (or return 404)
+    }
     res.sendFile(indexPath);
   });
 }
