@@ -9,7 +9,7 @@ import { execSync, spawnSync } from 'child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { config } from 'dotenv';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,7 +18,7 @@ const __dirname = dirname(__filename);
 const envPath = join(__dirname, '.env');
 const envFileExists = existsSync(envPath);
 if (envFileExists) {
-  const result = config({ path: envPath });
+  const result = dotenv.config({ path: envPath });
   if (result.error) {
     console.error('❌ Error loading .env file:', result.error.message);
   } else {
