@@ -123,23 +123,59 @@ GIT_COMMIT=$(git rev-parse --short HEAD)
 echo "✅ Code updated to commit: ${GIT_COMMIT}"
 echo ""
 
-# Step 5: Install dependencies
+# Step 5: Clean node_modules if it exists (prevents ENOTEMPTY errors)
+if [ -d "node_modules" ]; then
+  echo "▶ Cleaning existing node_modules..."
+  # Try gentle removal first
+  rm -rf node_modules 2>/dev/null || {
+    echo "⚠️  Standard removal failed, trying force removal..."
+    # On shared hosting, sometimes files are locked - try multiple strategies
+    find node_modules -type f -delete 2>/dev/null || true
+    find node_modules -type d -delete 2>/dev/null || true
+    rm -rf node_modules 2>/dev/null || true
+    # If still exists, try with force flag (if supported)
+    rm -rff node_modules 2>/dev/null || true
+  }
+  echo "✅ node_modules cleaned"
+  echo ""
+fi
+
+# Step 6: Install dependencies
 echo "▶ Installing dependencies with pnpm..."
-$PNPM_CMD install --frozen-lockfile || {
-  echo "⚠️  pnpm install failed, cleaning node_modules and retrying..."
-  rm -rf node_modules
-  $PNPM_CMD install --frozen-lockfile
-}
+if ! $PNPM_CMD install --frozen-lockfile; then
+  echo "⚠️  pnpm install failed, performing deep cleanup and retrying..."
+  
+  # Deep cleanup: remove node_modules, lock files, and cache
+  echo "   Removing node_modules..."
+  rm -rf node_modules 2>/dev/null || {
+    # Aggressive cleanup for locked files
+    find node_modules -mindepth 1 -delete 2>/dev/null || true
+    rm -rf node_modules 2>/dev/null || true
+  }
+  
+  echo "   Clearing pnpm cache..."
+  $PNPM_CMD store prune 2>/dev/null || true
+  
+  echo "   Retrying installation..."
+  if ! $PNPM_CMD install --frozen-lockfile; then
+    echo "❌ pnpm install failed after cleanup. Possible causes:"
+    echo "   - Disk space issues (check: df -h)"
+    echo "   - File permission issues (check: ls -la node_modules)"
+    echo "   - Network connectivity issues"
+    echo "   - Corrupted lock file (try: rm pnpm-lock.yaml && pnpm install)"
+    exit 1
+  fi
+fi
 echo "✅ Dependencies installed"
 echo ""
 
-# Step 6: Build
+# Step 7: Build
 echo "▶ Building application..."
 $PNPM_CMD build
 echo "✅ Build complete"
 echo ""
 
-# Step 7: Verify build
+# Step 8: Verify build
 echo "▶ Verifying build artifacts..."
 if [ ! -f "dist/index.js" ]; then
   echo "❌ Build verification failed: dist/index.js not found"
@@ -154,7 +190,7 @@ fi
 echo "✅ Build verified (dist/index.js and dist/public exist)"
 echo ""
 
-# Step 8: Restart PM2 (Infomaniak shared hosting compatible)
+# Step 9: Restart PM2 (Infomaniak shared hosting compatible)
 echo "▶ Restarting PM2 process: $PM2_NAME..."
 PM2_CMD=""
 
