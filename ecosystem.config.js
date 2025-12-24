@@ -2,7 +2,8 @@ export default {
   apps: [
     {
       name: 'mantodeus-manager',
-      script: './start-server.sh',
+      script: 'npm',
+      args: 'start',
       cwd: process.env.PWD || '/srv/customer/sites/manager.mantodeus.com',
       instances: 1,
       exec_mode: 'fork',
