@@ -35,15 +35,93 @@ if (envFileExists) {
   process.exit(1);
 }
 
-// Verify critical environment variables for client build
+// Verify critical environment variables for build
+const envExamplePath = join(__dirname, '.env.example');
 const requiredViteVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'];
 const placeholderValues = ['REPLACE_ME', 'replace_me', 'YOUR_KEY_HERE', 'your_key_here', ''];
+
+const placeholderPatterns = [
+  /your-|your_/i,
+  /replace/i,
+  /changeme/i,
+  /example/i,
+  /generate/i,
+  /_here$/i,
+  /user:password@host/i
+];
+
+function isPlaceholderValue(value) {
+  if (!value) return true;
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  if (placeholderValues.includes(trimmed)) return true;
+  return placeholderPatterns.some(pattern => pattern.test(trimmed));
+}
+
+function isExamplePlaceholder(value) {
+  if (!value) return false;
+  return placeholderPatterns.some(pattern => pattern.test(value));
+}
+
+function parseRequiredEnvFromExample() {
+  if (!existsSync(envExamplePath)) {
+    console.warn('[env] WARNING: .env.example not found; skipping required env validation.');
+    return [];
+  }
+
+  const content = readFileSync(envExamplePath, 'utf-8');
+  const lines = content.split(/\r?\n/);
+  const required = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex === -1) continue;
+    const key = trimmed.slice(0, eqIndex).trim();
+    const value = trimmed.slice(eqIndex + 1).trim();
+    if (key) required.push({ key, exampleValue: value });
+  }
+
+  return required;
+}
+
+const requiredEnvVars = parseRequiredEnvFromExample();
+const invalidEnvVars = [];
+
+requiredEnvVars.forEach(({ key, exampleValue }) => {
+  const value = process.env[key];
+  if (!value || !value.trim()) {
+    invalidEnvVars.push({ name: key, issue: 'MISSING', value: value || '(empty)' });
+    return;
+  }
+
+  const examplePlaceholder = isExamplePlaceholder(exampleValue);
+  const isPlaceholder = isPlaceholderValue(value) || (examplePlaceholder && value === exampleValue);
+  if (isPlaceholder) {
+    invalidEnvVars.push({ name: key, issue: 'PLACEHOLDER_VALUE', value });
+  }
+});
+
+if (invalidEnvVars.length > 0) {
+  console.error('\n[env] FATAL: Invalid or missing required environment variables:');
+  invalidEnvVars.forEach(({ name, issue, value }) => {
+    console.error(`   - ${name}: ${issue}`);
+    if (issue === 'PLACEHOLDER_VALUE') {
+      console.error(`     Current value: "${value}" (placeholder - must be replaced)`);
+    }
+  });
+  console.error('\nFix these in your .env file before building.');
+  console.error('See .env.example for the required variables and format.\n');
+  process.exit(1);
+}
 
 function isValidValue(value) {
   if (!value) return false;
   const trimmed = value.trim();
   if (!trimmed) return false;
   if (placeholderValues.includes(trimmed)) return false;
+  if (isPlaceholderValue(trimmed)) return false;
   return true;
 }
 
