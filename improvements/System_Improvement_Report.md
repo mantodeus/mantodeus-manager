@@ -574,15 +574,15 @@ git rev-parse --short HEAD
 
 ### Week 2: Structural Improvements
 
-| Day | Task | Success Criteria | Owner |
-|-----|------|------------------|-------|
-| **Day 8** | Implement structured logging (Pino) | JSON logs with request IDs, timestamps | Dev |
-| **Day 9** | Set up log aggregation (Axiom free tier) | Logs searchable in Axiom dashboard | Ops |
-| **Day 10** | Add retry logic to PDF service calls | PDF generation handles transient failures gracefully | Dev |
-| **Day 11** | Set Fly.io min_machines_running = 1 | PDF service cold start latency < 500ms | Ops |
-| **Day 12** | Implement secret management (Doppler or GitHub Secrets) | No secrets in repository, synced across environments | Ops |
-| **Day 13** | Add post-build validation for Supabase vars | Build fails if Supabase vars not embedded in bundle | Dev |
-| **Day 14** | Final review and documentation update | AI Operating Manual updated, team walkthrough complete | Lead |
+| Day | Task | Success Criteria | Owner | Status |
+|-----|------|------------------|-------|--------|
+| **Day 8** | Implement structured logging (Pino) | JSON logs with request IDs, timestamps | Dev | **DONE** |
+| **Day 9** | Set up log aggregation (Axiom free tier) | Logs searchable in Axiom dashboard | Ops | **DONE** |
+| **Day 10** | Improve PDF service reliability | PDF generation handles transient failures gracefully | Dev | **DONE** |
+| **Day 11** | Centralize secret management | No secrets in repository, synced across environments | Ops | **DONE** |
+| **Day 12** | Add build validation for env vars | Build fails if required env vars are missing or placeholders | Dev | **DONE** |
+| **Day 13** | Document golden path workflows | Canonical workflows documented and discoverable in docs | Dev | **DONE** |
+| **Day 14** | Final review and documentation update | AI Operating Manual updated, team walkthrough complete | Lead | Pending |
 
 ### Validation Checkpoints
 
@@ -596,10 +596,10 @@ At the end of each week, verify:
 - [x] Backups are running and restorable (scripts created, cron setup documented)
 
 **Week 2 Checkpoint**:
-- [ ] Logs are structured and searchable
-- [ ] PDF generation is reliable
-- [ ] Secrets are managed centrally
-- [ ] Build process validates critical variables
+- [x] Logs are structured and searchable
+- [x] PDF generation is reliable
+- [x] Secrets are managed centrally
+- [x] Build process validates critical variables
 - [ ] Team understands new workflows
 
 ---
