@@ -58,9 +58,32 @@ docs/             # Documentation
 
 ## Canonical Commands
 
+### Package Manager Setup
+
+This project uses **pnpm 10.4.1** (specified in `package.json`). Use one of these methods:
+
+1. **Recommended: Enable Corepack** (uses exact version automatically)
+   ```bash
+   corepack enable
+   pnpm install  # Automatically uses pnpm@10.4.1
+   ```
+
+2. **Alternative: Use npx** (when Corepack unavailable)
+   ```bash
+   npx pnpm install  # Uses locally-installed pnpm
+   ```
+
+3. **Not Recommended: Global install** (version might not match)
+   ```bash
+   npm install -g pnpm@10.4.1  # Must match package.json version
+   pnpm install
+   ```
+
+### Common Commands
+
 | Action | Command | Notes |
 |--------|---------|-------|
-| Install dependencies | `pnpm install` | Never use `npm install` |
+| Install dependencies | `pnpm install` | **Never use npm install** |
 | Start dev server | `pnpm dev` | Hot reload enabled |
 | Build for production | `pnpm build` | Runs build-debug.js |
 | Build check (CI-safe) | `pnpm build:check` | Runs build.js |
@@ -218,7 +241,7 @@ git rev-parse --short HEAD
 
 | DO | DON'T |
 |----|-------|
-| Use `pnpm` for all package operations | Use `npm` in production scripts |
+| Use `pnpm` or `npx pnpm` for all package operations | Use `npm install` or `npm ci` |
 | Run `db:migrate` after deployment | Run `db:push` or `db:push-direct` in production |
 | Test migrations locally first | Apply untested migrations to production |
 | Use presigned URLs for S3 access | Make S3 bucket publicly accessible |
