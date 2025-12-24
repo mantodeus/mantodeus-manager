@@ -1,5 +1,6 @@
 // IMPORTANT: Load environment variables FIRST before any other imports
 import "./load-env.js";
+import { ENV } from "./env.js";
 
 import express from "express";
 import { createServer } from "http";
