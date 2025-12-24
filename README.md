@@ -189,6 +189,7 @@ mantodeus-manager/
 
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Deployment, PM2, SSH, troubleshooting
 - **[Database Guide](docs/DATABASE.md)** - Schema management, migrations, backups
+- **[Golden Path Workflows](docs/GOLDEN_PATH_WORKFLOWS.md)** - Canonical daily workflows
 - **[Technical Overview](docs/TECHNICAL_OVERVIEW.md)** - Architecture and codebase structure
 - **[User Guide](docs/USER_GUIDE.md)** - End-user documentation
 - **[Theme System](docs/THEME_SYSTEM.md)** - Design system and theming
