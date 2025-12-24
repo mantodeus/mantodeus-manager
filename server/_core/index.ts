@@ -314,8 +314,8 @@ async function startServer() {
       if (error instanceof Error && error.message.includes("Invalid or missing session")) {
         return res.status(401).json({ error: "Unauthorized" });
       }
-      console.error("Issue invoice error:", error);
-      res.status(500).json({ 
+      req.log.error({ err: error }, "Issue invoice error");
+      res.status(500).json({
         error: "Failed to issue invoice",
         message: error instanceof Error ? error.message : "Unknown error"
       });
@@ -393,8 +393,8 @@ async function startServer() {
       if (error instanceof Error && error.message.includes("Invalid or missing session")) {
         return res.status(401).json({ error: "Unauthorized" });
       }
-      console.error("Project PDF error:", error);
-      res.status(500).json({ 
+      req.log.error({ err: error }, "Project PDF error");
+      res.status(500).json({
         error: "Failed to generate PDF",
         message: error instanceof Error ? error.message : "Unknown error"
       });
@@ -431,7 +431,7 @@ async function startServer() {
       
       res.send(data);
     } catch (error) {
-      console.error("Share link error:", error);
+      logger.error({ err: error }, "Share link error");
       res.status(500).send("Internal server error");
     }
   });
@@ -465,7 +465,7 @@ async function startServer() {
       res.setHeader("Cache-Control", "public, max-age=3600");
       res.send(data);
     } catch (error) {
-      console.error("File proxy error:", error);
+      logger.error({ err: error }, "File proxy error");
       res.status(500).send("Internal server error");
     }
   });
@@ -475,12 +475,12 @@ async function startServer() {
     const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
     
     if (!WEBHOOK_SECRET) {
-      console.log("[Webhook] No GITHUB_WEBHOOK_SECRET configured, skipping signature verification");
+      logger.warn("No GITHUB_WEBHOOK_SECRET configured, skipping signature verification");
     } else {
       // Verify GitHub signature
       const signature = req.headers["x-hub-signature-256"] as string;
       if (!signature) {
-        console.log("[Webhook] Missing signature header");
+        logger.warn("Webhook missing signature header");
         return res.status(401).send("Missing signature");
       }
 
@@ -490,7 +490,7 @@ async function startServer() {
       const expectedSignature = `sha256=${hmac.digest("hex")}`;
 
       if (signature !== expectedSignature) {
-        console.log("[Webhook] Invalid signature");
+        logger.warn("Webhook invalid signature");
         return res.status(401).send("Invalid signature");
       }
     }
@@ -499,18 +499,18 @@ async function startServer() {
     const payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     const ref = payload.ref;
 
-    console.log(`[Webhook] Received - Event: ${event}, Ref: ${ref}`);
+    logger.info({ event, ref }, "Webhook received");
 
     // Handle ping event
     if (event === "ping") {
-      console.log("[Webhook] Ping received successfully");
+      logger.info("Webhook ping received successfully");
       return res.status(200).send("Pong!");
     }
 
     // Only deploy on push to main/master
     if (event === "push" && (ref === "refs/heads/main" || ref === "refs/heads/master")) {
-      console.log("[Webhook] Push to main detected, starting deployment...");
-      
+      logger.info({ ref }, "Push to main detected, starting deployment");
+
       // Respond immediately before starting deploy
       res.status(200).send("Deployment started");
 
@@ -518,16 +518,16 @@ async function startServer() {
       // Using nohup ensures the deploy continues even if PM2 restarts this process
       const appPath = process.env.APP_PATH || "/srv/customer/sites/manager.mantodeus.com";
       const deployCmd = `nohup bash infra/deploy/deploy.sh > deploy.log 2>&1 &`;
-      
+
       exec(deployCmd, { cwd: appPath }, (err) => {
         if (err) {
-          console.error("[Webhook] Failed to start deploy script:", err.message);
+          logger.error({ err: err.message }, "Failed to start deploy script");
         } else {
-          console.log("[Webhook] Deploy script started (detached). Check deploy.log for progress.");
+          logger.info("Deploy script started (detached). Check deploy.log for progress");
         }
       });
     } else {
-      console.log(`[Webhook] Ignoring event: ${event} on ref: ${ref}`);
+      logger.info({ event, ref }, "Webhook event ignored");
       res.status(200).send("Event ignored");
     }
   });
@@ -548,33 +548,31 @@ async function startServer() {
   const port = parseInt(process.env.PORT || "3000", 10);
 
   server.listen(port, () => {
-    console.log(`✅ Server running on port ${port}`);
+    logger.info({ port }, "Server running");
     serverStarted = true; // Mark server as started successfully
   });
 
   // Handle server errors (e.g., port already in use)
   server.on("error", (error: NodeJS.ErrnoException) => {
     if (error.code === "EADDRINUSE") {
-      console.error(`❌ Port ${port} is already in use.`);
-      console.error(`   Kill the process using: netstat -ano | findstr :${port}`);
-      console.error(`   Or change PORT in .env`);
+      logger.fatal({ port }, `Port ${port} is already in use. Kill the process or change PORT in .env`);
     } else {
-      console.error("❌ Server error:", error);
+      logger.fatal({ err: error }, "Server error");
     }
     process.exit(1);
   });
 
   // Graceful shutdown handling
   const gracefulShutdown = (signal: string) => {
-    console.log(`\n${signal} received, shutting down gracefully...`);
+    logger.info({ signal }, "Shutting down gracefully");
     server.close(() => {
-      console.log("Server closed");
+      logger.info("Server closed");
       process.exit(0);
     });
-    
+
     // Force close after 10 seconds
     setTimeout(() => {
-      console.error("Forced shutdown after timeout");
+      logger.error("Forced shutdown after timeout");
       process.exit(1);
     }, 10000);
   };
@@ -585,16 +583,19 @@ async function startServer() {
 
 // Improved error handling to prevent restart loops
 startServer().catch((error) => {
-  console.error("❌ Failed to start server:");
-  console.error("Error details:", {
-    message: error instanceof Error ? error.message : String(error),
-    stack: error instanceof Error ? error.stack : undefined,
-  });
-  
+  logger.fatal(
+    {
+      err: error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    },
+    "Failed to start server"
+  );
+
   // Wait 5 seconds before exiting to prevent rapid restart loops
   // This gives time for logs to be written and prevents hammering the system
   setTimeout(() => {
-    console.error("Exiting after startup failure...");
+    logger.fatal("Exiting after startup failure");
     process.exit(1);
   }, 5000);
 });
