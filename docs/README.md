@@ -8,6 +8,7 @@ Welcome to the Mantodeus Manager documentation. This directory contains all tech
 
 - **[Deployment Guide](DEPLOYMENT.md)** - How to deploy, manage PM2, SSH access, and troubleshoot production issues
 - **[Database Guide](DATABASE.md)** - Schema management, migrations, backups, and database operations
+- **[Golden Path Workflows](GOLDEN_PATH_WORKFLOWS.md)** - Copy-paste workflows for daily development and production
 - **[Technical Overview](TECHNICAL_OVERVIEW.md)** - Complete architecture, tech stack, and codebase structure
 - **[S3 Integration](S3_INTEGRATION.md)** - File storage implementation and configuration
 - **[Backup & Migration](BACKUP_AND_MIGRATION.md)** - Data backup and migration procedures
@@ -30,6 +31,7 @@ Welcome to the Mantodeus Manager documentation. This directory contains all tech
 |----------|---------|----------|
 | **DEPLOYMENT.md** | Deployment procedures, PM2, SSH, troubleshooting | DevOps, Developers |
 | **DATABASE.md** | Schema management, migrations, backups | Developers |
+| **GOLDEN_PATH_WORKFLOWS.md** | Canonical workflows for daily operations | Developers, DevOps |
 | **TECHNICAL_OVERVIEW.md** | Architecture, tech stack, codebase walkthrough | New developers, Technical leads |
 | **USER_GUIDE.md** | Feature documentation and usage instructions | End users, Product team |
 | **S3_INTEGRATION.md** | File storage configuration and implementation | Developers |

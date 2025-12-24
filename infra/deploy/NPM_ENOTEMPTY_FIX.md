@@ -14,11 +14,11 @@ npm error ENOTEMPTY: directory not empty
 ## Root Causes
 1. **File locks**: Running Node processes holding file locks
 2. **Incomplete previous install**: Interrupted installation left inconsistent state
-3. **Conflicting lock files**: Both `package-lock.json` and `pnpm-lock.yaml` exist (this project uses pnpm)
+3. **Conflicting lock files**: Both `package-lock.json` and `pnpm-lock.yaml` exist (this project uses npm)
 4. **Shared hosting limitations**: File system restrictions on shared hosting
 5. **Permission issues**: Insufficient permissions to rename/delete directories
 6. **Disk space**: Insufficient space for npm operations
-7. **Wrong package manager**: Using `npm install` when project uses `pnpm`
+7. **Wrong package manager**: Using `pnpm install` when project uses `npm`
 
 ## Quick Fix
 
@@ -33,21 +33,21 @@ bash infra/deploy/fix-npm-enotempty.sh
 # 1. Stop any running processes
 pm2 stop all
 
-# 2. Remove conflicting lock file (if using pnpm)
-# This project uses pnpm, so remove package-lock.json if it exists
-rm -f package-lock.json
+# 2. Remove conflicting lock file (if using npm)
+# This project uses npm, so remove pnpm-lock.yaml if it exists
+rm -f pnpm-lock.yaml
 
 # 3. Remove node_modules
 rm -rf node_modules
 
 # 4. Clean cache
-pnpm store prune  # This project uses pnpm, not npm
+npm cache clean --force  # This project uses npm
 
 # 5. Reinstall with correct package manager
-pnpm install --frozen-lockfile
+npm ci  # or: npm install if no package-lock.json
 ```
 
-**Important**: This project uses **pnpm**, not npm. Always use `pnpm install`, not `npm install`.
+**Important**: This project uses **npm**, not pnpm. Always use `npm install` or `npm ci`, not `pnpm install`.
 
 ### Option 3: Aggressive Cleanup
 If standard removal fails:
@@ -58,7 +58,7 @@ find node_modules -type d -exec rmdir {} +
 rm -rf node_modules
 
 # Then reinstall
-pnpm install --frozen-lockfile
+npm ci  # or: npm install
 ```
 
 ## Prevention

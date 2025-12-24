@@ -1,8 +1,8 @@
 # Dependencies
 **/node_modules
 .pnpm-store/
-# npm lock file (project uses pnpm)
-package-lock.json
+# pnpm lock file (project uses npm)
+pnpm-lock.yaml
 
 # Build outputs
 dist/
