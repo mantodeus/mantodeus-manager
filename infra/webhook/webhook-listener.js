@@ -5,6 +5,13 @@
  * Automatically deploys on push to main branch
  * 
  * Usage:
+ *   # Option 1: Using ecosystem config (recommended)
+ *   pm2 start infra/webhook/ecosystem.config.cjs
+ *   
+ *   # Option 2: Using wrapper script (ensures dependencies)
+ *   pm2 start infra/webhook/start-webhook.sh --name webhook-listener
+ *   
+ *   # Option 3: Direct start (requires dependencies already installed)
  *   pm2 start infra/webhook/webhook-listener.js --name webhook-listener
  * 
  * Environment Variables:
@@ -12,6 +19,7 @@
  *   WEBHOOK_PORT - Port to listen on (default: 9000)
  *   APP_PATH - Application path (default: /srv/customer/sites/manager.mantodeus.com)
  *   PM2_APP_NAME - PM2 app name (default: mantodeus-manager)
+ *   NODE_PATH - Node.js module search path (should include node_modules directory)
  */
 
 import express from 'express';
