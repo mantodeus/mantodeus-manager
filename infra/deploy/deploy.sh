@@ -8,8 +8,8 @@
 # Usage: bash infra/deploy/deploy.sh
 #
 # Requirements:
-# - Node.js (preferably 22.x with corepack, but works with any version)
-# - pnpm 10.4.1 (will be set up automatically)
+# - Node.js (preferably 22.x, but works with any version)
+# - npm (comes with Node.js)
 # - PM2 (will use npx if not globally installed)
 # =============================================================================
 
@@ -18,7 +18,6 @@ set -euo pipefail
 # Configuration
 APP_PATH="/srv/customer/sites/manager.mantodeus.com"
 PM2_NAME="mantodeus-manager"
-PNPM_VERSION="10.4.1"
 
 echo "============================================"
 echo "🚀 Mantodeus Manager - Production Deploy"
@@ -35,54 +34,15 @@ cd "$APP_PATH" || {
 echo "✅ Now in: $(pwd)"
 echo ""
 
-# Step 2: Ensure pnpm is available (Infomaniak shared hosting compatible)
-echo "▶ Ensuring pnpm is available..."
-PNPM_CMD=""
-
-# Priority 1: Check if pnpm is already available
-if command -v pnpm &> /dev/null; then
-  PNPM_CMD="pnpm"
-  PNPM_VERSION_ACTUAL=$(pnpm --version)
-  echo "✅ pnpm ${PNPM_VERSION_ACTUAL} is already available"
-# Priority 2: Use npx pnpm (best for shared hosting - no global install needed)
-elif command -v npx &> /dev/null; then
-  PNPM_CMD="npx -y pnpm@${PNPM_VERSION}"
-  echo "✅ Will use npx pnpm (no global install required - shared hosting compatible)"
-# Priority 3: Try corepack (may fail on shared hosting with read-only filesystem)
-elif command -v corepack &> /dev/null; then
-  echo "   Attempting to enable via corepack (may fail on shared hosting)..."
-  # Suppress errors from corepack enable (read-only filesystem on shared hosting)
-  corepack enable 2>/dev/null || true
-  corepack prepare pnpm@${PNPM_VERSION} --activate 2>/dev/null || true
-  
-  if command -v pnpm &> /dev/null; then
-    PNPM_CMD="pnpm"
-    PNPM_VERSION_ACTUAL=$(pnpm --version)
-    echo "✅ pnpm ${PNPM_VERSION_ACTUAL} enabled via corepack"
-  else
-    # Corepack failed, fall back to npx if available
-    if command -v npx &> /dev/null; then
-      PNPM_CMD="npx -y pnpm@${PNPM_VERSION}"
-      echo "✅ Corepack unavailable, using npx pnpm instead"
-    fi
-  fi
-# Priority 4: Try global npm install (usually fails on shared hosting)
-elif command -v npm &> /dev/null; then
-  echo "   Attempting to install pnpm globally (may fail on shared hosting)..."
-  npm install -g pnpm@${PNPM_VERSION} 2>/dev/null || true
-  
-  if command -v pnpm &> /dev/null; then
-    PNPM_CMD="pnpm"
-    PNPM_VERSION_ACTUAL=$(pnpm --version)
-    echo "✅ pnpm ${PNPM_VERSION_ACTUAL} installed globally"
-  fi
-fi
-
-# Final check: ensure we have a pnpm command
-if [ -z "$PNPM_CMD" ]; then
-  echo "❌ Cannot find pnpm, npx, corepack, or npm. Please install Node.js."
+# Step 2: Ensure npm is available
+echo "▶ Checking npm availability..."
+if ! command -v npm &> /dev/null; then
+  echo "❌ npm not found. Please install Node.js."
   exit 1
 fi
+
+NPM_VERSION=$(npm --version)
+echo "✅ npm ${NPM_VERSION} is available"
 
 echo ""
 
@@ -141,9 +101,19 @@ if [ -d "node_modules" ]; then
 fi
 
 # Step 6: Install dependencies
-echo "▶ Installing dependencies with pnpm..."
-if ! $PNPM_CMD install --frozen-lockfile; then
-  echo "⚠️  pnpm install failed, performing deep cleanup and retrying..."
+echo "▶ Installing dependencies with npm..."
+
+# Determine install command based on lock file
+if [ -f "package-lock.json" ]; then
+  INSTALL_CMD="npm ci"
+  echo "   Using 'npm ci' (package-lock.json found)"
+else
+  INSTALL_CMD="npm install"
+  echo "   Using 'npm install' (no package-lock.json found)"
+fi
+
+if ! $INSTALL_CMD; then
+  echo "⚠️  npm install failed, performing deep cleanup and retrying..."
   
   # Deep cleanup: remove node_modules, lock files, and cache
   echo "   Removing node_modules..."
@@ -153,16 +123,16 @@ if ! $PNPM_CMD install --frozen-lockfile; then
     rm -rf node_modules 2>/dev/null || true
   }
   
-  echo "   Clearing pnpm cache..."
-  $PNPM_CMD store prune 2>/dev/null || true
+  echo "   Clearing npm cache..."
+  npm cache clean --force 2>/dev/null || true
   
   echo "   Retrying installation..."
-  if ! $PNPM_CMD install --frozen-lockfile; then
-    echo "❌ pnpm install failed after cleanup. Possible causes:"
+  if ! $INSTALL_CMD; then
+    echo "❌ npm install failed after cleanup. Possible causes:"
     echo "   - Disk space issues (check: df -h)"
     echo "   - File permission issues (check: ls -la node_modules)"
     echo "   - Network connectivity issues"
-    echo "   - Corrupted lock file (try: rm pnpm-lock.yaml && pnpm install)"
+    echo "   - Corrupted lock file (try: rm package-lock.json && npm install)"
     exit 1
   fi
 fi
@@ -171,7 +141,7 @@ echo ""
 
 # Step 7: Build
 echo "▶ Building application..."
-$PNPM_CMD build
+npm run build
 echo "✅ Build complete"
 echo ""
 

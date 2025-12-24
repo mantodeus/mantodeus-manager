@@ -94,33 +94,25 @@ if [ -f "package-lock.json" ]; then
   HAS_NPM_LOCK=true
 fi
 
-# Check package.json for packageManager field
-if [ -f "package.json" ] && grep -q '"packageManager".*"pnpm"' package.json; then
-  echo "   ✅ package.json specifies pnpm as package manager"
-  PACKAGE_MANAGER="pnpm"
-  INSTALL_CMD="pnpm install --frozen-lockfile"
-  
-  # Warn about conflicting lock files
-  if [ "$HAS_NPM_LOCK" = true ]; then
-    echo "   ⚠️  WARNING: Both pnpm-lock.yaml and package-lock.json exist!"
-    echo "   ⚠️  This project uses pnpm. package-lock.json should be removed."
-    echo "   ⚠️  Removing package-lock.json to avoid conflicts..."
-    rm -f package-lock.json
-    echo "   ✅ Removed package-lock.json"
-  fi
-elif [ "$HAS_PNPM_LOCK" = true ]; then
-  PACKAGE_MANAGER="pnpm"
-  INSTALL_CMD="pnpm install --frozen-lockfile"
-  echo "   ✅ Detected pnpm (pnpm-lock.yaml found)"
-  
-  if [ "$HAS_NPM_LOCK" = true ]; then
-    echo "   ⚠️  WARNING: Both lock files exist. Removing package-lock.json..."
-    rm -f package-lock.json
-  fi
-elif [ "$HAS_NPM_LOCK" = true ]; then
+# This project uses npm (not pnpm) based on deployment history
+# Prefer npm, but handle pnpm-lock.yaml if it exists
+if [ "$HAS_NPM_LOCK" = true ]; then
   PACKAGE_MANAGER="npm"
   INSTALL_CMD="npm ci"
   echo "   ✅ Detected npm (package-lock.json found)"
+  
+  # Remove pnpm lock file if it exists (project uses npm)
+  if [ "$HAS_PNPM_LOCK" = true ]; then
+    echo "   ⚠️  WARNING: Both pnpm-lock.yaml and package-lock.json exist!"
+    echo "   ⚠️  This project uses npm. Removing pnpm-lock.yaml to avoid conflicts..."
+    rm -f pnpm-lock.yaml
+    echo "   ✅ Removed pnpm-lock.yaml"
+  fi
+elif [ "$HAS_PNPM_LOCK" = true ]; then
+  # Fallback: if only pnpm lock exists, use pnpm
+  PACKAGE_MANAGER="pnpm"
+  INSTALL_CMD="pnpm install --frozen-lockfile"
+  echo "   ⚠️  Only pnpm-lock.yaml found, using pnpm (consider migrating to npm)"
 else
   PACKAGE_MANAGER="npm"
   INSTALL_CMD="npm install"
