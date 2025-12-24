@@ -163,8 +163,8 @@ fi
 echo "✅ Build verified (dist/index.js and dist/public exist)"
 echo ""
 
-# Step 9: Restart PM2 (Infomaniak shared hosting compatible)
-echo "▶ Restarting PM2 process: $PM2_NAME..."
+# Step 9: Start/Restart PM2 (Infomaniak shared hosting compatible)
+echo "▶ Starting/Restarting PM2 process: $PM2_NAME..."
 PM2_CMD=""
 
 if command -v pm2 &> /dev/null; then
@@ -176,11 +176,36 @@ else
   exit 1
 fi
 
-$PM2_CMD restart "$PM2_NAME" || {
-  echo "❌ PM2 restart failed"
-  exit 1
-}
-echo "✅ PM2 restarted"
+# Check if process exists
+if $PM2_CMD list | grep -q "$PM2_NAME"; then
+  # Process exists, restart it
+  echo "   Process exists, restarting..."
+  $PM2_CMD restart "$PM2_NAME" || {
+    echo "❌ PM2 restart failed"
+    exit 1
+  }
+  echo "✅ PM2 restarted"
+else
+  # Process doesn't exist, start it
+  echo "   Process not found, starting for the first time..."
+  if [ -f "ecosystem.config.js" ]; then
+    # Use ecosystem config if available
+    $PM2_CMD start ecosystem.config.js || {
+      echo "❌ PM2 start failed with ecosystem.config.js"
+      exit 1
+    }
+  else
+    # Fallback: start with npm start
+    $PM2_CMD start npm --name "$PM2_NAME" -- start || {
+      echo "❌ PM2 start failed"
+      exit 1
+    }
+  fi
+  echo "✅ PM2 started"
+  
+  # Save PM2 process list
+  $PM2_CMD save 2>/dev/null || true
+fi
 echo ""
 
 echo "============================================"
