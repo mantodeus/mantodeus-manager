@@ -221,6 +221,9 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
   };
 
   const handleItemAction = (action: ItemAction, fileId: number) => {
+    if (action === "duplicate") {
+      toast.info("Duplicate is coming soon.");
+    }
     if (action === "delete") {
       setFileToDelete(fileId);
       setDeleteDialogOpen(true);
@@ -343,7 +346,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                       <div className="absolute top-2 right-2 z-20">
                         <ItemActionsMenu
                           onAction={(action) => handleItemAction(action, file.id)}
-                          actions={["delete"]}
+                          actions={["duplicate", "delete"]}
                           triggerClassName="bg-background/90 hover:bg-background shadow-sm"
                           disabled={deleteFile.isPending}
                         />
@@ -389,7 +392,7 @@ export function ProjectFileGallery({ projectId, jobId, files, isLoading }: Proje
                         </Button>
                         <ItemActionsMenu
                           onAction={(action) => handleItemAction(action, file.id)}
-                          actions={["delete"]}
+                          actions={["duplicate", "delete"]}
                           triggerClassName="text-muted-foreground hover:text-foreground"
                           disabled={deleteFile.isPending}
                           size="sm"

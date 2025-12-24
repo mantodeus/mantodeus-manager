@@ -505,6 +505,9 @@ export default function Maps() {
       case "edit":
         openEditDialog(location);
         break;
+      case "duplicate":
+        toast.info("Duplicate is coming soon.");
+        break;
       case "delete":
         handleDeleteLocation(locationId);
         break;
@@ -842,7 +845,7 @@ export default function Maps() {
                           {!isMultiSelectMode && (
                             <ItemActionsMenu
                               onAction={(action) => handleItemAction(action, location.id)}
-                              actions={["edit", "delete", "select"]}
+                              actions={["edit", "duplicate", "delete", "select"]}
                               triggerClassName="text-muted-foreground hover:text-foreground"
                               size="sm"
                             />

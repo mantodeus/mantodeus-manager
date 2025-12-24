@@ -94,6 +94,9 @@ export function TaskList({ tasks, jobId }: TaskListProps) {
   };
 
   const handleItemAction = (action: ItemAction, taskId: number) => {
+    if (action === "duplicate") {
+      toast.info("Duplicate is coming soon.");
+    }
     if (action === "delete") {
       if (confirm("Are you sure you want to delete this task?")) {
         deleteTask.mutate({ id: taskId });
@@ -171,7 +174,7 @@ export function TaskList({ tasks, jobId }: TaskListProps) {
                 )}
                 <ItemActionsMenu
                   onAction={(action) => handleItemAction(action, task.id)}
-                  actions={["delete"]}
+                  actions={["duplicate", "delete"]}
                   triggerClassName="text-muted-foreground hover:text-foreground"
                   size="sm"
                 />

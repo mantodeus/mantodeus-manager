@@ -270,7 +270,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="flex-1 min-w-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">{children}</main>
       </SidebarInset>
 
       <DataExportImportDialog

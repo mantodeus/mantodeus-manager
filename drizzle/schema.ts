@@ -331,6 +331,10 @@ export const invoices = mysqlTable("invoices", {
   subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull().default("0.00"),
   vatAmount: decimal("vatAmount", { precision: 12, scale: 2 }).notNull().default("0.00"),
   total: decimal("total", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  /** Timestamp when invoice was archived (null if active) */
+  archivedAt: timestamp("archivedAt"),
+  /** Timestamp when invoice was moved to rubbish (null if not trashed) */
+  trashedAt: timestamp("trashedAt"),
   // File metadata (legacy/backwards compatibility)
   pdfFileKey: varchar("pdfFileKey", { length: 500 }),
   filename: varchar("filename", { length: 255 }),
@@ -343,6 +347,8 @@ export const invoices = mysqlTable("invoices", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [
   uniqueIndex("invoice_number_per_user").on(table.userId, table.invoiceNumber),
+  index("invoices_archivedAt_idx").on(table.archivedAt),
+  index("invoices_trashedAt_idx").on(table.trashedAt),
 ]);
 
 export type Invoice = typeof invoices.$inferSelect;

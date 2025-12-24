@@ -6,27 +6,38 @@
  * Mobile-first design for field technicians.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Clock, MapPin, LogOut, LogIn, Loader2, History } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/_core/hooks/useAuth";
 
 interface ProjectCheckInProps {
   projectId: number;
 }
 
 export function ProjectCheckIn({ projectId }: ProjectCheckInProps) {
-  const { user } = useAuth();
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const utils = trpc.useUtils();
+  const isValidProjectId = Number.isFinite(projectId) && projectId > 0;
 
-  const { data: activeCheckin, isLoading: activeLoading } = trpc.projects.getActiveCheckin.useQuery({ projectId });
-  const { data: checkins, isLoading: checkinsLoading } = trpc.projects.getCheckins.useQuery({ projectId });
+  useEffect(() => {
+    if (!isValidProjectId && import.meta.env.DEV) {
+      console.error("[ProjectCheckIn] Missing or invalid projectId", { projectId });
+    }
+  }, [isValidProjectId, projectId]);
+
+  const { data: activeCheckin, isLoading: activeLoading } = trpc.projects.getActiveCheckin.useQuery(
+    { projectId },
+    { enabled: isValidProjectId }
+  );
+  const { data: checkins, isLoading: checkinsLoading } = trpc.projects.getCheckins.useQuery(
+    { projectId },
+    { enabled: isValidProjectId }
+  );
 
   const checkInMutation = trpc.projects.checkIn.useMutation({
     onSuccess: () => {
@@ -55,6 +66,12 @@ export function ProjectCheckIn({ projectId }: ProjectCheckInProps) {
   });
 
   const handleCheckIn = async () => {
+    if (!isValidProjectId) {
+      if (import.meta.env.DEV) {
+        console.error("[ProjectCheckIn] Cannot check in without a valid projectId", { projectId });
+      }
+      return;
+    }
     setIsCheckingIn(true);
     try {
       // Try to get geolocation (optional)
@@ -85,10 +102,16 @@ export function ProjectCheckIn({ projectId }: ProjectCheckInProps) {
   };
 
   const handleCheckOut = async () => {
+    if (!isValidProjectId) {
+      if (import.meta.env.DEV) {
+        console.error("[ProjectCheckIn] Cannot check out without a valid projectId", { projectId });
+      }
+      return;
+    }
     if (!activeCheckin) return;
     setIsCheckingOut(true);
     await checkOutMutation.mutateAsync({
-      checkinId: activeCheckin.id,
+      projectId,
     });
   };
 
@@ -157,7 +180,7 @@ export function ProjectCheckIn({ projectId }: ProjectCheckInProps) {
                 </div>
                 <Button
                   onClick={handleCheckOut}
-                  disabled={isCheckingOut}
+                  disabled={!isValidProjectId || isCheckingOut}
                   variant="outline"
                   className="gap-2"
                 >
@@ -173,7 +196,7 @@ export function ProjectCheckIn({ projectId }: ProjectCheckInProps) {
           ) : (
             <Button
               onClick={handleCheckIn}
-              disabled={isCheckingIn}
+              disabled={!isValidProjectId || isCheckingIn}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
             >
               {isCheckingIn ? (
