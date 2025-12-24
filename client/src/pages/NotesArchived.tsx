@@ -71,6 +71,9 @@ export default function NotesArchived() {
       case "restore":
         restoreArchivedNoteMutation.mutate({ id: noteId });
         break;
+      case "duplicate":
+        toast.info("Duplicate is coming soon.");
+        break;
       case "moveToTrash":
         setDeleteToRubbishTargetId(noteId);
         setDeleteToRubbishDialogOpen(true);
@@ -111,7 +114,7 @@ export default function NotesArchived() {
         </div>
         <ItemActionsMenu
           onAction={(action) => handleItemAction(action, note.id)}
-          actions={["restore", "moveToTrash"]}
+          actions={["restore", "duplicate", "moveToTrash"]}
           triggerClassName="text-muted-foreground hover:text-foreground"
         />
       </div>

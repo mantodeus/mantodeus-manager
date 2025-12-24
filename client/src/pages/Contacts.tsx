@@ -165,6 +165,9 @@ export default function Contacts() {
       case "edit":
         handleEdit(contact);
         break;
+      case "duplicate":
+        toast.info("Duplicate is coming soon.");
+        break;
       case "archive":
         setArchiveTargetId(contactId);
         setArchiveDialogOpen(true);
@@ -257,7 +260,7 @@ export default function Contacts() {
           {!isMultiSelectMode && (
             <ItemActionsMenu
               onAction={(action) => handleItemAction(action, contact.id)}
-              actions={["edit", "archive", "moveToTrash", "select"]}
+              actions={["edit", "duplicate", "archive", "moveToTrash", "select"]}
               triggerClassName="text-muted-foreground hover:text-foreground"
             />
           )}

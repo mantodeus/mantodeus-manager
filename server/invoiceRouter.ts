@@ -75,6 +75,16 @@ export const invoiceRouter = router({
     return invoices.map(mapInvoiceToPayload);
   }),
 
+  listArchived: protectedProcedure.query(async ({ ctx }) => {
+    const invoices = await db.getArchivedInvoicesByUserId(ctx.user.id);
+    return invoices.map(mapInvoiceToPayload);
+  }),
+
+  listTrashed: protectedProcedure.query(async ({ ctx }) => {
+    const invoices = await db.getTrashedInvoicesByUserId(ctx.user.id);
+    return invoices.map(mapInvoiceToPayload);
+  }),
+
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input, ctx }) => {
@@ -267,10 +277,99 @@ export const invoiceRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
       if (invoice.status !== "draft") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be deleted" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only draft invoices can be permanently deleted." });
+      }
+      if (!invoice.trashedAt) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Invoices must be moved to the Rubbish bin before permanent deletion.",
+        });
       }
 
       await db.deleteInvoice(input.id);
       return { success: true };
+    }),
+
+  archive: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+
+      await db.archiveInvoice(input.id);
+      const updated = await db.getInvoiceById(input.id);
+      return mapInvoiceToPayload(updated);
+    }),
+
+  moveToTrash: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      if (invoice.status !== "draft") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only draft invoices can be moved to the Rubbish bin." });
+      }
+
+      await db.moveInvoiceToTrash(input.id);
+      const updated = await db.getInvoiceById(input.id);
+      return mapInvoiceToPayload(updated);
+    }),
+
+  restore: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+
+      await db.restoreInvoice(input.id);
+      const updated = await db.getInvoiceById(input.id);
+      return mapInvoiceToPayload(updated);
+    }),
+
+  revertStatus: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        targetStatus: z.enum(["draft", "sent"]),
+        confirmed: z.boolean(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (!input.confirmed) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Confirmation is required to revert invoice status." });
+      }
+
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+
+      const isSentToDraft = invoice.status === "sent" && input.targetStatus === "draft";
+      const isPaidToSent = invoice.status === "paid" && input.targetStatus === "sent";
+
+      if (!isSentToDraft && !isPaidToSent) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid status transition for this invoice." });
+      }
+
+      const updated = await db.updateInvoice(invoice.id, { status: input.targetStatus });
+      return mapInvoiceToPayload(updated);
     }),
 });

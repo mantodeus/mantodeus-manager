@@ -13,9 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash, Eye } from "lucide-react";
 
 export type ItemAction =
+  | "view"
   | "edit"
   | "delete"
   | "duplicate"
@@ -24,7 +25,9 @@ export type ItemAction =
   | "archive"
   | "restore"
   | "moveToTrash"
-  | "deletePermanently";
+  | "deletePermanently"
+  | "revertToDraft"
+  | "revertToSent";
 
 interface ItemActionsMenuProps {
   /** Callback when an action is selected */
@@ -49,14 +52,17 @@ export function ItemActionsMenu({
   const [open, setOpen] = useState(false);
 
   const actionConfig = {
+    view: { icon: Eye, label: "View", variant: "default" as const },
     edit: { icon: Edit, label: "Edit", variant: "default" as const },
     delete: { icon: Trash2, label: "Delete", variant: "destructive" as const },
     duplicate: { icon: Copy, label: "Duplicate", variant: "default" as const },
     select: { icon: CheckSquare, label: "Select", variant: "default" as const },
     archive: { icon: Archive, label: "Archive", variant: "default" as const },
     restore: { icon: RotateCcw, label: "Restore", variant: "default" as const },
-    moveToTrash: { icon: Trash, label: "Delete", variant: "destructive" as const },
+    moveToTrash: { icon: Trash, label: "Move to Rubbish bin", variant: "destructive" as const },
     deletePermanently: { icon: Trash2, label: "Delete permanently (irreversible)", variant: "destructive" as const },
+    revertToDraft: { icon: RotateCcw, label: "Mark as not sent", variant: "destructive" as const },
+    revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" as const },
   };
 
   const handleAction = useCallback(

@@ -123,6 +123,9 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
   };
 
   const handleItemAction = async (action: ItemAction, imageId: number) => {
+    if (action === "duplicate") {
+      toast.info("Duplicate is coming soon.");
+    }
     if (action === "delete") {
       setImageToDelete(imageId);
       setDeleteDialogOpen(true);
@@ -216,7 +219,7 @@ export default function ImageGallery({ jobId, projectId }: ImageGalleryProps) {
               <div className="absolute top-2 right-2 z-10">
                 <ItemActionsMenu
                   onAction={(action) => handleItemAction(action, image.id)}
-                  actions={["delete"]}
+                  actions={["duplicate", "delete"]}
                   triggerClassName="bg-background/90 hover:bg-background shadow-sm"
                 />
               </div>

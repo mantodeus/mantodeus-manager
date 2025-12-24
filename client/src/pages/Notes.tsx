@@ -194,6 +194,9 @@ export default function Notes() {
       case "edit":
         openEditDialog(note);
         break;
+      case "duplicate":
+        toast.info("Duplicate is coming soon.");
+        break;
       case "archive":
         setArchiveTargetId(noteId);
         setArchiveDialogOpen(true);
@@ -293,7 +296,7 @@ export default function Notes() {
           {!isMultiSelectMode && (
             <ItemActionsMenu
               onAction={(action) => handleItemAction(action, note.id)}
-              actions={["edit", "archive", "moveToTrash", "select"]}
+              actions={["edit", "duplicate", "archive", "moveToTrash", "select"]}
               triggerClassName="text-muted-foreground hover:text-foreground"
             />
           )}

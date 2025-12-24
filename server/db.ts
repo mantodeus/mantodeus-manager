@@ -160,7 +160,9 @@ async function ensureInvoiceSchema(db: any) {
         ADD COLUMN IF NOT EXISTS fileSize INT NULL AFTER fileKey,
         ADD COLUMN IF NOT EXISTS mimeType VARCHAR(100) NULL AFTER fileSize,
         ADD COLUMN IF NOT EXISTS uploadDate DATETIME NULL AFTER mimeType,
-        ADD COLUMN IF NOT EXISTS uploadedBy INT NULL AFTER uploadDate
+        ADD COLUMN IF NOT EXISTS uploadedBy INT NULL AFTER uploadDate,
+        ADD COLUMN IF NOT EXISTS archivedAt DATETIME NULL AFTER updatedAt,
+        ADD COLUMN IF NOT EXISTS trashedAt DATETIME NULL AFTER archivedAt
     `);
 
     await db.execute(sql`
@@ -180,6 +182,8 @@ async function ensureInvoiceSchema(db: any) {
     `);
 
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS invoice_number_per_user ON invoices (userId, invoiceNumber)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS invoices_archivedAt_idx ON invoices (archivedAt)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS invoices_trashedAt_idx ON invoices (trashedAt)`);
     _invoiceSchemaReady = true;
   } catch (error) {
     console.error("[Database] Failed to ensure invoice schema:", error);
@@ -822,7 +826,33 @@ export async function getInvoicesByUserId(userId: number) {
   const invoiceRows = await db
     .select()
     .from(invoices)
-    .where(eq(invoices.userId, userId))
+    .where(and(eq(invoices.userId, userId), isNull(invoices.archivedAt), isNull(invoices.trashedAt)))
+    .orderBy(desc(invoices.createdAt));
+
+  return attachInvoiceItems(invoiceRows as any);
+}
+
+export async function getArchivedInvoicesByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+  const invoiceRows = await db
+    .select()
+    .from(invoices)
+    .where(and(eq(invoices.userId, userId), isNotNull(invoices.archivedAt), isNull(invoices.trashedAt)))
+    .orderBy(desc(invoices.createdAt));
+
+  return attachInvoiceItems(invoiceRows as any);
+}
+
+export async function getTrashedInvoicesByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+  const invoiceRows = await db
+    .select()
+    .from(invoices)
+    .where(and(eq(invoices.userId, userId), isNotNull(invoices.trashedAt)))
     .orderBy(desc(invoices.createdAt));
 
   return attachInvoiceItems(invoiceRows as any);
@@ -964,6 +994,36 @@ export async function deleteInvoice(id: number) {
   if (!db) throw new Error("Database not available");
   await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
   return db.delete(invoices).where(eq(invoices.id, id));
+}
+
+export async function archiveInvoice(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+  return db
+    .update(invoices)
+    .set({ archivedAt: new Date(), trashedAt: null })
+    .where(eq(invoices.id, id));
+}
+
+export async function moveInvoiceToTrash(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+  return db
+    .update(invoices)
+    .set({ trashedAt: new Date() })
+    .where(and(eq(invoices.id, id), isNull(invoices.trashedAt)));
+}
+
+export async function restoreInvoice(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+  return db
+    .update(invoices)
+    .set({ archivedAt: null, trashedAt: null })
+    .where(eq(invoices.id, id));
 }
 
 // ===== INVOICE ITEMS QUERIES =====

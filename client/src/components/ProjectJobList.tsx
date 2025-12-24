@@ -73,6 +73,9 @@ export function ProjectJobList({ jobs, projectId }: ProjectJobListProps) {
       case "edit":
         navigate(`/projects/${projectId}/jobs/${jobId}`);
         break;
+      case "duplicate":
+        toast.info("Duplicate is coming soon.");
+        break;
       case "delete":
         if (confirm("Are you sure you want to delete this job?")) {
           deleteJob.mutate({ projectId, jobId });
@@ -122,7 +125,7 @@ export function ProjectJobList({ jobs, projectId }: ProjectJobListProps) {
                   </Badge>
                   <ItemActionsMenu
                     onAction={(action) => handleItemAction(action, job.id)}
-                    actions={["edit", "delete"]}
+                    actions={["edit", "duplicate", "delete"]}
                     triggerClassName="text-muted-foreground hover:text-foreground"
                     disabled={deleteJob.isPending}
                   />

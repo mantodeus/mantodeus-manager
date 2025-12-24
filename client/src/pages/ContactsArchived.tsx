@@ -55,6 +55,9 @@ export default function ContactsArchived() {
       case "restore":
         restoreArchivedMutation.mutate({ id: contactId });
         break;
+      case "duplicate":
+        toast.info("Duplicate is coming soon.");
+        break;
       case "moveToTrash":
         setDeleteToRubbishTargetId(contactId);
         setDeleteToRubbishDialogOpen(true);
@@ -87,7 +90,7 @@ export default function ContactsArchived() {
         </div>
         <ItemActionsMenu
           onAction={(action) => handleItemAction(action, contact.id)}
-          actions={["restore", "moveToTrash"]}
+          actions={["restore", "duplicate", "moveToTrash"]}
           triggerClassName="text-muted-foreground hover:text-foreground"
         />
       </div>

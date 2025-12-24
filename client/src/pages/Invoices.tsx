@@ -6,12 +6,25 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Eye, Edit, Send, Trash2, Loader2, PencilLine, X } from "lucide-react";
+import { FileText, Plus, Eye, Send, Loader2, PencilLine, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ItemActionsMenu } from "@/components/ItemActionsMenu";
 import { Switch } from "@/components/ui/switch";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface InvoiceLineItem {
   name: string;
@@ -57,6 +70,13 @@ export default function Invoices() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<number | null>(null);
   const [previewingInvoice, setPreviewingInvoice] = useState<number | null>(null);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiveTargetId, setArchiveTargetId] = useState<number | null>(null);
+  const [moveToRubbishDialogOpen, setMoveToRubbishDialogOpen] = useState(false);
+  const [moveToRubbishTargetId, setMoveToRubbishTargetId] = useState<number | null>(null);
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
+  const [revertTarget, setRevertTarget] = useState<{ id: number; targetStatus: "draft" | "sent"; currentStatus: "sent" | "paid" } | null>(null);
+  const [revertAcknowledged, setRevertAcknowledged] = useState(false);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -67,9 +87,23 @@ export default function Invoices() {
     },
     onError: (err) => toast.error(err.message),
   });
-  const deleteMutation = trpc.invoices.delete.useMutation({
+  const archiveMutation = trpc.invoices.archive.useMutation({
     onSuccess: () => {
-      toast.success("Invoice deleted");
+      toast.success("Invoice archived");
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const moveToTrashMutation = trpc.invoices.moveToTrash.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice moved to the Rubbish bin");
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const revertMutation = trpc.invoices.revertStatus.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice status reverted");
       refetch();
     },
     onError: (err) => toast.error(err.message),
@@ -120,9 +154,21 @@ export default function Invoices() {
     await issueMutation.mutateAsync({ id: invoiceId });
   };
 
-  const handleDeleteInvoice = async (invoiceId: number) => {
-    if (!confirm("Are you sure you want to delete this draft invoice?")) return;
-    await deleteMutation.mutateAsync({ id: invoiceId });
+  const handleArchiveInvoice = (invoiceId: number) => {
+    setArchiveTargetId(invoiceId);
+    setArchiveDialogOpen(true);
+  };
+
+  const handleMoveToRubbish = (invoiceId: number) => {
+    setMoveToRubbishTargetId(invoiceId);
+    setMoveToRubbishDialogOpen(true);
+  };
+
+  const handleRevertStatus = (invoiceId: number, currentStatus: "sent" | "paid") => {
+    const targetStatus = currentStatus === "sent" ? "draft" : "sent";
+    setRevertTarget({ id: invoiceId, targetStatus, currentStatus });
+    setRevertAcknowledged(false);
+    setRevertDialogOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -152,7 +198,7 @@ export default function Invoices() {
               Create Invoice
             </Button>
           </DialogTrigger>
-          <DialogContent className="w-[min(1100px,95vw)] max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[1100px] sm:max-w-[92vw] lg:max-w-[1100px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>Create Invoice</DialogTitle>
             </DialogHeader>
@@ -201,9 +247,30 @@ export default function Invoices() {
                     )}
                   </div>
                   <ItemActionsMenu
-                    actions={invoice.status === "draft" ? ["edit", "delete"] : ["delete"]}
+                    actions={
+                      invoice.status === "draft"
+                        ? ["edit", "duplicate", "archive", "moveToTrash"]
+                        : invoice.status === "sent"
+                        ? ["view", "archive", "revertToDraft", "duplicate"]
+                        : ["view", "archive", "revertToSent", "duplicate"]
+                    }
                     onAction={(action) => {
-                      if (action === "delete") handleDeleteInvoice(invoice.id);
+                      if (action === "view") handlePreviewPDF(invoice.id);
+                      if (action === "duplicate") {
+                        toast.info("Duplicate is coming soon.");
+                      }
+                      if (action === "archive") {
+                        handleArchiveInvoice(invoice.id);
+                      }
+                      if (action === "moveToTrash") {
+                        handleMoveToRubbish(invoice.id);
+                      }
+                      if (action === "revertToDraft" && invoice.status === "sent") {
+                        handleRevertStatus(invoice.id, "sent");
+                      }
+                      if (action === "revertToSent" && invoice.status === "paid") {
+                        handleRevertStatus(invoice.id, "paid");
+                      }
                       if (action === "edit" && invoice.status === "draft") {
                         setEditingInvoice(invoice.id);
                         setEditDialogOpen(true);
@@ -263,7 +330,7 @@ export default function Invoices() {
 
       {editingInvoice && (
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="w-[min(1100px,95vw)] max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[1100px] sm:max-w-[92vw] lg:max-w-[1100px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>Edit Invoice</DialogTitle>
             </DialogHeader>
@@ -285,6 +352,84 @@ export default function Invoices() {
           </DialogContent>
         </Dialog>
       )}
+
+      <ScrollRevealFooter basePath="/invoices" />
+
+      <DeleteConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={(open) => {
+          setArchiveDialogOpen(open);
+          if (!open) {
+            setArchiveTargetId(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!archiveTargetId) return;
+          archiveMutation.mutate({ id: archiveTargetId });
+        }}
+        title="Archive invoice"
+        description="Archive this invoice? You can restore it later from the archived view."
+        confirmLabel="Archive"
+        isDeleting={archiveMutation.isPending}
+      />
+
+      <DeleteConfirmDialog
+        open={moveToRubbishDialogOpen}
+        onOpenChange={(open) => {
+          setMoveToRubbishDialogOpen(open);
+          if (!open) {
+            setMoveToRubbishTargetId(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!moveToRubbishTargetId) return;
+          moveToTrashMutation.mutate({ id: moveToRubbishTargetId });
+        }}
+        title="Move to Rubbish bin"
+        description="Move this draft invoice to the Rubbish bin? You can restore it later if needed."
+        confirmLabel="Move to Rubbish bin"
+        isDeleting={moveToTrashMutation.isPending}
+      />
+
+      <AlertDialog open={revertDialogOpen} onOpenChange={setRevertDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revert invoice status?</AlertDialogTitle>
+            <AlertDialogDescription className="pt-2">
+              {revertTarget?.currentStatus === "sent"
+                ? "This invoice has already been sent. Reverting it may affect records and client communication for accounting reasons. Only do this if the invoice was sent in error."
+                : "This invoice is marked as paid. Reverting it may affect accounting records for accounting reasons. Only proceed if the payment was recorded incorrectly."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
+            <Checkbox
+              checked={revertAcknowledged}
+              onCheckedChange={(checked) => setRevertAcknowledged(Boolean(checked))}
+              id="revert-ack"
+            />
+            <label htmlFor="revert-ack" className="text-muted-foreground">
+              I understand the consequences.
+            </label>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRevertAcknowledged(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!revertTarget) return;
+                revertMutation.mutate({
+                  id: revertTarget.id,
+                  targetStatus: revertTarget.targetStatus,
+                  confirmed: true,
+                });
+                setRevertDialogOpen(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Revert status
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -436,10 +581,10 @@ function InvoiceForm({
   const editingItem = itemEditor.index !== null ? items[itemEditor.index] : defaultLineItem;
 
   return (
-    <form onSubmit={handleSave} className="space-y-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <form onSubmit={handleSave} className="space-y-8 max-w-full overflow-x-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Invoice Number</Label>
               <Input
@@ -473,7 +618,7 @@ function InvoiceForm({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Issue Date</Label>
               <Input
@@ -503,7 +648,7 @@ function InvoiceForm({
             </div>
           </div>
         </div>
-        <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
+        <div className="lg:col-span-4 space-y-4 rounded-lg border bg-muted/30 p-4">
           <div>
             <div className="flex items-center justify-between">
               <Label>Service Period</Label>
@@ -550,23 +695,46 @@ function InvoiceForm({
             </Button>
           )}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <div className="hidden lg:grid lg:grid-cols-12 lg:gap-4 lg:px-2 text-xs font-medium text-muted-foreground">
+            <div className="lg:col-span-5">Item</div>
+            <div className="lg:col-span-2">Category</div>
+            <div className="lg:col-span-1 text-right">Qty</div>
+            <div className="lg:col-span-2 text-right">Unit Price</div>
+            <div className="lg:col-span-1 text-right">Total</div>
+            <div className="lg:col-span-1 text-right">Actions</div>
+          </div>
           {items.map((item, index) => (
-            <Card key={index} className="p-3 flex items-start justify-between gap-2">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <p>{item.name || "Untitled"}</p>
-                  {item.category && <Badge variant="outline">{item.category}</Badge>}
-                </div>
-                {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
-                <p className="text-sm text-muted-foreground">
-                  {item.quantity} × {formatCurrency(item.unitPrice)}
+            <div
+              key={index}
+              className="rounded-lg border bg-background p-3 lg:grid lg:grid-cols-12 lg:items-center lg:gap-4 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:border-b lg:px-2 lg:py-3"
+            >
+              <div className="lg:col-span-5 min-w-0 space-y-1">
+                <p className="font-medium break-words">{item.name || "Untitled"}</p>
+                {item.description && <p className="text-sm text-muted-foreground break-words">{item.description}</p>}
+                <p className="text-xs text-muted-foreground lg:hidden">
+                  {item.quantity} x {formatCurrency(item.unitPrice)}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <p>{formatCurrency(item.quantity * item.unitPrice)}</p>
+              <div className="lg:col-span-2 mt-2 lg:mt-0">
+                {item.category ? (
+                  <Badge variant="outline">{item.category}</Badge>
+                ) : (
+                  <span className="text-xs text-muted-foreground">-</span>
+                )}
+              </div>
+              <div className="lg:col-span-1 mt-2 text-right text-sm lg:mt-0 lg:text-base">
+                {item.quantity}
+              </div>
+              <div className="lg:col-span-2 mt-1 text-right text-sm text-muted-foreground lg:mt-0 lg:text-base">
+                {formatCurrency(item.unitPrice)}
+              </div>
+              <div className="lg:col-span-1 mt-1 text-right font-medium lg:mt-0">
+                {formatCurrency(item.quantity * item.unitPrice)}
+              </div>
+              <div className="lg:col-span-1 mt-2 flex justify-end gap-1 lg:mt-0">
                 {isDraft && (
-                  <div className="flex gap-1">
+                  <>
                     <Button variant="ghost" size="icon" onClick={() => openItemEditor(index)}>
                       <PencilLine className="w-4 h-4" />
                     </Button>
@@ -578,10 +746,10 @@ function InvoiceForm({
                     >
                       <X className="w-4 h-4" />
                     </Button>
-                  </div>
+                  </>
                 )}
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       </div>
@@ -729,3 +897,4 @@ function LineItemModal({
     </Dialog>
   );
 }
+

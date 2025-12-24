@@ -61,6 +61,9 @@ export default function ProjectsArchived() {
       case "restore":
         restoreArchivedProjectMutation.mutate({ projectId });
         break;
+      case "duplicate":
+        toast.info("Duplicate is coming soon.");
+        break;
       case "moveToTrash":
         setDeleteToRubbishTargetId(projectId);
         setDeleteToRubbishDialogOpen(true);
@@ -101,7 +104,7 @@ export default function ProjectsArchived() {
               <Badge className="bg-muted text-muted-foreground">Archived</Badge>
               <ItemActionsMenu
                 onAction={(action) => handleItemAction(action, project.id)}
-                actions={["restore", "moveToTrash"]}
+                actions={["restore", "duplicate", "moveToTrash"]}
                 triggerClassName="text-muted-foreground hover:text-foreground"
               />
             </div>

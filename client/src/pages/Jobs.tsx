@@ -60,6 +60,9 @@ export default function Jobs() {
       case "edit":
         navigate(`/jobs/${jobId}`);
         break;
+      case "duplicate":
+        toast.info("Duplicate is coming soon.");
+        break;
       case "delete":
         handleDeleteJob(jobId);
         break;
@@ -172,7 +175,7 @@ export default function Jobs() {
                           {!isMultiSelectMode && (
                             <ItemActionsMenu
                               onAction={(action) => handleItemAction(action, job.id)}
-                              actions={["edit", "delete", "select"]}
+                              actions={["edit", "duplicate", "delete", "select"]}
                               triggerClassName="text-muted-foreground hover:text-foreground"
                             />
                           )}
