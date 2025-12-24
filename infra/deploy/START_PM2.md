@@ -21,6 +21,8 @@ npx pm2 start ecosystem.config.js
 pm2 start ecosystem.config.js
 ```
 
+**Note:** The ecosystem.config.js now uses `npm start` directly, which is more reliable than referencing shell scripts.
+
 ### Option 2: Using npm start
 
 ```bash
