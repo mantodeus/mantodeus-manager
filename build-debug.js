@@ -111,7 +111,7 @@ function parseRequiredEnvFromExample() {
   // If .env.example exists, update with example values (but keep all required vars)
   if (existsSync(envExamplePath)) {
     const content = readFileSync(envExamplePath, 'utf-8');
-    const lines = content.split(/\r?\n');
+    const lines = content.split(/\r?\n/);
 
     for (const line of lines) {
       const trimmed = line.trim();
