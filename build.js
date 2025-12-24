@@ -47,27 +47,74 @@ function isExamplePlaceholder(value) {
   return placeholderPatterns.some(pattern => pattern.test(value));
 }
 
+// Actually required variables (matching server/_core/env.ts validation)
+// Variables with defaults or not used are excluded
+const ACTUALLY_REQUIRED_VARS = [
+  'VITE_SUPABASE_URL',
+  'VITE_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'DATABASE_URL',
+  'JWT_SECRET',
+  'OWNER_SUPABASE_ID',
+  'S3_ENDPOINT',
+  'S3_BUCKET',
+  'S3_ACCESS_KEY_ID',
+  'S3_SECRET_ACCESS_KEY',
+];
+
+// Variables that have defaults or are optional (don't require them)
+const OPTIONAL_VARS = [
+  'OAUTH_SERVER_URL',           // Has fallback: process.env.VITE_APP_URL || process.env.OAUTH_SERVER_URL || "https://manager.mantodeus.com"
+  'VITE_OAUTH_PORTAL_URL',      // Not used in codebase
+  'VITE_APP_ID',                // Not used in codebase
+  'VITE_APP_URL',               // Has fallback: process.env.VITE_APP_URL || process.env.OAUTH_SERVER_URL || "https://manager.mantodeus.com"
+  'VITE_APP_TITLE',             // Has default: "Mantodeus Manager"
+  'VITE_APP_LOGO',              // Optional
+  'PORT',                       // Has default: 3000
+  'S3_REGION',                  // Has default: us-east-1
+  'PDF_SERVICE_URL',            // Has default
+  'PDF_SERVICE_SECRET',         // Optional
+  'PDF_EXPIRY_DEFAULT_HOURS',   // Has default: 168
+  'DEFAULT_VAT_RATE',           // Has default: 19
+  'WEBHOOK_SECRET',             // Optional
+  'WEBHOOK_PORT',               // Has default: 9000
+  'APP_PATH',                   // Has default
+  'AXIOM_DATASET',              // Optional
+  'AXIOM_TOKEN',                // Optional
+  'LOG_LEVEL',                  // Optional
+  'NODE_ENV',                   // Has default: "development"
+];
+
 function parseRequiredEnvFromExample() {
-  if (!existsSync(envExamplePath)) {
-    console.warn('[env] WARNING: .env.example not found; skipping required env validation.');
-    return [];
+  // Start with the hardcoded list of actually required variables
+  const requiredMap = new Map();
+  ACTUALLY_REQUIRED_VARS.forEach(key => {
+    requiredMap.set(key, { key, exampleValue: '' });
+  });
+
+  // If .env.example exists, update with example values (but keep all required vars)
+  if (existsSync(envExamplePath)) {
+    const content = readFileSync(envExamplePath, 'utf-8');
+    const lines = content.split(/\r?\n');
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIndex = trimmed.indexOf('=');
+      if (eqIndex === -1) continue;
+      const key = trimmed.slice(0, eqIndex).trim();
+      const value = trimmed.slice(eqIndex + 1).trim();
+      
+      // Only include variables that are actually required (not optional)
+      if (key && ACTUALLY_REQUIRED_VARS.includes(key)) {
+        requiredMap.set(key, { key, exampleValue: value });
+      }
+    }
+  } else {
+    console.warn('[env] WARNING: .env.example not found; using hardcoded required vars list.');
   }
 
-  const content = readFileSync(envExamplePath, 'utf-8');
-  const lines = content.split(/\r?\n/);
-  const required = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eqIndex = trimmed.indexOf('=');
-    if (eqIndex === -1) continue;
-    const key = trimmed.slice(0, eqIndex).trim();
-    const value = trimmed.slice(eqIndex + 1).trim();
-    if (key) required.push({ key, exampleValue: value });
-  }
-
-  return required;
+  return Array.from(requiredMap.values());
 }
 
 const requiredEnvVars = parseRequiredEnvFromExample();
