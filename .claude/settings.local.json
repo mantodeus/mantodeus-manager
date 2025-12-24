@@ -11,7 +11,9 @@
       "Bash(bash:*)",
       "Bash(chmod:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nops: add automated database backup and restore scripts\n\nImplement comprehensive database backup automation with daily scheduled\nbackups, S3 upload, and 30-day retention policy.\n\nChanges:\n- Add backup-db.sh: automated backup with mysqldump, gzip compression, and S3 upload\n- Add restore-db.sh: interactive restore with safety prompts and automatic app restart\n- Add scripts/README.md: comprehensive documentation for operational scripts\n- Update docs/DATABASE.md: documented backup/restore procedures and cron setup\n\nFeatures:\n- Daily backups at 3 AM via cron\n- 30-day local retention \\(keeps last 30 backups\\)\n- Optional S3 upload for off-site storage\n- Detailed logging to logs/backup.log\n- Safe restore with confirmation prompts\n- Automatic application stop/restart during restore\n\nSetup:\n  crontab -e\n  0 3 * * * /srv/customer/sites/manager.mantodeus.com/scripts/backup-db.sh >> /srv/customer/sites/manager.mantodeus.com/logs/backup.log 2>&1\n\nAddresses P2 risk from System Improvement Report \\(No database backup automation\\).\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm install:*)",
+      "Bash(cat:*)"
     ]
   }
 }
