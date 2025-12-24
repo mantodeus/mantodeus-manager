@@ -79,6 +79,7 @@ const ACTUALLY_REQUIRED_VARS = [
 ];
 
 // Variables that have defaults or are optional (don't require them)
+// This list is NOT used - kept for documentation only
 const OPTIONAL_VARS = [
   'OAUTH_SERVER_URL',           // Has fallback: process.env.VITE_APP_URL || process.env.OAUTH_SERVER_URL || "https://manager.mantodeus.com"
   'VITE_OAUTH_PORTAL_URL',      // Not used in codebase
