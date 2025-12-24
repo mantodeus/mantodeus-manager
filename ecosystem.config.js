@@ -2,8 +2,7 @@ export default {
   apps: [
     {
       name: 'mantodeus-manager',
-      script: 'npm',
-      args: 'start',
+      script: 'dist/index.js',
       cwd: process.env.PWD || '/srv/customer/sites/manager.mantodeus.com',
       instances: 1,
       exec_mode: 'fork',
