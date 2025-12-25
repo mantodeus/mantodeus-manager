@@ -2008,28 +2008,34 @@ export async function getUserPreferencesByUserId(userId: number) {
   const db = await getDb();
   if (!db) return null;
 
-  let result = await db.select().from(userPreferences)
-    .where(eq(userPreferences.userId, userId))
-    .limit(1);
-
-  // If not exists, create with defaults
-  if (result.length === 0) {
-    await db.insert(userPreferences).values({
-      userId,
-      dateFormat: "MM/DD/YYYY",
-      timeFormat: "12h",
-      timezone: "UTC",
-      language: "en",
-      currency: "EUR",
-      notificationsEnabled: true,
-    });
-
-    result = await db.select().from(userPreferences)
+  try {
+    let result = await db.select().from(userPreferences)
       .where(eq(userPreferences.userId, userId))
       .limit(1);
-  }
 
-  return result.length > 0 ? result[0] : null;
+    // If not exists, create with defaults
+    if (result.length === 0) {
+      await db.insert(userPreferences).values({
+        userId,
+        dateFormat: "MM/DD/YYYY",
+        timeFormat: "12h",
+        timezone: "UTC",
+        language: "en",
+        currency: "EUR",
+        notificationsEnabled: true,
+      });
+
+      result = await db.select().from(userPreferences)
+        .where(eq(userPreferences.userId, userId))
+        .limit(1);
+    }
+
+    return result.length > 0 ? result[0] : null;
+  } catch (error) {
+    // Table might not exist yet - return null and let the UI handle it
+    console.warn("[Database] user_preferences table may not exist yet:", error);
+    return null;
+  }
 }
 
 export async function createUserPreferences(data: InsertUserPreferences) {
