@@ -1,0 +1,18 @@
+COMMANDS
+
+cd /srv/customer/sites/manager.mantodeus.com
+npm install
+npm run build
+pm2 restart mantodeus-manager
+
+ssh mantodeus-server
+cd /srv/customer/sites/manager.mantodeus.com
+bash infra/deploy/install-deps.sh
+
+git pull origin main
+
+npm run build
+
+npx pm2 restart mantodeus-manager
+
+Question: Will the following prompt be suitable for our production? If not, modify accordingly:

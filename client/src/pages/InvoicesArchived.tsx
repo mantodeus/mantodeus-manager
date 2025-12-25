@@ -30,17 +30,26 @@ function formatCurrency(amount: number | string) {
 export default function InvoicesArchived() {
   const { data: archivedInvoices = [], isLoading } = trpc.invoices.listArchived.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const utils = trpc.useUtils();
   const [previewingInvoice, setPreviewingInvoice] = useState<number | null>(null);
   const [moveToRubbishDialogOpen, setMoveToRubbishDialogOpen] = useState(false);
   const [moveToRubbishTargetId, setMoveToRubbishTargetId] = useState<number | null>(null);
 
   const restoreMutation = trpc.invoices.restore.useMutation({
-    onSuccess: () => toast.success("Invoice restored"),
+    onSuccess: () => {
+      toast.success("Invoice restored");
+      utils.invoices.listArchived.invalidate();
+      utils.invoices.list.invalidate();
+    },
     onError: (error) => toast.error(error.message),
   });
 
   const moveToTrashMutation = trpc.invoices.moveToTrash.useMutation({
-    onSuccess: () => toast.success("Invoice moved to the Rubbish bin"),
+    onSuccess: () => {
+      toast.success("Invoice deleted");
+      utils.invoices.listArchived.invalidate();
+      utils.invoices.listTrashed.invalidate();
+    },
     onError: (error) => toast.error(error.message),
   });
 
@@ -216,9 +225,9 @@ export default function InvoicesArchived() {
           if (!moveToRubbishTargetId) return;
           moveToTrashMutation.mutate({ id: moveToRubbishTargetId });
         }}
-        title="Move to Rubbish bin"
-        description="Move this draft invoice to the Rubbish bin? You can restore it later if needed."
-        confirmLabel="Move to Rubbish bin"
+        title="Delete invoice"
+        description="Delete this draft invoice? You can restore it later from the Rubbish bin."
+        confirmLabel="Delete"
         isDeleting={moveToTrashMutation.isPending}
       />
     </div>

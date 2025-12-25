@@ -87,6 +87,13 @@ export default function Invoices() {
     },
     onError: (err) => toast.error(err.message),
   });
+  const markAsPaidMutation = trpc.invoices.markAsPaid.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as paid");
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
   const archiveMutation = trpc.invoices.archive.useMutation({
     onSuccess: () => {
       toast.success("Invoice archived");
@@ -96,7 +103,7 @@ export default function Invoices() {
   });
   const moveToTrashMutation = trpc.invoices.moveToTrash.useMutation({
     onSuccess: () => {
-      toast.success("Invoice moved to the Rubbish bin");
+      toast.success("Invoice deleted");
       refetch();
     },
     onError: (err) => toast.error(err.message),
@@ -251,7 +258,7 @@ export default function Invoices() {
                       invoice.status === "draft"
                         ? ["edit", "duplicate", "archive", "moveToTrash"]
                         : invoice.status === "sent"
-                        ? ["view", "archive", "revertToDraft", "duplicate"]
+                        ? ["view", "markAsPaid", "archive", "revertToDraft", "duplicate"]
                         : ["view", "archive", "revertToSent", "duplicate"]
                     }
                     onAction={(action) => {
@@ -264,6 +271,9 @@ export default function Invoices() {
                       }
                       if (action === "moveToTrash") {
                         handleMoveToRubbish(invoice.id);
+                      }
+                      if (action === "markAsPaid" && invoice.status === "sent") {
+                        markAsPaidMutation.mutate({ id: invoice.id });
                       }
                       if (action === "revertToDraft" && invoice.status === "sent") {
                         handleRevertStatus(invoice.id, "sent");
@@ -385,9 +395,9 @@ export default function Invoices() {
           if (!moveToRubbishTargetId) return;
           moveToTrashMutation.mutate({ id: moveToRubbishTargetId });
         }}
-        title="Move to Rubbish bin"
-        description="Move this draft invoice to the Rubbish bin? You can restore it later if needed."
-        confirmLabel="Move to Rubbish bin"
+        title="Delete invoice"
+        description="Delete this draft invoice? You can restore it later from the Rubbish bin."
+        confirmLabel="Delete"
         isDeleting={moveToTrashMutation.isPending}
       />
 
