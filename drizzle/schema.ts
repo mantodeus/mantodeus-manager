@@ -463,12 +463,37 @@ export const companySettings = mysqlTable("company_settings", {
   vatRate: decimal("vatRate", { precision: 5, scale: 2 }).default("19.00").notNull(),
   invoicePrefix: varchar("invoicePrefix", { length: 10 }).default("RE").notNull(),
   nextInvoiceNumber: int("nextInvoiceNumber").default(1).notNull(),
+  logoS3Key: varchar("logoS3Key", { length: 500 }),
+  logoUrl: text("logoUrl"),
+  logoWidth: int("logoWidth"),
+  logoHeight: int("logoHeight"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type CompanySettings = typeof companySettings.$inferSelect;
 export type InsertCompanySettings = typeof companySettings.$inferInsert;
+
+/**
+ * User Preferences table - stores per-user preferences
+ */
+export const userPreferences = mysqlTable("user_preferences", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("userId").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  dateFormat: varchar("dateFormat", { length: 20 }).default("MM/DD/YYYY").notNull(),
+  timeFormat: varchar("timeFormat", { length: 10 }).default("12h").notNull(),
+  timezone: varchar("timezone", { length: 50 }).default("UTC").notNull(),
+  language: varchar("language", { length: 10 }).default("en").notNull(),
+  currency: varchar("currency", { length: 3 }).default("EUR").notNull(),
+  notificationsEnabled: boolean("notificationsEnabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("user_preferences_userId_idx").on(table.userId),
+]);
+
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type InsertUserPreferences = typeof userPreferences.$inferInsert;
 
 // =============================================================================
 // PROJECT CHECK-INS TABLE

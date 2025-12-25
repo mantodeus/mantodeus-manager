@@ -10,8 +10,9 @@ import {
   type ProjectJob, type InsertProjectJob,
   type FileMetadata, type InsertFileMetadata,
   // PDF & Settings types
-  sharedDocuments, companySettings, projectCheckins,
+  sharedDocuments, companySettings, projectCheckins, userPreferences,
   type InsertSharedDocument, type InsertCompanySettings, type InsertProjectCheckin,
+  type UserPreferences, type InsertUserPreferences,
   // Legacy types (kept for backward compatibility)
   jobs, tasks, images, reports, comments, contacts, invoices, invoiceItems, notes, locations, 
   InsertJob, InsertTask, InsertImage, InsertReport, InsertComment, InsertContact, 
@@ -1997,6 +1998,86 @@ export async function incrementInvoiceNumber(userId: number) {
   if (!updated) throw new Error("Company settings not found after update");
   
   return updated.nextInvoiceNumber;
+}
+
+// =============================================================================
+// USER PREFERENCES FUNCTIONS
+// =============================================================================
+
+export async function getUserPreferencesByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  let result = await db.select().from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1);
+
+  // If not exists, create with defaults
+  if (result.length === 0) {
+    await db.insert(userPreferences).values({
+      userId,
+      dateFormat: "MM/DD/YYYY",
+      timeFormat: "12h",
+      timezone: "UTC",
+      language: "en",
+      currency: "EUR",
+      notificationsEnabled: true,
+    });
+
+    result = await db.select().from(userPreferences)
+      .where(eq(userPreferences.userId, userId))
+      .limit(1);
+  }
+
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createUserPreferences(data: InsertUserPreferences) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.insert(userPreferences).values(data);
+}
+
+export async function updateUserPreferences(userId: number, data: Partial<InsertUserPreferences>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.update(userPreferences)
+    .set(data)
+    .where(eq(userPreferences.userId, userId));
+}
+
+// =============================================================================
+// LOGO FUNCTIONS
+// =============================================================================
+
+export async function uploadCompanyLogo(userId: number, s3Key: string, url: string, width: number, height: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.update(companySettings)
+    .set({
+      logoS3Key: s3Key,
+      logoUrl: url,
+      logoWidth: width,
+      logoHeight: height,
+    })
+    .where(eq(companySettings.userId, userId));
+}
+
+export async function deleteCompanyLogo(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.update(companySettings)
+    .set({
+      logoS3Key: null,
+      logoUrl: null,
+      logoWidth: null,
+      logoHeight: null,
+    })
+    .where(eq(companySettings.userId, userId));
 }
 
 // =============================================================================

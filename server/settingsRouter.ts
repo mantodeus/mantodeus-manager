@@ -2,6 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
+import { storagePut, deleteFromStorage, generateFileKey, getContentType, createPresignedReadUrl } from "./storage";
+import sharp from "sharp";
 
 export const settingsRouter = router({
   /**
@@ -112,4 +114,119 @@ export const settingsRouter = router({
       
       return { success: true };
     }),
+
+  /**
+   * Nested preferences router
+   */
+  preferences: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserPreferencesByUserId(ctx.user.id);
+    }),
+
+    update: protectedProcedure
+      .input(
+        z.object({
+          dateFormat: z.string().optional(),
+          timeFormat: z.enum(["12h", "24h"]).optional(),
+          timezone: z.string().optional(),
+          language: z.string().optional(),
+          currency: z.string().optional(),
+          notificationsEnabled: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        await db.updateUserPreferences(ctx.user.id, input);
+        return { success: true };
+      }),
+  }),
+
+  /**
+   * Upload company logo
+   */
+  uploadLogo: protectedProcedure
+    .input(
+      z.object({
+        base64Image: z.string(),
+        filename: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      // 1. Validate file type
+      const ext = input.filename.split(".").pop()?.toLowerCase();
+      const allowedTypes = ["png", "jpg", "jpeg", "svg"];
+      if (!ext || !allowedTypes.includes(ext)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid file type. Only PNG, JPG, and SVG are allowed.",
+        });
+      }
+
+      // 2. Decode base64 and validate size (max 5MB)
+      const base64Data = input.base64Image.includes(",")
+        ? input.base64Image.split(",")[1]
+        : input.base64Image;
+      const buffer = Buffer.from(base64Data, "base64");
+
+      if (buffer.length > 5 * 1024 * 1024) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "File size exceeds 5MB limit.",
+        });
+      }
+
+      // 3. Resize with Sharp to max 800x200px
+      const resized = await sharp(buffer)
+        .resize(800, 200, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .toBuffer();
+
+      const metadata = await sharp(resized).metadata();
+
+      // 4. Upload to S3: uploads/logos/{userId}/{timestamp}.png
+      const s3Key = generateFileKey("uploads/logos", ctx.user.id, `logo.${ext}`);
+      const contentType = getContentType(input.filename);
+      await storagePut(s3Key, resized, contentType);
+
+      // 5. Store s3Key + URL in company_settings
+      await db.uploadCompanyLogo(
+        ctx.user.id,
+        s3Key,
+        await createPresignedReadUrl(s3Key, 365 * 24 * 60 * 60), // 1 year expiry
+        metadata.width || 0,
+        metadata.height || 0
+      );
+
+      // 6. Return logoUrl (presigned)
+      const logoUrl = await createPresignedReadUrl(s3Key, 365 * 24 * 60 * 60);
+      return { logoUrl, s3Key };
+    }),
+
+  /**
+   * Delete company logo
+   */
+  deleteLogo: protectedProcedure.mutation(async ({ ctx }) => {
+    // 1. Get current logo S3 key
+    const settings = await db.getCompanySettingsByUserId(ctx.user.id);
+    if (!settings?.logoS3Key) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No logo found.",
+      });
+    }
+
+    // 2. Delete from S3
+    try {
+      await deleteFromStorage(settings.logoS3Key);
+    } catch (error) {
+      console.error("Failed to delete logo from S3:", error);
+      // Continue even if S3 delete fails
+    }
+
+    // 3. Clear logo fields in company_settings
+    await db.deleteCompanyLogo(ctx.user.id);
+
+    return { success: true };
+  }),
 });
