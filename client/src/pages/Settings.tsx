@@ -17,21 +17,35 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Save, Building2, Receipt, CreditCard, Info, Palette } from "lucide-react";
+import { Loader2, Save, Building2, Receipt, CreditCard, Info, Palette, ImageIcon, User } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemeName } from "@/lib/theme";
+import { LogoUploadSection } from "@/components/LogoUploadSection";
 
 export default function Settings() {
   const { theme, switchTheme, themes } = useTheme();
   const { data: settings, isLoading } = trpc.settings.get.useQuery();
+  const { data: preferences, isLoading: preferencesLoading } = trpc.settings.preferences.get.useQuery();
+
   const updateMutation = trpc.settings.update.useMutation({
     onSuccess: () => {
       toast.success("Settings saved successfully");
     },
     onError: (error) => {
       toast.error("Failed to save settings: " + error.message);
+    },
+  });
+
+  const updatePreferencesMutation = trpc.settings.preferences.update.useMutation({
+    onSuccess: () => {
+      toast.success("Preferences saved successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to save preferences: " + error.message);
     },
   });
 
@@ -47,6 +61,15 @@ export default function Settings() {
     isKleinunternehmer: false,
     vatRate: "19.00",
     invoicePrefix: "RE",
+  });
+
+  const [preferencesData, setPreferencesData] = useState({
+    dateFormat: "MM/DD/YYYY",
+    timeFormat: "12h" as "12h" | "24h",
+    timezone: "UTC",
+    language: "en",
+    currency: "EUR",
+    notificationsEnabled: true,
   });
 
   // Initialize form when settings load
@@ -68,16 +91,39 @@ export default function Settings() {
     }
   }, [settings]);
 
+  // Initialize preferences when they load
+  useEffect(() => {
+    if (preferences) {
+      setPreferencesData({
+        dateFormat: preferences.dateFormat || "MM/DD/YYYY",
+        timeFormat: (preferences.timeFormat as "12h" | "24h") || "12h",
+        timezone: preferences.timezone || "UTC",
+        language: preferences.language || "en",
+        currency: preferences.currency || "EUR",
+        notificationsEnabled: preferences.notificationsEnabled ?? true,
+      });
+    }
+  }, [preferences]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await updateMutation.mutateAsync(formData);
+  };
+
+  const handlePreferencesSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updatePreferencesMutation.mutateAsync(preferencesData);
   };
 
   const handleChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  if (isLoading) {
+  const handlePreferenceChange = (field: string, value: string | boolean) => {
+    setPreferencesData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  if (isLoading || preferencesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -161,6 +207,173 @@ export default function Settings() {
               );
             })}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Logo Upload Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5 text-primary" />
+            <CardTitle>Company Logo</CardTitle>
+          </div>
+          <CardDescription>
+            Logo appears on invoices and reports (max 800x200px)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LogoUploadSection />
+        </CardContent>
+      </Card>
+
+      {/* User Preferences Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            <CardTitle>User Preferences</CardTitle>
+          </div>
+          <CardDescription>
+            Customize your personal display and formatting preferences
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handlePreferencesSubmit} className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Date Format */}
+              <div className="space-y-2">
+                <Label htmlFor="dateFormat">Date Format</Label>
+                <Select
+                  value={preferencesData.dateFormat}
+                  onValueChange={(value) => handlePreferenceChange("dateFormat", value)}
+                >
+                  <SelectTrigger id="dateFormat">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+                    <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+                    <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Time Format */}
+              <div className="space-y-2">
+                <Label htmlFor="timeFormat">Time Format</Label>
+                <RadioGroup
+                  value={preferencesData.timeFormat}
+                  onValueChange={(value) => handlePreferenceChange("timeFormat", value)}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="12h" id="12h" />
+                    <Label htmlFor="12h" className="font-normal cursor-pointer">12-hour</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="24h" id="24h" />
+                    <Label htmlFor="24h" className="font-normal cursor-pointer">24-hour</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Timezone */}
+              <div className="space-y-2">
+                <Label htmlFor="timezone">Timezone</Label>
+                <Select
+                  value={preferencesData.timezone}
+                  onValueChange={(value) => handlePreferenceChange("timezone", value)}
+                >
+                  <SelectTrigger id="timezone">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UTC">UTC</SelectItem>
+                    <SelectItem value="Europe/Berlin">Europe/Berlin</SelectItem>
+                    <SelectItem value="Europe/London">Europe/London</SelectItem>
+                    <SelectItem value="Europe/Paris">Europe/Paris</SelectItem>
+                    <SelectItem value="America/New_York">America/New York</SelectItem>
+                    <SelectItem value="America/Los_Angeles">America/Los Angeles</SelectItem>
+                    <SelectItem value="Asia/Tokyo">Asia/Tokyo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Language */}
+              <div className="space-y-2">
+                <Label htmlFor="language">Language</Label>
+                <Select
+                  value={preferencesData.language}
+                  onValueChange={(value) => handlePreferenceChange("language", value)}
+                >
+                  <SelectTrigger id="language">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="de">Deutsch</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Currency */}
+              <div className="space-y-2">
+                <Label htmlFor="currency">Currency</Label>
+                <Select
+                  value={preferencesData.currency}
+                  onValueChange={(value) => handlePreferenceChange("currency", value)}
+                >
+                  <SelectTrigger id="currency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EUR">EUR (€)</SelectItem>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                    <SelectItem value="GBP">GBP (£)</SelectItem>
+                    <SelectItem value="CHF">CHF</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Notifications */}
+              <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+                <div className="space-y-0.5">
+                  <Label htmlFor="notifications" className="text-base cursor-pointer">
+                    Notifications
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Enable email notifications
+                  </p>
+                </div>
+                <Switch
+                  id="notifications"
+                  checked={preferencesData.notificationsEnabled}
+                  onCheckedChange={(checked) => handlePreferenceChange("notificationsEnabled", checked)}
+                />
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={updatePreferencesMutation.isPending}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {updatePreferencesMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Preferences
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
 
