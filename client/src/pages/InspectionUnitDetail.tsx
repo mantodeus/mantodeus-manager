@@ -17,6 +17,10 @@ import { ArrowLeft, Camera, Plus, CheckCircle2, Circle, Clock, Loader2, Edit2, T
 import { Link, useRoute, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { unitStorage, findingStorage, mediaStorage } from "@/lib/offlineStorage";
+import { storeImageBlob, getImageUrl } from "@/lib/imageStorage";
+import { InspectionCameraCapture } from "@/components/InspectionCameraCapture";
+import { InspectionAnnotationCanvas } from "@/components/InspectionAnnotationCanvas";
+import { InspectionMediaViewer } from "@/components/InspectionMediaViewer";
 import { toast } from "sonner";
 
 export default function InspectionUnitDetail() {
@@ -59,8 +63,14 @@ export default function InspectionUnitDetail() {
   const [editFindingDialogOpen, setEditFindingDialogOpen] = useState(false);
   const [editingFinding, setEditingFinding] = useState<any>(null);
   const [takePhotoDialogOpen, setTakePhotoDialogOpen] = useState(false);
+  const [takePhotoForFinding, setTakePhotoForFinding] = useState<any>(null);
+  const [annotateDialogOpen, setAnnotateDialogOpen] = useState(false);
+  const [annotateMedia, setAnnotateMedia] = useState<any>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewingMedia, setViewingMedia] = useState<any>(null);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [labelValue, setLabelValue] = useState("");
+  const [mediaRefreshKey, setMediaRefreshKey] = useState(0);
 
   // Initialize label value
   useEffect(() => {
@@ -322,7 +332,11 @@ export default function InspectionUnitDetail() {
       {/* Action Buttons */}
       <div className="grid grid-cols-2 gap-4">
         <Button
-          onClick={() => setTakePhotoDialogOpen(true)}
+          onClick={() => {
+            // Take photo without a finding (will be attached when finding is created)
+            setTakePhotoForFinding(null);
+            setTakePhotoDialogOpen(true);
+          }}
           size="lg"
           className="h-16"
           variant="outline"
@@ -395,7 +409,19 @@ export default function InspectionUnitDetail() {
                       </div>
                     </div>
                     {/* Media section */}
-                    <FindingMediaSection finding={finding} isLocalId={isLocalId} />
+                    <FindingMediaSection 
+                      key={`${finding.localId || finding.id}-${mediaRefreshKey}`}
+                      finding={finding} 
+                      isLocalId={isLocalId}
+                      onTakePhoto={(finding) => {
+                        setTakePhotoForFinding(finding);
+                        setTakePhotoDialogOpen(true);
+                      }}
+                      onViewMedia={(media) => {
+                        setViewingMedia(media);
+                        setViewerOpen(true);
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -450,34 +476,140 @@ export default function InspectionUnitDetail() {
         />
       )}
 
-      {/* Take Photo Dialog - Stub for now */}
+      {/* Camera Capture */}
       {takePhotoDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Take Photo</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Photo capture will be implemented with camera API integration.
-              </p>
-              <Button onClick={() => setTakePhotoDialogOpen(false)} className="w-full">
-                Close
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+        <InspectionCameraCapture
+          open={takePhotoDialogOpen}
+          onClose={() => {
+            setTakePhotoDialogOpen(false);
+            setTakePhotoForFinding(null);
+          }}
+          onCapture={async (blob, imageUrl) => {
+            try {
+              // Store image blob
+              const localPath = await storeImageBlob(blob);
+
+              // Create media entry
+              const localId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              const media = {
+                inspectionFindingId: takePhotoForFinding?.localId || takePhotoForFinding?.id || 0,
+                localOriginalPath: localPath,
+                localAnnotatedPath: null,
+                takenAt: new Date().toISOString(),
+                syncStatus: "pending" as const,
+                localId,
+              };
+
+              await mediaStorage.save(media);
+
+              // Trigger media refresh
+              setMediaRefreshKey(prev => prev + 1);
+
+              // Refresh findings to update media sections
+              if (isLocalId) {
+                findingStorage.getAll().then((findings) => {
+                  setOfflineFindings(findings.filter(f => 
+                    (f.inspectionUnitId === unitId || f.inspectionUnitId === 0) && !f.deletedAt
+                  ));
+                }).catch(console.error);
+              } else {
+                refetchFindings();
+              }
+
+              toast.success("Photo saved");
+            } catch (error) {
+              console.error("Failed to save photo:", error);
+              toast.error("Failed to save photo");
+            }
+          }}
+        />
+      )}
+
+      {/* Annotation Canvas - triggered from viewer */}
+      {annotateDialogOpen && annotateMedia && (
+        <InspectionAnnotationCanvas
+          imageUrl={annotateMedia.localOriginalPath || ""}
+          onSave={async (annotatedUrl, annotatedBlob) => {
+            try {
+              // Store annotated image
+              const annotatedPath = await storeImageBlob(annotatedBlob);
+
+              // Update media entry
+              const updated = {
+                ...annotateMedia,
+                localAnnotatedPath: annotatedPath,
+                syncStatus: "pending" as const,
+                updatedAt: new Date().toISOString(),
+              };
+
+              await mediaStorage.save(updated);
+
+              // Trigger media refresh
+              setMediaRefreshKey(prev => prev + 1);
+
+              // Refresh findings to update media sections
+              if (isLocalId) {
+                findingStorage.getAll().then((findings) => {
+                  setOfflineFindings(findings.filter(f => 
+                    (f.inspectionUnitId === unitId || f.inspectionUnitId === 0) && !f.deletedAt
+                  ));
+                }).catch(console.error);
+              } else {
+                refetchFindings();
+              }
+
+              setAnnotateDialogOpen(false);
+              setAnnotateMedia(null);
+              toast.success("Annotation saved");
+            } catch (error) {
+              console.error("Failed to save annotation:", error);
+              toast.error("Failed to save annotation");
+            }
+          }}
+          onCancel={() => {
+            setAnnotateDialogOpen(false);
+            setAnnotateMedia(null);
+          }}
+        />
+      )}
+
+      {/* Media Viewer */}
+      {viewerOpen && viewingMedia && (
+        <InspectionMediaViewer
+          originalPath={viewingMedia.localOriginalPath}
+          annotatedPath={viewingMedia.localAnnotatedPath}
+          onClose={() => {
+            setViewerOpen(false);
+            setViewingMedia(null);
+          }}
+          onAnnotate={() => {
+            setViewerOpen(false);
+            setAnnotateMedia(viewingMedia);
+            setAnnotateDialogOpen(true);
+          }}
+        />
       )}
     </div>
   );
 }
 
 // Finding Media Section Component
-function FindingMediaSection({ finding, isLocalId }: { finding: any; isLocalId: boolean }) {
+function FindingMediaSection({ 
+  finding, 
+  isLocalId,
+  onTakePhoto,
+  onViewMedia,
+}: { 
+  finding: any; 
+  isLocalId: boolean;
+  onTakePhoto: (finding: any) => void;
+  onViewMedia: (media: any) => void;
+}) {
   const [media, setMedia] = useState<any[]>([]);
+  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
   const findingId = finding.localId || finding.id;
 
-  useEffect(() => {
+  const loadMedia = () => {
     // Load media for this finding
     mediaStorage.getAll().then((allMedia) => {
       const findingMedia = allMedia.filter(m => {
@@ -487,8 +619,35 @@ function FindingMediaSection({ finding, isLocalId }: { finding: any; isLocalId: 
         return matchesFinding && !m.deletedAt;
       });
       setMedia(findingMedia);
+
+      // Load thumbnails
+      const loadThumbnails = async () => {
+        const urls: Record<string, string> = {};
+        for (const m of findingMedia) {
+          const path = m.localAnnotatedPath || m.localOriginalPath;
+          if (path) {
+            try {
+              const url = await getImageUrl(path);
+              if (url) {
+                urls[m.localId || m.id] = url;
+              }
+            } catch (error) {
+              console.warn("Failed to load thumbnail:", error);
+            }
+          }
+        }
+        setThumbnailUrls(urls);
+      };
+      loadThumbnails();
     }).catch(console.error);
+  };
+
+  useEffect(() => {
+    loadMedia();
   }, [findingId, finding.id]);
+
+  // Expose refresh function via effect cleanup/remount
+  // Media will refresh when finding changes or component remounts
 
   const handleReplacePhoto = async (mediaItem: any) => {
     // Mark old media as deleted (soft delete)
@@ -499,53 +658,15 @@ function FindingMediaSection({ finding, isLocalId }: { finding: any; isLocalId: 
     };
     await mediaStorage.save(deleted);
 
-    // Create new media entry (stub - will be implemented with camera API)
-    const newMedia = {
-      inspectionFindingId: findingId,
-      localOriginalPath: undefined, // Will be set by camera API
-      localAnnotatedPath: undefined,
-      syncStatus: "pending" as const,
-      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    };
-    await mediaStorage.save(newMedia);
-
-    // Refresh media list
-    mediaStorage.getAll().then((allMedia) => {
-      const findingMedia = allMedia.filter(m => {
-        const matchesFinding = m.inspectionFindingId === findingId || 
-                               m.inspectionFindingId === finding.id ||
-                               (typeof m.inspectionFindingId === 'string' && m.inspectionFindingId === findingId);
-        return matchesFinding && !m.deletedAt;
-      });
-      setMedia(findingMedia);
-    }).catch(console.error);
-
-    toast.info("Photo replacement will be implemented with camera integration");
+    // Trigger camera capture for this finding
+    onTakePhoto(finding);
   };
 
   const handleReAnnotate = async (mediaItem: any) => {
-    // Update media to mark for re-annotation
-    // Original path is preserved, annotated path will be updated
-    const updated = {
-      ...mediaItem,
-      localAnnotatedPath: undefined, // Clear old annotation
-      syncStatus: "pending" as const,
-      updatedAt: new Date().toISOString(),
-    };
-    await mediaStorage.save(updated);
-
-    // Refresh media list
-    mediaStorage.getAll().then((allMedia) => {
-      const findingMedia = allMedia.filter(m => {
-        const matchesFinding = m.inspectionFindingId === findingId || 
-                               m.inspectionFindingId === finding.id ||
-                               (typeof m.inspectionFindingId === 'string' && m.inspectionFindingId === findingId);
-        return matchesFinding && !m.deletedAt;
-      });
-      setMedia(findingMedia);
-    }).catch(console.error);
-
-    toast.info("Re-annotation will be implemented with annotation tools");
+    // Open annotation canvas with original image
+    // If there's an existing annotated version, we'll start fresh from original
+    setAnnotateMedia(mediaItem);
+    setAnnotateDialogOpen(true);
   };
 
   const handleDeleteMedia = async (mediaItem: any) => {
@@ -556,70 +677,84 @@ function FindingMediaSection({ finding, isLocalId }: { finding: any; isLocalId: 
     };
     await mediaStorage.save(deleted);
 
-    // Refresh media list
-    mediaStorage.getAll().then((allMedia) => {
-      const findingMedia = allMedia.filter(m => {
-        const matchesFinding = m.inspectionFindingId === findingId || 
-                               m.inspectionFindingId === finding.id ||
-                               (typeof m.inspectionFindingId === 'string' && m.inspectionFindingId === findingId);
-        return matchesFinding && !m.deletedAt;
-      });
-      setMedia(findingMedia);
-    }).catch(console.error);
+    // Reload media (component will remount due to key change)
+    loadMedia();
 
     toast.success("Media deleted");
   };
-
-  if (media.length === 0) return null;
 
   return (
     <div className="mt-3 pt-3 border-t space-y-2">
       <p className="text-xs font-medium text-muted-foreground">Media</p>
       <div className="flex gap-2 flex-wrap">
-        {media.map((m) => (
-          <div key={m.localId || m.id} className="relative group">
-            <div className="w-20 h-20 bg-muted rounded flex items-center justify-center">
-              <ImageIcon className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity rounded">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleReplacePhoto(m)}
-                className="h-7 text-xs"
+        {media.map((m) => {
+          const thumbnailUrl = thumbnailUrls[m.localId || m.id];
+          return (
+            <div key={m.localId || m.id} className="relative group">
+              <div 
+                className="w-20 h-20 bg-muted rounded flex items-center justify-center overflow-hidden cursor-pointer"
+                onClick={() => onViewMedia(m)}
               >
-                Replace
-              </Button>
-              {m.annotatedS3Key || m.localAnnotatedPath ? (
+                {thumbnailUrl ? (
+                  <img 
+                    src={thumbnailUrl} 
+                    alt="Media thumbnail" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                )}
+                {m.localAnnotatedPath && (
+                  <div className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full" />
+                )}
+              </div>
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity rounded">
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => handleReAnnotate(m)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReplacePhoto(m);
+                  }}
                   className="h-7 text-xs"
                 >
-                  Re-annotate
+                  Replace
                 </Button>
-              ) : (
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => handleReAnnotate(m)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReAnnotate(m);
+                  }}
                   className="h-7 text-xs"
                 >
-                  Annotate
+                  {m.localAnnotatedPath ? "Re-annotate" : "Annotate"}
                 </Button>
-              )}
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => handleDeleteMedia(m)}
-                className="h-7 w-7 p-0"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteMedia(m);
+                  }}
+                  className="h-7 w-7 p-0"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => onTakePhoto(finding)}
+          className="w-20 h-20 flex flex-col items-center justify-center"
+        >
+          <Camera className="h-6 w-6 mb-1" />
+          <span className="text-xs">Add Photo</span>
+        </Button>
       </div>
     </div>
   );
