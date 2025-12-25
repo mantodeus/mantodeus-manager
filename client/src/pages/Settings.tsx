@@ -123,7 +123,7 @@ export default function Settings() {
     setPreferencesData((prev) => ({ ...prev, [field]: value }));
   };
 
-  if (isLoading || preferencesLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -226,19 +226,20 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* User Preferences Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            <CardTitle>User Preferences</CardTitle>
-          </div>
-          <CardDescription>
-            Customize your personal display and formatting preferences
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePreferencesSubmit} className="space-y-6">
+      {/* User Preferences Section - Only show if table exists */}
+      {!preferencesLoading && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              <CardTitle>User Preferences</CardTitle>
+            </div>
+            <CardDescription>
+              Customize your personal display and formatting preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePreferencesSubmit} className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               {/* Date Format */}
               <div className="space-y-2">
@@ -376,6 +377,7 @@ export default function Settings() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Company Information */}
