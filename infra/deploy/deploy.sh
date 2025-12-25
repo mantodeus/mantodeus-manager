@@ -101,23 +101,18 @@ if [ -d "node_modules" ]; then
 fi
 
 # Step 6: Install dependencies
-echo "▶ Installing dependencies with npm..."
+echo "▶ Installing dependencies with pnpm..."
 echo "   ⚠️  This may take 5-15 minutes."
 echo "   💡 If SSH disconnects, use: bash infra/deploy/install-deps.sh"
 echo ""
 
-# Determine install command based on lock file
-if [ -f "package-lock.json" ]; then
-  INSTALL_CMD="npm ci"
-  echo "   Using 'npm ci' (package-lock.json found)"
-else
-  INSTALL_CMD="npm install"
-  echo "   Using 'npm install' (no package-lock.json found)"
-fi
+# Use npx pnpm (uses the version specified in package.json packageManager field)
+INSTALL_CMD="npx pnpm install --frozen-lockfile"
+echo "   Using 'npx pnpm install --frozen-lockfile'"
 
 if ! $INSTALL_CMD; then
-  echo "⚠️  npm install failed, performing deep cleanup and retrying..."
-  
+  echo "⚠️  pnpm install failed, performing deep cleanup and retrying..."
+
   # Deep cleanup: remove node_modules, lock files, and cache
   echo "   Removing node_modules..."
   rm -rf node_modules 2>/dev/null || {
@@ -125,17 +120,17 @@ if ! $INSTALL_CMD; then
     find node_modules -mindepth 1 -delete 2>/dev/null || true
     rm -rf node_modules 2>/dev/null || true
   }
-  
-  echo "   Clearing npm cache..."
-  npm cache clean --force 2>/dev/null || true
-  
+
+  echo "   Clearing pnpm cache..."
+  npx pnpm store prune 2>/dev/null || true
+
   echo "   Retrying installation..."
   if ! $INSTALL_CMD; then
-    echo "❌ npm install failed after cleanup. Possible causes:"
+    echo "❌ pnpm install failed after cleanup. Possible causes:"
     echo "   - Disk space issues (check: df -h)"
     echo "   - File permission issues (check: ls -la node_modules)"
     echo "   - Network connectivity issues"
-    echo "   - Corrupted lock file (try: rm package-lock.json && npm install)"
+    echo "   - Corrupted lock file (try: rm pnpm-lock.yaml && npx pnpm install)"
     exit 1
   fi
 fi
