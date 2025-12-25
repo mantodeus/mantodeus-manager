@@ -9,14 +9,41 @@ import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { Link } from "wouter";
 
+interface InvoiceLineItem {
+  name: string;
+  description?: string | null;
+  category?: string | null;
+  quantity: number;
+  unitPrice: number;
+  currency: string;
+  lineTotal?: number;
+}
+
+function formatCurrency(amount: number | string) {
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+  }).format(num || 0);
+}
+
 export default function InvoicesRubbish() {
   const { data: trashedInvoices = [], isLoading } = trpc.invoices.listTrashed.useQuery();
+  const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const utils = trpc.useUtils();
   const restoreMutation = trpc.invoices.restore.useMutation({
-    onSuccess: () => toast.success("Invoice restored"),
+    onSuccess: () => {
+      toast.success("Invoice restored");
+      utils.invoices.listTrashed.invalidate();
+      utils.invoices.list.invalidate();
+    },
     onError: (error) => toast.error(error.message),
   });
   const deleteMutation = trpc.invoices.delete.useMutation({
-    onSuccess: () => toast.success("Invoice deleted permanently"),
+    onSuccess: () => {
+      toast.success("Invoice deleted permanently");
+      utils.invoices.listTrashed.invalidate();
+    },
     onError: (error) => toast.error(error.message),
   });
 
@@ -79,28 +106,49 @@ export default function InvoicesRubbish() {
           <p className="text-muted-foreground">Rubbish bin is empty.</p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {trashedInvoices.map((invoice) => {
+            const linkedContact = contacts.find(
+              (contact: { id: number }) => contact.id === invoice.clientId || contact.id === invoice.contactId
+            );
+            const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
+            const items = (invoice.items as InvoiceLineItem[]) || [];
             const actions: ItemAction[] =
               invoice.status === "draft" ? ["restore", "deletePermanently"] : ["restore"];
+
             return (
-              <Card key={invoice.id} className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <FileText className="w-4 h-4 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate">{invoice.invoiceNumber}</span>
+              <Card key={invoice.id} className="p-4 flex flex-col gap-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="w-5 h-5 text-accent" />
+                      <h3 className="font-regular text-lg">{invoice.invoiceNumber}</h3>
                       {getStatusBadge(invoice.status)}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {invoice.issueDate ? new Date(invoice.issueDate).toLocaleDateString("de-DE") : "No date"}
+                    <p className="text-muted-foreground text-xs">
+                      {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
+                      {invoice.dueDate ? ` • Due: ${new Date(invoice.dueDate).toLocaleDateString("de-DE")}` : ""}
                     </p>
+                    {linkedContact && (
+                      <p className="text-xs text-muted-foreground mt-1">Client: {linkedContact.name}</p>
+                    )}
+                  </div>
+                  <ItemActionsMenu
+                    actions={actions}
+                    onAction={(action) => handleItemAction(action, invoice.id, invoice.status)}
+                  />
+                </div>
+
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Items:</span>
+                    <span>{items.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total:</span>
+                    <span>{formatCurrency(invoice.total)}</span>
                   </div>
                 </div>
-                <ItemActionsMenu
-                  actions={actions}
-                  onAction={(action) => handleItemAction(action, invoice.id, invoice.status)}
-                />
               </Card>
             );
           })}
@@ -120,7 +168,7 @@ export default function InvoicesRubbish() {
           deleteMutation.mutate({ id: deleteTargetId });
         }}
         title="Delete permanently"
-        description="This action cannot be undone and may affect accounting records for accounting reasons."
+        description="This action is PERMANENT and cannot be undone. The invoice will be deleted forever."
         confirmLabel="Delete permanently"
         isDeleting={deleteMutation.isPending}
       />

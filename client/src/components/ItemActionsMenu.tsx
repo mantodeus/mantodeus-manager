@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash, Eye } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash, Eye, DollarSign } from "lucide-react";
 
 export type ItemAction =
   | "view"
@@ -27,7 +27,8 @@ export type ItemAction =
   | "moveToTrash"
   | "deletePermanently"
   | "revertToDraft"
-  | "revertToSent";
+  | "revertToSent"
+  | "markAsPaid";
 
 interface ItemActionsMenuProps {
   /** Callback when an action is selected */
@@ -59,10 +60,11 @@ export function ItemActionsMenu({
     select: { icon: CheckSquare, label: "Select", variant: "default" as const },
     archive: { icon: Archive, label: "Archive", variant: "default" as const },
     restore: { icon: RotateCcw, label: "Restore", variant: "default" as const },
-    moveToTrash: { icon: Trash, label: "Move to Rubbish bin", variant: "destructive" as const },
-    deletePermanently: { icon: Trash2, label: "Delete permanently (irreversible)", variant: "destructive" as const },
+    moveToTrash: { icon: Trash, label: "Delete", variant: "destructive" as const },
+    deletePermanently: { icon: Trash2, label: "Delete permanently", variant: "destructive" as const },
     revertToDraft: { icon: RotateCcw, label: "Mark as not sent", variant: "destructive" as const },
     revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" as const },
+    markAsPaid: { icon: DollarSign, label: "Mark as paid", variant: "default" as const },
   };
 
   const handleAction = useCallback(

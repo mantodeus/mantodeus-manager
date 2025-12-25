@@ -266,6 +266,24 @@ export const invoiceRouter = router({
       return mapInvoiceToPayload(updated);
     }),
 
+  markAsPaid: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      if (invoice.status !== "sent") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can be marked as paid" });
+      }
+
+      const updated = await db.updateInvoice(invoice.id, { status: "paid" });
+      return mapInvoiceToPayload(updated);
+    }),
+
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
