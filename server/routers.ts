@@ -20,6 +20,7 @@ import { projectsRouter } from "./projectsRouter";
 import { pdfRouter } from "./pdfRouter";
 import { settingsRouter } from "./settingsRouter";
 import { invoiceRouter } from "./invoiceRouter";
+import { inspectionRouter } from "./inspectionRouter";
 import { geocodeAddress } from "./_core/geocoding";
 import { shouldProcessImage } from "./_core/imageProcessing";
 import { 
@@ -49,6 +50,9 @@ export const appRouter = router({
   
   // New project-based structure
   projects: projectsRouter,
+  
+  // Inspection module
+  inspections: inspectionRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

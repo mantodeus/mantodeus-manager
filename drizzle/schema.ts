@@ -519,3 +519,126 @@ export const projectCheckins = mysqlTable("project_checkins", {
 
 export type ProjectCheckin = typeof projectCheckins.$inferSelect;
 export type InsertProjectCheckin = typeof projectCheckins.$inferInsert;
+
+// =============================================================================
+// INSPECTION MODULE TABLES
+// =============================================================================
+
+/**
+ * Inspection Templates table - defines inspection types and suggested fields
+ */
+export const inspectionTemplates = mysqlTable("inspection_templates", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 255 }).notNull(),
+  inspectionType: varchar("inspectionType", { length: 100 }).notNull(),
+  unitLabelHint: varchar("unitLabelHint", { length: 255 }),
+  labelPatternHint: varchar("labelPatternHint", { length: 255 }),
+  suggestedFields: json("suggestedFields").$type<unknown>(),
+  suggestedDefects: json("suggestedDefects").$type<unknown>(),
+  scope: mysqlEnum("scope", ["global", "company"]).default("global").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("inspection_templates_scope_idx").on(table.scope),
+  index("inspection_templates_inspectionType_idx").on(table.inspectionType),
+]);
+
+export type InspectionTemplate = typeof inspectionTemplates.$inferSelect;
+export type InsertInspectionTemplate = typeof inspectionTemplates.$inferInsert;
+
+/**
+ * Inspections table - top-level inspection entity
+ */
+export const inspections = mysqlTable("inspections", {
+  id: int("id").primaryKey().autoincrement(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  templateId: int("templateId").references(() => inspectionTemplates.id, { onDelete: "set null" }),
+  type: varchar("type", { length: 100 }),
+  status: varchar("status", { length: 50 }),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  localId: varchar("localId", { length: 255 }),
+  syncStatus: mysqlEnum("syncStatus", ["pending", "syncing", "synced", "error"]).default("pending"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("inspections_projectId_idx").on(table.projectId),
+  index("inspections_templateId_idx").on(table.templateId),
+  index("inspections_createdByUserId_idx").on(table.createdByUserId),
+  index("inspections_localId_idx").on(table.localId),
+  index("inspections_syncStatus_idx").on(table.syncStatus),
+]);
+
+export type Inspection = typeof inspections.$inferSelect;
+export type InsertInspection = typeof inspections.$inferInsert;
+
+/**
+ * Inspection Units table - individual units (abseils/sections) within an inspection
+ */
+export const inspectionUnits = mysqlTable("inspection_units", {
+  id: int("id").primaryKey().autoincrement(),
+  inspectionId: int("inspectionId").notNull().references(() => inspections.id, { onDelete: "cascade" }),
+  label: varchar("label", { length: 255 }).notNull(),
+  sequenceIndex: int("sequenceIndex").notNull(),
+  status: varchar("status", { length: 50 }),
+  localId: varchar("localId", { length: 255 }),
+  syncStatus: mysqlEnum("syncStatus", ["pending", "syncing", "synced", "error"]).default("pending"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("inspection_units_inspectionId_idx").on(table.inspectionId),
+  index("inspection_units_localId_idx").on(table.localId),
+  index("inspection_units_syncStatus_idx").on(table.syncStatus),
+  index("inspection_units_inspectionId_sequenceIndex_idx").on(table.inspectionId, table.sequenceIndex),
+]);
+
+export type InspectionUnit = typeof inspectionUnits.$inferSelect;
+export type InsertInspectionUnit = typeof inspectionUnits.$inferInsert;
+
+/**
+ * Inspection Findings table - defects/issues found during inspection
+ */
+export const inspectionFindings = mysqlTable("inspection_findings", {
+  id: int("id").primaryKey().autoincrement(),
+  inspectionUnitId: int("inspectionUnitId").notNull().references(() => inspectionUnits.id, { onDelete: "cascade" }),
+  defectType: varchar("defectType", { length: 255 }),
+  severity: varchar("severity", { length: 50 }),
+  notes: text("notes"),
+  positionDescriptor: varchar("positionDescriptor", { length: 500 }),
+  heightMeters: decimal("heightMeters", { precision: 8, scale: 2 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  localId: varchar("localId", { length: 255 }),
+  syncStatus: mysqlEnum("syncStatus", ["pending", "syncing", "synced", "error"]).default("pending"),
+}, (table) => [
+  index("inspection_findings_inspectionUnitId_idx").on(table.inspectionUnitId),
+  index("inspection_findings_createdByUserId_idx").on(table.createdByUserId),
+  index("inspection_findings_localId_idx").on(table.localId),
+  index("inspection_findings_syncStatus_idx").on(table.syncStatus),
+]);
+
+export type InspectionFinding = typeof inspectionFindings.$inferSelect;
+export type InsertInspectionFinding = typeof inspectionFindings.$inferInsert;
+
+/**
+ * Inspection Media table - photos/media attached to findings
+ */
+export const inspectionMedia = mysqlTable("inspection_media", {
+  id: int("id").primaryKey().autoincrement(),
+  inspectionFindingId: int("inspectionFindingId").notNull().references(() => inspectionFindings.id, { onDelete: "cascade" }),
+  originalS3Key: varchar("originalS3Key", { length: 500 }),
+  annotatedS3Key: varchar("annotatedS3Key", { length: 500 }),
+  localOriginalPath: varchar("localOriginalPath", { length: 500 }),
+  localAnnotatedPath: varchar("localAnnotatedPath", { length: 500 }),
+  takenAt: timestamp("takenAt").defaultNow().notNull(),
+  takenByUserId: int("takenByUserId").notNull().references(() => users.id),
+  syncStatus: mysqlEnum("syncStatus", ["pending", "syncing", "synced", "error"]).default("pending"),
+}, (table) => [
+  index("inspection_media_inspectionFindingId_idx").on(table.inspectionFindingId),
+  index("inspection_media_takenByUserId_idx").on(table.takenByUserId),
+  index("inspection_media_syncStatus_idx").on(table.syncStatus),
+]);
+
+export type InspectionMedia = typeof inspectionMedia.$inferSelect;
+export type InsertInspectionMedia = typeof inspectionMedia.$inferInsert;

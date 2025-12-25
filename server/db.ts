@@ -13,6 +13,11 @@ import {
   sharedDocuments, companySettings, projectCheckins, userPreferences,
   type InsertSharedDocument, type InsertCompanySettings, type InsertProjectCheckin,
   type UserPreferences, type InsertUserPreferences,
+  // Inspection types
+  inspections, inspectionTemplates, inspectionUnits, inspectionFindings, inspectionMedia,
+  type InsertInspection, type InsertInspectionTemplate, type InsertInspectionUnit,
+  type InsertInspectionFinding, type InsertInspectionMedia,
+  type Inspection, type InspectionTemplate, type InspectionUnit, type InspectionFinding, type InspectionMedia,
   // Legacy types (kept for backward compatibility)
   jobs, tasks, images, reports, comments, contacts, invoices, invoiceItems, notes, locations, 
   InsertJob, InsertTask, InsertImage, InsertReport, InsertComment, InsertContact, 
@@ -2149,4 +2154,186 @@ export async function updateProjectCheckin(id: number, data: Partial<InsertProje
   return await db.update(projectCheckins)
     .set(data)
     .where(eq(projectCheckins.id, id));
+}
+
+// =============================================================================
+// INSPECTION MODULE FUNCTIONS
+// =============================================================================
+
+// Inspection Templates
+export async function getAllInspectionTemplates() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(inspectionTemplates).orderBy(desc(inspectionTemplates.createdAt));
+}
+
+export async function getInspectionTemplateById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(inspectionTemplates).where(eq(inspectionTemplates.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createInspectionTemplate(data: InsertInspectionTemplate) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(inspectionTemplates).values(data);
+}
+
+export async function updateInspectionTemplate(id: number, data: Partial<InsertInspectionTemplate>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(inspectionTemplates).set(data).where(eq(inspectionTemplates.id, id));
+}
+
+export async function deleteInspectionTemplate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.delete(inspectionTemplates).where(eq(inspectionTemplates.id, id));
+}
+
+// Inspections
+export async function getInspectionsByProjectId(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(inspections)
+    .where(eq(inspections.projectId, projectId))
+    .orderBy(desc(inspections.createdAt));
+}
+
+export async function getInspectionById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(inspections).where(eq(inspections.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createInspection(data: InsertInspection) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(inspections).values(data);
+}
+
+export async function updateInspection(id: number, data: Partial<InsertInspection>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(inspections).set(data).where(eq(inspections.id, id));
+}
+
+export async function deleteInspection(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.delete(inspections).where(eq(inspections.id, id));
+}
+
+// Inspection Units
+export async function getInspectionUnitsByInspectionId(inspectionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(inspectionUnits)
+    .where(eq(inspectionUnits.inspectionId, inspectionId))
+    .orderBy(inspectionUnits.sequenceIndex);
+}
+
+export async function getInspectionUnitById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(inspectionUnits).where(eq(inspectionUnits.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getNextSequenceIndexForInspection(inspectionId: number) {
+  const db = await getDb();
+  if (!db) return 1;
+  const result = await db.select({ max: sql<number>`MAX(${inspectionUnits.sequenceIndex})` })
+    .from(inspectionUnits)
+    .where(eq(inspectionUnits.inspectionId, inspectionId));
+  const maxIndex = result[0]?.max ?? 0;
+  return maxIndex + 1;
+}
+
+export async function createInspectionUnit(data: InsertInspectionUnit) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(inspectionUnits).values(data);
+}
+
+export async function updateInspectionUnit(id: number, data: Partial<InsertInspectionUnit>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(inspectionUnits).set(data).where(eq(inspectionUnits.id, id));
+}
+
+export async function deleteInspectionUnit(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.delete(inspectionUnits).where(eq(inspectionUnits.id, id));
+}
+
+// Inspection Findings
+export async function getInspectionFindingsByUnitId(unitId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(inspectionFindings)
+    .where(eq(inspectionFindings.inspectionUnitId, unitId))
+    .orderBy(desc(inspectionFindings.createdAt));
+}
+
+export async function getInspectionFindingById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(inspectionFindings).where(eq(inspectionFindings.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createInspectionFinding(data: InsertInspectionFinding) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(inspectionFindings).values(data);
+}
+
+export async function updateInspectionFinding(id: number, data: Partial<InsertInspectionFinding>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(inspectionFindings).set(data).where(eq(inspectionFindings.id, id));
+}
+
+export async function deleteInspectionFinding(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.delete(inspectionFindings).where(eq(inspectionFindings.id, id));
+}
+
+// Inspection Media
+export async function getInspectionMediaByFindingId(findingId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(inspectionMedia)
+    .where(eq(inspectionMedia.inspectionFindingId, findingId))
+    .orderBy(desc(inspectionMedia.takenAt));
+}
+
+export async function getInspectionMediaById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(inspectionMedia).where(eq(inspectionMedia.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createInspectionMedia(data: InsertInspectionMedia) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(inspectionMedia).values(data);
+}
+
+export async function updateInspectionMedia(id: number, data: Partial<InsertInspectionMedia>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(inspectionMedia).set(data).where(eq(inspectionMedia.id, id));
+}
+
+export async function deleteInspectionMedia(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.delete(inspectionMedia).where(eq(inspectionMedia.id, id));
 }
