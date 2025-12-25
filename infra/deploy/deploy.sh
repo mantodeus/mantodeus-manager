@@ -185,21 +185,19 @@ if $PM2_CMD list | grep -q "$PM2_NAME"; then
 else
   # Process doesn't exist, start it
   echo "   Process not found, starting for the first time..."
-  if [ -f "ecosystem.config.js" ]; then
-    # Use ecosystem config if available
-    $PM2_CMD start ecosystem.config.js || {
-      echo "❌ PM2 start failed with ecosystem.config.js"
-      exit 1
-    }
-  else
-    # Fallback: start with npm start
-    $PM2_CMD start npm --name "$PM2_NAME" -- start || {
-      echo "❌ PM2 start failed"
-      exit 1
-    }
-  fi
+
+  # Create logs directory if it doesn't exist (required by ecosystem.config.js)
+  mkdir -p logs
+
+  # Start directly with script path (ecosystem.config.js has issues on some hosts)
+  echo "   Starting with: dist/index.js"
+  $PM2_CMD start dist/index.js --name "$PM2_NAME" || {
+    echo "❌ PM2 start failed"
+    exit 1
+  }
+
   echo "✅ PM2 started"
-  
+
   # Save PM2 process list
   $PM2_CMD save 2>/dev/null || true
 fi
