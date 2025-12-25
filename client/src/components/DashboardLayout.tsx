@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, FileCheck, StickyNote, MapPin, FileJson, FolderOpen, Settings as SettingsIcon } from "lucide-react";
+import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, FileCheck, StickyNote, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, ClipboardCheck } from "lucide-react";
 import { DataExportImportDialog } from "./DataExportImportDialog";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -31,6 +31,7 @@ import { Button } from "./ui/button";
 
 const menuItems = [
   { icon: FolderOpen, label: "Projects", path: "/projects" },
+  { icon: ClipboardCheck, label: "Inspections", path: "/inspections" },
   { icon: CalendarIcon, label: "Calendar", path: "/calendar" },
   { icon: Users, label: "Contacts", path: "/contacts" },
   { icon: FileCheck, label: "Invoices", path: "/invoices" },
