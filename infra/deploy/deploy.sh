@@ -83,22 +83,9 @@ GIT_COMMIT=$(git rev-parse --short HEAD)
 echo "✅ Code updated to commit: ${GIT_COMMIT}"
 echo ""
 
-# Step 5: Clean node_modules if it exists (prevents ENOTEMPTY errors)
-if [ -d "node_modules" ]; then
-  echo "▶ Cleaning existing node_modules..."
-  # Try gentle removal first
-  rm -rf node_modules 2>/dev/null || {
-    echo "⚠️  Standard removal failed, trying force removal..."
-    # On shared hosting, sometimes files are locked - try multiple strategies
-    find node_modules -type f -delete 2>/dev/null || true
-    find node_modules -type d -delete 2>/dev/null || true
-    rm -rf node_modules 2>/dev/null || true
-    # If still exists, try with force flag (if supported)
-    rm -rff node_modules 2>/dev/null || true
-  }
-  echo "✅ node_modules cleaned"
-  echo ""
-fi
+# Step 5: Skip node_modules cleaning (run manually if needed: rm -rf node_modules)
+# Skipping automatic cleaning makes deployments faster
+# Only clean manually when switching package managers or fixing corruption
 
 # Step 6: Install dependencies
 echo "▶ Installing dependencies with pnpm..."
