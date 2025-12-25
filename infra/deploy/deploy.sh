@@ -145,7 +145,22 @@ fi
 echo "✅ Build verified (dist/index.js and dist/public exist)"
 echo ""
 
-# Step 9: Start/Restart PM2 (Infomaniak shared hosting compatible)
+# Step 9: Run database migrations
+echo "▶ Running database migrations..."
+echo "   This will apply any pending schema changes to the database"
+echo ""
+
+if npm run db:migrate:prod; then
+  echo "✅ Database migrations completed"
+else
+  echo "⚠️  Database migration failed"
+  echo "   The build will continue, but database schema may be out of sync"
+  echo "   Check the error above and run migrations manually if needed:"
+  echo "   npm run db:migrate:prod"
+fi
+echo ""
+
+# Step 10: Start/Restart PM2 (Infomaniak shared hosting compatible)
 echo "▶ Starting/Restarting PM2 process: $PM2_NAME..."
 PM2_CMD=""
 
