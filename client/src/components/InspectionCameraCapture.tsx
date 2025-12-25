@@ -48,6 +48,24 @@ export function InspectionCameraCapture({
     setError(null);
 
     try {
+      // iOS Safari fix: Wait for DOM commit - ensure video element is mounted
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      
+      // Double-check video element exists after DOM commit
+      const video = videoRef.current;
+      if (!video) {
+        // Wait one more frame if still not available
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        const videoRetry = videoRef.current;
+        if (!videoRetry) {
+          throw new Error("Video element not mounted");
+        }
+      }
+
+      // Now get the video element (guaranteed to exist)
+      const videoElement = videoRef.current!;
+
+      // Request camera stream
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment", // Prefer back camera on mobile
@@ -57,28 +75,22 @@ export function InspectionCameraCapture({
         audio: false, // Disable audio
       });
 
-      const video = videoRef.current;
-      if (!video) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        throw new Error("Video element not available");
-      }
-
       // iOS Safari fix: Set attributes before srcObject
-      video.muted = true;
-      video.setAttribute("playsinline", "true");
-      video.setAttribute("autoplay", "true");
+      videoElement.muted = true;
+      videoElement.setAttribute("playsinline", "true");
+      videoElement.setAttribute("autoplay", "true");
 
       // Set stream
-      video.srcObject = mediaStream;
+      videoElement.srcObject = mediaStream;
 
       // iOS Safari fix: Must call play() after setting srcObject
       try {
-        await video.play();
+        await videoElement.play();
       } catch (playError) {
         console.warn("Video play() failed, trying again:", playError);
         // Sometimes need to wait a bit
         await new Promise(resolve => setTimeout(resolve, 100));
-        await video.play();
+        await videoElement.play();
       }
 
       setStream(mediaStream);
@@ -93,12 +105,13 @@ export function InspectionCameraCapture({
   }, [stream, isStarting]);
 
   // Auto-start camera when dialog opens
+  // iOS Safari fix: Use zero-delay timeout to ensure state change is committed
   useEffect(() => {
     if (open && !stream && !isStarting && !error) {
-      // Small delay to ensure dialog is rendered
+      // Zero-delay timeout ensures this runs after DOM commit
       const timer = setTimeout(() => {
         startCamera();
-      }, 100);
+      }, 0);
       return () => clearTimeout(timer);
     }
   }, [open, stream, isStarting, error, startCamera]);
@@ -172,9 +185,28 @@ export function InspectionCameraCapture({
       </div>
 
       {/* Video Preview - iOS Safari fix: explicit height required */}
+      {/* iOS Safari fix: Video element must ALWAYS be rendered when dialog is open */}
       <div className="flex-1 flex items-center justify-center relative bg-black" style={{ minHeight: "50vh" }}>
+        {/* iOS Safari fix: Always render video element (not conditionally) */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ 
+            height: "100%",
+            width: "100%",
+            minHeight: "400px",
+            opacity: stream ? 1 : 0, // Hide visually if no stream, but keep mounted
+            pointerEvents: stream ? "auto" : "none",
+          }}
+        />
+        <canvas ref={canvasRef} className="hidden" />
+        
+        {/* Overlay UI based on state */}
         {error ? (
-          <div className="text-center p-8">
+          <div className="text-center p-8 relative z-10">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <p className="text-white mb-2">Camera Error</p>
             <p className="text-gray-400 text-sm">{error}</p>
@@ -195,25 +227,8 @@ export function InspectionCameraCapture({
               </Button>
             </div>
           </div>
-        ) : stream ? (
-          <>
-            {/* iOS Safari fix: absolute positioning with explicit height, all required attributes */}
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className="absolute inset-0 h-full w-full object-cover"
-              style={{ 
-                height: "100%",
-                width: "100%",
-                minHeight: "400px",
-              }}
-            />
-            <canvas ref={canvasRef} className="hidden" />
-          </>
-        ) : (
-          <div className="text-center">
+        ) : !stream && (
+          <div className="text-center relative z-10">
             <Loader2 className="h-8 w-8 animate-spin text-white mx-auto mb-4" />
             <p className="text-white mb-4">Starting camera...</p>
             {!isStarting && (
