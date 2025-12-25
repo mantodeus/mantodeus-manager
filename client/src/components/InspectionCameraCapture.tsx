@@ -5,7 +5,7 @@
  * Works on web and mobile devices.
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, X, Loader2, AlertCircle } from "lucide-react";
@@ -25,52 +25,83 @@ export function InspectionCameraCapture({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Cleanup stream when dialog closes
   useEffect(() => {
     if (!open) {
-      // Stop stream when dialog closes
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
         setStream(null);
       }
       return;
     }
+  }, [open, stream]);
 
-    // Request camera access
-    const startCamera = async () => {
+  // Start camera (user-initiated via button or auto-start when dialog opens)
+  const startCamera = useCallback(async () => {
+    if (stream || isStarting) return;
+
+    setIsStarting(true);
+    setError(null);
+
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment", // Prefer back camera on mobile
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false, // Disable audio
+      });
+
+      const video = videoRef.current;
+      if (!video) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        throw new Error("Video element not available");
+      }
+
+      // iOS Safari fix: Set attributes before srcObject
+      video.muted = true;
+      video.setAttribute("playsinline", "true");
+      video.setAttribute("autoplay", "true");
+
+      // Set stream
+      video.srcObject = mediaStream;
+
+      // iOS Safari fix: Must call play() after setting srcObject
       try {
-        setError(null);
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "environment", // Prefer back camera on mobile
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
-        });
-
-        setStream(mediaStream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-        }
-      } catch (err) {
-        console.error("Camera access error:", err);
-        const errorMessage = err instanceof Error ? err.message : "Failed to access camera";
-        setError(errorMessage);
-        toast.error("Camera access denied or unavailable");
+        await video.play();
+      } catch (playError) {
+        console.warn("Video play() failed, trying again:", playError);
+        // Sometimes need to wait a bit
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await video.play();
       }
-    };
 
-    startCamera();
+      setStream(mediaStream);
+    } catch (err) {
+      console.error("Camera access error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to access camera";
+      setError(errorMessage);
+      toast.error("Camera access denied or unavailable");
+    } finally {
+      setIsStarting(false);
+    }
+  }, [stream, isStarting]);
 
-    return () => {
-      // Cleanup on unmount
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [open]);
+  // Auto-start camera when dialog opens
+  useEffect(() => {
+    if (open && !stream && !isStarting && !error) {
+      // Small delay to ensure dialog is rendered
+      const timer = setTimeout(() => {
+        startCamera();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [open, stream, isStarting, error, startCamera]);
 
   const handleCapture = () => {
     if (!videoRef.current || !canvasRef.current || !stream) return;
@@ -140,36 +171,60 @@ export function InspectionCameraCapture({
         </Button>
       </div>
 
-      {/* Video Preview */}
-      <div className="flex-1 flex items-center justify-center relative bg-black">
+      {/* Video Preview - iOS Safari fix: explicit height required */}
+      <div className="flex-1 flex items-center justify-center relative bg-black" style={{ minHeight: "50vh" }}>
         {error ? (
           <div className="text-center p-8">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <p className="text-white mb-2">Camera Error</p>
             <p className="text-gray-400 text-sm">{error}</p>
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="mt-4"
-            >
-              Close
-            </Button>
+            <div className="flex gap-2 justify-center mt-4">
+              <Button
+                variant="outline"
+                onClick={startCamera}
+                className="text-white border-white"
+              >
+                Retry
+              </Button>
+              <Button
+                variant="outline"
+                onClick={onClose}
+                className="text-white border-white"
+              >
+                Close
+              </Button>
+            </div>
           </div>
         ) : stream ? (
           <>
+            {/* iOS Safari fix: absolute positioning with explicit height, all required attributes */}
             <video
               ref={videoRef}
               autoPlay
-              playsInline
               muted
-              className="max-w-full max-h-full object-contain"
+              playsInline
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{ 
+                height: "100%",
+                width: "100%",
+                minHeight: "400px",
+              }}
             />
             <canvas ref={canvasRef} className="hidden" />
           </>
         ) : (
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin text-white mx-auto mb-4" />
-            <p className="text-white">Starting camera...</p>
+            <p className="text-white mb-4">Starting camera...</p>
+            {!isStarting && (
+              <Button
+                variant="outline"
+                onClick={startCamera}
+                className="text-white border-white"
+              >
+                Start Camera
+              </Button>
+            )}
           </div>
         )}
       </div>
