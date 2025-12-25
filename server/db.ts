@@ -1,4 +1,4 @@
-import { eq, desc, and, sql, isNull, isNotNull, inArray, ne } from "drizzle-orm";
+import { eq, desc, and, or, sql, isNull, isNotNull, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { 
@@ -863,10 +863,21 @@ async function getHighestInvoiceCounter(userId: number, invoiceYear: number): Pr
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   try {
+    // Only count invoices that are NOT trashed (trashed draft invoices should release their numbers)
+    // OR invoices that are sent/paid (even if trashed, these numbers must be preserved)
     const result = await db
       .select({ maxCounter: sql<number>`COALESCE(MAX(${invoices.invoiceCounter}), 0)`.as("maxCounter") })
       .from(invoices)
-      .where(and(eq(invoices.userId, userId), eq(invoices.invoiceYear, invoiceYear)))
+      .where(
+        and(
+          eq(invoices.userId, userId),
+          eq(invoices.invoiceYear, invoiceYear),
+          or(
+            isNull(invoices.trashedAt), // Not trashed at all
+            ne(invoices.status, "draft")  // OR sent/paid (preserved even if trashed)
+          )
+        )
+      )
       .limit(1);
     return result[0]?.maxCounter ?? 0;
   } catch (error) {
