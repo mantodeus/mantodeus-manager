@@ -27,6 +27,8 @@ import NotesRubbish from "./pages/NotesRubbish";
 import Maps from "./pages/Maps";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
+import Inspections from "./pages/Inspections";
+import InspectionUnitDetail from "./pages/InspectionUnitDetail";
 import { useEffect } from "react";
 import { initializeTheme } from "@/lib/theme";
 
@@ -97,6 +99,16 @@ function Router() {
       <Route path="/projects/:projectId/jobs/:jobId">
         <DashboardLayout>
           <ProjectJobDetail />
+        </DashboardLayout>
+      </Route>
+      <Route path="/projects/:projectId/inspections">
+        <DashboardLayout>
+          <Inspections />
+        </DashboardLayout>
+      </Route>
+      <Route path="/projects/:projectId/inspections/units/:unitId">
+        <DashboardLayout>
+          <InspectionUnitDetail />
         </DashboardLayout>
       </Route>
       <Route path="/reports">
