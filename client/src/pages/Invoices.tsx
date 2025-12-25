@@ -205,20 +205,22 @@ export default function Invoices() {
               Create Invoice
             </Button>
           </DialogTrigger>
-          <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[1100px] sm:max-w-[92vw] lg:max-w-[1100px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
-            <DialogHeader>
+          <DialogContent className="w-[95vw] sm:w-[85vw] lg:w-[75vw] xl:w-[65vw] max-w-none max-h-[92vh] overflow-hidden flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6 pb-4">
               <DialogTitle>Create Invoice</DialogTitle>
             </DialogHeader>
-            <InvoiceForm
-              mode="create"
-              contacts={contacts}
-              onClose={() => setCreateDialogOpen(false)}
-              onSuccess={() => {
-                toast.success("Invoice created");
-                setCreateDialogOpen(false);
-                refetch();
-              }}
-            />
+            <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
+              <InvoiceForm
+                mode="create"
+                contacts={contacts}
+                onClose={() => setCreateDialogOpen(false)}
+                onSuccess={() => {
+                  toast.success("Invoice created");
+                  setCreateDialogOpen(false);
+                  refetch();
+                }}
+              />
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -340,25 +342,27 @@ export default function Invoices() {
 
       {editingInvoice && (
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[1100px] sm:max-w-[92vw] lg:max-w-[1100px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
-            <DialogHeader>
+          <DialogContent className="w-[95vw] sm:w-[85vw] lg:w-[75vw] xl:w-[65vw] max-w-none max-h-[92vh] overflow-hidden flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6 pb-4">
               <DialogTitle>Edit Invoice</DialogTitle>
             </DialogHeader>
-            <InvoiceForm
-              mode="edit"
-              invoiceId={editingInvoice}
-              contacts={contacts}
-              onClose={() => {
-                setEditDialogOpen(false);
-                setEditingInvoice(null);
-              }}
-              onSuccess={() => {
-                toast.success("Invoice updated");
-                setEditDialogOpen(false);
-                setEditingInvoice(null);
-                refetch();
-              }}
-            />
+            <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
+              <InvoiceForm
+                mode="edit"
+                invoiceId={editingInvoice}
+                contacts={contacts}
+                onClose={() => {
+                  setEditDialogOpen(false);
+                  setEditingInvoice(null);
+                }}
+                onSuccess={() => {
+                  toast.success("Invoice updated");
+                  setEditDialogOpen(false);
+                  setEditingInvoice(null);
+                  refetch();
+                }}
+              />
+            </div>
           </DialogContent>
         </Dialog>
       )}
@@ -424,14 +428,16 @@ export default function Invoices() {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setRevertAcknowledged(false)}>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              disabled={!revertAcknowledged}
               onClick={() => {
-                if (!revertTarget) return;
+                if (!revertTarget || !revertAcknowledged) return;
                 revertMutation.mutate({
                   id: revertTarget.id,
                   targetStatus: revertTarget.targetStatus,
                   confirmed: true,
                 });
                 setRevertDialogOpen(false);
+                setRevertAcknowledged(false);
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
