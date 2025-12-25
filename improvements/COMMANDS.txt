@@ -1,5 +1,9 @@
 COMMANDS
 
+
+bash infra/deploy/deploy.sh
+
+
 cd /srv/customer/sites/manager.mantodeus.com
 npm install
 npm run build
