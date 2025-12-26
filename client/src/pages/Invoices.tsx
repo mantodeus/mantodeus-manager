@@ -25,6 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 
 interface InvoiceLineItem {
   name: string;
@@ -75,8 +76,7 @@ export default function Invoices() {
   const [moveToRubbishDialogOpen, setMoveToRubbishDialogOpen] = useState(false);
   const [moveToRubbishTargetId, setMoveToRubbishTargetId] = useState<number | null>(null);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
-  const [revertTarget, setRevertTarget] = useState<{ id: number; targetStatus: "draft" | "sent"; currentStatus: "sent" | "paid" } | null>(null);
-  const [revertAcknowledged, setRevertAcknowledged] = useState(false);
+  const [revertTarget, setRevertTarget] = useState<{ id: number; targetStatus: "draft" | "open"; currentStatus: "open" | "paid" } | null>(null);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -171,24 +171,40 @@ export default function Invoices() {
     setMoveToRubbishDialogOpen(true);
   };
 
-  const handleRevertStatus = (invoiceId: number, currentStatus: "sent" | "paid") => {
-    const targetStatus = currentStatus === "sent" ? "draft" : "sent";
+  const handleRevertStatus = (invoiceId: number, currentStatus: "open" | "paid") => {
+    const targetStatus = currentStatus === "open" ? "draft" : "open";
     setRevertTarget({ id: invoiceId, targetStatus, currentStatus });
-    setRevertAcknowledged(false);
     setRevertDialogOpen(true);
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      draft: "outline",
-      sent: "default",
-      paid: "secondary",
-    };
-    return (
-      <Badge variant={variants[status] || "default"} className="text-xs">
-        {status.toUpperCase()}
-      </Badge>
-    );
+  const getStatusBadge = (invoice: any) => {
+    const { status, sentAt, paidAt, dueDate } = invoice;
+
+    // Status logic:
+    // - draft: status === 'draft'
+    // - not sent: status === 'open' && sentAt === null
+    // - sent: status === 'open' && sentAt !== null
+    // - paid: status === 'paid'
+    // - overdue: dueDate < today && paidAt === null
+
+    if (status === 'paid') {
+      return <Badge variant="secondary" className="text-xs">PAID</Badge>;
+    }
+
+    if (status === 'open' && sentAt) {
+      // Check if overdue
+      if (dueDate && new Date(dueDate) < new Date() && !paidAt) {
+        return <Badge variant="destructive" className="text-xs">OVERDUE</Badge>;
+      }
+      return <Badge variant="default" className="text-xs">SENT</Badge>;
+    }
+
+    if (status === 'open' && !sentAt) {
+      return <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600">NOT SENT</Badge>;
+    }
+
+    // Draft
+    return <Badge variant="outline" className="text-xs">DRAFT</Badge>;
   };
 
   return (
@@ -245,7 +261,7 @@ export default function Invoices() {
                     <div className="flex items-center gap-2 mb-2">
                       <FileText className="w-5 h-5 text-accent" />
                       <h3 className="font-regular text-lg">{invoice.invoiceNumber}</h3>
-                      {getStatusBadge(invoice.status)}
+                      {getStatusBadge(invoice)}
                     </div>
                     <p className="text-muted-foreground text-xs">
                       {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
@@ -259,7 +275,7 @@ export default function Invoices() {
                     actions={
                       invoice.status === "draft"
                         ? ["edit", "duplicate", "archive", "moveToTrash"]
-                        : invoice.status === "sent"
+                        : invoice.status === "open"
                         ? ["view", "markAsPaid", "archive", "revertToDraft", "duplicate"]
                         : ["view", "archive", "revertToSent", "duplicate"]
                     }
@@ -274,11 +290,11 @@ export default function Invoices() {
                       if (action === "moveToTrash") {
                         handleMoveToRubbish(invoice.id);
                       }
-                      if (action === "markAsPaid" && invoice.status === "sent") {
+                      if (action === "markAsPaid" && invoice.status === "open") {
                         markAsPaidMutation.mutate({ id: invoice.id });
                       }
-                      if (action === "revertToDraft" && invoice.status === "sent") {
-                        handleRevertStatus(invoice.id, "sent");
+                      if (action === "revertToDraft" && invoice.status === "open") {
+                        handleRevertStatus(invoice.id, "open");
                       }
                       if (action === "revertToSent" && invoice.status === "paid") {
                         handleRevertStatus(invoice.id, "paid");
@@ -405,47 +421,22 @@ export default function Invoices() {
         isDeleting={moveToTrashMutation.isPending}
       />
 
-      <AlertDialog open={revertDialogOpen} onOpenChange={setRevertDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Revert invoice status?</AlertDialogTitle>
-            <AlertDialogDescription className="pt-2">
-              {revertTarget?.currentStatus === "sent"
-                ? "This invoice has already been sent. Reverting it may affect records and client communication for accounting reasons. Only do this if the invoice was sent in error."
-                : "This invoice is marked as paid. Reverting it may affect accounting records for accounting reasons. Only proceed if the payment was recorded incorrectly."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
-            <Checkbox
-              checked={revertAcknowledged}
-              onCheckedChange={(checked) => setRevertAcknowledged(Boolean(checked))}
-              id="revert-ack"
-            />
-            <label htmlFor="revert-ack" className="text-muted-foreground">
-              I understand the consequences.
-            </label>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setRevertAcknowledged(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={!revertAcknowledged}
-              onClick={() => {
-                if (!revertTarget || !revertAcknowledged) return;
-                revertMutation.mutate({
-                  id: revertTarget.id,
-                  targetStatus: revertTarget.targetStatus,
-                  confirmed: true,
-                });
-                setRevertDialogOpen(false);
-                setRevertAcknowledged(false);
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Revert status
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RevertInvoiceStatusDialog
+        open={revertDialogOpen}
+        onOpenChange={setRevertDialogOpen}
+        currentStatus={revertTarget?.currentStatus || "open"}
+        targetStatus={revertTarget?.targetStatus || "draft"}
+        onConfirm={() => {
+          if (!revertTarget) return;
+          revertMutation.mutate({
+            id: revertTarget.id,
+            targetStatus: revertTarget.targetStatus,
+            confirmed: true,
+          });
+          setRevertDialogOpen(false);
+        }}
+        isReverting={revertMutation.isPending}
+      />
     </div>
   );
 }

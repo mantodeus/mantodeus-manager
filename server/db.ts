@@ -881,7 +881,7 @@ async function getHighestInvoiceCounter(userId: number, invoiceYear: number): Pr
   if (!db) throw new Error("Database not available");
   try {
     // Only count invoices that are NOT trashed (trashed draft invoices should release their numbers)
-    // OR invoices that are sent/paid (even if trashed, these numbers must be preserved)
+    // OR invoices that are open/paid (even if trashed, these numbers must be preserved)
     const result = await db
       .select({ maxCounter: sql<number>`COALESCE(MAX(${invoices.invoiceCounter}), 0)`.as("maxCounter") })
       .from(invoices)
@@ -891,7 +891,7 @@ async function getHighestInvoiceCounter(userId: number, invoiceYear: number): Pr
           eq(invoices.invoiceYear, invoiceYear),
           or(
             isNull(invoices.trashedAt), // Not trashed at all
-            ne(invoices.status, "draft")  // OR sent/paid (preserved even if trashed)
+            ne(invoices.status, "draft")  // OR open/paid (preserved even if trashed)
           )
         )
       )
@@ -1055,17 +1055,56 @@ export async function restoreInvoice(id: number) {
     .where(eq(invoices.id, id));
 }
 
-export async function revertInvoiceStatus(id: number, targetStatus: 'draft' | 'sent') {
+export async function issueInvoice(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
 
-  // Update status field
-  // Note: Clear sent/paid timestamps if needed (implementation depends on your schema)
+  // Draft → Open with sentAt timestamp
   return db
     .update(invoices)
-    .set({ status: targetStatus })
+    .set({ status: 'open', sentAt: new Date() })
     .where(eq(invoices.id, id));
+}
+
+export async function markInvoiceAsPaid(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  // Open → Paid with paidAt timestamp
+  // If invoice was never sent (sentAt is null), set it to now as well
+  const invoice = await getInvoiceById(id);
+  const updates: any = { status: 'paid', paidAt: new Date() };
+  if (!invoice?.sentAt) {
+    updates.sentAt = new Date();
+  }
+
+  return db
+    .update(invoices)
+    .set(updates)
+    .where(eq(invoices.id, id));
+}
+
+export async function revertInvoiceStatus(id: number, targetStatus: 'draft' | 'open') {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  // Update status field and clear corresponding timestamps
+  if (targetStatus === 'draft') {
+    // Reverting to draft: clear both sentAt and paidAt
+    return db
+      .update(invoices)
+      .set({ status: targetStatus, sentAt: null, paidAt: null })
+      .where(eq(invoices.id, id));
+  } else if (targetStatus === 'open') {
+    // Reverting to open (from paid): clear paidAt, keep sentAt
+    return db
+      .update(invoices)
+      .set({ status: targetStatus, paidAt: null })
+      .where(eq(invoices.id, id));
+  }
 }
 
 // ===== INVOICE ITEMS QUERIES =====

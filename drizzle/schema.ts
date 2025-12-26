@@ -1,5 +1,5 @@
 // MySQL schema for Mantodeus Manager
-import { mysqlTable, mysqlEnum, int, text, timestamp, varchar, boolean, json, decimal, index, unique } from "drizzle-orm/mysql-core";
+import { mysqlTable, mysqlEnum, int, text, timestamp, varchar, boolean, json, decimal, index, unique, uniqueIndex } from "drizzle-orm/mysql-core";
 
 // =============================================================================
 // Shared Image Metadata Types
@@ -320,9 +320,13 @@ export const invoices = mysqlTable("invoices", {
   invoiceNumber: varchar("invoiceNumber", { length: 50 }).notNull(),
   invoiceYear: int("invoiceYear").notNull(),
   invoiceCounter: int("invoiceCounter").notNull(),
-  status: mysqlEnum("status", ["draft", "sent", "paid"]).default("draft").notNull(),
+  status: mysqlEnum("status", ["draft", "open", "paid"]).default("draft").notNull(),
   issueDate: timestamp("issueDate").defaultNow().notNull(),
   dueDate: timestamp("dueDate"),
+  /** Timestamp when invoice was sent to client (null if not sent) */
+  sentAt: timestamp("sentAt"),
+  /** Timestamp when invoice was marked as paid (null if not paid) */
+  paidAt: timestamp("paidAt"),
   notes: text("notes"),
   servicePeriodStart: timestamp("servicePeriodStart"),
   servicePeriodEnd: timestamp("servicePeriodEnd"),
@@ -349,6 +353,8 @@ export const invoices = mysqlTable("invoices", {
   uniqueIndex("invoice_number_per_user").on(table.userId, table.invoiceNumber),
   index("invoices_archivedAt_idx").on(table.archivedAt),
   index("invoices_trashedAt_idx").on(table.trashedAt),
+  index("invoices_sentAt_idx").on(table.sentAt),
+  index("invoices_paidAt_idx").on(table.paidAt),
 ]);
 
 export type Invoice = typeof invoices.$inferSelect;

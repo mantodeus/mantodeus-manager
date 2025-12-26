@@ -262,7 +262,8 @@ export const invoiceRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be issued" });
       }
 
-      const updated = await db.updateInvoice(invoice.id, { status: "sent" });
+      await db.issueInvoice(invoice.id);
+      const updated = await db.getInvoiceById(invoice.id);
       return mapInvoiceToPayload(updated);
     }),
 
@@ -276,11 +277,13 @@ export const invoiceRouter = router({
       if (invoice.userId !== ctx.user.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
-      if (invoice.status !== "sent") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can be marked as paid" });
+      // Can mark as paid if status is 'open' (regardless of sentAt)
+      if (invoice.status !== "open" && invoice.status !== "draft") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only open or draft invoices can be marked as paid" });
       }
 
-      const updated = await db.updateInvoice(invoice.id, { status: "paid" });
+      await db.markInvoiceAsPaid(invoice.id);
+      const updated = await db.getInvoiceById(invoice.id);
       return mapInvoiceToPayload(updated);
     }),
 
@@ -363,7 +366,7 @@ export const invoiceRouter = router({
     .input(
       z.object({
         id: z.number(),
-        targetStatus: z.enum(["draft", "sent"]),
+        targetStatus: z.enum(["draft", "open"]),
         confirmed: z.boolean(),
       })
     )
@@ -380,14 +383,16 @@ export const invoiceRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
 
-      const isSentToDraft = invoice.status === "sent" && input.targetStatus === "draft";
-      const isPaidToSent = invoice.status === "paid" && input.targetStatus === "sent";
+      // Validate transitions: open→draft (if sent), paid→open
+      const isOpenToDraft = invoice.status === "open" && input.targetStatus === "draft";
+      const isPaidToOpen = invoice.status === "paid" && input.targetStatus === "open";
 
-      if (!isSentToDraft && !isPaidToSent) {
+      if (!isOpenToDraft && !isPaidToOpen) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid status transition for this invoice." });
       }
 
-      const updated = await db.updateInvoice(invoice.id, { status: input.targetStatus });
+      await db.revertInvoiceStatus(invoice.id, input.targetStatus);
+      const updated = await db.getInvoiceById(invoice.id);
       return mapInvoiceToPayload(updated);
     }),
 });
