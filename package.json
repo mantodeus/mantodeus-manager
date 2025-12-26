@@ -17,7 +17,7 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:migrate:prod": "tsx scripts/run-migrations.ts",
+    "db:migrate:prod": "drizzle-kit migrate",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "db:push-direct": "drizzle-kit push",
     "db:clear-migrations": "tsx scripts/clear-db-migrations.ts",
