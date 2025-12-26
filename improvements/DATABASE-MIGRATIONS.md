@@ -13,47 +13,30 @@ This project uses **Drizzle ORM** for database schema management and migrations.
 
 ### Development Workflow
 
-When you change the database schema:
+#### Option A: With Migrations (Recommended for Production)
 
-1. **Edit the schema** in `drizzle/schema.ts`
-   ```typescript
-   // Example: Add a new column
-   export const projects = mysqlTable("projects", {
-     id: int("id").primaryKey().autoincrement(),
-     name: text("name").notNull(),
-     // Add new column:
-     priority: text("priority"),
-   });
-   ```
-
-2. **Generate migration** (creates SQL file):
-   ```bash
-   npm run db:generate
-   ```
-   This creates a new file like `drizzle/0014_add_priority_column.sql`
-
-3. **Review the migration** - Check the generated SQL:
-   ```sql
-   ALTER TABLE `projects` ADD `priority` text;
-   ```
-
-4. **Apply locally** (optional, for testing):
-   ```bash
-   npm run db:migrate:prod
-   ```
-
-5. **Commit the migration**:
+1. **Edit schema** in `drizzle/schema.ts`
+2. **Generate migration**: `npm run db:generate`
+3. **Commit & push**:
    ```bash
    git add drizzle/
-   git commit -m "feat: add priority column to projects"
+   git commit -m "feat: add new column"
    git push
    ```
+4. **Deploy** - migration runs automatically
 
-6. **Deploy** - Migration runs automatically:
+#### Option B: Auto-Sync (Quick & Easy)
+
+1. **Edit schema** in `drizzle/schema.ts`
+2. **Commit & push**:
    ```bash
-   # On server
-   bash infra/deploy/deploy.sh
+   git add drizzle/
+   git commit -m "feat: add new column"
+   git push
    ```
+3. **Deploy** - schema auto-syncs with fallback
+
+**The deploy script tries migrations first, then falls back to auto-sync if no migration files exist.**
 
 ### Production Deployment
 
