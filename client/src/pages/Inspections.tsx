@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Plus, CheckCircle2, Circle, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, AlertCircle, Loader2, FileDown } from "lucide-react";
 import { Link, useRoute, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { unitStorage, inspectionStorage } from "@/lib/offlineStorage";
@@ -20,6 +20,21 @@ export default function Inspections() {
   const [location] = useLocation();
   const projectId = params?.projectId ? parseInt(params.projectId) : 0;
   const [createUnitDialogOpen, setCreateUnitDialogOpen] = useState(false);
+  
+  // PDF generation
+  const generatePDFMutation = trpc.pdf.generateInspectionReport.useMutation({
+    onSuccess: (data) => {
+      if (data.shareUrl) {
+        window.open(data.shareUrl, "_blank");
+        toast.success("PDF generated and opened");
+      } else {
+        toast.success("PDF generated successfully");
+      }
+    },
+    onError: (error) => {
+      toast.error("Failed to generate PDF: " + error.message);
+    },
+  });
 
   // Fetch inspections from server
   const { data: inspections = [], isLoading: inspectionsLoading, refetch: refetchInspections } = 
@@ -106,14 +121,48 @@ export default function Inspections() {
             </p>
           )}
         </div>
-        <Button
-          onClick={() => setCreateUnitDialogOpen(true)}
-          size="lg"
-          className="h-12 px-6"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          New Abseil / Section
-        </Button>
+        <div className="flex gap-2">
+          {(() => {
+            // Find first inspection with an ID (server-synced)
+            const inspectionWithId = allInspections.find(i => i.id && typeof i.id === 'number');
+            return inspectionWithId ? (
+              <Button
+                onClick={() => {
+                  const inspectionId = inspectionWithId.id;
+                  if (inspectionId && typeof inspectionId === 'number') {
+                    generatePDFMutation.mutate({ inspectionId });
+                  } else {
+                    toast.error("No inspection found to export");
+                  }
+                }}
+                disabled={generatePDFMutation.isPending}
+                variant="outline"
+                size="lg"
+                className="h-12 px-6"
+              >
+                {generatePDFMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="h-5 w-5 mr-2" />
+                    Export PDF
+                  </>
+                )}
+              </Button>
+            ) : null;
+          })()}
+          <Button
+            onClick={() => setCreateUnitDialogOpen(true)}
+            size="lg"
+            className="h-12 px-6"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            New Abseil / Section
+          </Button>
+        </div>
       </div>
 
       {/* Inspections List */}

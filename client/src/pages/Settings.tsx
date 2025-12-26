@@ -29,7 +29,12 @@ import { LogoUploadSection } from "@/components/LogoUploadSection";
 export default function Settings() {
   const { theme, switchTheme, themes } = useTheme();
   const { data: settings, isLoading } = trpc.settings.get.useQuery();
-  const { data: preferences, isLoading: preferencesLoading } = trpc.settings.preferences.get.useQuery();
+
+  // Preferences query - disabled until migration is applied
+  // Uncomment after running: drizzle/0013_settings_logo_preferences.sql
+  // const { data: preferences, isLoading: preferencesLoading } = trpc.settings.preferences.get.useQuery();
+  const preferences = null;
+  const preferencesLoading = false;
 
   const updateMutation = trpc.settings.update.useMutation({
     onSuccess: () => {
