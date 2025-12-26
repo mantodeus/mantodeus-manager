@@ -21,7 +21,8 @@
       "Bash(npx tsc:*)",
       "Bash(pnpm build:backend:*)",
       "Bash(pnpm build:frontend:*)",
-      "Bash(pnpm drizzle-kit push:*)"
+      "Bash(pnpm drizzle-kit push:*)",
+      "Bash(test:*)"
     ]
   }
 }

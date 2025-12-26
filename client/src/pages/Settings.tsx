@@ -28,13 +28,20 @@ import { LogoUploadSection } from "@/components/LogoUploadSection";
 
 export default function Settings() {
   const { theme, switchTheme, themes } = useTheme();
-  const { data: settings, isLoading } = trpc.settings.get.useQuery();
+  const { data: settings, isLoading, error } = trpc.settings.get.useQuery();
 
   // Preferences query - disabled until migration is applied
   // Uncomment after running: drizzle/0013_settings_logo_preferences.sql
   // const { data: preferences, isLoading: preferencesLoading } = trpc.settings.preferences.get.useQuery();
   const preferences = null;
   const preferencesLoading = false;
+
+  // Debug: Log any errors
+  useEffect(() => {
+    if (error) {
+      console.error('[Settings] Error loading settings:', error);
+    }
+  }, [error]);
 
   const updateMutation = trpc.settings.update.useMutation({
     onSuccess: () => {
@@ -132,6 +139,16 @@ export default function Settings() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="text-destructive">Error loading settings</div>
+        <div className="text-sm text-muted-foreground">{error.message}</div>
+        <Button onClick={() => window.location.reload()}>Reload Page</Button>
       </div>
     );
   }
