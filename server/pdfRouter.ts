@@ -5,6 +5,7 @@ import { renderPDF } from "./services/pdfService";
 import { generateProjectReportHTML } from "./templates/projectReport";
 import { generateInvoiceHTML } from "./templates/invoice";
 import { generateInspectionHTML } from "./templates/inspection";
+import { generateInspectionReportHTML } from "./templates/inspectionReport";
 import * as db from "./db";
 import { storagePut, createPresignedReadUrl, generateFileKey } from "./storage";
 import { nanoid } from "nanoid";
@@ -318,6 +319,200 @@ export const pdfRouter = router({
         shareUrl,
         shareToken,
         expiresAt,
+      };
+    }),
+
+  /**
+   * Generate an inspection report PDF
+   */
+  generateInspectionReport: protectedProcedure
+    .input(z.object({ inspectionId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      // Get inspection
+      const inspection = await db.getInspectionById(input.inspectionId);
+      if (!inspection) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Inspection not found",
+        });
+      }
+
+      // Verify access (inspection belongs to user's project)
+      const project = await db.getProjectById(inspection.projectId);
+      if (!project || project.createdBy !== ctx.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Access denied",
+        });
+      }
+
+      // Get all units for this inspection (ordered by sequenceIndex, filter deletedAt)
+      const allUnits = await db.getInspectionUnitsByInspectionId(input.inspectionId);
+      const units = allUnits.filter(u => !u.deletedAt);
+
+      // Get findings and media for each unit
+      const unitsWithData = await Promise.all(
+        units.map(async (unit) => {
+          // Get findings for this unit (ordered by createdAt, filter deletedAt)
+          const allFindings = await db.getInspectionFindingsByUnitId(unit.id);
+          const findings = allFindings.filter(f => !f.deletedAt);
+
+          // Get media for each finding (prefer annotated, fallback to original, filter deletedAt)
+          const findingsWithMedia = await Promise.all(
+            findings.map(async (finding) => {
+              // Get user name
+              const user = await db.getUserById(finding.createdByUserId);
+              const userName = user?.name || `User ${finding.createdByUserId}`;
+
+              // Get media for this finding
+              const allMedia = await db.getInspectionMediaByFindingId(finding.id);
+              const media = allMedia.filter(m => !m.deletedAt);
+
+              // Process media: prefer annotated, fallback to original
+              const findingIndex = findings.indexOf(finding);
+              const mediaWithUrls = await Promise.all(
+                media.map(async (mediaItem, mediaIndex) => {
+                  // Prefer annotated, fallback to original
+                  const imagePath = mediaItem.localAnnotatedPath || mediaItem.localOriginalPath || 
+                                   mediaItem.annotatedS3Key || mediaItem.originalS3Key;
+                  
+                  let imageUrl = '';
+                  if (imagePath) {
+                    // If it's an S3 key, generate signed URL
+                    if (imagePath.startsWith('files/') || imagePath.includes('s3://')) {
+                      try {
+                        imageUrl = await createPresignedReadUrl(imagePath, 3600); // 1 hour
+                      } catch {
+                        // If signed URL fails, try to use as-is (might be a local path)
+                        imageUrl = imagePath;
+                      }
+                    } else {
+                      // Local path - for PDF generation, we'd need to convert to base64
+                      // For now, we'll skip local-only images in PDF (they'll need to be synced first)
+                      imageUrl = '';
+                    }
+                  }
+
+                  return {
+                    id: mediaItem.id,
+                    imageUrl,
+                    caption: `${unit.label} - Befund ${findingIndex + 1} - Bild ${mediaIndex + 1}`,
+                  };
+                })
+              );
+
+              // Filter out media without URLs (local-only, not synced)
+              const validMedia = mediaWithUrls.filter(m => m.imageUrl);
+
+              return {
+                id: finding.id,
+                defectType: finding.defectType,
+                severity: finding.severity,
+                notes: finding.notes,
+                positionDescriptor: finding.positionDescriptor,
+                heightMeters: finding.heightMeters,
+                createdAt: finding.createdAt,
+                createdByUserId: finding.createdByUserId,
+                createdByUserName: userName,
+                media: validMedia,
+              };
+            })
+          );
+
+          return {
+            id: unit.id,
+            label: unit.label,
+            sequenceIndex: unit.sequenceIndex,
+            status: unit.status,
+            findings: findingsWithMedia,
+          };
+        })
+      );
+
+      // Calculate summary
+      const totalUnits = unitsWithData.length;
+      const completedUnits = unitsWithData.filter(u => u.status === 'completed').length;
+      const allFindings = unitsWithData.flatMap(u => u.findings);
+      const totalFindings = allFindings.length;
+      
+      // Severity breakdown
+      const severityBreakdown: Record<string, number> = {};
+      allFindings.forEach(f => {
+        if (f.severity) {
+          severityBreakdown[f.severity] = (severityBreakdown[f.severity] || 0) + 1;
+        }
+      });
+
+      // Get unique inspector names
+      const inspectorIds = new Set<number>();
+      allFindings.forEach(f => inspectorIds.add(f.createdByUserId));
+      const inspectors = await Promise.all(
+        Array.from(inspectorIds).map(id => db.getUserById(id))
+      );
+      const inspectorNames = inspectors
+        .filter(u => u !== null)
+        .map(u => u!.name || `User ${u!.id}`)
+        .filter((name, index, self) => self.indexOf(name) === index); // Unique names
+
+      // Get company settings
+      const companySettings = await db.getCompanySettingsByUserId(ctx.user.id);
+      const logoUrl = companySettings ? '' : ''; // TODO: Add logo URL to settings
+      const companyName = companySettings?.companyName || 'Mantodeus Manager';
+
+      // Generate HTML
+      const html = generateInspectionReportHTML({
+        inspection: {
+          id: inspection.id,
+          projectId: inspection.projectId,
+          projectName: project.name,
+          type: inspection.type,
+          status: inspection.status,
+          startedAt: inspection.startedAt,
+          completedAt: inspection.completedAt,
+          createdByUserId: inspection.createdByUserId,
+          createdByUserName: inspectorNames[0] || undefined,
+        },
+        units: unitsWithData,
+        summary: {
+          totalUnits,
+          completedUnits,
+          totalFindings,
+          severityBreakdown,
+          inspectors: inspectorNames,
+        },
+        logoUrl,
+        companyName,
+      });
+
+      // Generate PDF
+      const pdfBuffer = await renderPDF(html);
+
+      // Upload to S3
+      const timestamp = Date.now();
+      const fileKey = generateFileKey('pdfs', ctx.user.id, `inspection-report-${input.inspectionId}-${timestamp}.pdf`);
+      await storagePut(fileKey, pdfBuffer, 'application/pdf');
+
+      // Create shared document record
+      const shareToken = nanoid(32);
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + ENV.pdfExpiryDefaultHours);
+
+      await db.createSharedDocument({
+        documentType: 'inspection',
+        referenceId: input.inspectionId,
+        s3Key: fileKey,
+        shareToken,
+        expiresAt,
+        createdBy: ctx.user.id,
+      });
+
+      // Generate shareable URL
+      const shareUrl = `${ENV.appUrl}/share/${shareToken}`;
+
+      return {
+        success: true,
+        shareUrl,
+        fileKey,
       };
     }),
 });

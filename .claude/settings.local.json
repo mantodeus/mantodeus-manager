@@ -20,7 +20,8 @@
       "Bash(node -e:*)",
       "Bash(npx tsc:*)",
       "Bash(pnpm build:backend:*)",
-      "Bash(pnpm build:frontend:*)"
+      "Bash(pnpm build:frontend:*)",
+      "Bash(pnpm drizzle-kit push:*)"
     ]
   }
 }

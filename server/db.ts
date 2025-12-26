@@ -600,6 +600,18 @@ export async function getAllUsers() {
   }).from(users).orderBy(users.name);
 }
 
+// Get user by ID
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+  }).from(users).where(eq(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
 
 // ===== CONTACTS QUERIES =====
 
@@ -2276,7 +2288,7 @@ export async function getInspectionFindingsByUnitId(unitId: number) {
   if (!db) return [];
   return await db.select().from(inspectionFindings)
     .where(eq(inspectionFindings.inspectionUnitId, unitId))
-    .orderBy(desc(inspectionFindings.createdAt));
+    .orderBy(inspectionFindings.createdAt); // Ascending order for PDF (oldest first)
 }
 
 export async function getInspectionFindingById(id: number) {
