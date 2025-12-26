@@ -73,10 +73,10 @@ export default function Settings() {
   });
 
   const [preferencesData, setPreferencesData] = useState({
-    dateFormat: "MM/DD/YYYY",
-    timeFormat: "12h" as "12h" | "24h",
-    timezone: "UTC",
-    language: "en",
+    dateFormat: "DD.MM.YYYY",
+    timeFormat: "24h" as "12h" | "24h",
+    timezone: "Europe/Berlin",
+    language: "de",
     currency: "EUR",
     notificationsEnabled: true,
   });
@@ -104,10 +104,10 @@ export default function Settings() {
   useEffect(() => {
     if (preferences) {
       setPreferencesData({
-        dateFormat: preferences.dateFormat || "MM/DD/YYYY",
-        timeFormat: (preferences.timeFormat as "12h" | "24h") || "12h",
-        timezone: preferences.timezone || "UTC",
-        language: preferences.language || "en",
+        dateFormat: preferences.dateFormat || "DD.MM.YYYY",
+        timeFormat: (preferences.timeFormat as "12h" | "24h") || "24h",
+        timezone: preferences.timezone || "Europe/Berlin",
+        language: preferences.language || "de",
         currency: preferences.currency || "EUR",
         notificationsEnabled: preferences.notificationsEnabled ?? true,
       });
@@ -237,7 +237,7 @@ export default function Settings() {
             <CardTitle>Company Logo</CardTitle>
           </div>
           <CardDescription>
-            Logo appears on invoices and reports (max 800x200px)
+            Square format recommended for consistent display across PDFs and app
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -270,9 +270,9 @@ export default function Settings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                    <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                    <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                    <SelectItem value="DD.MM.YYYY">DD.MM.YYYY (German)</SelectItem>
+                    <SelectItem value="DD/MM/YYYY">DD/MM/YYYY (UK)</SelectItem>
+                    <SelectItem value="YYYY-MM-DD">YYYY-MM-DD (ISO)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

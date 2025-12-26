@@ -174,32 +174,32 @@ export const settingsRouter = router({
         });
       }
 
-      // 3. Resize with Sharp to max 800x200px
-      const resized = await sharp(buffer)
-        .resize(800, 200, {
-          fit: "inside",
-          withoutEnlargement: true,
+      // 3. Process logo with square-first approach (512x512)
+      // Fit within square canvas, preserving aspect ratio with transparent padding
+      const processed = await sharp(buffer)
+        .resize(512, 512, {
+          fit: "contain", // Fit within square, add transparent padding if needed
+          background: { r: 0, g: 0, b: 0, alpha: 0 }, // Transparent padding
         })
+        .png() // Convert to PNG to preserve transparency
         .toBuffer();
 
-      const metadata = await sharp(resized).metadata();
-
       // 4. Upload to S3: uploads/logos/{userId}/{timestamp}.png
-      const s3Key = generateFileKey("uploads/logos", ctx.user.id, `logo.${ext}`);
-      const contentType = getContentType(input.filename);
-      await storagePut(s3Key, resized, contentType);
+      const s3Key = generateFileKey("uploads/logos", ctx.user.id, `logo.png`);
+      await storagePut(s3Key, processed, "image/png");
 
       // 5. Store s3Key + URL in company_settings
+      const logoUrl = await createPresignedReadUrl(s3Key, 365 * 24 * 60 * 60); // 1 year expiry
+
       await db.uploadCompanyLogo(
         ctx.user.id,
         s3Key,
-        await createPresignedReadUrl(s3Key, 365 * 24 * 60 * 60), // 1 year expiry
-        metadata.width || 0,
-        metadata.height || 0
+        logoUrl,
+        512, // Always 512x512 after processing
+        512
       );
 
       // 6. Return logoUrl (presigned)
-      const logoUrl = await createPresignedReadUrl(s3Key, 365 * 24 * 60 * 60);
       return { logoUrl, s3Key };
     }),
 

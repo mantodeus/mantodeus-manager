@@ -2041,14 +2041,14 @@ export async function getUserPreferencesByUserId(userId: number) {
       .where(eq(userPreferences.userId, userId))
       .limit(1);
 
-    // If not exists, create with defaults
+    // If not exists, create with defaults (German/EU defaults)
     if (result.length === 0) {
       await db.insert(userPreferences).values({
         userId,
-        dateFormat: "MM/DD/YYYY",
-        timeFormat: "12h",
-        timezone: "UTC",
-        language: "en",
+        dateFormat: "DD.MM.YYYY",
+        timeFormat: "24h",
+        timezone: "Europe/Berlin",
+        language: "de",
         currency: "EUR",
         notificationsEnabled: true,
       });
