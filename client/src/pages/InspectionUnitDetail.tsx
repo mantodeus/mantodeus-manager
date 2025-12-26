@@ -15,12 +15,13 @@ import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Camera, Plus, CheckCircle2, Circle, Clock, Loader2, Edit2, Trash2, Image as ImageIcon } from "lucide-react";
 import { Link, useRoute, useLocation } from "wouter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { unitStorage, findingStorage, mediaStorage } from "@/lib/offlineStorage";
 import { storeImageBlob, getImageUrl } from "@/lib/imageStorage";
 import { InspectionCameraCapture } from "@/components/InspectionCameraCapture";
 import { InspectionAnnotationCanvas } from "@/components/InspectionAnnotationCanvas";
 import { InspectionMediaViewer } from "@/components/InspectionMediaViewer";
+import { InspectionUnitDetailSkeleton } from "@/components/InspectionSkeletons";
 import { toast } from "sonner";
 
 export default function InspectionUnitDetail() {
@@ -39,13 +40,26 @@ export default function InspectionUnitDetail() {
   // Load offline unit
   const [offlineUnit, setOfflineUnit] = useState<any>(null);
   const [offlineFindings, setOfflineFindings] = useState<any[]>([]);
+  const [offlineDataLoading, setOfflineDataLoading] = useState(true);
 
   useEffect(() => {
     if (isLocalId) {
-      unitStorage.get(unitId).then(setOfflineUnit).catch(console.error);
-      findingStorage.getAll().then((findings) => {
-        setOfflineFindings(findings.filter(f => f.inspectionUnitId === unitId || f.inspectionUnitId === 0));
-      }).catch(console.error);
+      setOfflineDataLoading(true);
+      Promise.all([
+        unitStorage.get(unitId),
+        findingStorage.getAll().then((findings) => 
+          findings.filter(f => f.inspectionUnitId === unitId || f.inspectionUnitId === 0)
+        )
+      ]).then(([unit, findings]) => {
+        setOfflineUnit(unit);
+        setOfflineFindings(findings);
+        setOfflineDataLoading(false);
+      }).catch((error) => {
+        console.error("Failed to load offline data:", error);
+        setOfflineDataLoading(false);
+      });
+    } else {
+      setOfflineDataLoading(false);
     }
   }, [unitId, isLocalId]);
 
@@ -57,7 +71,11 @@ export default function InspectionUnitDetail() {
     );
 
   const unit = isLocalId ? offlineUnit : serverUnit;
-  const findings = (isLocalId ? offlineFindings : serverFindings).filter(f => !f.deletedAt);
+  // Memoize findings to avoid unnecessary re-renders
+  const findings = useMemo(() => {
+    const allFindings = isLocalId ? offlineFindings : serverFindings;
+    return allFindings.filter(f => !f.deletedAt);
+  }, [isLocalId, offlineFindings, serverFindings]);
 
   const [addFindingDialogOpen, setAddFindingDialogOpen] = useState(false);
   const [editFindingDialogOpen, setEditFindingDialogOpen] = useState(false);
@@ -241,12 +259,9 @@ export default function InspectionUnitDetail() {
     }
   };
 
-  if (serverLoading && !isLocalId) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
+  // Show skeleton while loading
+  if ((serverLoading && !isLocalId) || (offlineDataLoading && isLocalId)) {
+    return <InspectionUnitDetailSkeleton />;
   }
 
   if (!unit && !offlineUnit) {
@@ -593,8 +608,8 @@ export default function InspectionUnitDetail() {
   );
 }
 
-// Finding Media Section Component
-function FindingMediaSection({ 
+// Finding Media Section Component (memoized)
+const FindingMediaSection = memo(function FindingMediaSection({ 
   finding, 
   isLocalId,
   onTakePhoto,
@@ -758,7 +773,15 @@ function FindingMediaSection({
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison for memoization
+  const prevFindingId = prevProps.finding.localId || prevProps.finding.id;
+  const nextFindingId = nextProps.finding.localId || nextProps.finding.id;
+  return (
+    prevFindingId === nextFindingId &&
+    prevProps.isLocalId === nextProps.isLocalId
+  );
+});
 
 // Finding Dialog (Create or Edit)
 function FindingDialog({
