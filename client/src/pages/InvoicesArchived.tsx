@@ -88,17 +88,25 @@ export default function InvoicesArchived() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      draft: "outline",
-      sent: "default",
-      paid: "secondary",
-    };
-    return (
-      <Badge variant={variants[status] || "default"} className="text-xs">
-        {status.toUpperCase()}
-      </Badge>
-    );
+  const getStatusBadge = (invoice: any) => {
+    const { status, sentAt, paidAt, dueDate } = invoice;
+
+    if (status === 'paid') {
+      return <Badge variant="secondary" className="text-xs">PAID</Badge>;
+    }
+
+    if (status === 'open' && sentAt) {
+      if (dueDate && new Date(dueDate) < new Date() && !paidAt) {
+        return <Badge variant="destructive" className="text-xs">OVERDUE</Badge>;
+      }
+      return <Badge variant="default" className="text-xs">SENT</Badge>;
+    }
+
+    if (status === 'open' && !sentAt) {
+      return <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600">NOT SENT</Badge>;
+    }
+
+    return <Badge variant="outline" className="text-xs">DRAFT</Badge>;
   };
 
   const handleItemAction = (action: ItemAction, invoiceId: number, status: string) => {
@@ -164,7 +172,7 @@ export default function InvoicesArchived() {
                     <div className="flex items-center gap-2 mb-2">
                       <FileText className="w-5 h-5 text-accent" />
                       <h3 className="font-regular text-lg">{invoice.invoiceNumber}</h3>
-                      {getStatusBadge(invoice.status)}
+                      {getStatusBadge(invoice)}
                     </div>
                     <p className="text-muted-foreground text-xs">
                       {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
