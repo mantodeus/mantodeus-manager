@@ -11,9 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Plus, CheckCircle2, Circle, Clock, AlertCircle, Loader2, FileDown } from "lucide-react";
 import { Link, useRoute, useLocation } from "wouter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { unitStorage, inspectionStorage } from "@/lib/offlineStorage";
 import { toast } from "sonner";
+import { InspectionOverviewSkeleton } from "@/components/InspectionSkeletons";
 
 export default function Inspections() {
   const [, params] = useRoute("/projects/:projectId/inspections");
@@ -52,22 +53,40 @@ export default function Inspections() {
   // Load offline data
   const [offlineUnits, setOfflineUnits] = useState<any[]>([]);
   const [offlineInspections, setOfflineInspections] = useState<any[]>([]);
+  const [offlineDataLoading, setOfflineDataLoading] = useState(true);
 
   useEffect(() => {
     if (projectId > 0) {
+      setOfflineDataLoading(true);
       // Load offline data - filter by projectId stored in local entity
-      unitStorage.getAll().then((units) => {
-        // Filter units that belong to this project (stored in local entity)
-        const filtered = units.filter(u => u.projectId === projectId || (!u.id && !u.projectId));
-        setOfflineUnits(filtered);
-      }).catch(console.error);
-      inspectionStorage.getAll(projectId).then(setOfflineInspections).catch(console.error);
+      Promise.all([
+        unitStorage.getAll().then((units) => {
+          // Filter units that belong to this project (stored in local entity)
+          const filtered = units.filter(u => u.projectId === projectId || (!u.id && !u.projectId));
+          return filtered;
+        }),
+        inspectionStorage.getAll(projectId)
+      ]).then(([units, inspections]) => {
+        setOfflineUnits(units);
+        setOfflineInspections(inspections);
+        setOfflineDataLoading(false);
+      }).catch((error) => {
+        console.error("Failed to load offline data:", error);
+        setOfflineDataLoading(false);
+      });
+    } else {
+      setOfflineDataLoading(false);
     }
   }, [projectId]);
 
-  // Combine server and offline data
-  const allInspections = [...inspections, ...offlineInspections.filter(i => !i.id)];
-  const allUnits = offlineUnits.filter(u => !u.id);
+  // Combine server and offline data (memoized)
+  const allInspections = useMemo(() => {
+    return [...inspections, ...offlineInspections.filter(i => !i.id)];
+  }, [inspections, offlineInspections]);
+
+  const allUnits = useMemo(() => {
+    return offlineUnits.filter(u => !u.id);
+  }, [offlineUnits]);
 
   const utils = trpc.useUtils();
 
@@ -101,12 +120,9 @@ export default function Inspections() {
     );
   }
 
-  if (inspectionsLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
+  // Show skeleton while loading (first load only)
+  if (inspectionsLoading || offlineDataLoading) {
+    return <InspectionOverviewSkeleton />;
   }
 
   return (
