@@ -96,7 +96,7 @@ export function LogoUploadSection() {
       // Compress image client-side before upload
       const { file: compressedFile, wasCompressed } = await compressImage(file, {
         maxSizeMB: 1,
-        maxWidthOrHeight: 800, // Server will resize to max 800x200 anyway
+        maxWidthOrHeight: 800, // Server will resize to max 800x800 anyway
       });
 
       if (wasCompressed) {
@@ -233,7 +233,7 @@ export function LogoUploadSection() {
 
       {/* Help Text */}
       <p className="text-xs text-muted-foreground">
-        Drag and drop or click to upload. Max file size: 5MB. Supported formats: PNG, JPG, SVG. Logo will be resized to max 800x200px.
+        Square logos (1:1) work best. PNG or SVG recommended. Max 5MB. Processed to 512×512px.
       </p>
     </div>
   );
