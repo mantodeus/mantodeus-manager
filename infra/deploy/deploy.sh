@@ -150,13 +150,25 @@ echo "▶ Running database migrations..."
 echo "   This will apply any pending schema changes to the database"
 echo ""
 
-if npm run db:migrate:prod; then
+# Option 1: Apply SQL migration files (safe, tracked in git)
+echo "   Attempting to apply migration files from drizzle/ folder..."
+if npm run db:migrate:prod 2>/dev/null; then
   echo "✅ Database migrations completed"
 else
-  echo "⚠️  Database migration failed"
-  echo "   The build will continue, but database schema may be out of sync"
-  echo "   Check the error above and run migrations manually if needed:"
-  echo "   npm run db:migrate:prod"
+  echo "⚠️  Migration files failed or none found"
+  echo ""
+
+  # Option 2: Push schema directly (auto-sync, no migration files needed)
+  echo "   Falling back to schema push (auto-sync mode)..."
+  echo "   ⚠️  This will sync schema directly without migration files"
+
+  if npm run db:push-direct; then
+    echo "✅ Database schema synced successfully"
+  else
+    echo "❌ Schema push failed"
+    echo "   Database schema may be out of sync with code"
+    echo "   Manual fix needed: npm run db:push-direct"
+  fi
 fi
 echo ""
 
