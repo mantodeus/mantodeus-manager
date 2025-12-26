@@ -30,11 +30,8 @@ export default function Settings() {
   const { theme, switchTheme, themes } = useTheme();
   const { data: settings, isLoading, error } = trpc.settings.get.useQuery();
 
-  // Preferences query - disabled until migration is applied
-  // Uncomment after running: drizzle/0013_settings_logo_preferences.sql
-  // const { data: preferences, isLoading: preferencesLoading } = trpc.settings.preferences.get.useQuery();
-  const preferences = null;
-  const preferencesLoading = false;
+  // Preferences query - enabled after migration applied
+  const { data: preferences, isLoading: preferencesLoading } = trpc.settings.preferences.get.useQuery();
 
   // Debug: Log any errors
   useEffect(() => {
@@ -248,9 +245,8 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* User Preferences Section - Only show if table exists */}
-      {!preferencesLoading && (
-        <Card>
+      {/* User Preferences Section */}
+      <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-primary" />
@@ -399,7 +395,6 @@ export default function Settings() {
           </form>
         </CardContent>
       </Card>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Company Information */}
