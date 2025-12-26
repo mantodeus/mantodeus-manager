@@ -1,5 +1,8 @@
 COMMANDS
 
+npm run db:generate
+git remote set-url origin git@github.com:mantodeus/mantodeus-manager.git
+git push
 
 bash infra/deploy/deploy.sh
 
