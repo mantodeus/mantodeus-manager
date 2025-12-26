@@ -71,15 +71,17 @@ The deploy script (`infra/deploy/deploy.sh`) automatically:
 # Generate new migration from schema changes
 npm run db:generate
 
-# Apply migrations in production
+# Apply migrations (reads SQL files from drizzle/ folder)
 npm run db:migrate:prod
 
-# Development: push schema directly (skip migrations)
+# Development: push schema directly (skip migration files)
 npm run db:push-direct
 
 # Check database connection
 npm run db:check-url
 ```
+
+**Note**: `db:migrate:prod` uses `drizzle-kit migrate` which applies SQL migration files from the `drizzle/` folder.
 
 ## Migration Files
 
@@ -87,7 +89,7 @@ npm run db:check-url
 - **Schema**: `drizzle/schema.ts` - TypeScript table definitions
 - **Migrations**: `drizzle/*.sql` - SQL migration files
 - **Metadata**: `drizzle/meta/` - Migration snapshots and journal
-- **Runner**: `scripts/run-migrations.ts` - Production migration script
+- **Config**: `drizzle.config.ts` - Drizzle configuration
 
 ### Naming Convention
 Drizzle auto-generates migration names:
