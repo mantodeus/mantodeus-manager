@@ -1,0 +1,2 @@
+-- baseline migration
+-- schema already exists, no changes required
