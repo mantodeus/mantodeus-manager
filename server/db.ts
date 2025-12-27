@@ -1036,6 +1036,13 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
 
   const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
   
+  // HARD ASSERTION: Invoice status must always be 'draft' on creation
+  // Backend decides lifecycle state - no UI dependency, no silent corruption
+  // If caller tries to set a different status, reject it
+  if (data.status && data.status !== "draft") {
+    throw new Error(`Invoice status must be 'draft' on creation. Received: ${data.status}`);
+  }
+  
   // Prepare invoice data (excluding items which go in a separate table)
   const invoiceData: Omit<InsertInvoice, "id" | "createdAt" | "updatedAt"> = {
     contactId: data.contactId ?? data.clientId ?? null,
@@ -1044,7 +1051,7 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     invoiceNumber: data.invoiceNumber ?? "",
     invoiceCounter: data.invoiceCounter ?? 0,
     invoiceYear: data.invoiceYear ?? issueDate.getFullYear(),
-    status: data.status ?? "draft",
+    status: "draft", // ALWAYS 'draft' - backend enforces this, never null/empty
     issueDate,
     dueDate: data.dueDate ?? null,
     notes: data.notes ?? null,
@@ -1081,6 +1088,12 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     invoiceData.invoiceNumber = invoiceData.invoiceNumber && invoiceData.invoiceNumber.trim() !== "" ? invoiceData.invoiceNumber : invoiceNumber;
     invoiceData.invoiceCounter = invoiceData.invoiceCounter && invoiceData.invoiceCounter > 0 ? invoiceData.invoiceCounter : invoiceCounter;
     invoiceData.invoiceYear = invoiceData.invoiceYear || invoiceYear;
+  }
+
+  // FINAL ASSERTION: Status must be 'draft' before insert
+  // This turns silent corruption into a loud failure
+  if (!invoiceData.status || invoiceData.status !== "draft") {
+    throw new Error("Invoice status must be 'draft' before insert. This is a critical data integrity violation.");
   }
 
   const result = await db.insert(invoices).values(invoiceData);
