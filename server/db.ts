@@ -870,9 +870,20 @@ export async function getInvoiceById(invoiceId: number) {
 }
 
 export async function getInvoicesByUserId(userId: number) {
+  console.error('[TRACE] getInvoicesByUserId START - userId:', userId, 'type:', typeof userId);
+  
+  console.error('[TRACE] getInvoicesByUserId - calling getDb()');
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  console.error('[TRACE] getInvoicesByUserId - getDb() returned:', !!db);
+  
+  if (!db) {
+    console.error('[TRACE] getInvoicesByUserId - ERROR: Database not available');
+    throw new Error("Database not available");
+  }
+  
+  console.error('[TRACE] getInvoicesByUserId - calling ensureInvoiceSchema');
   await ensureInvoiceSchema(db);
+  console.error('[TRACE] getInvoicesByUserId - ensureInvoiceSchema completed');
   
   // FORENSIC LOGGING: Verify runtime database identity
   try {
