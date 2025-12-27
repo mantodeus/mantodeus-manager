@@ -148,12 +148,12 @@ if [ ! -f "./drizzle.config.ts" ]; then
 fi
 
 # Seed drizzle migrations table if empty (baseline for existing DB)
-if [ ! -f "./scripts/seed-drizzle-migrations.js" ]; then
-  echo "? scripts/seed-drizzle-migrations.js not found. Aborting deploy."
+if [ ! -f "./scripts/seed-drizzle-migrations.cjs" ]; then
+  echo "? scripts/seed-drizzle-migrations.cjs not found. Aborting deploy."
   exit 1
 fi
 export DRIZZLE_FORCE_MIGRATIONS="0015_structured_company_address_invoice_format"
-node ./scripts/seed-drizzle-migrations.js
+node ./scripts/seed-drizzle-migrations.cjs
 
 # Run drizzle migrations (fail fast on errors)
 echo "   Applying migrations via drizzle-kit..."
