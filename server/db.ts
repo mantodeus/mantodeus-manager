@@ -911,11 +911,28 @@ export async function getInvoicesByUserId(userId: number) {
   // Diagnostic logging to help identify visibility issues
   console.log(`[Invoices] getInvoicesByUserId called with userId: ${userId} (type: ${typeof userId})`);
   
-  const invoiceRows = await db
-    .select()
-    .from(invoices)
-    .where(and(eq(invoices.userId, userId), isNull(invoices.archivedAt), isNull(invoices.trashedAt)))
-    .orderBy(desc(invoices.issueDate), desc(invoices.createdAt));
+  console.error('[TRACE] getInvoicesByUserId - about to execute SELECT query');
+  let invoiceRows;
+  try {
+    invoiceRows = await db
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.userId, userId), isNull(invoices.archivedAt), isNull(invoices.trashedAt)))
+      .orderBy(desc(invoices.issueDate), desc(invoices.createdAt));
+    console.error('[TRACE] getInvoicesByUserId - SELECT query completed successfully, rows:', invoiceRows.length);
+  } catch (queryError: any) {
+    console.error('[TRACE] getInvoicesByUserId - SELECT query FAILED');
+    console.error('[TRACE] getInvoicesByUserId - error type:', queryError?.constructor?.name || typeof queryError);
+    console.error('[TRACE] getInvoicesByUserId - error message:', queryError?.message);
+    console.error('[TRACE] getInvoicesByUserId - error code:', queryError?.code);
+    console.error('[TRACE] getInvoicesByUserId - error errno:', queryError?.errno);
+    console.error('[TRACE] getInvoicesByUserId - error sqlState:', queryError?.sqlState);
+    console.error('[TRACE] getInvoicesByUserId - error sqlMessage:', queryError?.sqlMessage);
+    console.error('[TRACE] getInvoicesByUserId - error sql:', queryError?.sql);
+    console.error('[TRACE] getInvoicesByUserId - full error object:', JSON.stringify(queryError, Object.getOwnPropertyNames(queryError), 2));
+    console.error('[TRACE] getInvoicesByUserId - error stack:', queryError?.stack);
+    throw queryError;
+  }
 
   console.log(`[Invoices] Found ${invoiceRows.length} invoices for userId ${userId}`);
   if (invoiceRows.length > 0) {
