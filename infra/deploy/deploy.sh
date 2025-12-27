@@ -131,6 +131,13 @@ echo ""
 echo "? Running database migrations..."
 echo "   This will apply any pending schema changes to the database"
 echo ""
+# Load DATABASE_URL for migration scripts
+if [ -z "${DATABASE_URL:-}" ]; then
+  if [ -f ".env" ]; then
+    export $(grep -v "^#" .env | grep DATABASE_URL | xargs)
+  fi
+fi
+
 
 # Fail fast if migration files are missing
 if [ ! -d "./drizzle" ]; then
