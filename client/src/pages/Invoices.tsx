@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -217,48 +217,28 @@ export default function Invoices() {
           <h1 className="text-3xl font-regular">Invoices</h1>
           <p className="text-muted-foreground text-sm">Create, edit, and manage invoices</p>
         </div>
-        {isMobile ? (
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Invoice
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-[95vw] sm:w-[85vw] max-w-none max-h-[92vh] overflow-hidden flex flex-col p-0">
-              <DialogHeader className="px-6 pt-6 pb-4">
-                <DialogTitle>Create Invoice</DialogTitle>
-              </DialogHeader>
-              <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
-                <InvoiceForm
-                  mode="create"
-                  contacts={contacts}
-                  onClose={() => setCreateDialogOpen(false)}
-                  onSuccess={() => {
-                    toast.success("Invoice created");
-                    setCreateDialogOpen(false);
-                    refetch();
-                  }}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
-        ) : (
-          <>
-            <Button onClick={() => setCreateDialogOpen(true)}>
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
               <Plus className="w-4 h-4 mr-2" />
               Create Invoice
             </Button>
-            <Sheet open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-              <SheetContent
-                side="right"
-                className="w-[calc(100vw-var(--sidebar-width))] max-w-none p-0 flex flex-col"
-                style={{ width: "calc(100vw - var(--sidebar-width))" }}
-              >
-                <SheetHeader className="px-6 pt-6 pb-4 border-b">
-                  <SheetTitle>Create Invoice</SheetTitle>
-                </SheetHeader>
-                <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
+          </DialogTrigger>
+          <DialogContent 
+            className="!fixed !inset-y-0 !right-0 !left-0 lg:!left-[var(--sidebar-width)] !m-0 !p-0 !w-auto !max-w-none !h-auto !translate-x-0 !translate-y-0 !top-0 !rounded-none border-l border-border bg-background shadow-xl flex flex-col data-[state=open]:!zoom-in-100"
+            style={{ left: isMobile ? 0 : 'var(--sidebar-width)' }}
+            showCloseButton={false}
+          >
+            <div className="flex h-full flex-col">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-4">
+                <DialogTitle className="text-lg font-semibold">Create Invoice</DialogTitle>
+                <DialogClose className="ring-offset-background focus:ring-ring rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </DialogClose>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                <div className="mx-auto w-full max-w-5xl p-6">
                   <InvoiceForm
                     mode="create"
                     contacts={contacts}
@@ -270,10 +250,10 @@ export default function Invoices() {
                     }}
                   />
                 </div>
-              </SheetContent>
-            </Sheet>
-          </>
-        )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {invoices.length === 0 ? (
