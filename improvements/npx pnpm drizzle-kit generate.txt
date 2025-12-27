@@ -1,0 +1,2 @@
+npx pnpm drizzle-kit generate
+npx pnpm drizzle-kit migrate
