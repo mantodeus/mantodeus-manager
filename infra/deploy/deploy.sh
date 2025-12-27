@@ -46,16 +46,15 @@ echo "‚úÖ npm ${NPM_VERSION} is available"
 
 echo ""
 
-# Step 3: Ensure git remote uses HTTPS (not SSH)
-echo "‚ñ∂ Checking git remote configuration..."
+# Step 3: Verify git remote is set (SSH preferred)
+echo "É-Ù Checking git remote configuration..."
 CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-if echo "$CURRENT_REMOTE" | grep -qE "git@|ssh://"; then
-  echo "‚ö†Ô∏è  Git remote uses SSH, changing to HTTPS..."
-  git remote set-url origin https://github.com/mantodeus/mantodeus-manager.git
-  echo "‚úÖ Git remote updated to HTTPS"
+if [ -z "$CURRENT_REMOTE" ]; then
+  echo "É?O Git remote 'origin' not set. Please configure it before deploying."
+  exit 1
 fi
+echo "Éo. Git remote: ${CURRENT_REMOTE}"
 echo ""
-
 # Step 4: Fetch latest code
 echo "‚ñ∂ Fetching latest code from origin/main..."
 if ! git fetch origin; then
