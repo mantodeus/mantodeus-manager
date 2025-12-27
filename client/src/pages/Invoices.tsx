@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -372,61 +371,42 @@ export default function Invoices() {
       )}
 
       {editingInvoice && (
-        isMobile ? (
-          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-            <DialogContent className="w-[95vw] sm:w-[85vw] max-w-none max-h-[92vh] overflow-hidden flex flex-col p-0">
-              <DialogHeader className="px-6 pt-6 pb-4">
-                <DialogTitle>Edit Invoice</DialogTitle>
-              </DialogHeader>
-              <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
-                <InvoiceForm
-                  mode="edit"
-                  invoiceId={editingInvoice}
-                  contacts={contacts}
-                  onClose={() => {
-                    setEditDialogOpen(false);
-                    setEditingInvoice(null);
-                  }}
-                  onSuccess={() => {
-                    toast.success("Invoice updated");
-                    setEditDialogOpen(false);
-                    setEditingInvoice(null);
-                    refetch();
-                  }}
-                />
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent 
+            className="!fixed !inset-y-0 !right-0 !left-0 lg:!left-[var(--sidebar-width)] !m-0 !p-0 !w-auto !max-w-none !h-auto !translate-x-0 !translate-y-0 !top-0 !rounded-none border-l border-border bg-background shadow-xl flex flex-col data-[state=open]:!zoom-in-100"
+            style={{ left: isMobile ? 0 : 'var(--sidebar-width)' }}
+            showCloseButton={false}
+          >
+            <div className="flex h-full flex-col">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-4">
+                <DialogTitle className="text-lg font-semibold">Edit Invoice</DialogTitle>
+                <DialogClose className="ring-offset-background focus:ring-ring rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </DialogClose>
               </div>
-            </DialogContent>
-          </Dialog>
-        ) : (
-          <Sheet open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-            <SheetContent
-              side="right"
-              className="w-[calc(100vw-var(--sidebar-width))] max-w-none p-0 flex flex-col"
-              style={{ width: "calc(100vw - var(--sidebar-width))" }}
-            >
-              <SheetHeader className="px-6 pt-6 pb-4 border-b">
-                <SheetTitle>Edit Invoice</SheetTitle>
-              </SheetHeader>
-              <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
-                <InvoiceForm
-                  mode="edit"
-                  invoiceId={editingInvoice}
-                  contacts={contacts}
-                  onClose={() => {
-                    setEditDialogOpen(false);
-                    setEditingInvoice(null);
-                  }}
-                  onSuccess={() => {
-                    toast.success("Invoice updated");
-                    setEditDialogOpen(false);
-                    setEditingInvoice(null);
-                    refetch();
-                  }}
-                />
+              <div className="flex-1 overflow-y-auto">
+                <div className="mx-auto w-full max-w-5xl p-6">
+                  <InvoiceForm
+                    mode="edit"
+                    invoiceId={editingInvoice}
+                    contacts={contacts}
+                    onClose={() => {
+                      setEditDialogOpen(false);
+                      setEditingInvoice(null);
+                    }}
+                    onSuccess={() => {
+                      toast.success("Invoice updated");
+                      setEditDialogOpen(false);
+                      setEditingInvoice(null);
+                      refetch();
+                    }}
+                  />
+                </div>
               </div>
-            </SheetContent>
-          </Sheet>
-        )
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       <ScrollRevealFooter basePath="/invoices" />
