@@ -79,7 +79,9 @@ function mapInvoiceToPayload(invoice: Awaited<ReturnType<typeof db.getInvoiceByI
 export const invoiceRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const userId = db.getUserIdFromUser(ctx.user);
+    console.log(`[Invoices Router] list query - ctx.user.id: ${ctx.user.id}, resolved userId: ${userId}, ctx.user:`, JSON.stringify({ id: ctx.user.id, supabaseId: ctx.user.supabaseId, email: ctx.user.email }));
     const invoices = await db.getInvoicesByUserId(userId);
+    console.log(`[Invoices Router] Returning ${invoices.length} invoices`);
     return invoices.map(mapInvoiceToPayload);
   }),
 
@@ -459,4 +461,42 @@ export const invoiceRouter = router({
       const updated = await db.getInvoiceById(invoice.id);
       return mapInvoiceToPayload(updated);
     }),
+
+  // TEMPORARY DEBUG ENDPOINT - Remove after diagnosis
+  debug: protectedProcedure.query(async ({ ctx }) => {
+    const userId = db.getUserIdFromUser(ctx.user);
+    const allInvoices = await db.getInvoicesByUserId(userId);
+    
+    // Check RE-2025-0001 specifically using direct DB query
+    const dbInstance = await db.getDb();
+    if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB not available" });
+    
+    const { eq } = await import("drizzle-orm");
+    const { invoices: invoicesTable } = await import("../drizzle/schema");
+    
+    const re20250001 = await dbInstance
+      .select()
+      .from(invoicesTable)
+      .where(eq(invoicesTable.invoiceNumber, "RE-2025-0001"))
+      .limit(1);
+    
+    return {
+      currentUser: {
+        id: ctx.user.id,
+        supabaseId: ctx.user.supabaseId,
+        email: ctx.user.email,
+      },
+      resolvedUserId: userId,
+      invoicesFound: allInvoices.length,
+      invoiceNumbers: allInvoices.map(i => i.invoiceNumber),
+      re20250001: re20250001.length > 0 ? {
+        id: re20250001[0].id,
+        invoiceNumber: re20250001[0].invoiceNumber,
+        userId: re20250001[0].userId,
+        archivedAt: re20250001[0].archivedAt,
+        trashedAt: re20250001[0].trashedAt,
+        status: re20250001[0].status,
+      } : null,
+    };
+  }),
 });
