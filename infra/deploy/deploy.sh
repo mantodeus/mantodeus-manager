@@ -188,11 +188,11 @@ if echo "$MIGRATE_OUTPUT" | grep -qiE "none found|failed"; then
 fi
 
 # Post-migrate sanity check
-if [ ! -f "./scripts/check-migration-columns.js" ]; then
-  echo "? scripts/check-migration-columns.js not found. Aborting deploy."
+if [ ! -f "./scripts/check-migration-columns.cjs" ]; then
+  echo "? scripts/check-migration-columns.cjs not found. Aborting deploy."
   exit 1
 fi
-node ./scripts/check-migration-columns.js
+node ./scripts/check-migration-columns.cjs
 
 echo "? Database migrations completed"
 echo ""
