@@ -540,6 +540,19 @@ async function startServer() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
+      onError: ({ error, path, type, ctx, input }) => {
+        // Log detailed error information before tRPC's default handling
+        console.error('[TRACE] tRPC onError handler triggered');
+        console.error('[TRACE] tRPC error path:', path);
+        console.error('[TRACE] tRPC error type:', type);
+        console.error('[TRACE] tRPC error code:', error.code);
+        console.error('[TRACE] tRPC error message:', error.message);
+        console.error('[TRACE] tRPC error stack:', error.stack);
+        console.error('[TRACE] tRPC error cause:', error.cause);
+        console.error('[TRACE] tRPC ctx.user exists:', !!ctx?.user);
+        console.error('[TRACE] tRPC ctx.user.id:', ctx?.user?.id);
+        console.error('[TRACE] tRPC input:', JSON.stringify(input, null, 2));
+      },
     })
   );
 
