@@ -150,14 +150,38 @@ echo "▶ Running database migrations..."
 echo "   This will apply any pending schema changes to the database"
 echo ""
 
-# Option 1: Apply SQL migration files (safe, tracked in git)
-echo "   Attempting to apply migration files from drizzle/ folder..."
-if npm run db:migrate:prod 2>/dev/null; then
-  echo "✅ Database migrations completed"
+# Preferred: Apply tracked SQL migrations via script if present
+if [ -f "./apply-migrations.sh" ]; then
+  echo "   Applying SQL migrations via apply-migrations.sh..."
+  if bash ./apply-migrations.sh; then
+    echo "?o. Database migrations completed"
+  else
+    echo "??O Migration script failed"
+    exit 1
+  fi
 else
-  echo "⚠️  Migration files failed or none found"
-  echo ""
+  # Option 1: Apply SQL migration files (safe, tracked in git)
+  echo "   Attempting to apply migration files from drizzle/ folder..."
+  if npm run db:migrate:prod 2>/dev/null; then
+    echo "?o. Database migrations completed"
+  else
+    echo "?s�???  Migration files failed or none found"
+    echo ""
 
+    # Option 2: Push schema directly (auto-sync, no migration files needed)
+    echo "   Falling back to schema push (auto-sync mode)..."
+    echo "   ?s�???  This will sync schema directly without migration files"
+
+    if npm run db:push-direct; then
+      echo "?o. Database schema synced successfully"
+    else
+      echo "??O Schema push failed"
+      echo "   Database schema may be out of sync with code"
+      echo "   Manual fix needed: npm run db:push-direct"
+    fi
+  fi
+fi
+echo ""
   # Option 2: Push schema directly (auto-sync, no migration files needed)
   echo "   Falling back to schema push (auto-sync mode)..."
   echo "   ⚠️  This will sync schema directly without migration files"
@@ -220,3 +244,4 @@ echo "✅ Deploy complete!"
 echo "📅 Finished at: $(date)"
 echo "📦 Commit: ${GIT_COMMIT}"
 echo "============================================"
+
