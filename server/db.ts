@@ -876,19 +876,30 @@ export async function getInvoicesByUserId(userId: number) {
     console.log(`[Invoices] Invoice numbers: ${invoiceRows.map(i => i.invoiceNumber).join(', ')}`);
   }
   
-  // Also check if RE-2025-0001 exists with different userId
-  const re20250001 = await db
-    .select({ id: invoices.id, invoiceNumber: invoices.invoiceNumber, userId: invoices.userId, archivedAt: invoices.archivedAt, trashedAt: invoices.trashedAt })
-    .from(invoices)
-    .where(eq(invoices.invoiceNumber, 'RE-2025-0001'))
-    .limit(1);
-  
-  if (re20250001.length > 0) {
-    const invoice = re20250001[0];
-    console.log(`[Invoices] RE-2025-0001 exists: userId=${invoice.userId}, archivedAt=${invoice.archivedAt}, trashedAt=${invoice.trashedAt}`);
-    if (invoice.userId !== userId) {
-      console.warn(`[Invoices] ⚠️ RE-2025-0001 belongs to userId ${invoice.userId}, but query is for userId ${userId}`);
+  // Also check if RE-2025-0001 exists with different userId (diagnostic only)
+  try {
+    const re20250001 = await db
+      .select({ 
+        id: invoices.id, 
+        invoiceNumber: invoices.invoiceNumber, 
+        userId: invoices.userId, 
+        archivedAt: invoices.archivedAt, 
+        trashedAt: invoices.trashedAt 
+      })
+      .from(invoices)
+      .where(eq(invoices.invoiceNumber, 'RE-2025-0001'))
+      .limit(1);
+    
+    if (re20250001.length > 0) {
+      const invoice = re20250001[0];
+      console.log(`[Invoices] RE-2025-0001 exists: userId=${invoice.userId}, archivedAt=${invoice.archivedAt}, trashedAt=${invoice.trashedAt}`);
+      if (invoice.userId !== userId) {
+        console.warn(`[Invoices] ⚠️ RE-2025-0001 belongs to userId ${invoice.userId}, but query is for userId ${userId}`);
+      }
     }
+  } catch (diagError) {
+    // Don't fail the main query if diagnostic check fails
+    console.warn(`[Invoices] Diagnostic check failed:`, diagError);
   }
 
   return attachInvoiceItems(invoiceRows as any);
