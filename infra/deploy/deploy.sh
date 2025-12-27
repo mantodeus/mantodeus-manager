@@ -47,50 +47,24 @@ echo "âœ… npm ${NPM_VERSION} is available"
 echo ""
 
 # Step 3: Verify git remote is set to SSH (no HTTPS in production)
-echo "ƒ-ô Checking git remote configuration..."
+echo "? Checking git remote configuration..."
 CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
 if [ -z "$CURRENT_REMOTE" ]; then
-  echo "ƒ?O Git remote 'origin' not set. Please configure it before deploying."
+  echo "? Git remote 'origin' not set. Please configure it before deploying."
   exit 1
 fi
 if echo "$CURRENT_REMOTE" | grep -qE "^https?://"; then
-  echo "ƒ?O Git remote uses HTTPS, which will prompt for credentials in production."
+  echo "? Git remote uses HTTPS, which will prompt for credentials in production."
   echo "   Set SSH remote: git remote set-url origin git@github.com:mantodeus/mantodeus-manager.git"
   exit 1
 fi
 if ! echo "$CURRENT_REMOTE" | grep -qE "git@github.com:mantodeus/mantodeus-manager.git|ssh://git@github.com/mantodeus/mantodeus-manager.git"; then
-  echo "ƒ?O Git remote is not the expected SSH URL for mantodeus/mantodeus-manager."
+  echo "? Git remote is not the expected SSH URL for mantodeus/mantodeus-manager."
   echo "   Current: $CURRENT_REMOTE"
   exit 1
 fi
-echo "ƒo. Git remote: ${CURRENT_REMOTE}"
-echo ""# Step 4: Fetch latest code
-echo "â–¶ Fetching latest code from origin/main..."
-if ! git fetch origin; then
-  echo "âŒ Git fetch failed. Checking network connectivity..."
-  if ! ping -c 1 github.com &> /dev/null; then
-    echo "âŒ Cannot reach github.com. Check network connection."
-    exit 1
-  fi
-  echo "âš ï¸  Retrying git fetch with verbose output..."
-  git fetch origin --verbose || {
-    echo "âŒ Git fetch failed. Possible causes:"
-    echo "   - Network connectivity issues"
-    echo "   - Git credentials not configured"
-    echo "   - Repository access permissions"
-    exit 1
-  }
-fi
-
-if ! git reset --hard origin/main; then
-  echo "âŒ Git reset failed"
-  exit 1
-fi
-
-GIT_COMMIT=$(git rev-parse --short HEAD)
-echo "âœ… Code updated to commit: ${GIT_COMMIT}"
+echo "? Git remote: ${CURRENT_REMOTE}"
 echo ""
-
 # Step 5: Skip node_modules cleaning (run manually if needed: rm -rf node_modules)
 # Skipping automatic cleaning makes deployments faster
 # Only clean manually when switching package managers or fixing corruption
@@ -154,25 +128,34 @@ echo "âœ… Build verified (dist/index.js and dist/public exist)"
 echo ""
 
 # Step 9: Run database migrations
-echo "ƒ-ô Running database migrations..."
+echo "? Running database migrations..."
 echo "   This will apply any pending schema changes to the database"
 echo ""
 
 # Fail fast if migration files are missing
 if [ ! -d "./drizzle" ]; then
-  echo "ƒ?O drizzle/ folder not found. Cannot apply migrations."
+  echo "? drizzle/ folder not found. Cannot apply migrations."
   exit 1
 fi
 MIGRATION_COUNT=$(ls -1 ./drizzle/*.sql 2>/dev/null | wc -l | tr -d ' ')
 if [ "$MIGRATION_COUNT" = "0" ]; then
-  echo "ƒ?O No migration files found in drizzle/. Aborting deploy."
+  echo "? No migration files found in drizzle/. Aborting deploy."
   exit 1
 fi
 if [ ! -f "./drizzle.config.ts" ]; then
-  echo "ƒ?O drizzle.config.ts not found. Aborting deploy."
+  echo "? drizzle.config.ts not found. Aborting deploy."
   exit 1
 fi
 
+# Seed drizzle migrations table if empty (baseline for existing DB)
+if [ ! -f "./scripts/seed-drizzle-migrations.js" ]; then
+  echo "? scripts/seed-drizzle-migrations.js not found. Aborting deploy."
+  exit 1
+fi
+export DRIZZLE_FORCE_MIGRATIONS="0015_structured_company_address_invoice_format"
+node ./scripts/seed-drizzle-migrations.js
+
+# Run drizzle migrations (fail fast on errors)
 echo "   Applying migrations via drizzle-kit..."
 set +e
 MIGRATE_OUTPUT=$(npx pnpm drizzle-kit migrate --config drizzle.config.ts 2>&1)
@@ -181,22 +164,22 @@ set -e
 
 echo "$MIGRATE_OUTPUT"
 if [ $MIGRATE_STATUS -ne 0 ]; then
-  echo "ƒ?O Migration command failed"
+  echo "? Migration command failed"
   exit 1
 fi
 if echo "$MIGRATE_OUTPUT" | grep -qiE "none found|failed"; then
-  echo "ƒ?O Migration output indicates missing or failed migrations"
+  echo "? Migration output indicates missing or failed migrations"
   exit 1
 fi
 
 # Post-migrate sanity check
 if [ ! -f "./scripts/check-migration-columns.js" ]; then
-  echo "ƒ?O scripts/check-migration-columns.js not found. Aborting deploy."
+  echo "? scripts/check-migration-columns.js not found. Aborting deploy."
   exit 1
 fi
 node ./scripts/check-migration-columns.js
 
-echo "ƒo. Database migrations completed"
+echo "? Database migrations completed"
 echo ""
 
 # Step 10: Start/Restart PM2 (Infomaniak shared hosting compatible)
