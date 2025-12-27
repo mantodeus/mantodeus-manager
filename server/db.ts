@@ -296,12 +296,24 @@ export async function getUserBySupabaseId(supabaseId: string) {
  * @throws Error if user is null or id is missing/invalid
  */
 export function getUserIdFromUser(user: { id: number } | null): number {
+  console.error(`[getUserIdFromUser] DEBUG - user:`, {
+    hasUser: !!user,
+    userId: user?.id,
+    userIdType: typeof user?.id,
+    userKeys: user ? Object.keys(user) : [],
+  });
+  
   if (!user) {
-    throw new Error("User is required but was null");
+    const error = new Error("User is required but was null");
+    console.error(`[getUserIdFromUser] ERROR:`, error.message);
+    throw error;
   }
   if (typeof user.id !== "number" || user.id <= 0) {
-    throw new Error(`Invalid userId: expected positive integer, got ${user.id} (type: ${typeof user.id})`);
+    const error = new Error(`Invalid userId: expected positive integer, got ${user.id} (type: ${typeof user.id})`);
+    console.error(`[getUserIdFromUser] ERROR:`, error.message);
+    throw error;
   }
+  console.error(`[getUserIdFromUser] SUCCESS - returning userId: ${user.id}`);
   return user.id;
 }
 

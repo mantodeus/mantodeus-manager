@@ -79,13 +79,22 @@ function mapInvoiceToPayload(invoice: Awaited<ReturnType<typeof db.getInvoiceByI
 export const invoiceRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     try {
+      // Log context first to see what we're working with
+      console.error(`[Invoices Router] DEBUG - ctx.user:`, {
+        id: ctx.user?.id,
+        idType: typeof ctx.user?.id,
+        hasUser: !!ctx.user,
+        supabaseId: ctx.user?.supabaseId,
+      });
+      
       const userId = db.getUserIdFromUser(ctx.user);
-      console.log(`[Invoices Router] list query - ctx.user.id: ${ctx.user.id}, resolved userId: ${userId}`);
+      console.error(`[Invoices Router] list query - ctx.user.id: ${ctx.user.id}, resolved userId: ${userId}`);
       const invoices = await db.getInvoicesByUserId(userId);
-      console.log(`[Invoices Router] Returning ${invoices.length} invoices`);
+      console.error(`[Invoices Router] Returning ${invoices.length} invoices`);
       return invoices.map(mapInvoiceToPayload);
     } catch (error) {
-      console.error(`[Invoices Router] Error in list query:`, error);
+      console.error(`[Invoices Router] ERROR in list query:`, error);
+      console.error(`[Invoices Router] Error stack:`, error instanceof Error ? error.stack : 'No stack');
       throw error;
     }
   }),
