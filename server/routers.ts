@@ -882,7 +882,8 @@ export const appRouter = router({
           uploadDate: new Date(),
           uploadedBy: ctx.user.id,
           userId: ctx.user.id,
-          status: "sent", // Legacy uploads are treated as issued
+          status: "open", // Legacy uploads are treated as issued (open status with sentAt set)
+          sentAt: issueDate, // Set sentAt for legacy uploads
           subtotal: "0.00",
           vatAmount: "0.00",
           total: "0.00",
@@ -953,7 +954,8 @@ export const appRouter = router({
           uploadDate: input.uploadDate || new Date(),
           uploadedBy: ctx.user.id,
           userId: ctx.user.id,
-          status: "sent", // Legacy uploads are treated as issued
+          status: "open", // Legacy uploads are treated as issued (open status with sentAt set)
+          sentAt: issueDate instanceof Date ? issueDate : new Date(issueDate), // Set sentAt for legacy uploads
           items: [],
           subtotal: "0.00",
           vatAmount: "0.00",
