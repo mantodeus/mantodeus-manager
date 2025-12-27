@@ -943,6 +943,8 @@ export const appRouter = router({
           settings?.invoicePrefix ?? "RE"
         );
 
+        // Create invoice as 'draft' (constitution requirement)
+        // Then immediately issue it to maintain legacy behavior
         const invoice = await db.createInvoice({
           filename: input.filename,
           fileKey: input.fileKey,
@@ -958,13 +960,16 @@ export const appRouter = router({
           uploadDate: input.uploadDate || new Date(),
           uploadedBy: ctx.user.id,
           userId: ctx.user.id,
-          status: "open", // Legacy uploads are treated as issued (open status with sentAt set)
-          sentAt: issueDate instanceof Date ? issueDate : new Date(issueDate), // Set sentAt for legacy uploads
+          status: "draft", // Always 'draft' on creation (constitution)
           items: [],
           subtotal: "0.00",
           vatAmount: "0.00",
           total: "0.00",
         });
+        
+        // Immediately issue the invoice to maintain legacy behavior
+        // (Legacy uploads are treated as already issued)
+        await db.issueInvoice(invoice.id);
         return { success: true, id: invoice.id };
       }),
   }),

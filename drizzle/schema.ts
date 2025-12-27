@@ -320,7 +320,7 @@ export const invoices = mysqlTable("invoices", {
   invoiceNumber: varchar("invoiceNumber", { length: 50 }).notNull(),
   invoiceYear: int("invoiceYear").notNull(),
   invoiceCounter: int("invoiceCounter").notNull(),
-  status: mysqlEnum("status", ["draft", "open", "paid"]).default("draft").notNull(),
+  status: mysqlEnum("status", ["draft", "open", "paid"]).notNull().default("draft"),
   issueDate: timestamp("issueDate").defaultNow().notNull(),
   dueDate: timestamp("dueDate"),
   /** Timestamp when invoice was sent to client (null if not sent) */
