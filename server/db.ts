@@ -285,6 +285,26 @@ export async function getUserBySupabaseId(supabaseId: string) {
   }
 }
 
+/**
+ * Resolve the local database userId (INT) from a User object.
+ * 
+ * This ensures we always use the INT id for database queries, never the Supabase UUID.
+ * This is a defensive helper to prevent identity mismatches at the auth → domain boundary.
+ * 
+ * @param user - User object from context (must have id: number)
+ * @returns The INT userId for database queries
+ * @throws Error if user is null or id is missing/invalid
+ */
+export function getUserIdFromUser(user: { id: number } | null): number {
+  if (!user) {
+    throw new Error("User is required but was null");
+  }
+  if (typeof user.id !== "number" || user.id <= 0) {
+    throw new Error(`Invalid userId: expected positive integer, got ${user.id} (type: ${typeof user.id})`);
+  }
+  return user.id;
+}
+
 // Job queries
 export async function createJob(job: InsertJob) {
   const db = await getDb();
