@@ -78,48 +78,33 @@ function mapInvoiceToPayload(invoice: Awaited<ReturnType<typeof db.getInvoiceByI
 
 export const invoiceRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    try {
-      // Log context first to see what we're working with
-      console.error(`[Invoices Router] DEBUG - ctx.user:`, {
-        id: ctx.user?.id,
-        idType: typeof ctx.user?.id,
-        hasUser: !!ctx.user,
-        supabaseId: ctx.user?.supabaseId,
-      });
-      
-      const userId = db.getUserIdFromUser(ctx.user);
-      console.error(`[Invoices Router] list query - ctx.user.id: ${ctx.user.id}, resolved userId: ${userId}`);
-      const invoices = await db.getInvoicesByUserId(userId);
-      console.error(`[Invoices Router] Returning ${invoices.length} invoices`);
-      return invoices.map(mapInvoiceToPayload);
-    } catch (error) {
-      console.error(`[Invoices Router] ERROR in list query:`, error);
-      console.error(`[Invoices Router] Error stack:`, error instanceof Error ? error.stack : 'No stack');
-      throw error;
-    }
+    // ctx.user.id is already the correct INT from the database User object
+    // No need for conversion - use it directly
+    const userId = ctx.user.id;
+    console.error(`[Invoices Router] list query - userId: ${userId} (type: ${typeof userId})`);
+    const invoices = await db.getInvoicesByUserId(userId);
+    console.error(`[Invoices Router] Returning ${invoices.length} invoices`);
+    return invoices.map(mapInvoiceToPayload);
   }),
 
   listArchived: protectedProcedure.query(async ({ ctx }) => {
-    const userId = db.getUserIdFromUser(ctx.user);
-    const invoices = await db.getArchivedInvoicesByUserId(userId);
+    const invoices = await db.getArchivedInvoicesByUserId(ctx.user.id);
     return invoices.map(mapInvoiceToPayload);
   }),
 
   listTrashed: protectedProcedure.query(async ({ ctx }) => {
-    const userId = db.getUserIdFromUser(ctx.user);
-    const invoices = await db.getTrashedInvoicesByUserId(userId);
+    const invoices = await db.getTrashedInvoicesByUserId(ctx.user.id);
     return invoices.map(mapInvoiceToPayload);
   }),
 
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input, ctx }) => {
-      const userId = db.getUserIdFromUser(ctx.user);
       const invoice = await db.getInvoiceById(input.id);
       if (!invoice) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
       }
-      if (invoice.userId !== userId) {
+      if (invoice.userId !== ctx.user.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
       return mapInvoiceToPayload(invoice);
@@ -128,11 +113,10 @@ export const invoiceRouter = router({
   nextNumber: protectedProcedure
     .input(z.object({ issueDate: z.date().optional() }).optional())
     .query(async ({ input, ctx }) => {
-      const userId = db.getUserIdFromUser(ctx.user);
-      const settings = await db.getCompanySettingsByUserId(userId);
+      const settings = await db.getCompanySettingsByUserId(ctx.user.id);
       const issueDate = input?.issueDate ?? new Date();
       const generated = await db.generateInvoiceNumber(
-        userId,
+        ctx.user.id,
         issueDate,
         settings?.invoiceNumberFormat ?? null,
         settings?.invoicePrefix ?? "RE"
@@ -147,7 +131,7 @@ export const invoiceRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const userId = db.getUserIdFromUser(ctx.user);
+      const userId = ctx.user.id;
       const settings = await db.getCompanySettingsByUserId(userId);
       if (!settings) {
         throw new TRPCError({
@@ -219,7 +203,7 @@ export const invoiceRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const userId = db.getUserIdFromUser(ctx.user);
+      const userId = ctx.user.id;
       const invoice = await db.getInvoiceById(input.id);
       if (!invoice) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
@@ -324,7 +308,7 @@ export const invoiceRouter = router({
   issue: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      const userId = db.getUserIdFromUser(ctx.user);
+      const userId = ctx.user.id;
       const invoice = await db.getInvoiceById(input.id);
       if (!invoice) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
@@ -344,7 +328,7 @@ export const invoiceRouter = router({
   markAsPaid: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      const userId = db.getUserIdFromUser(ctx.user);
+      const userId = ctx.user.id;
       const invoice = await db.getInvoiceById(input.id);
       if (!invoice) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
@@ -365,7 +349,7 @@ export const invoiceRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      const userId = db.getUserIdFromUser(ctx.user);
+      const userId = ctx.user.id;
       const invoice = await db.getInvoiceById(input.id);
       if (!invoice) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
@@ -390,7 +374,7 @@ export const invoiceRouter = router({
   archive: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      const userId = db.getUserIdFromUser(ctx.user);
+      const userId = ctx.user.id;
       const invoice = await db.getInvoiceById(input.id);
       if (!invoice) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
@@ -407,7 +391,7 @@ export const invoiceRouter = router({
   moveToTrash: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      const userId = db.getUserIdFromUser(ctx.user);
+      const userId = ctx.user.id;
       const invoice = await db.getInvoiceById(input.id);
       if (!invoice) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
@@ -427,7 +411,7 @@ export const invoiceRouter = router({
   restore: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      const userId = db.getUserIdFromUser(ctx.user);
+      const userId = ctx.user.id;
       const invoice = await db.getInvoiceById(input.id);
       if (!invoice) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
@@ -454,7 +438,7 @@ export const invoiceRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Confirmation is required to revert invoice status." });
       }
 
-      const userId = db.getUserIdFromUser(ctx.user);
+      const userId = ctx.user.id;
       const invoice = await db.getInvoiceById(input.id);
       if (!invoice) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
