@@ -162,6 +162,14 @@ fi
 export DRIZZLE_FORCE_MIGRATIONS="0015_structured_company_address_invoice_format"
 node ./scripts/seed-drizzle-migrations.cjs
 
+# Fix migration 0009 if tables already exist (one-time fix)
+if [ -f "./scripts/fix-migration-0009.cjs" ]; then
+  echo "   Checking for migration 0009 fix..."
+  node ./scripts/fix-migration-0009.cjs || {
+    echo "⚠️  Migration 0009 fix script failed, but continuing..."
+  }
+fi
+
 # Run drizzle migrations (fail fast on errors)
 echo "   Applying migrations via drizzle-kit..."
 set +e
