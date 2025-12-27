@@ -255,7 +255,8 @@ async function startServer() {
       const { invoiceNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
         user.id,
         issueDate,
-        companySettings.invoicePrefix || "RE"
+        companySettings.invoiceNumberFormat ?? null,
+        companySettings.invoicePrefix ?? "RE"
       );
       await db.ensureUniqueInvoiceNumber(user.id, invoiceNumber, invoice.id);
 

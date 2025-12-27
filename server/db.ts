@@ -918,10 +918,98 @@ export async function ensureUniqueInvoiceNumber(userId: number, invoiceNumber: s
   }
 }
 
-export async function generateInvoiceNumber(userId: number, issueDate: Date, prefix: string) {
+type ParsedInvoiceNumber = {
+  prefix: string;
+  numeric: string;
+  suffix: string;
+  value: number;
+  padding: number;
+};
+
+function parseInvoiceNumber(value: string): ParsedInvoiceNumber | null {
+  if (!value) return null;
+  const match = value.match(/^(.*)(\d+)(\D*)$/);
+  if (!match) return null;
+  const [, prefix, numeric, suffix] = match;
+  const parsed = Number(numeric);
+  if (!Number.isFinite(parsed)) return null;
+  return {
+    prefix,
+    numeric,
+    suffix,
+    value: parsed,
+    padding: numeric.length,
+  };
+}
+
+function formatInvoiceNumber(parsed: ParsedInvoiceNumber, nextValue: number, padding?: number) {
+  const padded = String(nextValue).padStart(padding ?? parsed.padding, "0");
+  return `${parsed.prefix}${padded}${parsed.suffix}`;
+}
+
+async function getRecentInvoiceNumbersByUserId(userId: number, limit = 1000) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db
+    .select({ invoiceNumber: invoices.invoiceNumber })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.userId, userId),
+        or(isNull(invoices.trashedAt), ne(invoices.status, "draft"))
+      )
+    )
+    .orderBy(desc(invoices.createdAt), desc(invoices.id))
+    .limit(limit);
+}
+
+function buildDefaultInvoiceSeed(issueDate: Date, fallbackPrefix?: string | null) {
+  const year = issueDate.getFullYear();
+  const safePrefix = fallbackPrefix?.trim() || "RE";
+  return `${safePrefix}-${year}-0001`;
+}
+
+export async function generateInvoiceNumber(
+  userId: number,
+  issueDate: Date,
+  formatSeed?: string | null,
+  fallbackPrefix?: string | null
+) {
   const invoiceYear = issueDate.getFullYear();
-  const nextCounter = (await getHighestInvoiceCounter(userId, invoiceYear)) + 1;
-  const invoiceNumber = `${prefix}-${invoiceYear}-${String(nextCounter).padStart(4, "0")}`;
+  const seedValue = formatSeed?.trim();
+  const effectiveSeed = seedValue && seedValue.length > 0 ? seedValue : buildDefaultInvoiceSeed(issueDate, fallbackPrefix);
+  const seedParsed = parseInvoiceNumber(effectiveSeed);
+  if (!seedParsed) {
+    throw new Error("Invoice number format must include a numeric sequence.");
+  }
+
+  const recent = await getRecentInvoiceNumbersByUserId(userId);
+  let baseParsed: ParsedInvoiceNumber | null = null;
+
+  if (seedValue) {
+    for (const row of recent) {
+      const parsed = parseInvoiceNumber(row.invoiceNumber);
+      if (!parsed) continue;
+      if (parsed.prefix === seedParsed.prefix && parsed.suffix === seedParsed.suffix) {
+        baseParsed = { ...parsed, prefix: seedParsed.prefix, suffix: seedParsed.suffix };
+        break;
+      }
+    }
+  } else if (recent.length > 0) {
+    baseParsed = parseInvoiceNumber(recent[0].invoiceNumber);
+  }
+
+  if (!baseParsed) {
+    return {
+      invoiceNumber: effectiveSeed,
+      invoiceCounter: seedParsed.value,
+      invoiceYear,
+    };
+  }
+
+  const nextCounter = baseParsed.value + 1;
+  const padding = seedValue ? seedParsed.padding : baseParsed.padding;
+  const invoiceNumber = formatInvoiceNumber(baseParsed, nextCounter, padding);
   return { invoiceNumber, invoiceCounter: nextCounter, invoiceYear };
 }
 
@@ -962,10 +1050,12 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
   };
 
   if (!invoiceData.invoiceNumber || !invoiceData.invoiceCounter) {
+    const settings = await getCompanySettingsByUserId(invoiceData.userId);
     const { invoiceNumber, invoiceCounter, invoiceYear } = await generateInvoiceNumber(
       invoiceData.userId,
       issueDate,
-      "RE"
+      settings?.invoiceNumberFormat ?? null,
+      settings?.invoicePrefix ?? "RE"
     );
     invoiceData.invoiceNumber = invoiceData.invoiceNumber || invoiceNumber;
     invoiceData.invoiceCounter = invoiceData.invoiceCounter || invoiceCounter;
@@ -1968,6 +2058,19 @@ export async function deleteSharedDocument(id: number) {
 // COMPANY SETTINGS FUNCTIONS
 // =============================================================================
 
+function buildCompanyAddress(settings: {
+  streetName?: string | null;
+  streetNumber?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+  country?: string | null;
+}): string | null {
+  const streetParts = [settings.streetName, settings.streetNumber].filter(Boolean);
+  const cityParts = [settings.postalCode, settings.city].filter(Boolean);
+  const addressParts = [streetParts.join(" "), cityParts.join(" "), settings.country].filter(Boolean);
+  return addressParts.length ? addressParts.join("\n") : null;
+}
+
 export async function getCompanySettingsByUserId(userId: number) {
   const db = await getDb();
   if (!db) return null;
@@ -1975,8 +2078,16 @@ export async function getCompanySettingsByUserId(userId: number) {
   const result = await db.select().from(companySettings)
     .where(eq(companySettings.userId, userId))
     .limit(1);
-  
-  return result.length > 0 ? result[0] : null;
+
+  if (result.length === 0) return null;
+  const settings = result[0];
+  if (!settings.address) {
+    const formattedAddress = buildCompanyAddress(settings);
+    if (formattedAddress) {
+      return { ...settings, address: formattedAddress };
+    }
+  }
+  return settings;
 }
 
 export async function createCompanySettings(data: InsertCompanySettings) {
@@ -2048,7 +2159,7 @@ export async function getUserPreferencesByUserId(userId: number) {
         dateFormat: "DD.MM.YYYY",
         timeFormat: "24h",
         timezone: "Europe/Berlin",
-        language: "de",
+        language: "en",
         currency: "EUR",
         notificationsEnabled: true,
       });
@@ -2077,8 +2188,48 @@ export async function updateUserPreferences(userId: number, data: Partial<Insert
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const defaults = {
+    dateFormat: "DD.MM.YYYY",
+    timeFormat: "24h",
+    timezone: "Europe/Berlin",
+    language: "en",
+    currency: "EUR",
+    notificationsEnabled: true,
+  };
+
+  const normalizeString = (value: string | undefined) => {
+    if (value === undefined) return undefined;
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : undefined;
+  };
+
+  const normalizedInput: Partial<InsertUserPreferences> = {
+    dateFormat: normalizeString(data.dateFormat),
+    timeFormat: data.timeFormat,
+    timezone: normalizeString(data.timezone),
+    language: normalizeString(data.language),
+    currency: normalizeString(data.currency),
+    notificationsEnabled: data.notificationsEnabled,
+  };
+
+  const existing = await getUserPreferencesByUserId(userId);
+  const base = existing ?? defaults;
+  const updated: InsertUserPreferences = {
+    userId,
+    dateFormat: (normalizedInput.dateFormat as string | undefined) ?? base.dateFormat ?? defaults.dateFormat,
+    timeFormat: (normalizedInput.timeFormat as string | undefined) ?? base.timeFormat ?? defaults.timeFormat,
+    timezone: (normalizedInput.timezone as string | undefined) ?? base.timezone ?? defaults.timezone,
+    language: (normalizedInput.language as string | undefined) ?? base.language ?? defaults.language,
+    currency: (normalizedInput.currency as string | undefined) ?? base.currency ?? defaults.currency,
+    notificationsEnabled: normalizedInput.notificationsEnabled ?? base.notificationsEnabled ?? defaults.notificationsEnabled,
+  };
+
+  if (!existing) {
+    return await db.insert(userPreferences).values(updated);
+  }
+
   return await db.update(userPreferences)
-    .set(data)
+    .set(updated)
     .where(eq(userPreferences.userId, userId));
 }
 

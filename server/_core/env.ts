@@ -29,6 +29,7 @@ export const ENV = {
   s3Bucket: process.env.S3_BUCKET ?? "",
   s3AccessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
   s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
+  s3PublicBucket: process.env.S3_PUBLIC_BUCKET === "true",
 
   // PDF Service
   pdfServiceUrl: process.env.PDF_SERVICE_URL || "https://pdf-service-withered-star-4195.fly.dev/render",
