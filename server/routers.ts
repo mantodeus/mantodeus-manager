@@ -860,10 +860,12 @@ export const appRouter = router({
 
         // Generate compliant invoice number for legacy upload
         const issueDate = new Date();
+        const settings = await db.getCompanySettingsByUserId(ctx.user.id);
         const { invoiceNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
           ctx.user.id,
           issueDate,
-          "RE"
+          settings?.invoiceNumberFormat ?? null,
+          settings?.invoicePrefix ?? "RE"
         );
 
         // Save metadata to database (as legacy file upload)
@@ -933,10 +935,12 @@ export const appRouter = router({
       )
       .mutation(async ({ input, ctx }) => {
         const issueDate = input.uploadDate || new Date();
+        const settings = await db.getCompanySettingsByUserId(ctx.user.id);
         const { invoiceNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
           ctx.user.id,
           issueDate instanceof Date ? issueDate : new Date(issueDate),
-          "RE"
+          settings?.invoiceNumberFormat ?? null,
+          settings?.invoicePrefix ?? "RE"
         );
 
         const invoice = await db.createInvoice({

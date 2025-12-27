@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
-import { storagePut, deleteFromStorage, generateFileKey, getContentType, createPresignedReadUrl } from "./storage";
+import { storagePut, deleteFromStorage, generateFileKey, getContentType, getReadUrl } from "./storage";
 import sharp from "sharp";
 
 export const settingsRouter = router({
@@ -14,9 +14,15 @@ export const settingsRouter = router({
     
     // Return default settings if none exist
     if (!settings) {
+      const year = new Date().getFullYear();
       return {
         companyName: ctx.user.name || '',
         address: null,
+        streetName: null,
+        streetNumber: null,
+        postalCode: null,
+        city: null,
+        country: null,
         email: null,
         phone: null,
         steuernummer: null,
@@ -26,6 +32,7 @@ export const settingsRouter = router({
         isKleinunternehmer: false,
         vatRate: '19.00',
         invoicePrefix: 'RE',
+        invoiceNumberFormat: `RE-${year}-0001`,
         nextInvoiceNumber: 1,
       };
     }
@@ -41,6 +48,11 @@ export const settingsRouter = router({
       z.object({
         companyName: z.string().optional(),
         address: z.string().optional(),
+        streetName: z.string().optional(),
+        streetNumber: z.string().optional(),
+        postalCode: z.string().optional(),
+        city: z.string().optional(),
+        country: z.string().optional(),
         email: z.string().optional(),
         phone: z.string().optional(),
         steuernummer: z.string().optional(),
@@ -50,6 +62,12 @@ export const settingsRouter = router({
         isKleinunternehmer: z.boolean().optional(),
         vatRate: z.string().optional(),
         invoicePrefix: z.string().optional(),
+        invoiceNumberFormat: z
+          .string()
+          .optional()
+          .refine((value) => value === undefined || /\d/.test(value), {
+            message: "Invoice number format must include a numeric sequence.",
+          }),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -58,13 +76,19 @@ export const settingsRouter = router({
       // Normalize empty strings to null for optional string fields
       const normalizeString = (value: string | undefined): string | null | undefined => {
         if (value === undefined) return undefined;
-        return value === '' ? null : value;
+        const trimmed = value.trim();
+        return trimmed === '' ? null : trimmed;
       };
       
       // Build normalized input object, converting empty strings to null
       const normalizedInput: Partial<{
         companyName: string | null;
         address: string | null;
+        streetName: string | null;
+        streetNumber: string | null;
+        postalCode: string | null;
+        city: string | null;
+        country: string | null;
         email: string | null;
         phone: string | null;
         steuernummer: string | null;
@@ -74,11 +98,17 @@ export const settingsRouter = router({
         isKleinunternehmer: boolean;
         vatRate: string | null;
         invoicePrefix: string | null;
+        invoiceNumberFormat: string | null;
       }> = {};
       
       // Process all fields that might be in the input
       if (input.companyName !== undefined) normalizedInput.companyName = normalizeString(input.companyName);
       if (input.address !== undefined) normalizedInput.address = normalizeString(input.address);
+      if (input.streetName !== undefined) normalizedInput.streetName = normalizeString(input.streetName);
+      if (input.streetNumber !== undefined) normalizedInput.streetNumber = normalizeString(input.streetNumber);
+      if (input.postalCode !== undefined) normalizedInput.postalCode = normalizeString(input.postalCode);
+      if (input.city !== undefined) normalizedInput.city = normalizeString(input.city);
+      if (input.country !== undefined) normalizedInput.country = normalizeString(input.country);
       if (input.email !== undefined) normalizedInput.email = normalizeString(input.email);
       if (input.phone !== undefined) normalizedInput.phone = normalizeString(input.phone);
       if (input.steuernummer !== undefined) normalizedInput.steuernummer = normalizeString(input.steuernummer);
@@ -88,17 +118,42 @@ export const settingsRouter = router({
       if (input.isKleinunternehmer !== undefined) normalizedInput.isKleinunternehmer = input.isKleinunternehmer;
       if (input.vatRate !== undefined) normalizedInput.vatRate = normalizeString(input.vatRate);
       if (input.invoicePrefix !== undefined) normalizedInput.invoicePrefix = normalizeString(input.invoicePrefix);
+      if (input.invoiceNumberFormat !== undefined) normalizedInput.invoiceNumberFormat = normalizeString(input.invoiceNumberFormat);
       if (normalizedInput.vatRate === null) normalizedInput.vatRate = undefined;
+
+      const hasStructuredAddress = [
+        normalizedInput.streetName,
+        normalizedInput.streetNumber,
+        normalizedInput.postalCode,
+        normalizedInput.city,
+        normalizedInput.country,
+      ].some((value) => value !== undefined);
+
+      if (hasStructuredAddress) {
+        const streetParts = [normalizedInput.streetName, normalizedInput.streetNumber].filter(Boolean);
+        const cityParts = [normalizedInput.postalCode, normalizedInput.city].filter(Boolean);
+        const addressParts = [streetParts.join(" "), cityParts.join(" "), normalizedInput.country]
+          .filter(Boolean)
+          .join("\n");
+        normalizedInput.address = addressParts || null;
+      }
       
       if (existing) {
         // Update existing settings
         await db.updateCompanySettings(ctx.user.id, normalizedInput);
       } else {
+        const year = new Date().getFullYear();
+        const formattedAddress = normalizedInput.address ?? null;
         // Create new settings
         await db.createCompanySettings({
           userId: ctx.user.id,
           companyName: normalizedInput.companyName || ctx.user.name || '',
-          address: normalizedInput.address ?? null,
+          address: formattedAddress,
+          streetName: normalizedInput.streetName ?? null,
+          streetNumber: normalizedInput.streetNumber ?? null,
+          postalCode: normalizedInput.postalCode ?? null,
+          city: normalizedInput.city ?? null,
+          country: normalizedInput.country ?? null,
           email: normalizedInput.email ?? null,
           phone: normalizedInput.phone ?? null,
           steuernummer: normalizedInput.steuernummer ?? null,
@@ -108,6 +163,7 @@ export const settingsRouter = router({
           isKleinunternehmer: normalizedInput.isKleinunternehmer ?? false,
           vatRate: normalizedInput.vatRate ?? '19.00',
           invoicePrefix: normalizedInput.invoicePrefix ?? 'RE',
+          invoiceNumberFormat: normalizedInput.invoiceNumberFormat ?? `RE-${year}-0001`,
           nextInvoiceNumber: 1,
         });
       }
@@ -126,11 +182,19 @@ export const settingsRouter = router({
     update: protectedProcedure
       .input(
         z.object({
-          dateFormat: z.string().optional(),
+          dateFormat: z.enum(["DD.MM.YYYY", "DD/MM/YYYY", "YYYY-MM-DD"]).optional(),
           timeFormat: z.enum(["12h", "24h"]).optional(),
-          timezone: z.string().optional(),
-          language: z.string().optional(),
-          currency: z.string().optional(),
+          timezone: z.enum([
+            "UTC",
+            "Europe/Berlin",
+            "Europe/London",
+            "Europe/Paris",
+            "America/New_York",
+            "America/Los_Angeles",
+            "Asia/Tokyo",
+          ]).optional(),
+          language: z.enum(["en", "de"]).optional(),
+          currency: z.enum(["EUR", "USD", "GBP", "CHF"]).optional(),
           notificationsEnabled: z.boolean().optional(),
         })
       )
@@ -189,7 +253,42 @@ export const settingsRouter = router({
       await storagePut(s3Key, processed, "image/png");
 
       // 5. Store s3Key + URL in company_settings
-      const logoUrl = await createPresignedReadUrl(s3Key, 365 * 24 * 60 * 60); // 1 year expiry
+      let logoUrl: string;
+      try {
+        logoUrl = await getReadUrl(s3Key, 365 * 24 * 60 * 60); // 1 year expiry
+      } catch (error) {
+        console.error("[Settings] Failed to generate logo read URL:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create logo read URL. Check S3 bucket permissions and region settings.",
+        });
+      }
+
+      const settings = await db.getCompanySettingsByUserId(ctx.user.id);
+      if (!settings) {
+        const year = new Date().getFullYear();
+        await db.createCompanySettings({
+          userId: ctx.user.id,
+          companyName: ctx.user.name || "",
+          address: null,
+          streetName: null,
+          streetNumber: null,
+          postalCode: null,
+          city: null,
+          country: null,
+          email: null,
+          phone: null,
+          steuernummer: null,
+          ustIdNr: null,
+          iban: null,
+          bic: null,
+          isKleinunternehmer: false,
+          vatRate: "19.00",
+          invoicePrefix: "RE",
+          invoiceNumberFormat: `RE-${year}-0001`,
+          nextInvoiceNumber: 1,
+        });
+      }
 
       await db.uploadCompanyLogo(
         ctx.user.id,

@@ -5,7 +5,7 @@
  * - Company information (name, address, contact)
  * - Tax information (Steuernummer, USt-IdNr)
  * - Banking details (IBAN, BIC)
- * - Invoice settings (Kleinunternehmer, VAT rate, prefix)
+ * - Invoice settings (Kleinunternehmer, VAT rate, number format)
  * - Mobile-first, dark theme with neon green highlights
  */
 
@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +28,7 @@ import { LogoUploadSection } from "@/components/LogoUploadSection";
 export default function Settings() {
   const { theme, switchTheme, themes } = useTheme();
   const { data: settings, isLoading, error } = trpc.settings.get.useQuery();
+  const currentYear = new Date().getFullYear();
 
   // Preferences query - enabled after migration applied
   const { data: preferences, isLoading: preferencesLoading } = trpc.settings.preferences.get.useQuery();
@@ -60,7 +60,11 @@ export default function Settings() {
 
   const [formData, setFormData] = useState({
     companyName: "",
-    address: "",
+    streetName: "",
+    streetNumber: "",
+    postalCode: "",
+    city: "",
+    country: "",
     email: "",
     phone: "",
     steuernummer: "",
@@ -69,14 +73,14 @@ export default function Settings() {
     bic: "",
     isKleinunternehmer: false,
     vatRate: "19.00",
-    invoicePrefix: "RE",
+    invoiceNumberFormat: `RE-${currentYear}-0001`,
   });
 
   const [preferencesData, setPreferencesData] = useState({
     dateFormat: "DD.MM.YYYY",
     timeFormat: "24h" as "12h" | "24h",
     timezone: "Europe/Berlin",
-    language: "de",
+    language: "en",
     currency: "EUR",
     notificationsEnabled: true,
   });
@@ -86,7 +90,11 @@ export default function Settings() {
     if (settings) {
       setFormData({
         companyName: settings.companyName || "",
-        address: settings.address || "",
+        streetName: settings.streetName || "",
+        streetNumber: settings.streetNumber || "",
+        postalCode: settings.postalCode || "",
+        city: settings.city || "",
+        country: settings.country || "",
         email: settings.email || "",
         phone: settings.phone || "",
         steuernummer: settings.steuernummer || "",
@@ -95,10 +103,10 @@ export default function Settings() {
         bic: settings.bic || "",
         isKleinunternehmer: settings.isKleinunternehmer || false,
         vatRate: settings.vatRate || "19.00",
-        invoicePrefix: settings.invoicePrefix || "RE",
+        invoiceNumberFormat: settings.invoiceNumberFormat || `RE-${currentYear}-0001`,
       });
     }
-  }, [settings]);
+  }, [settings, currentYear]);
 
   // Initialize preferences when they load
   useEffect(() => {
@@ -107,7 +115,7 @@ export default function Settings() {
         dateFormat: preferences.dateFormat || "DD.MM.YYYY",
         timeFormat: (preferences.timeFormat as "12h" | "24h") || "24h",
         timezone: preferences.timezone || "Europe/Berlin",
-        language: preferences.language || "de",
+        language: preferences.language || "en",
         currency: preferences.currency || "EUR",
         notificationsEnabled: preferences.notificationsEnabled ?? true,
       });
@@ -121,7 +129,15 @@ export default function Settings() {
 
   const handlePreferencesSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updatePreferencesMutation.mutateAsync(preferencesData);
+    const normalized = {
+      dateFormat: preferencesData.dateFormat || "DD.MM.YYYY",
+      timeFormat: preferencesData.timeFormat || "24h",
+      timezone: preferencesData.timezone || "Europe/Berlin",
+      language: preferencesData.language || "en",
+      currency: preferencesData.currency || "EUR",
+      notificationsEnabled: preferencesData.notificationsEnabled ?? true,
+    };
+    await updatePreferencesMutation.mutateAsync(normalized);
   };
 
   const handleChange = (field: string, value: string | boolean) => {
@@ -420,16 +436,52 @@ export default function Settings() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Textarea
-                id="address"
-                value={formData.address}
-                onChange={(e) => handleChange("address", e.target.value)}
-                placeholder="Street Address&#10;City, Postal Code&#10;Germany"
-                rows={3}
-                className="resize-none"
-              />
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="streetName">Street Name</Label>
+                <Input
+                  id="streetName"
+                  value={formData.streetName}
+                  onChange={(e) => handleChange("streetName", e.target.value)}
+                  placeholder="Hauptstrasse"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="streetNumber">Street Number</Label>
+                <Input
+                  id="streetNumber"
+                  value={formData.streetNumber}
+                  onChange={(e) => handleChange("streetNumber", e.target.value)}
+                  placeholder="12a"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="postalCode">Postal Code</Label>
+                <Input
+                  id="postalCode"
+                  value={formData.postalCode}
+                  onChange={(e) => handleChange("postalCode", e.target.value)}
+                  placeholder="10115"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) => handleChange("city", e.target.value)}
+                  placeholder="Berlin"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-3">
+                <Label htmlFor="country">Country</Label>
+                <Input
+                  id="country"
+                  value={formData.country}
+                  onChange={(e) => handleChange("country", e.target.value)}
+                  placeholder="Germany"
+                />
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -594,16 +646,16 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="invoicePrefix">Invoice Prefix</Label>
+                <Label htmlFor="invoiceNumberFormat">Invoice Number Format</Label>
                 <Input
-                  id="invoicePrefix"
-                  value={formData.invoicePrefix}
-                  onChange={(e) => handleChange("invoicePrefix", e.target.value.toUpperCase())}
-                  placeholder="RE"
-                  maxLength={10}
+                  id="invoiceNumberFormat"
+                  value={formData.invoiceNumberFormat}
+                  onChange={(e) => handleChange("invoiceNumberFormat", e.target.value)}
+                  placeholder={`RE-${currentYear}-0001`}
+                  maxLength={50}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Invoice numbers will be: {formData.invoicePrefix}-{new Date().getFullYear()}-0001
+                  Example: RE-{currentYear}-0001, INV0001, MM-24-099
                 </p>
               </div>
             </div>

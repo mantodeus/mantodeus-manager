@@ -52,6 +52,13 @@ function calculateTotals(items: ReturnType<typeof normalizeLineItems>) {
   };
 }
 
+function extractInvoiceCounter(value: string): number | null {
+  const match = value.match(/^(.*)(\d+)(\D*)$/);
+  if (!match) return null;
+  const parsed = Number(match[2]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function mapInvoiceToPayload(invoice: Awaited<ReturnType<typeof db.getInvoiceById>>) {
   if (!invoice) return invoice;
   const items = (invoice.items || []).map((item) => ({
@@ -102,9 +109,13 @@ export const invoiceRouter = router({
     .input(z.object({ issueDate: z.date().optional() }).optional())
     .query(async ({ input, ctx }) => {
       const settings = await db.getCompanySettingsByUserId(ctx.user.id);
-      const prefix = settings?.invoicePrefix || "RE";
       const issueDate = input?.issueDate ?? new Date();
-      const generated = await db.generateInvoiceNumber(ctx.user.id, issueDate, prefix);
+      const generated = await db.generateInvoiceNumber(
+        ctx.user.id,
+        issueDate,
+        settings?.invoiceNumberFormat ?? null,
+        settings?.invoicePrefix ?? "RE"
+      );
       return generated;
     }),
 
@@ -127,9 +138,24 @@ export const invoiceRouter = router({
       const { invoiceNumber: generatedNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
         ctx.user.id,
         issueDate,
-        settings.invoicePrefix || "RE"
+        settings.invoiceNumberFormat ?? null,
+        settings.invoicePrefix ?? "RE"
       );
-      const invoiceNumber = input.invoiceNumber?.trim() || generatedNumber;
+      const manualNumber = input.invoiceNumber?.trim();
+      if (manualNumber && extractInvoiceCounter(manualNumber) === null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invoice number must include a numeric sequence.",
+        });
+      }
+      if (manualNumber && manualNumber !== generatedNumber) {
+        console.warn(
+          `[Invoices] Manual invoice number override for user ${ctx.user.id}: ${manualNumber} (suggested ${generatedNumber})`
+        );
+      }
+      const invoiceNumber = manualNumber || generatedNumber;
+      const manualCounter = manualNumber ? extractInvoiceCounter(manualNumber) : null;
+      const effectiveCounter = manualCounter ?? invoiceCounter;
       await db.ensureUniqueInvoiceNumber(ctx.user.id, invoiceNumber);
 
       const normalizedItems = normalizeLineItems(input.items);
@@ -139,7 +165,7 @@ export const invoiceRouter = router({
         userId: ctx.user.id,
         clientId: input.clientId ?? null,
         invoiceNumber,
-        invoiceCounter,
+        invoiceCounter: effectiveCounter,
         invoiceYear,
         status: "draft",
         issueDate,
@@ -194,12 +220,31 @@ export const invoiceRouter = router({
       let invoiceYear = issueDate.getFullYear();
       let invoiceCounter = invoice.invoiceCounter;
       let invoiceNumber = input.invoiceNumber?.trim() || invoice.invoiceNumber;
+      if (input.invoiceNumber?.trim() && extractInvoiceCounter(input.invoiceNumber.trim()) === null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invoice number must include a numeric sequence.",
+        });
+      }
 
       if (invoiceYear !== invoice.invoiceYear && !input.invoiceNumber) {
-        const regenerated = await db.generateInvoiceNumber(ctx.user.id, issueDate, settings.invoicePrefix || "RE");
+        const regenerated = await db.generateInvoiceNumber(
+          ctx.user.id,
+          issueDate,
+          settings.invoiceNumberFormat ?? null,
+          settings.invoicePrefix ?? "RE"
+        );
         invoiceNumber = regenerated.invoiceNumber;
         invoiceCounter = regenerated.invoiceCounter;
         invoiceYear = regenerated.invoiceYear;
+      } else if (input.invoiceNumber?.trim() && input.invoiceNumber.trim() !== invoice.invoiceNumber) {
+        console.warn(
+          `[Invoices] Manual invoice number override for user ${ctx.user.id}: ${input.invoiceNumber.trim()}`
+        );
+        const manualCounter = extractInvoiceCounter(input.invoiceNumber.trim());
+        if (manualCounter !== null) {
+          invoiceCounter = manualCounter;
+        }
       }
 
       await db.ensureUniqueInvoiceNumber(ctx.user.id, invoiceNumber, invoice.id);

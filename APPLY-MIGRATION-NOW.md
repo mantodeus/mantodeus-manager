@@ -1,4 +1,4 @@
-# URGENT: Apply Phase 1 Migration to Production
+# Canonical deploy command\n\nRun: ash infra/deploy/deploy.sh\n\n# URGENT: Apply Phase 1 Migration to Production
 
 ## The Problem
 Settings page returns 500 error because the database doesn't have the new logo columns yet.
@@ -99,3 +99,4 @@ Always apply database migrations **BEFORE** deploying code that uses new columns
 3. Test
 
 NOT the other way around!
+

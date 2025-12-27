@@ -136,12 +136,20 @@ export const pdfRouter = router({
       
       // Create default settings if none exist
       if (!companySettings) {
+        const year = new Date().getFullYear();
         await db.createCompanySettings({
           userId: ctx.user.id,
           companyName: ctx.user.name || 'Mantodeus Manager',
+          address: null,
+          streetName: null,
+          streetNumber: null,
+          postalCode: null,
+          city: null,
+          country: null,
           isKleinunternehmer: false,
           vatRate: '19.00',
           invoicePrefix: 'RE',
+          invoiceNumberFormat: `RE-${year}-0001`,
           nextInvoiceNumber: 1,
         });
         companySettings = await db.getCompanySettingsByUserId(ctx.user.id);
@@ -170,7 +178,8 @@ export const pdfRouter = router({
       const { invoiceNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
         ctx.user.id,
         issueDate,
-        companySettings.invoicePrefix || 'RE'
+        companySettings.invoiceNumberFormat ?? null,
+        companySettings.invoicePrefix ?? "RE"
       );
       await db.ensureUniqueInvoiceNumber(ctx.user.id, invoiceNumber);
 
