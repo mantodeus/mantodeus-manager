@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "eed8bb4b-9bf3-45a6-b4de-27b4a6281ecd",
-  "prevId": "5737826b-c791-44f7-a520-0290373f8a46",
+  "id": "fb23a18d-e620-4138-a2b7-77cda52e9e2e",
+  "prevId": "401d1b34-e032-49e3-8317-2ec4fa0e41b1",
   "tables": {
     "comments": {
       "name": "comments",
@@ -111,6 +111,191 @@
         }
       },
       "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "company_settings": {
+      "name": "company_settings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "companyName": {
+          "name": "companyName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "steuernummer": {
+          "name": "steuernummer",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ustIdNr": {
+          "name": "ustIdNr",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "iban": {
+          "name": "iban",
+          "type": "varchar(34)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "bic": {
+          "name": "bic",
+          "type": "varchar(11)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "isKleinunternehmer": {
+          "name": "isKleinunternehmer",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "vatRate": {
+          "name": "vatRate",
+          "type": "decimal(5,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'19.00'"
+        },
+        "invoicePrefix": {
+          "name": "invoicePrefix",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'RE'"
+        },
+        "nextInvoiceNumber": {
+          "name": "nextInvoiceNumber",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "logoS3Key": {
+          "name": "logoS3Key",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "logoUrl": {
+          "name": "logoUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "logoWidth": {
+          "name": "logoWidth",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "logoHeight": {
+          "name": "logoHeight",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "company_settings_userId_users_id_fk": {
+          "name": "company_settings_userId_users_id_fk",
+          "tableFrom": "company_settings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "company_settings_id": {
+          "name": "company_settings_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "company_settings_userId_unique": {
+          "name": "company_settings_userId_unique",
+          "columns": [
+            "userId"
+          ]
+        }
+      },
       "checkConstraint": {}
     },
     "contacts": {
@@ -329,6 +514,13 @@
         },
         "imageMetadata": {
           "name": "imageMetadata",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tags": {
+          "name": "tags",
           "type": "json",
           "primaryKey": false,
           "notNull": false,
@@ -594,6 +786,810 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "inspection_findings": {
+      "name": "inspection_findings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "inspectionUnitId": {
+          "name": "inspectionUnitId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "defectType": {
+          "name": "defectType",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "severity": {
+          "name": "severity",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "positionDescriptor": {
+          "name": "positionDescriptor",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "heightMeters": {
+          "name": "heightMeters",
+          "type": "decimal(8,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "createdByUserId": {
+          "name": "createdByUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "localId": {
+          "name": "localId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "syncStatus": {
+          "name": "syncStatus",
+          "type": "enum('pending','syncing','synced','error')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'pending'"
+        }
+      },
+      "indexes": {
+        "inspection_findings_inspectionUnitId_idx": {
+          "name": "inspection_findings_inspectionUnitId_idx",
+          "columns": [
+            "inspectionUnitId"
+          ],
+          "isUnique": false
+        },
+        "inspection_findings_createdByUserId_idx": {
+          "name": "inspection_findings_createdByUserId_idx",
+          "columns": [
+            "createdByUserId"
+          ],
+          "isUnique": false
+        },
+        "inspection_findings_localId_idx": {
+          "name": "inspection_findings_localId_idx",
+          "columns": [
+            "localId"
+          ],
+          "isUnique": false
+        },
+        "inspection_findings_syncStatus_idx": {
+          "name": "inspection_findings_syncStatus_idx",
+          "columns": [
+            "syncStatus"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "inspection_findings_inspectionUnitId_inspection_units_id_fk": {
+          "name": "inspection_findings_inspectionUnitId_inspection_units_id_fk",
+          "tableFrom": "inspection_findings",
+          "tableTo": "inspection_units",
+          "columnsFrom": [
+            "inspectionUnitId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "inspection_findings_createdByUserId_users_id_fk": {
+          "name": "inspection_findings_createdByUserId_users_id_fk",
+          "tableFrom": "inspection_findings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "createdByUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "inspection_findings_id": {
+          "name": "inspection_findings_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "inspection_media": {
+      "name": "inspection_media",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "inspectionFindingId": {
+          "name": "inspectionFindingId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "originalS3Key": {
+          "name": "originalS3Key",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "annotatedS3Key": {
+          "name": "annotatedS3Key",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "localOriginalPath": {
+          "name": "localOriginalPath",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "localAnnotatedPath": {
+          "name": "localAnnotatedPath",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "takenAt": {
+          "name": "takenAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "takenByUserId": {
+          "name": "takenByUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "syncStatus": {
+          "name": "syncStatus",
+          "type": "enum('pending','syncing','synced','error')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'pending'"
+        }
+      },
+      "indexes": {
+        "inspection_media_inspectionFindingId_idx": {
+          "name": "inspection_media_inspectionFindingId_idx",
+          "columns": [
+            "inspectionFindingId"
+          ],
+          "isUnique": false
+        },
+        "inspection_media_takenByUserId_idx": {
+          "name": "inspection_media_takenByUserId_idx",
+          "columns": [
+            "takenByUserId"
+          ],
+          "isUnique": false
+        },
+        "inspection_media_syncStatus_idx": {
+          "name": "inspection_media_syncStatus_idx",
+          "columns": [
+            "syncStatus"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "inspection_media_inspectionFindingId_inspection_findings_id_fk": {
+          "name": "inspection_media_inspectionFindingId_inspection_findings_id_fk",
+          "tableFrom": "inspection_media",
+          "tableTo": "inspection_findings",
+          "columnsFrom": [
+            "inspectionFindingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "inspection_media_takenByUserId_users_id_fk": {
+          "name": "inspection_media_takenByUserId_users_id_fk",
+          "tableFrom": "inspection_media",
+          "tableTo": "users",
+          "columnsFrom": [
+            "takenByUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "inspection_media_id": {
+          "name": "inspection_media_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "inspection_templates": {
+      "name": "inspection_templates",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "inspectionType": {
+          "name": "inspectionType",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "unitLabelHint": {
+          "name": "unitLabelHint",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "labelPatternHint": {
+          "name": "labelPatternHint",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "suggestedFields": {
+          "name": "suggestedFields",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "suggestedDefects": {
+          "name": "suggestedDefects",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "enum('global','company')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'global'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "inspection_templates_scope_idx": {
+          "name": "inspection_templates_scope_idx",
+          "columns": [
+            "scope"
+          ],
+          "isUnique": false
+        },
+        "inspection_templates_inspectionType_idx": {
+          "name": "inspection_templates_inspectionType_idx",
+          "columns": [
+            "inspectionType"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "inspection_templates_id": {
+          "name": "inspection_templates_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "inspection_units": {
+      "name": "inspection_units",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "inspectionId": {
+          "name": "inspectionId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sequenceIndex": {
+          "name": "sequenceIndex",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "localId": {
+          "name": "localId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "syncStatus": {
+          "name": "syncStatus",
+          "type": "enum('pending','syncing','synced','error')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "inspection_units_inspectionId_idx": {
+          "name": "inspection_units_inspectionId_idx",
+          "columns": [
+            "inspectionId"
+          ],
+          "isUnique": false
+        },
+        "inspection_units_localId_idx": {
+          "name": "inspection_units_localId_idx",
+          "columns": [
+            "localId"
+          ],
+          "isUnique": false
+        },
+        "inspection_units_syncStatus_idx": {
+          "name": "inspection_units_syncStatus_idx",
+          "columns": [
+            "syncStatus"
+          ],
+          "isUnique": false
+        },
+        "inspection_units_inspectionId_sequenceIndex_idx": {
+          "name": "inspection_units_inspectionId_sequenceIndex_idx",
+          "columns": [
+            "inspectionId",
+            "sequenceIndex"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "inspection_units_inspectionId_inspections_id_fk": {
+          "name": "inspection_units_inspectionId_inspections_id_fk",
+          "tableFrom": "inspection_units",
+          "tableTo": "inspections",
+          "columnsFrom": [
+            "inspectionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "inspection_units_id": {
+          "name": "inspection_units_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "inspections": {
+      "name": "inspections",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "templateId": {
+          "name": "templateId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "startedAt": {
+          "name": "startedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "completedAt": {
+          "name": "completedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdByUserId": {
+          "name": "createdByUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "localId": {
+          "name": "localId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "syncStatus": {
+          "name": "syncStatus",
+          "type": "enum('pending','syncing','synced','error')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "inspections_projectId_idx": {
+          "name": "inspections_projectId_idx",
+          "columns": [
+            "projectId"
+          ],
+          "isUnique": false
+        },
+        "inspections_templateId_idx": {
+          "name": "inspections_templateId_idx",
+          "columns": [
+            "templateId"
+          ],
+          "isUnique": false
+        },
+        "inspections_createdByUserId_idx": {
+          "name": "inspections_createdByUserId_idx",
+          "columns": [
+            "createdByUserId"
+          ],
+          "isUnique": false
+        },
+        "inspections_localId_idx": {
+          "name": "inspections_localId_idx",
+          "columns": [
+            "localId"
+          ],
+          "isUnique": false
+        },
+        "inspections_syncStatus_idx": {
+          "name": "inspections_syncStatus_idx",
+          "columns": [
+            "syncStatus"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "inspections_projectId_projects_id_fk": {
+          "name": "inspections_projectId_projects_id_fk",
+          "tableFrom": "inspections",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "projectId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "inspections_templateId_inspection_templates_id_fk": {
+          "name": "inspections_templateId_inspection_templates_id_fk",
+          "tableFrom": "inspections",
+          "tableTo": "inspection_templates",
+          "columnsFrom": [
+            "templateId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "inspections_createdByUserId_users_id_fk": {
+          "name": "inspections_createdByUserId_users_id_fk",
+          "tableFrom": "inspections",
+          "tableTo": "users",
+          "columnsFrom": [
+            "createdByUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "inspections_id": {
+          "name": "inspections_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "invoice_items": {
+      "name": "invoice_items",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "invoiceId": {
+          "name": "invoiceId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'0.00'"
+        },
+        "unitPrice": {
+          "name": "unitPrice",
+          "type": "decimal(12,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'0.00'"
+        },
+        "currency": {
+          "name": "currency",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'EUR'"
+        },
+        "lineTotal": {
+          "name": "lineTotal",
+          "type": "decimal(12,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'0.00'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "invoice_items_invoiceId_invoices_id_fk": {
+          "name": "invoice_items_invoiceId_invoices_id_fk",
+          "tableFrom": "invoice_items",
+          "tableTo": "invoices",
+          "columnsFrom": [
+            "invoiceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "invoice_items_id": {
+          "name": "invoice_items_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "invoices": {
       "name": "invoices",
       "columns": {
@@ -604,18 +1600,185 @@
           "notNull": true,
           "autoincrement": true
         },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "clientId": {
+          "name": "clientId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contactId": {
+          "name": "contactId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "jobId": {
+          "name": "jobId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "invoiceNumber": {
+          "name": "invoiceNumber",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "invoiceYear": {
+          "name": "invoiceYear",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "invoiceCounter": {
+          "name": "invoiceCounter",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('draft','open','paid')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'draft'"
+        },
+        "issueDate": {
+          "name": "issueDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "dueDate": {
+          "name": "dueDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sentAt": {
+          "name": "sentAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "paidAt": {
+          "name": "paidAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "servicePeriodStart": {
+          "name": "servicePeriodStart",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "servicePeriodEnd": {
+          "name": "servicePeriodEnd",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "referenceNumber": {
+          "name": "referenceNumber",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "partialInvoice": {
+          "name": "partialInvoice",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "subtotal": {
+          "name": "subtotal",
+          "type": "decimal(12,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'0.00'"
+        },
+        "vatAmount": {
+          "name": "vatAmount",
+          "type": "decimal(12,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'0.00'"
+        },
+        "total": {
+          "name": "total",
+          "type": "decimal(12,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'0.00'"
+        },
+        "archivedAt": {
+          "name": "archivedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "trashedAt": {
+          "name": "trashedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "pdfFileKey": {
+          "name": "pdfFileKey",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "filename": {
           "name": "filename",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "fileKey": {
           "name": "fileKey",
           "type": "varchar(500)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "fileSize": {
@@ -632,20 +1795,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "jobId": {
-          "name": "jobId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "contactId": {
-          "name": "contactId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "uploadDate": {
           "name": "uploadDate",
           "type": "timestamp",
@@ -657,7 +1806,7 @@
           "name": "uploadedBy",
           "type": "int",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "createdAt": {
@@ -667,16 +1816,75 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "invoice_number_per_user": {
+          "name": "invoice_number_per_user",
+          "columns": [
+            "userId",
+            "invoiceNumber"
+          ],
+          "isUnique": true
+        },
+        "invoices_archivedAt_idx": {
+          "name": "invoices_archivedAt_idx",
+          "columns": [
+            "archivedAt"
+          ],
+          "isUnique": false
+        },
+        "invoices_trashedAt_idx": {
+          "name": "invoices_trashedAt_idx",
+          "columns": [
+            "trashedAt"
+          ],
+          "isUnique": false
+        },
+        "invoices_sentAt_idx": {
+          "name": "invoices_sentAt_idx",
+          "columns": [
+            "sentAt"
+          ],
+          "isUnique": false
+        },
+        "invoices_paidAt_idx": {
+          "name": "invoices_paidAt_idx",
+          "columns": [
+            "paidAt"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
-        "invoices_jobId_jobs_id_fk": {
-          "name": "invoices_jobId_jobs_id_fk",
+        "invoices_userId_users_id_fk": {
+          "name": "invoices_userId_users_id_fk",
           "tableFrom": "invoices",
-          "tableTo": "jobs",
+          "tableTo": "users",
           "columnsFrom": [
-            "jobId"
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "invoices_clientId_contacts_id_fk": {
+          "name": "invoices_clientId_contacts_id_fk",
+          "tableFrom": "invoices",
+          "tableTo": "contacts",
+          "columnsFrom": [
+            "clientId"
           ],
           "columnsTo": [
             "id"
@@ -690,6 +1898,19 @@
           "tableTo": "contacts",
           "columnsFrom": [
             "contactId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "invoices_jobId_jobs_id_fk": {
+          "name": "invoices_jobId_jobs_id_fk",
+          "tableFrom": "invoices",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "jobId"
           ],
           "columnsTo": [
             "id"
@@ -1230,20 +2451,6 @@
           ],
           "isUnique": false
         },
-        "notes_archivedAt_idx": {
-          "name": "notes_archivedAt_idx",
-          "columns": [
-            "archivedAt"
-          ],
-          "isUnique": false
-        },
-        "notes_trashedAt_idx": {
-          "name": "notes_trashedAt_idx",
-          "columns": [
-            "trashedAt"
-          ],
-          "isUnique": false
-        },
         "notes_jobId_idx": {
           "name": "notes_jobId_idx",
           "columns": [
@@ -1255,6 +2462,20 @@
           "name": "notes_contactId_idx",
           "columns": [
             "contactId"
+          ],
+          "isUnique": false
+        },
+        "notes_archivedAt_idx": {
+          "name": "notes_archivedAt_idx",
+          "columns": [
+            "archivedAt"
+          ],
+          "isUnique": false
+        },
+        "notes_trashedAt_idx": {
+          "name": "notes_trashedAt_idx",
+          "columns": [
+            "trashedAt"
           ],
           "isUnique": false
         }
@@ -1303,6 +2524,128 @@
       "compositePrimaryKeys": {
         "notes_id": {
           "name": "notes_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "project_checkins": {
+      "name": "project_checkins",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "checkInTime": {
+          "name": "checkInTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "checkOutTime": {
+          "name": "checkOutTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "decimal(10,8)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "decimal(11,8)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "project_checkins_projectId_idx": {
+          "name": "project_checkins_projectId_idx",
+          "columns": [
+            "projectId"
+          ],
+          "isUnique": false
+        },
+        "project_checkins_userId_idx": {
+          "name": "project_checkins_userId_idx",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        },
+        "project_checkins_checkInTime_idx": {
+          "name": "project_checkins_checkInTime_idx",
+          "columns": [
+            "checkInTime"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "project_checkins_projectId_projects_id_fk": {
+          "name": "project_checkins_projectId_projects_id_fk",
+          "tableFrom": "project_checkins",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "projectId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "project_checkins_userId_users_id_fk": {
+          "name": "project_checkins_userId_users_id_fk",
+          "tableFrom": "project_checkins",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "project_checkins_id": {
+          "name": "project_checkins_id",
           "columns": [
             "id"
           ]
@@ -1574,20 +2917,6 @@
           ],
           "isUnique": false
         },
-        "projects_archivedAt_idx": {
-          "name": "projects_archivedAt_idx",
-          "columns": [
-            "archivedAt"
-          ],
-          "isUnique": false
-        },
-        "projects_trashedAt_idx": {
-          "name": "projects_trashedAt_idx",
-          "columns": [
-            "trashedAt"
-          ],
-          "isUnique": false
-        },
         "projects_createdBy_idx": {
           "name": "projects_createdBy_idx",
           "columns": [
@@ -1599,6 +2928,20 @@
           "name": "projects_clientId_idx",
           "columns": [
             "clientId"
+          ],
+          "isUnique": false
+        },
+        "projects_archivedAt_idx": {
+          "name": "projects_archivedAt_idx",
+          "columns": [
+            "archivedAt"
+          ],
+          "isUnique": false
+        },
+        "projects_trashedAt_idx": {
+          "name": "projects_trashedAt_idx",
+          "columns": [
+            "trashedAt"
           ],
           "isUnique": false
         }
@@ -1751,6 +3094,116 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "shared_documents": {
+      "name": "shared_documents",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "documentType": {
+          "name": "documentType",
+          "type": "enum('project_report','invoice','inspection')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "referenceId": {
+          "name": "referenceId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "s3Key": {
+          "name": "s3Key",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "shareToken": {
+          "name": "shareToken",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdBy": {
+          "name": "createdBy",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "shared_documents_shareToken_idx": {
+          "name": "shared_documents_shareToken_idx",
+          "columns": [
+            "shareToken"
+          ],
+          "isUnique": false
+        },
+        "shared_documents_expiresAt_idx": {
+          "name": "shared_documents_expiresAt_idx",
+          "columns": [
+            "expiresAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "shared_documents_createdBy_users_id_fk": {
+          "name": "shared_documents_createdBy_users_id_fk",
+          "tableFrom": "shared_documents",
+          "tableTo": "users",
+          "columnsFrom": [
+            "createdBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "shared_documents_id": {
+          "name": "shared_documents_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "shared_documents_shareToken_unique": {
+          "name": "shared_documents_shareToken_unique",
+          "columns": [
+            "shareToken"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
     "tasks": {
       "name": "tasks",
       "columns": {
@@ -1888,6 +3341,131 @@
         }
       },
       "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "user_preferences": {
+      "name": "user_preferences",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dateFormat": {
+          "name": "dateFormat",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'DD.MM.YYYY'"
+        },
+        "timeFormat": {
+          "name": "timeFormat",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'24h'"
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'Europe/Berlin'"
+        },
+        "language": {
+          "name": "language",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'de'"
+        },
+        "currency": {
+          "name": "currency",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'EUR'"
+        },
+        "notificationsEnabled": {
+          "name": "notificationsEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "user_preferences_userId_idx": {
+          "name": "user_preferences_userId_idx",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "user_preferences_userId_users_id_fk": {
+          "name": "user_preferences_userId_users_id_fk",
+          "tableFrom": "user_preferences",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_preferences_id": {
+          "name": "user_preferences_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "user_preferences_userId_unique": {
+          "name": "user_preferences_userId_unique",
+          "columns": [
+            "userId"
+          ]
+        }
+      },
       "checkConstraint": {}
     },
     "users": {
