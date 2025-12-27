@@ -537,6 +537,13 @@ async function startServer() {
   // tRPC API
   app.use(
     "/api/trpc",
+    (req, res, next) => {
+      console.error('[TRACE] Express middleware - /api/trpc request received');
+      console.error('[TRACE] Express middleware - method:', req.method);
+      console.error('[TRACE] Express middleware - url:', req.url);
+      console.error('[TRACE] Express middleware - path:', req.path);
+      next();
+    },
     createExpressMiddleware({
       router: appRouter,
       createContext,
