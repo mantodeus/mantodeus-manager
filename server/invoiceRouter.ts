@@ -204,6 +204,11 @@ export const invoiceRouter = router({
       if (invoice.userId !== ctx.user.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
+      // Archived invoices are view-only
+      if (invoice.archivedAt) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Archived invoices cannot be updated" });
+      }
+      // Only draft invoices can be updated
       if (invoice.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be updated" });
       }

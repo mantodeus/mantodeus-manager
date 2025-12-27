@@ -845,7 +845,7 @@ export async function getInvoicesByUserId(userId: number) {
     .select()
     .from(invoices)
     .where(and(eq(invoices.userId, userId), isNull(invoices.archivedAt), isNull(invoices.trashedAt)))
-    .orderBy(desc(invoices.createdAt));
+    .orderBy(desc(invoices.issueDate), desc(invoices.createdAt));
 
   return attachInvoiceItems(invoiceRows as any);
 }
@@ -907,6 +907,7 @@ async function getHighestInvoiceCounter(userId: number, invoiceYear: number): Pr
 export async function ensureUniqueInvoiceNumber(userId: number, invoiceNumber: string, currentInvoiceId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  // Check ALL invoices (including trashed/archived) to ensure uniqueness
   let whereClause = and(eq(invoices.userId, userId), eq(invoices.invoiceNumber, invoiceNumber));
   if (currentInvoiceId) {
     whereClause = and(whereClause, ne(invoices.id, currentInvoiceId));
@@ -950,15 +951,12 @@ function formatInvoiceNumber(parsed: ParsedInvoiceNumber, nextValue: number, pad
 async function getRecentInvoiceNumbersByUserId(userId: number, limit = 1000) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  // Check ALL invoices (including trashed/archived) to find the highest number
+  // This ensures we never reuse a number that exists in the database
   return await db
     .select({ invoiceNumber: invoices.invoiceNumber })
     .from(invoices)
-    .where(
-      and(
-        eq(invoices.userId, userId),
-        or(isNull(invoices.trashedAt), ne(invoices.status, "draft"))
-      )
-    )
+    .where(eq(invoices.userId, userId))
     .orderBy(desc(invoices.createdAt), desc(invoices.id))
     .limit(limit);
 }
@@ -983,23 +981,40 @@ export async function generateInvoiceNumber(
     throw new Error("Invoice number format must include a numeric sequence.");
   }
 
-  const recent = await getRecentInvoiceNumbersByUserId(userId);
-  let baseParsed: ParsedInvoiceNumber | null = null;
-
-  if (seedValue) {
-    for (const row of recent) {
-      const parsed = parseInvoiceNumber(row.invoiceNumber);
-      if (!parsed) continue;
-      if (parsed.prefix === seedParsed.prefix && parsed.suffix === seedParsed.suffix) {
-        baseParsed = { ...parsed, prefix: seedParsed.prefix, suffix: seedParsed.suffix };
-        break;
-      }
+  // Get ALL invoices for this user to find the highest number
+  // This ensures we never reuse a number that exists in the database (ANY status)
+  const allInvoices = await getRecentInvoiceNumbersByUserId(userId);
+  
+  // Filter invoices for the same year and matching format
+  const yearInvoices = allInvoices.filter((row) => {
+    const parsed = parseInvoiceNumber(row.invoiceNumber);
+    if (!parsed) return false;
+    
+    // Check if this invoice matches the expected format
+    if (seedValue) {
+      // If format seed is provided, match prefix and suffix exactly
+      return parsed.prefix === seedParsed.prefix && parsed.suffix === seedParsed.suffix;
+    } else {
+      // If no format seed, match any invoice with the same prefix pattern
+      return parsed.prefix === seedParsed.prefix;
     }
-  } else if (recent.length > 0) {
-    baseParsed = parseInvoiceNumber(recent[0].invoiceNumber);
+  });
+
+  // Find the highest number among matching invoices
+  let maxValue = 0;
+  let maxParsed: ParsedInvoiceNumber | null = null;
+  
+  for (const row of yearInvoices) {
+    const parsed = parseInvoiceNumber(row.invoiceNumber);
+    if (!parsed) continue;
+    if (parsed.value > maxValue) {
+      maxValue = parsed.value;
+      maxParsed = parsed;
+    }
   }
 
-  if (!baseParsed) {
+  // If no matching invoices found, use the seed as starting point
+  if (!maxParsed) {
     return {
       invoiceNumber: effectiveSeed,
       invoiceCounter: seedParsed.value,
@@ -1007,9 +1022,10 @@ export async function generateInvoiceNumber(
     };
   }
 
-  const nextCounter = baseParsed.value + 1;
-  const padding = seedValue ? seedParsed.padding : baseParsed.padding;
-  const invoiceNumber = formatInvoiceNumber(baseParsed, nextCounter, padding);
+  // Increment from the highest found number
+  const nextCounter = maxParsed.value + 1;
+  const padding = seedValue ? seedParsed.padding : maxParsed.padding;
+  const invoiceNumber = formatInvoiceNumber(maxParsed, nextCounter, padding);
   return { invoiceNumber, invoiceCounter: nextCounter, invoiceYear };
 }
 
@@ -1054,7 +1070,7 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     trashedAt: data.trashedAt ?? null,
   };
 
-  if (!invoiceData.invoiceNumber || !invoiceData.invoiceCounter) {
+  if (!invoiceData.invoiceNumber || invoiceData.invoiceNumber.trim() === "" || !invoiceData.invoiceCounter || invoiceData.invoiceCounter === 0) {
     const settings = await getCompanySettingsByUserId(invoiceData.userId);
     const { invoiceNumber, invoiceCounter, invoiceYear } = await generateInvoiceNumber(
       invoiceData.userId,
@@ -1062,8 +1078,8 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
       settings?.invoiceNumberFormat ?? null,
       settings?.invoicePrefix ?? "RE"
     );
-    invoiceData.invoiceNumber = invoiceData.invoiceNumber || invoiceNumber;
-    invoiceData.invoiceCounter = invoiceData.invoiceCounter || invoiceCounter;
+    invoiceData.invoiceNumber = invoiceData.invoiceNumber && invoiceData.invoiceNumber.trim() !== "" ? invoiceData.invoiceNumber : invoiceNumber;
+    invoiceData.invoiceCounter = invoiceData.invoiceCounter && invoiceData.invoiceCounter > 0 ? invoiceData.invoiceCounter : invoiceCounter;
     invoiceData.invoiceYear = invoiceData.invoiceYear || invoiceYear;
   }
 
