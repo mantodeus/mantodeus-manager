@@ -46,17 +46,25 @@ echo "âœ… npm ${NPM_VERSION} is available"
 
 echo ""
 
-# Step 3: Ensure git remote uses HTTPS (not SSH)
-echo "â–¶ Checking git remote configuration..."
+# Step 3: Verify git remote is set to SSH (no HTTPS in production)
+echo "ƒ-ô Checking git remote configuration..."
 CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-if echo "$CURRENT_REMOTE" | grep -qE "git@|ssh://"; then
-  echo "âš ï¸  Git remote uses SSH, changing to HTTPS..."
-  git remote set-url origin https://github.com/mantodeus/mantodeus-manager.git
-  echo "âœ… Git remote updated to HTTPS"
+if [ -z "$CURRENT_REMOTE" ]; then
+  echo "ƒ?O Git remote 'origin' not set. Please configure it before deploying."
+  exit 1
 fi
-echo ""
-
-# Step 4: Fetch latest code
+if echo "$CURRENT_REMOTE" | grep -qE "^https?://"; then
+  echo "ƒ?O Git remote uses HTTPS, which will prompt for credentials in production."
+  echo "   Set SSH remote: git remote set-url origin git@github.com:mantodeus/mantodeus-manager.git"
+  exit 1
+fi
+if ! echo "$CURRENT_REMOTE" | grep -qE "git@github.com:mantodeus/mantodeus-manager.git|ssh://git@github.com/mantodeus/mantodeus-manager.git"; then
+  echo "ƒ?O Git remote is not the expected SSH URL for mantodeus/mantodeus-manager."
+  echo "   Current: $CURRENT_REMOTE"
+  exit 1
+fi
+echo "ƒo. Git remote: ${CURRENT_REMOTE}"
+echo ""# Step 4: Fetch latest code
 echo "â–¶ Fetching latest code from origin/main..."
 if ! git fetch origin; then
   echo "âŒ Git fetch failed. Checking network connectivity..."
@@ -146,30 +154,49 @@ echo "âœ… Build verified (dist/index.js and dist/public exist)"
 echo ""
 
 # Step 9: Run database migrations
-echo "â–¶ Running database migrations..."
+echo "ƒ-ô Running database migrations..."
 echo "   This will apply any pending schema changes to the database"
 echo ""
 
-# Option 1: Apply SQL migration files (safe, tracked in git)
-echo "   Attempting to apply migration files from drizzle/ folder..."
-if npm run db:migrate:prod 2>/dev/null; then
-  echo "âœ… Database migrations completed"
-else
-  echo "âš ï¸  Migration files failed or none found"
-  echo ""
-
-  # Option 2: Push schema directly (auto-sync, no migration files needed)
-  echo "   Falling back to schema push (auto-sync mode)..."
-  echo "   âš ï¸  This will sync schema directly without migration files"
-
-  if npm run db:push-direct; then
-    echo "âœ… Database schema synced successfully"
-  else
-    echo "âŒ Schema push failed"
-    echo "   Database schema may be out of sync with code"
-    echo "   Manual fix needed: npm run db:push-direct"
-  fi
+# Fail fast if migration files are missing
+if [ ! -d "./drizzle" ]; then
+  echo "ƒ?O drizzle/ folder not found. Cannot apply migrations."
+  exit 1
 fi
+MIGRATION_COUNT=$(ls -1 ./drizzle/*.sql 2>/dev/null | wc -l | tr -d ' ')
+if [ "$MIGRATION_COUNT" = "0" ]; then
+  echo "ƒ?O No migration files found in drizzle/. Aborting deploy."
+  exit 1
+fi
+if [ ! -f "./drizzle.config.ts" ]; then
+  echo "ƒ?O drizzle.config.ts not found. Aborting deploy."
+  exit 1
+fi
+
+echo "   Applying migrations via drizzle-kit..."
+set +e
+MIGRATE_OUTPUT=$(npx pnpm drizzle-kit migrate --config drizzle.config.ts 2>&1)
+MIGRATE_STATUS=$?
+set -e
+
+echo "$MIGRATE_OUTPUT"
+if [ $MIGRATE_STATUS -ne 0 ]; then
+  echo "ƒ?O Migration command failed"
+  exit 1
+fi
+if echo "$MIGRATE_OUTPUT" | grep -qiE "none found|failed"; then
+  echo "ƒ?O Migration output indicates missing or failed migrations"
+  exit 1
+fi
+
+# Post-migrate sanity check
+if [ ! -f "./scripts/check-migration-columns.js" ]; then
+  echo "ƒ?O scripts/check-migration-columns.js not found. Aborting deploy."
+  exit 1
+fi
+node ./scripts/check-migration-columns.js
+
+echo "ƒo. Database migrations completed"
 echo ""
 
 # Step 10: Start/Restart PM2 (Infomaniak shared hosting compatible)
@@ -220,3 +247,4 @@ echo "âœ… Deploy complete!"
 echo "ðŸ“… Finished at: $(date)"
 echo "ðŸ“¦ Commit: ${GIT_COMMIT}"
 echo "============================================"
+
