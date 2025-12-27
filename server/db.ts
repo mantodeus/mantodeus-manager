@@ -861,11 +861,35 @@ export async function getInvoicesByUserId(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
+  
+  // Diagnostic logging to help identify visibility issues
+  console.log(`[Invoices] getInvoicesByUserId called with userId: ${userId} (type: ${typeof userId})`);
+  
   const invoiceRows = await db
     .select()
     .from(invoices)
     .where(and(eq(invoices.userId, userId), isNull(invoices.archivedAt), isNull(invoices.trashedAt)))
     .orderBy(desc(invoices.issueDate), desc(invoices.createdAt));
+
+  console.log(`[Invoices] Found ${invoiceRows.length} invoices for userId ${userId}`);
+  if (invoiceRows.length > 0) {
+    console.log(`[Invoices] Invoice numbers: ${invoiceRows.map(i => i.invoiceNumber).join(', ')}`);
+  }
+  
+  // Also check if RE-2025-0001 exists with different userId
+  const re20250001 = await db
+    .select({ id: invoices.id, invoiceNumber: invoices.invoiceNumber, userId: invoices.userId, archivedAt: invoices.archivedAt, trashedAt: invoices.trashedAt })
+    .from(invoices)
+    .where(eq(invoices.invoiceNumber, 'RE-2025-0001'))
+    .limit(1);
+  
+  if (re20250001.length > 0) {
+    const invoice = re20250001[0];
+    console.log(`[Invoices] RE-2025-0001 exists: userId=${invoice.userId}, archivedAt=${invoice.archivedAt}, trashedAt=${invoice.trashedAt}`);
+    if (invoice.userId !== userId) {
+      console.warn(`[Invoices] ⚠️ RE-2025-0001 belongs to userId ${invoice.userId}, but query is for userId ${userId}`);
+    }
+  }
 
   return attachInvoiceItems(invoiceRows as any);
 }
