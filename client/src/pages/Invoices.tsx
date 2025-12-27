@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -66,7 +66,7 @@ function formatCurrency(amount: number | string) {
 }
 
 export default function Invoices() {
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<number | null>(null);
   const [previewingInvoice, setPreviewingInvoice] = useState<number | null>(null);
@@ -191,6 +191,29 @@ export default function Invoices() {
     );
   };
 
+  if (isCreating) {
+    return (
+      <div className="w-full h-full min-h-screen space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-regular">Create Invoice</h1>
+          <Button variant="ghost" size="icon" onClick={() => setIsCreating(false)} aria-label="Close">
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+        <InvoiceForm
+          mode="create"
+          contacts={contacts}
+          onClose={() => setIsCreating(false)}
+          onSuccess={() => {
+            toast.success("Invoice created");
+            setIsCreating(false);
+            refetch();
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -198,31 +221,10 @@ export default function Invoices() {
           <h1 className="text-3xl font-regular">Invoices</h1>
           <p className="text-muted-foreground text-sm">Create, edit, and manage invoices</p>
         </div>
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Invoice
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[95vw] sm:w-[85vw] lg:w-[75vw] xl:w-[65vw] max-w-none max-h-[92vh] overflow-hidden flex flex-col p-0">
-            <DialogHeader className="px-6 pt-6 pb-4">
-              <DialogTitle>Create Invoice</DialogTitle>
-            </DialogHeader>
-            <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
-              <InvoiceForm
-                mode="create"
-                contacts={contacts}
-                onClose={() => setCreateDialogOpen(false)}
-                onSuccess={() => {
-                  toast.success("Invoice created");
-                  setCreateDialogOpen(false);
-                  refetch();
-                }}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setIsCreating(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Create Invoice
+        </Button>
       </div>
 
       {invoices.length === 0 ? (
