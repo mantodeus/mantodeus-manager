@@ -17,16 +17,21 @@ export type TrpcContext = {
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
+  console.error('[TRACE] createContext START');
   let user: User | null = null;
 
   try {
+    console.error('[TRACE] createContext - calling supabaseAuth.authenticateRequest');
     user = await supabaseAuth.authenticateRequest(opts.req);
-  } catch {
+    console.error('[TRACE] createContext - authenticateRequest completed, user:', user ? { id: user.id, email: user.email } : null);
+  } catch (err) {
     // Authentication is optional for public procedures
     // Errors are expected for unauthenticated requests
+    console.error('[TRACE] createContext - authenticateRequest error (expected for public routes):', err instanceof Error ? err.message : String(err));
     user = null;
   }
 
+  console.error('[TRACE] createContext - returning context, user exists:', !!user);
   return {
     req: opts.req,
     res: opts.res,
