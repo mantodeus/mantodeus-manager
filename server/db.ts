@@ -959,6 +959,11 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     uploadDate: data.uploadDate ?? null,
     uploadedBy: data.uploadedBy ?? null,
     userId: data.userId,
+    // Explicitly set timestamp fields - allow passed values to override defaults
+    sentAt: data.sentAt ?? null,
+    paidAt: data.paidAt ?? null,
+    archivedAt: data.archivedAt ?? null,
+    trashedAt: data.trashedAt ?? null,
   };
 
   if (!invoiceData.invoiceNumber || !invoiceData.invoiceCounter) {

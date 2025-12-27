@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +27,7 @@ import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
+import { useIsMobile } from "@/hooks/useMobile";
 
 interface InvoiceLineItem {
   name: string;
@@ -67,6 +69,7 @@ function formatCurrency(amount: number | string) {
 }
 
 export default function Invoices() {
+  const isMobile = useIsMobile();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<number | null>(null);
@@ -214,31 +217,63 @@ export default function Invoices() {
           <h1 className="text-3xl font-regular">Invoices</h1>
           <p className="text-muted-foreground text-sm">Create, edit, and manage invoices</p>
         </div>
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
+        {isMobile ? (
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Invoice
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="w-[95vw] sm:w-[85vw] max-w-none max-h-[92vh] overflow-hidden flex flex-col p-0">
+              <DialogHeader className="px-6 pt-6 pb-4">
+                <DialogTitle>Create Invoice</DialogTitle>
+              </DialogHeader>
+              <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
+                <InvoiceForm
+                  mode="create"
+                  contacts={contacts}
+                  onClose={() => setCreateDialogOpen(false)}
+                  onSuccess={() => {
+                    toast.success("Invoice created");
+                    setCreateDialogOpen(false);
+                    refetch();
+                  }}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <>
+            <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Create Invoice
             </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[95vw] sm:w-[85vw] lg:w-[75vw] xl:w-[65vw] max-w-none max-h-[92vh] overflow-hidden flex flex-col p-0">
-            <DialogHeader className="px-6 pt-6 pb-4">
-              <DialogTitle>Create Invoice</DialogTitle>
-            </DialogHeader>
-            <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
-              <InvoiceForm
-                mode="create"
-                contacts={contacts}
-                onClose={() => setCreateDialogOpen(false)}
-                onSuccess={() => {
-                  toast.success("Invoice created");
-                  setCreateDialogOpen(false);
-                  refetch();
-                }}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+            <Sheet open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <SheetContent
+                side="right"
+                className="w-[calc(100vw-var(--sidebar-width))] max-w-none p-0 flex flex-col"
+                style={{ width: "calc(100vw - var(--sidebar-width))" }}
+              >
+                <SheetHeader className="px-6 pt-6 pb-4 border-b">
+                  <SheetTitle>Create Invoice</SheetTitle>
+                </SheetHeader>
+                <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
+                  <InvoiceForm
+                    mode="create"
+                    contacts={contacts}
+                    onClose={() => setCreateDialogOpen(false)}
+                    onSuccess={() => {
+                      toast.success("Invoice created");
+                      setCreateDialogOpen(false);
+                      refetch();
+                    }}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </>
+        )}
       </div>
 
       {invoices.length === 0 ? (
@@ -357,30 +392,61 @@ export default function Invoices() {
       )}
 
       {editingInvoice && (
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="w-[95vw] sm:w-[85vw] lg:w-[75vw] xl:w-[65vw] max-w-none max-h-[92vh] overflow-hidden flex flex-col p-0">
-            <DialogHeader className="px-6 pt-6 pb-4">
-              <DialogTitle>Edit Invoice</DialogTitle>
-            </DialogHeader>
-            <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
-              <InvoiceForm
-                mode="edit"
-                invoiceId={editingInvoice}
-                contacts={contacts}
-                onClose={() => {
-                  setEditDialogOpen(false);
-                  setEditingInvoice(null);
-                }}
-                onSuccess={() => {
-                  toast.success("Invoice updated");
-                  setEditDialogOpen(false);
-                  setEditingInvoice(null);
-                  refetch();
-                }}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        isMobile ? (
+          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+            <DialogContent className="w-[95vw] sm:w-[85vw] max-w-none max-h-[92vh] overflow-hidden flex flex-col p-0">
+              <DialogHeader className="px-6 pt-6 pb-4">
+                <DialogTitle>Edit Invoice</DialogTitle>
+              </DialogHeader>
+              <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
+                <InvoiceForm
+                  mode="edit"
+                  invoiceId={editingInvoice}
+                  contacts={contacts}
+                  onClose={() => {
+                    setEditDialogOpen(false);
+                    setEditingInvoice(null);
+                  }}
+                  onSuccess={() => {
+                    toast.success("Invoice updated");
+                    setEditDialogOpen(false);
+                    setEditingInvoice(null);
+                    refetch();
+                  }}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Sheet open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+            <SheetContent
+              side="right"
+              className="w-[calc(100vw-var(--sidebar-width))] max-w-none p-0 flex flex-col"
+              style={{ width: "calc(100vw - var(--sidebar-width))" }}
+            >
+              <SheetHeader className="px-6 pt-6 pb-4 border-b">
+                <SheetTitle>Edit Invoice</SheetTitle>
+              </SheetHeader>
+              <div className="overflow-y-auto overflow-x-hidden px-6 pb-6 flex-1">
+                <InvoiceForm
+                  mode="edit"
+                  invoiceId={editingInvoice}
+                  contacts={contacts}
+                  onClose={() => {
+                    setEditDialogOpen(false);
+                    setEditingInvoice(null);
+                  }}
+                  onSuccess={() => {
+                    toast.success("Invoice updated");
+                    setEditDialogOpen(false);
+                    setEditingInvoice(null);
+                    refetch();
+                  }}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        )
       )}
 
       <ScrollRevealFooter basePath="/invoices" />
