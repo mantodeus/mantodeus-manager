@@ -32,6 +32,7 @@ export type S3Config = {
   bucket: string;
   accessKeyId: string;
   secretAccessKey: string;
+  publicBucket: boolean;
 };
 
 export type FileMetadata = {
@@ -83,6 +84,7 @@ function getS3Config(): S3Config {
     bucket: s3Bucket,
     accessKeyId: s3AccessKeyId,
     secretAccessKey: s3SecretAccessKey,
+    publicBucket: ENV.s3PublicBucket,
   };
 }
 
@@ -120,6 +122,21 @@ export function getPublicUrl(key: string): string {
   const { endpoint, bucket } = getS3Config();
   const normalized = normalizeKey(key);
   return `${endpoint}/${bucket}/${encodeURI(normalized)}`;
+}
+
+/**
+ * Get a read URL for an S3 object based on bucket visibility.
+ * Public bucket -> direct URL, Private bucket -> presigned URL.
+ */
+export async function getReadUrl(
+  relKey: string,
+  expiresInSeconds = 60 * 60
+): Promise<string> {
+  const config = getS3Config();
+  if (config.publicBucket) {
+    return getPublicUrl(relKey);
+  }
+  return createPresignedReadUrl(relKey, expiresInSeconds);
 }
 
 /**
