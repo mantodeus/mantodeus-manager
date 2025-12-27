@@ -874,6 +874,29 @@ export async function getInvoicesByUserId(userId: number) {
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
   
+  // FORENSIC LOGGING: Verify runtime database identity
+  try {
+    const dbInfoResult = await db.execute(sql`
+      SELECT 
+        DATABASE()      AS databaseName,
+        @@hostname      AS host,
+        @@port          AS port,
+        USER()          AS dbUser
+    `);
+    // Drizzle execute returns [rows, fields] format from mysql2
+    const dbInfo = Array.isArray(dbInfoResult) && dbInfoResult[0] ? dbInfoResult[0] : dbInfoResult;
+    const dbInfoRow = Array.isArray(dbInfo) ? dbInfo[0] : dbInfo;
+    console.error('[DB RUNTIME INFO]', JSON.stringify(dbInfoRow, null, 2));
+  } catch (dbInfoError) {
+    console.error('[DB RUNTIME INFO] Failed to query database info:', dbInfoError);
+  }
+  
+  // Log sanitized DATABASE_URL
+  console.error(
+    '[DB ENV]',
+    process.env.DATABASE_URL?.replace(/:\/\/.*@/, '://***@') || 'DATABASE_URL not set'
+  );
+  
   // Diagnostic logging to help identify visibility issues
   console.log(`[Invoices] getInvoicesByUserId called with userId: ${userId} (type: ${typeof userId})`);
   
