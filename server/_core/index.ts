@@ -535,9 +535,15 @@ async function startServer() {
   });
 
   // tRPC API
+  // CRITICAL: This middleware MUST log to verify deployment
   app.use(
     "/api/trpc",
     (req, res, next) => {
+      // Force immediate logging - this proves the code is deployed
+      process.stderr.write('[TRACE] Express middleware - /api/trpc request received\n');
+      process.stderr.write(`[TRACE] Express middleware - method: ${req.method}\n`);
+      process.stderr.write(`[TRACE] Express middleware - url: ${req.url}\n`);
+      process.stderr.write(`[TRACE] Express middleware - path: ${req.path}\n`);
       console.error('[TRACE] Express middleware - /api/trpc request received');
       console.error('[TRACE] Express middleware - method:', req.method);
       console.error('[TRACE] Express middleware - url:', req.url);
@@ -549,6 +555,7 @@ async function startServer() {
       createContext,
       onError: ({ error, path, type, ctx, input }) => {
         // Log detailed error information before tRPC's default handling
+        process.stderr.write('[TRACE] tRPC onError handler triggered\n');
         console.error('[TRACE] tRPC onError handler triggered');
         console.error('[TRACE] tRPC error path:', path);
         console.error('[TRACE] tRPC error type:', type);
