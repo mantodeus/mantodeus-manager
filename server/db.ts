@@ -912,6 +912,24 @@ export async function getInvoiceById(invoiceId: number) {
   return withItems ?? null;
 }
 
+export async function getInvoiceNumbersByIds(ids: number[]) {
+  if (!ids.length) return new Map<number, string>();
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  const rows = await db
+    .select({ id: invoices.id, invoiceNumber: invoices.invoiceNumber })
+    .from(invoices)
+    .where(inArray(invoices.id, ids));
+
+  const map = new Map<number, string>();
+  for (const row of rows) {
+    map.set(Number(row.id), row.invoiceNumber);
+  }
+  return map;
+}
+
 export async function getCancellationInvoiceMapByOriginalIds(originalIds: number[]) {
   if (!originalIds.length) return new Map<number, number>();
   const db = await getDb();
