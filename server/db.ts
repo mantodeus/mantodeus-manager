@@ -1381,7 +1381,7 @@ export async function issueInvoice(id: number) {
   // Draft → Open with sentAt timestamp
   return db
     .update(invoices)
-    .set({ status: 'open', sentAt: new Date() })
+    .set({ status: 'open', sentAt: new Date(), paidAt: null })
     .where(eq(invoices.id, id));
 }
 
@@ -1390,17 +1390,9 @@ export async function markInvoiceAsPaid(id: number) {
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
 
-  // Open → Paid with paidAt timestamp
-  // If invoice was never sent (sentAt is null), set it to now as well
-  const invoice = await getInvoiceById(id);
-  const updates: any = { status: 'paid', paidAt: new Date() };
-  if (!invoice?.sentAt) {
-    updates.sentAt = new Date();
-  }
-
   return db
     .update(invoices)
-    .set(updates)
+    .set({ status: 'paid', paidAt: new Date() })
     .where(eq(invoices.id, id));
 }
 

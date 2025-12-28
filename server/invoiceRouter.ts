@@ -379,9 +379,8 @@ export const invoiceRouter = router({
       if (invoice.userId !== userId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
-      // Can mark as paid if status is 'open' (regardless of sentAt)
-      if (invoice.status !== "open" && invoice.status !== "draft") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Only open or draft invoices can be marked as paid" });
+      if (invoice.status !== "open") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only open invoices can be marked as paid" });
       }
 
       await db.markInvoiceAsPaid(invoice.id);
