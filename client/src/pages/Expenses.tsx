@@ -8,19 +8,21 @@
  * - Card actions: Edit, Mark as In Order, Void
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { Plus, Loader2, Receipt } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ExpenseCard } from "@/components/expenses/ExpenseCard";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/currencyFormat";
 import { VoidExpenseDialog } from "@/components/expenses/VoidExpenseDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { CaptureFab } from "@/components/expenses/CaptureFab";
+import { BulkUploadDialog } from "@/components/expenses/BulkUploadDialog";
 
 type ExpenseListItem = RouterOutputs["expenses"]["list"][number];
 
@@ -30,6 +32,11 @@ export default function Expenses() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [showVoid, setShowVoid] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  const [, navigate] = useLocation();
 
   const { data: expenses = [], isLoading, refetch } = trpc.expenses.list.useQuery({
     includeVoid: showVoid,
@@ -70,8 +77,15 @@ export default function Expenses() {
     };
   }, [expenses]);
 
-  // Filter expenses by status
-  const needsReview = expenses.filter((e) => e.status === "needs_review");
+  // Filter and sort expenses by status
+  // Needs Review sorted by createdAt DESC (newest first - inbox behavior)
+  const needsReview = expenses
+    .filter((e) => e.status === "needs_review")
+    .sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateB - dateA; // DESC
+    });
   const inOrder = expenses.filter((e) => e.status === "in_order");
 
   const markInOrderMutation = trpc.expenses.markInOrder.useMutation({
@@ -108,9 +122,55 @@ export default function Expenses() {
     },
   });
 
+  const bulkUploadMutation = trpc.expenses.uploadReceiptsBulk.useMutation({
+    onSuccess: () => {
+      toast.success("Receipts uploaded successfully");
+      setBulkUploadOpen(false);
+      utils.expenses.list.invalidate();
+      navigate("/expenses");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to upload receipts");
+    },
+  });
+
+  const handleBulkUpload = async (files: File[]) => {
+    try {
+      // Convert files to base64
+      const fileData = await Promise.all(
+        files.map(async (file) => {
+          const reader = new FileReader();
+          return new Promise<{
+            filename: string;
+            mimeType: string;
+            fileSize: number;
+            base64Data: string;
+          }>((resolve, reject) => {
+            reader.onload = () => {
+              const base64 = reader.result as string;
+              const base64Data = base64.split(",")[1];
+              resolve({
+                filename: file.name,
+                mimeType: file.type,
+                fileSize: file.size,
+                base64Data,
+              });
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+
+      bulkUploadMutation.mutate({ files: fileData });
+    } catch (error) {
+      toast.error("Failed to process files");
+    }
+  };
+
   const handleAction = (action: ItemAction, expenseId: number) => {
     if (action === "edit") {
-      // Navigation handled by ExpenseCard Link
+      navigate(`/expenses/${expenseId}`);
       return;
     }
     if (action === "markAsInOrder") {
@@ -123,6 +183,39 @@ export default function Expenses() {
       return;
     }
   };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if not typing in an input/textarea
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+
+      // Enter → Edit first expense in Needs Review
+      if (e.key === "Enter" && needsReview.length > 0) {
+        e.preventDefault();
+        navigate(`/expenses/${needsReview[0].id}`);
+        return;
+      }
+
+      // I → Mark as In Order (first expense in Needs Review)
+      if (e.key === "i" || e.key === "I") {
+        if (e.ctrlKey || e.metaKey) return; // Don't interfere with Cmd/Ctrl+I
+        if (needsReview.length > 0) {
+          e.preventDefault();
+          markInOrderMutation.mutate({ id: needsReview[0].id });
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [needsReview, navigate, markInOrderMutation]);
 
   const handleVoidConfirm = (reason: string) => {
     if (voidTargetId) {
@@ -269,6 +362,20 @@ export default function Expenses() {
         description="Are you sure you want to delete this expense? This action cannot be undone."
         confirmLabel="Delete"
         isDeleting={deleteMutation.isPending}
+      />
+
+      {/* Capture FAB */}
+      <CaptureFab
+        onBulkUpload={() => setBulkUploadOpen(true)}
+        onManual={() => navigate("/expenses/new")}
+      />
+
+      {/* Bulk Upload Dialog */}
+      <BulkUploadDialog
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        onUpload={handleBulkUpload}
+        isUploading={bulkUploadMutation.isPending}
       />
     </div>
   );
