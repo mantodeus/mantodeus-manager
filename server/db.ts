@@ -147,7 +147,30 @@ async function getFileMetadataDb() {
 
 async function ensureInvoiceSchema(db: any) {
   if (_invoiceSchemaReady) return;
+  const isDuplicateColumnError = (error: any) =>
+    error?.code === "ER_DUP_FIELDNAME" || error?.cause?.code === "ER_DUP_FIELDNAME";
+  const isDuplicateIndexError = (error: any) =>
+    error?.code === "ER_DUP_KEYNAME" || error?.cause?.code === "ER_DUP_KEYNAME";
+  const executeStatement = async (statement: string, ignoreError: (error: any) => boolean) => {
+    try {
+      await db.execute(sql.raw(statement));
+    } catch (error: any) {
+      if (ignoreError(error)) return;
+      throw error;
+    }
+  };
+
   try {
+    await executeStatement(
+      "ALTER TABLE `invoices` ADD COLUMN `sentAt` DATETIME NULL AFTER `dueDate`",
+      isDuplicateColumnError
+    );
+    await executeStatement(
+      "ALTER TABLE `invoices` ADD COLUMN `paidAt` DATETIME NULL AFTER `sentAt`",
+      isDuplicateColumnError
+    );
+
+    try {
     await db.execute(sql`
       ALTER TABLE invoices
         ADD COLUMN IF NOT EXISTS invoiceYear INT NOT NULL DEFAULT 0 AFTER invoiceNumber,
@@ -170,6 +193,9 @@ async function ensureInvoiceSchema(db: any) {
         ADD COLUMN IF NOT EXISTS archivedAt DATETIME NULL AFTER updatedAt,
         ADD COLUMN IF NOT EXISTS trashedAt DATETIME NULL AFTER archivedAt
     `);
+    } catch (error) {
+      console.warn("[Database] Invoice schema legacy alter skipped:", error);
+    }
 
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS invoice_items (
@@ -187,9 +213,26 @@ async function ensureInvoiceSchema(db: any) {
       )
     `);
 
-    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS invoice_number_per_user ON invoices (userId, invoiceNumber)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS invoices_archivedAt_idx ON invoices (archivedAt)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS invoices_trashedAt_idx ON invoices (trashedAt)`);
+    await executeStatement(
+      "CREATE UNIQUE INDEX `invoice_number_per_user` ON `invoices` (`userId`, `invoiceNumber`)",
+      isDuplicateIndexError
+    );
+    await executeStatement(
+      "CREATE INDEX `invoices_archivedAt_idx` ON `invoices` (`archivedAt`)",
+      isDuplicateIndexError
+    );
+    await executeStatement(
+      "CREATE INDEX `invoices_trashedAt_idx` ON `invoices` (`trashedAt`)",
+      isDuplicateIndexError
+    );
+    await executeStatement(
+      "CREATE INDEX `invoices_sentAt_idx` ON `invoices` (`sentAt`)",
+      isDuplicateIndexError
+    );
+    await executeStatement(
+      "CREATE INDEX `invoices_paidAt_idx` ON `invoices` (`paidAt`)",
+      isDuplicateIndexError
+    );
     _invoiceSchemaReady = true;
   } catch (error) {
     console.error("[Database] Failed to ensure invoice schema:", error);
