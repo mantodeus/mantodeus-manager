@@ -5,5 +5,5 @@ npx pnpm drizzle-kit migrate
 
 git fetch origin
 git reset --hard origin/main
-git status
 npm run build
+npx pm2 restart mantodeus-manager

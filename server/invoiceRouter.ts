@@ -359,7 +359,7 @@ export const invoiceRouter = router({
       if (invoice.userId !== userId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
-      if (invoice.status !== "draft") {
+      if (invoice.status !== "draft" || invoice.sentAt || invoice.paidAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be issued" });
       }
 
@@ -379,8 +379,8 @@ export const invoiceRouter = router({
       if (invoice.userId !== userId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
-      if (invoice.status !== "open") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Only open invoices can be marked as paid" });
+      if (!invoice.sentAt || invoice.paidAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can be marked as paid" });
       }
 
       await db.markInvoiceAsPaid(invoice.id);
@@ -490,8 +490,8 @@ export const invoiceRouter = router({
       }
 
       // Validate transitions: open→draft (if sent), paid→open
-      const isOpenToDraft = invoice.status === "open" && input.targetStatus === "draft";
-      const isPaidToOpen = invoice.status === "paid" && input.targetStatus === "open";
+      const isOpenToDraft = Boolean(invoice.sentAt) && !invoice.paidAt && input.targetStatus === "draft";
+      const isPaidToOpen = Boolean(invoice.paidAt) && input.targetStatus === "open";
 
       if (!isOpenToDraft && !isPaidToOpen) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid status transition for this invoice." });

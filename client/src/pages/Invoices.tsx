@@ -255,6 +255,16 @@ export default function Invoices() {
             );
             const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
             const items = (invoice.items as InvoiceLineItem[]) || [];
+            const isPaid = Boolean(invoice.paidAt);
+            const isOpen = Boolean(invoice.sentAt) && !invoice.paidAt;
+            const isDraft = !invoice.sentAt && !invoice.paidAt && invoice.status === "draft";
+            const availableActions = isDraft
+              ? ["edit", "duplicate", "archive", "moveToTrash"]
+              : isOpen
+              ? ["view", "markAsPaid", "archive", "revertToDraft", "duplicate"]
+              : isPaid
+              ? ["view", "archive", "revertToSent", "duplicate"]
+              : ["view", "archive", "duplicate"];
 
             return (
               <Card key={invoice.id} className="p-4 flex flex-col gap-3">
@@ -274,13 +284,7 @@ export default function Invoices() {
                     )}
                   </div>
                   <ItemActionsMenu
-                    actions={
-                      invoice.status === "draft"
-                        ? ["edit", "duplicate", "archive", "moveToTrash"]
-                        : invoice.status === "open"
-                        ? ["view", "markAsPaid", "archive", "revertToDraft", "duplicate"]
-                        : ["view", "archive", "revertToSent", "duplicate"]
-                    }
+                    actions={availableActions}
                     onAction={(action) => {
                       if (action === "view") handlePreviewPDF(invoice.id);
                       if (action === "duplicate") {
@@ -292,16 +296,16 @@ export default function Invoices() {
                       if (action === "moveToTrash") {
                         handleMoveToRubbish(invoice.id);
                       }
-                      if (action === "markAsPaid" && invoice.status === "open") {
+                      if (action === "markAsPaid" && isOpen) {
                         markAsPaidMutation.mutate({ id: invoice.id });
                       }
-                      if (action === "revertToDraft" && invoice.status === "open") {
+                      if (action === "revertToDraft" && isOpen) {
                         handleRevertStatus(invoice.id, "open");
                       }
-                      if (action === "revertToSent" && invoice.status === "paid") {
+                      if (action === "revertToSent" && isPaid) {
                         handleRevertStatus(invoice.id, "paid");
                       }
-                      if (action === "edit" && invoice.status === "draft") {
+                      if (action === "edit" && isDraft) {
                         setEditingInvoice(invoice.id);
                         setEditDialogOpen(true);
                       }
