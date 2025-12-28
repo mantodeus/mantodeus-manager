@@ -912,6 +912,26 @@ export async function getInvoiceById(invoiceId: number) {
   return withItems ?? null;
 }
 
+export async function getCancellationInvoiceMapByOriginalIds(originalIds: number[]) {
+  if (!originalIds.length) return new Map<number, number>();
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  const rows = await db
+    .select({ id: invoices.id, cancelledInvoiceId: invoices.cancelledInvoiceId })
+    .from(invoices)
+    .where(and(inArray(invoices.cancelledInvoiceId, originalIds), eq(invoices.type, "cancellation")));
+
+  const map = new Map<number, number>();
+  for (const row of rows) {
+    if (row.cancelledInvoiceId != null) {
+      map.set(Number(row.cancelledInvoiceId), Number(row.id));
+    }
+  }
+  return map;
+}
+
 export async function getInvoicesByUserId(userId: number) {
   console.error('[TRACE] getInvoicesByUserId START - userId:', userId, 'type:', typeof userId);
   
@@ -1229,12 +1249,20 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
   await ensureInvoiceSchema(db);
 
   const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
+  const invoiceType = data.type ?? "standard";
+  const cancelledInvoiceId = data.cancelledInvoiceId ?? null;
   
   // HARD ASSERTION: Invoice status must always be 'draft' on creation
   // Backend decides lifecycle state - no UI dependency, no silent corruption
   // If caller tries to set a different status, reject it
   if (data.status && data.status !== "draft") {
     throw new Error(`Invoice status must be 'draft' on creation. Received: ${data.status}`);
+  }
+  if (invoiceType === "cancellation" && !cancelledInvoiceId) {
+    throw new Error("Cancellation invoices must reference an original invoice.");
+  }
+  if (invoiceType !== "cancellation" && cancelledInvoiceId) {
+    throw new Error("Only cancellation invoices may reference an original invoice.");
   }
   
   // Prepare invoice data (excluding items which go in a separate table)
@@ -1246,6 +1274,8 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     invoiceCounter: data.invoiceCounter ?? 0,
     invoiceYear: data.invoiceYear ?? issueDate.getFullYear(),
     status: "draft", // ALWAYS 'draft' - backend enforces this, never null/empty
+    type: invoiceType,
+    cancelledInvoiceId,
     issueDate,
     dueDate: data.dueDate ?? null,
     notes: data.notes ?? null,
@@ -1309,10 +1339,117 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
   return created;
 }
 
+export async function createCancellationInvoice(userId: number, invoiceId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  const issueDate = new Date();
+  const settings = await getCompanySettingsByUserId(userId);
+  const { invoiceNumber, invoiceCounter, invoiceYear } = await generateInvoiceNumber(
+    userId,
+    issueDate,
+    settings?.invoiceNumberFormat ?? null,
+    settings?.invoicePrefix ?? "RE"
+  );
+
+  return db.transaction(async (tx: any) => {
+    const [original] = await tx.select().from(invoices).where(eq(invoices.id, invoiceId)).limit(1);
+    if (!original) {
+      throw new Error("Invoice not found");
+    }
+    if (original.userId !== userId) {
+      throw new Error("You don't have access to this invoice");
+    }
+    if (original.type === "cancellation") {
+      throw new Error("Cancellation invoices cannot be cancelled.");
+    }
+    if (original.status !== "open" && original.status !== "paid") {
+      throw new Error("Only open or paid invoices can be cancelled.");
+    }
+
+    const existing = await tx
+      .select({ id: invoices.id })
+      .from(invoices)
+      .where(eq(invoices.cancelledInvoiceId, invoiceId))
+      .limit(1);
+    if (existing.length > 0) {
+      throw new Error("A cancellation invoice already exists for this invoice.");
+    }
+
+    const items = await tx.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+    const negateMoney = (value: unknown) => {
+      const num = Number(value ?? 0);
+      const negated = Number.isFinite(num) ? -1 * num : 0;
+      return negated.toFixed(2);
+    };
+
+    const insertResult = await tx.insert(invoices).values({
+      userId: original.userId,
+      clientId: original.clientId ?? null,
+      contactId: original.contactId ?? null,
+      jobId: original.jobId ?? null,
+      invoiceNumber,
+      invoiceCounter,
+      invoiceYear,
+      status: "draft",
+      type: "cancellation",
+      cancelledInvoiceId: original.id,
+      issueDate,
+      dueDate: issueDate,
+      notes: original.notes ?? null,
+      servicePeriodStart: original.servicePeriodStart ?? null,
+      servicePeriodEnd: original.servicePeriodEnd ?? null,
+      referenceNumber: original.referenceNumber ?? null,
+      partialInvoice: original.partialInvoice ?? false,
+      subtotal: negateMoney(original.subtotal),
+      vatAmount: negateMoney(original.vatAmount),
+      total: negateMoney(original.total),
+      pdfFileKey: null,
+      filename: null,
+      fileKey: null,
+      fileSize: null,
+      mimeType: null,
+      uploadDate: null,
+      uploadedBy: null,
+      sentAt: null,
+      paidAt: null,
+      archivedAt: null,
+      trashedAt: null,
+    });
+
+    const insertId = Array.isArray(insertResult) ? insertResult[0]?.insertId : (insertResult as any).insertId;
+    if (!insertId) {
+      throw new Error("Failed to create cancellation invoice");
+    }
+
+    const itemsToInsert = items.map((item: InvoiceItem) => ({
+      invoiceId: Number(insertId),
+      name: item.name,
+      description: item.description ?? null,
+      category: item.category ?? null,
+      quantity: negateMoney(item.quantity),
+      unitPrice: Number(item.unitPrice ?? 0).toFixed(2),
+      currency: item.currency ?? "EUR",
+      lineTotal: negateMoney(item.lineTotal),
+    }));
+
+    if (itemsToInsert.length > 0) {
+      await tx.insert(invoiceItems).values(itemsToInsert);
+    }
+
+    return Number(insertId);
+  });
+}
+
 export async function updateInvoice(id: number, data: Partial<InsertInvoice> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
+
+  if ("cancelledInvoiceId" in data || "type" in data) {
+    throw new Error("Invoice cancellation metadata cannot be edited.");
+  }
 
   const { items, ...invoiceData } = data;
   const updates = {

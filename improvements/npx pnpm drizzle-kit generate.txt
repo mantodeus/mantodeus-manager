@@ -1,9 +1,22 @@
+git fetch origin
+git pull origin main
+npx pnpm drizzle-kit migrate
+npx pnpm install --frozen-lockfile
+npx pnpm run build
+npx pm2 restart mantodeus-manager
+
+
+
 bash infra/deploy/deploy.sh
 
-npx pnpm drizzle-kit generate
-npx pnpm drizzle-kit migrate
+
+
+
+
 
 git fetch origin
 git reset --hard origin/main
+npx pnpm drizzle-kit generate
+npx pnpm drizzle-kit migrate
 npm run build
 npx pm2 restart mantodeus-manager
