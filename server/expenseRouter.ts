@@ -248,6 +248,7 @@ export const expenseRouter = router({
 
   /**
    * Get a single expense by ID
+   * Includes suggestions for category, VAT mode, and business use %
    */
   getExpense: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -257,7 +258,15 @@ export const expenseRouter = router({
       if (!expense) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
       }
-      return expense;
+      
+      // Get suggestions (pure computation, no side effects)
+      const { getExpenseSuggestions } = await import("./expenses/suggestionEngine");
+      const suggestions = await getExpenseSuggestions(expense.id, ctx.user.id);
+      
+      return {
+        ...expense,
+        suggestions,
+      };
     }),
 
   /**
