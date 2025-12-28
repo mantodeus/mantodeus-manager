@@ -18,6 +18,10 @@ import {
   type InsertInspection, type InsertInspectionTemplate, type InsertInspectionUnit,
   type InsertInspectionFinding, type InsertInspectionMedia,
   type Inspection, type InspectionTemplate, type InspectionUnit, type InspectionFinding, type InspectionMedia,
+  // Expense types
+  expenses, expenseFiles,
+  type InsertExpense, type InsertExpenseFile,
+  type Expense, type ExpenseFile,
   // Legacy types (kept for backward compatibility)
   jobs, tasks, images, reports, comments, contacts, invoices, invoiceItems, notes, locations, 
   InsertJob, InsertTask, InsertImage, InsertReport, InsertComment, InsertContact, 
@@ -1685,6 +1689,220 @@ export async function isInvoiceNumberUnique(
     .limit(1);
 
   return existing.length === 0;
+}
+
+// =============================================================================
+// EXPENSES QUERIES
+// =============================================================================
+
+// Accounting fields that trigger status reset to needs_review
+const ACCOUNTING_FIELDS = [
+  'supplierName',
+  'expenseDate',
+  'grossAmountCents',
+  'currency',
+  'vatMode',
+  'vatRate',
+  'vatAmountCents',
+  'businessUsePct',
+  'category',
+] as const;
+
+export async function createExpense(data: InsertExpense) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(expenses).values(data);
+  const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
+  if (!insertId) {
+    throw new Error("Failed to create expense: no insert ID returned");
+  }
+  
+  const created = await getExpenseById(Number(insertId));
+  if (!created) throw new Error("Failed to retrieve created expense");
+  return created;
+}
+
+export async function getExpenseById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.select().from(expenses).where(eq(expenses.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function listExpensesByUser(userId: number, statusFilter?: 'needs_review' | 'in_order' | 'void') {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [eq(expenses.createdBy, userId)];
+  
+  // Default: exclude void unless explicitly requested
+  if (statusFilter === undefined) {
+    conditions.push(ne(expenses.status, 'void'));
+  } else {
+    conditions.push(eq(expenses.status, statusFilter));
+  }
+  
+  return await db
+    .select()
+    .from(expenses)
+    .where(and(...conditions))
+    .orderBy(desc(expenses.expenseDate), desc(expenses.createdAt));
+}
+
+export async function updateExpense(id: number, updates: Partial<InsertExpense>, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getExpenseById(id);
+  if (!existing) {
+    throw new Error("Expense not found");
+  }
+  
+  // Detect if any accounting fields changed
+  const accountingFieldChanged = ACCOUNTING_FIELDS.some(
+    (field) => field in updates && updates[field as keyof typeof updates] !== existing[field]
+  );
+  
+  const updateData: Partial<InsertExpense> = {
+    ...updates,
+    updatedByUserId: userId,
+  };
+  
+  // If accounting fields changed, reset to needs_review and clear review fields
+  if (accountingFieldChanged && existing.status === 'in_order') {
+    updateData.status = 'needs_review';
+    updateData.reviewedByUserId = null;
+    updateData.reviewedAt = null;
+  }
+  
+  await db.update(expenses).set(updateData).where(eq(expenses.id, id));
+  
+  return await getExpenseById(id);
+}
+
+export async function setExpenseStatus(
+  id: number,
+  status: 'needs_review' | 'in_order' | 'void',
+  userId: number,
+  voidReason?: 'duplicate' | 'personal' | 'mistake' | 'wrong_document' | 'other',
+  voidNote?: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getExpenseById(id);
+  if (!existing) {
+    throw new Error("Expense not found");
+  }
+  
+  // Hard rule: void only if in_order + reason
+  if (status === 'void' && existing.status !== 'in_order') {
+    throw new Error("Can only void expenses that are in_order");
+  }
+  
+  if (status === 'void' && !voidReason) {
+    throw new Error("voidReason is required when voiding an expense");
+  }
+  
+  const updateData: Partial<InsertExpense> = {
+    status,
+    updatedByUserId: userId,
+  };
+  
+  if (status === 'in_order') {
+    updateData.reviewedByUserId = userId;
+    updateData.reviewedAt = new Date();
+    // Clear void fields if transitioning from void
+    if (existing.status === 'void') {
+      updateData.voidedByUserId = null;
+      updateData.voidedAt = null;
+      updateData.voidReason = null;
+      updateData.voidNote = null;
+    }
+  } else if (status === 'void') {
+    updateData.voidedByUserId = userId;
+    updateData.voidedAt = new Date();
+    updateData.voidReason = voidReason!;
+    updateData.voidNote = voidNote || null;
+    // Clear review fields
+    updateData.reviewedByUserId = null;
+    updateData.reviewedAt = null;
+  } else if (status === 'needs_review') {
+    // Clear review fields when resetting to needs_review
+    updateData.reviewedByUserId = null;
+    updateData.reviewedAt = null;
+  }
+  
+  await db.update(expenses).set(updateData).where(eq(expenses.id, id));
+  
+  return await getExpenseById(id);
+}
+
+export async function deleteExpense(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getExpenseById(id);
+  if (!existing) {
+    throw new Error("Expense not found");
+  }
+  
+  // Hard rule: delete only if needs_review
+  if (existing.status !== 'needs_review') {
+    throw new Error("Can only delete expenses with status 'needs_review'");
+  }
+  
+  return await db.delete(expenses).where(eq(expenses.id, id));
+}
+
+export async function addExpenseFile(data: InsertExpenseFile) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(expenseFiles).values(data);
+  const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
+  if (!insertId) {
+    throw new Error("Failed to create expense file: no insert ID returned");
+  }
+  
+  const [file] = await db.select().from(expenseFiles).where(eq(expenseFiles.id, Number(insertId))).limit(1);
+  if (!file) {
+    throw new Error("Failed to retrieve created expense file");
+  }
+  return file;
+}
+
+export async function deleteExpenseFile(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Return file before delete for S3 cleanup
+  const file = await db.select().from(expenseFiles).where(eq(expenseFiles.id, id)).limit(1);
+  
+  await db.delete(expenseFiles).where(eq(expenseFiles.id, id));
+  
+  return file.length > 0 ? file[0] : null;
+}
+
+export async function getExpenseFileById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(expenseFiles).where(eq(expenseFiles.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getExpenseFilesByExpenseId(expenseId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db
+    .select()
+    .from(expenseFiles)
+    .where(eq(expenseFiles.expenseId, expenseId))
+    .orderBy(desc(expenseFiles.createdAt));
 }
 
 // ===== NOTES QUERIES =====
