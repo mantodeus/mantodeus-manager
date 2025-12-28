@@ -1,0 +1,130 @@
+/**
+ * ExpenseCard Component
+ * 
+ * Card display for an expense in the list view
+ */
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
+import { Receipt, FileText } from "lucide-react";
+import { Link } from "wouter";
+import { getCategoryLabel } from "./CategorySelect";
+import { formatCurrency } from "@/lib/currencyFormat";
+
+interface ExpenseCardProps {
+  expense: {
+    id: number;
+    description: string | null;
+    category: string | null;
+    grossAmountCents: number;
+    currency: string;
+    businessUsePct: number;
+    status: "needs_review" | "in_order" | "void";
+    paid: boolean;
+    paidAt: Date | null;
+    receiptCount: number;
+  };
+  onAction: (action: ItemAction, expenseId: number) => void;
+  showVoid?: boolean;
+}
+
+export function ExpenseCard({ expense, onAction, showVoid = false }: ExpenseCardProps) {
+  const deductibleCents = Math.round(
+    (expense.grossAmountCents * expense.businessUsePct) / 100
+  );
+
+  const statusBadge = () => {
+    switch (expense.status) {
+      case "needs_review":
+        return <Badge variant="outline" className="text-xs">Needs Review</Badge>;
+      case "in_order":
+        return <Badge variant="default" className="text-xs">In Order</Badge>;
+      case "void":
+        return <Badge variant="secondary" className="text-xs">Void</Badge>;
+      default:
+        return null;
+    }
+  };
+
+  const getActions = (): ItemAction[] => {
+    const actions: ItemAction[] = ["edit"];
+    if (expense.status === "needs_review") {
+      actions.push("markAsInOrder");
+    }
+    if (expense.status === "in_order" && showVoid) {
+      actions.push("void");
+    }
+    return actions;
+  };
+
+  const handleAction = (action: ItemAction) => {
+    onAction(action, expense.id);
+  };
+
+  return (
+    <Link href={`/expenses/${expense.id}`}>
+      <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg line-clamp-2">
+                {expense.description || "Untitled Expense"}
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {getCategoryLabel(expense.category as any)}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2 ml-2">
+              {statusBadge()}
+              <ItemActionsMenu
+                onAction={handleAction}
+                actions={getActions()}
+                triggerClassName="text-muted-foreground hover:text-foreground"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Gross Amount</span>
+            <span className="text-sm font-medium">
+              {formatCurrency(expense.grossAmountCents / 100, expense.currency)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Deductible</span>
+            <span className="text-sm font-medium">
+              {formatCurrency(deductibleCents / 100, expense.currency)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Business Use</span>
+            <span className="text-sm font-medium">{expense.businessUsePct}%</span>
+          </div>
+          {expense.paid && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Payment</span>
+              <Badge variant="secondary" className="text-xs">Paid</Badge>
+            </div>
+          )}
+          <div className="flex items-center gap-2 pt-2 border-t">
+            {expense.receiptCount === 0 ? (
+              <Badge variant="outline" className="text-xs text-destructive">
+                <FileText className="h-3 w-3 mr-1" />
+                No document
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs">
+                <Receipt className="h-3 w-3 mr-1" />
+                {expense.receiptCount} receipt{expense.receiptCount !== 1 ? "s" : ""}
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
