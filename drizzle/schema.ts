@@ -349,6 +349,14 @@ export const invoices = mysqlTable("invoices", {
   mimeType: varchar("mimeType", { length: 100 }),
   uploadDate: timestamp("uploadDate"),
   uploadedBy: int("uploadedBy").references(() => users.id),
+  /** Timestamp when PDF was uploaded (for uploaded invoices) */
+  uploadedAt: timestamp("uploadedAt"),
+  /** Source of invoice: 'created' (manual) or 'uploaded' (PDF upload) */
+  source: mysqlEnum("source", ["created", "uploaded"]).default("created").notNull(),
+  /** Whether invoice needs manual review before appearing in list */
+  needsReview: boolean("needsReview").default(false).notNull(),
+  /** S3 key of original uploaded PDF (for uploaded invoices) */
+  originalPdfS3Key: varchar("originalPdfS3Key", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [

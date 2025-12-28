@@ -1030,7 +1030,13 @@ export async function getInvoicesByUserId(userId: number) {
     invoiceRows = await db
       .select()
       .from(invoices)
-      .where(and(eq(invoices.userId, userId), isNull(invoices.archivedAt), isNull(invoices.trashedAt)))
+      .where(and(
+        eq(invoices.userId, userId),
+        isNull(invoices.archivedAt),
+        isNull(invoices.trashedAt),
+        // Exclude invoices that need review
+        or(isNull(invoices.needsReview), eq(invoices.needsReview, false))
+      ))
       .orderBy(desc(invoices.issueDate), desc(invoices.createdAt));
     console.error('[TRACE] getInvoicesByUserId - SELECT query completed successfully, rows:', invoiceRows.length);
   } catch (queryError: any) {
@@ -1343,6 +1349,10 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     mimeType: data.mimeType ?? null,
     uploadDate: data.uploadDate ?? null,
     uploadedBy: data.uploadedBy ?? null,
+    uploadedAt: data.uploadedAt ?? null,
+    source: data.source ?? "created",
+    needsReview: data.needsReview ?? false,
+    originalPdfS3Key: data.originalPdfS3Key ?? null,
     userId: data.userId,
     // Explicitly set timestamp fields - allow passed values to override defaults
     sentAt: data.sentAt ?? null,

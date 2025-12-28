@@ -1,9 +1,13 @@
+cd /srv/customer/sites/manager.mantodeus.com
 git fetch origin
 git pull origin main
 npx pnpm drizzle-kit migrate
 npx pnpm install --frozen-lockfile
 npx pnpm run build
 npx pm2 restart mantodeus-manager
+
+npx pm2 start dist/index.js --name mantodeus-manager
+npx pm2 save
 
 mysql -u bm9k66_mantodeus -p -h bm9k66.myd.infomaniak.com bm9k66_mantodeus_manager
 

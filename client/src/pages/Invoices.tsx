@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Eye, Send, Loader2, PencilLine, X } from "lucide-react";
+import { FileText, Plus, Eye, Send, Loader2, PencilLine, X, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ItemActionsMenu } from "@/components/ItemActionsMenu";
@@ -26,6 +26,7 @@ import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
+import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
 import { useIsMobile } from "@/hooks/useMobile";
 
 interface InvoiceLineItem {
@@ -81,6 +82,14 @@ export default function Invoices() {
   const [revertTarget, setRevertTarget] = useState<{ id: number; targetStatus: "draft" | "open"; currentStatus: "open" | "paid" } | null>(null);
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [cancellationTarget, setCancellationTarget] = useState<{ id: number; invoiceNumber: string } | null>(null);
+  const [uploadReviewDialogOpen, setUploadReviewDialogOpen] = useState(false);
+  const [uploadedInvoiceId, setUploadedInvoiceId] = useState<number | null>(null);
+  const [uploadedParsedData, setUploadedParsedData] = useState<{
+    clientName: string | null;
+    invoiceDate: Date | null;
+    totalAmount: string | null;
+    invoiceNumber: string | null;
+  } | null>(null);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -129,6 +138,16 @@ export default function Invoices() {
       refetch();
     },
     onError: (err) => toast.error(err.message),
+  });
+  const uploadInvoiceMutation = trpc.invoices.uploadInvoice.useMutation({
+    onSuccess: (data) => {
+      setUploadedInvoiceId(data.invoice.id);
+      setUploadedParsedData(data.parsedData);
+      setUploadReviewDialogOpen(true);
+    },
+    onError: (err) => {
+      toast.error("Failed to upload invoice: " + err.message);
+    },
   });
 
   const handlePreviewPDF = async (invoiceId: number) => {
@@ -222,13 +241,68 @@ export default function Invoices() {
           <h1 className="text-3xl font-regular">Invoices</h1>
           <p className="text-muted-foreground text-sm">Create, edit, and manage invoices</p>
         </div>
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Invoice
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <input
+            type="file"
+            accept=".pdf,application/pdf"
+            id="invoice-upload-input"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+
+              if (!file.type.includes("pdf")) {
+                toast.error("Please select a PDF file");
+                return;
+              }
+
+              try {
+                // Convert to base64
+                const reader = new FileReader();
+                reader.onload = async () => {
+                  const result = reader.result as string;
+                  const base64Data = result.split(",")[1];
+
+                  await uploadInvoiceMutation.mutateAsync({
+                    filename: file.name,
+                    base64Data,
+                    mimeType: file.type,
+                  });
+                };
+                reader.onerror = () => {
+                  toast.error("Failed to read file");
+                };
+                reader.readAsDataURL(file);
+              } catch (error) {
+                console.error(error);
+                toast.error("Failed to upload invoice");
+              }
+
+              // Reset input
+              e.target.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            onClick={() => {
+              document.getElementById("invoice-upload-input")?.click();
+            }}
+            disabled={uploadInvoiceMutation.isPending}
+          >
+            {uploadInvoiceMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Upload className="w-4 h-4 mr-2" />
+            )}
+            Upload Invoice
+          </Button>
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Invoice
+              </Button>
+            </DialogTrigger>
           <DialogContent 
             className="!fixed !inset-y-0 !right-0 !left-0 lg:!left-[var(--sidebar-width)] !m-0 !p-0 !w-auto !max-w-none !h-auto !translate-x-0 !translate-y-0 !top-0 !rounded-none border-l border-border bg-background shadow-xl flex flex-col data-[state=open]:!zoom-in-100"
             style={{ left: isMobile ? 0 : 'var(--sidebar-width)' }}
@@ -462,6 +536,22 @@ export default function Invoices() {
       )}
 
       <ScrollRevealFooter basePath="/invoices" />
+
+      <InvoiceUploadReviewDialog
+        open={uploadReviewDialogOpen}
+        onOpenChange={(open) => {
+          setUploadReviewDialogOpen(open);
+          if (!open) {
+            setUploadedInvoiceId(null);
+            setUploadedParsedData(null);
+          }
+        }}
+        invoiceId={uploadedInvoiceId}
+        parsedData={uploadedParsedData}
+        onSuccess={() => {
+          refetch();
+        }}
+      />
 
       <DeleteConfirmDialog
         open={archiveDialogOpen}
