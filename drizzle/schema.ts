@@ -665,3 +665,84 @@ export const inspectionMedia = mysqlTable("inspection_media", {
 
 export type InspectionMedia = typeof inspectionMedia.$inferSelect;
 export type InsertInspectionMedia = typeof inspectionMedia.$inferInsert;
+
+// =============================================================================
+// EXPENSES MODULE TABLES
+// =============================================================================
+
+/**
+ * Expenses table - tracks business expenses with receipt management
+ */
+export const expenses = mysqlTable("expenses", {
+  id: int("id").primaryKey().autoincrement(),
+  createdBy: int("createdBy").notNull().references(() => users.id, { onDelete: "no action" }),
+  updatedByUserId: int("updatedByUserId").references(() => users.id, { onDelete: "no action" }),
+  status: mysqlEnum("status", ["needs_review", "in_order", "void"]).default("needs_review").notNull(),
+  source: mysqlEnum("source", ["upload", "scan", "manual"]).notNull(),
+  supplierName: varchar("supplierName", { length: 255 }).notNull(),
+  description: text("description"),
+  expenseDate: timestamp("expenseDate").notNull(),
+  grossAmountCents: int("grossAmountCents").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
+  vatMode: mysqlEnum("vatMode", ["none", "german", "foreign"]).notNull().default("none"),
+  vatRate: mysqlEnum("vatRate", ["0", "7", "19"]),
+  vatAmountCents: int("vatAmountCents"),
+  businessUsePct: int("businessUsePct").notNull().default(100),
+  category: mysqlEnum("category", [
+    "office_supplies",
+    "travel",
+    "meals",
+    "vehicle",
+    "equipment",
+    "software",
+    "insurance",
+    "marketing",
+    "utilities",
+    "rent",
+    "professional_services",
+    "shipping",
+    "training",
+    "subscriptions",
+    "repairs",
+    "taxes_fees",
+    "other",
+  ]),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id, { onDelete: "no action" }),
+  reviewedAt: timestamp("reviewedAt"),
+  voidedByUserId: int("voidedByUserId").references(() => users.id, { onDelete: "no action" }),
+  voidedAt: timestamp("voidedAt"),
+  voidReason: mysqlEnum("voidReason", ["duplicate", "personal", "mistake", "wrong_document", "other"]),
+  voidNote: text("voidNote"),
+  paymentStatus: mysqlEnum("paymentStatus", ["paid", "unpaid"]).default("unpaid").notNull(),
+  paymentDate: timestamp("paymentDate"),
+  paymentMethod: mysqlEnum("paymentMethod", ["cash", "bank_transfer", "card", "online"]),
+  confidenceScore: decimal("confidenceScore", { precision: 5, scale: 2 }),
+  confidenceReason: varchar("confidenceReason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("expenses_createdBy_status_expenseDate_idx").on(table.createdBy, table.status, table.expenseDate),
+  index("expenses_createdBy_expenseDate_idx").on(table.createdBy, table.expenseDate),
+  index("expenses_updatedByUserId_idx").on(table.updatedByUserId),
+]);
+
+export type Expense = typeof expenses.$inferSelect;
+export type InsertExpense = typeof expenses.$inferInsert;
+
+/**
+ * Expense Files table - receipt files attached to expenses
+ */
+export const expenseFiles = mysqlTable("expense_files", {
+  id: int("id").primaryKey().autoincrement(),
+  expenseId: int("expenseId").notNull().references(() => expenses.id, { onDelete: "cascade" }),
+  s3Key: varchar("s3Key", { length: 512 }).notNull(),
+  mimeType: varchar("mimeType", { length: 128 }).notNull(),
+  originalFilename: varchar("originalFilename", { length: 255 }).notNull(),
+  fileSize: int("fileSize").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("expense_files_expenseId_idx").on(table.expenseId),
+]);
+
+export type ExpenseFile = typeof expenseFiles.$inferSelect;
+export type InsertExpenseFile = typeof expenseFiles.$inferInsert;
