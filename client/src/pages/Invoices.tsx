@@ -304,10 +304,10 @@ export default function Invoices() {
                       <h3 className="font-regular text-lg">{invoice.invoiceNumber}</h3>
                       {getStatusBadge(invoice)}
                       {invoice.type === "cancellation" && (
-                        <Badge variant="outline" className="text-xs">CANCELLATION</Badge>
+                        <Badge variant="outline" className="text-xs">STORNO</Badge>
                       )}
                     </div>
-                    {invoice.type === "cancellation" && invoice.cancelledInvoiceId && (
+                    {invoice.type === "cancellation" && (
                       <Button
                         variant="link"
                         size="sm"
@@ -320,7 +320,7 @@ export default function Invoices() {
                         }}
                         disabled={!originalInvoice}
                       >
-                        Cancels invoice {originalInvoice?.invoiceNumber ?? `#${invoice.cancelledInvoiceId}`}
+                        Stornorechnung zu Rechnung {invoice.cancellationOfInvoiceNumber ?? "(unknown)"}
                       </Button>
                     )}
                     {invoice.type === "standard" && invoice.hasCancellation && invoice.cancellationInvoiceId && (
@@ -692,6 +692,17 @@ function InvoiceForm({
 
   return (
     <form onSubmit={handleSave} className="space-y-8 max-w-full overflow-x-hidden">
+      {invoice?.type === "cancellation" && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Stornorechnung</h2>
+            <Badge variant="outline" className="text-xs">STORNO</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Stornorechnung zu Rechnung {invoice.cancellationOfInvoiceNumber ?? "(unknown)"}
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

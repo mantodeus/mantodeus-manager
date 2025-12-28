@@ -5,6 +5,7 @@ npx pnpm install --frozen-lockfile
 npx pnpm run build
 npx pm2 restart mantodeus-manager
 
+mysql -u bm9k66_mantodeus -p -h bm9k66.myd.infomaniak.com bm9k66_mantodeus_manager
 
 
 bash infra/deploy/deploy.sh

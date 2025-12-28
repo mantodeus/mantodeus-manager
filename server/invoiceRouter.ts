@@ -95,15 +95,33 @@ function mapInvoiceToPayload(invoice: Awaited<ReturnType<typeof db.getInvoiceByI
   }
 }
 
-async function withCancellationMetadata<T extends { id: number }>(invoices: T[]) {
+async function withCancellationMetadata<T extends { id: number; type?: string; cancelledInvoiceId?: number | null }>(
+  invoices: T[]
+) {
   if (!invoices.length) return invoices;
   const ids = invoices.map((invoice) => invoice.id);
   const cancellationMap = await db.getCancellationInvoiceMapByOriginalIds(ids);
-  return invoices.map((invoice) => ({
-    ...invoice,
-    hasCancellation: cancellationMap.has(invoice.id),
-    cancellationInvoiceId: cancellationMap.get(invoice.id) ?? null,
-  }));
+  const cancellationTargets = invoices
+    .filter((invoice) => invoice.type === "cancellation" && invoice.cancelledInvoiceId)
+    .map((invoice) => invoice.cancelledInvoiceId as number);
+  const originalNumberMap = await db.getInvoiceNumbersByIds(cancellationTargets);
+
+  return invoices.map((invoice) => {
+    const cancellationOfInvoiceNumber =
+      invoice.type === "cancellation" && invoice.cancelledInvoiceId
+        ? originalNumberMap.get(invoice.cancelledInvoiceId) ?? null
+        : null;
+    if (invoice.type === "cancellation" && invoice.cancelledInvoiceId && !cancellationOfInvoiceNumber) {
+      console.warn(`[Invoices] Cancellation invoice ${invoice.id} missing original invoice number.`);
+    }
+    return {
+      ...invoice,
+      isCancellation: invoice.type === "cancellation",
+      hasCancellation: cancellationMap.has(invoice.id),
+      cancellationInvoiceId: cancellationMap.get(invoice.id) ?? null,
+      cancellationOfInvoiceNumber,
+    };
+  });
 }
 
 export const invoiceRouter = router({
