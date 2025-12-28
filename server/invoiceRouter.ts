@@ -2,6 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
+import { parseInvoicePdf } from "./_core/pdfParser";
+import { storagePut, generateFileKey, deleteFromStorage } from "./storage";
 
 const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required"),
@@ -57,6 +59,19 @@ function extractInvoiceCounter(value: string): number | null {
   if (!match) return null;
   const parsed = Number(match[2]);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+/**
+ * Check if invoice needs review and block mutations
+ * Uploaded invoices with needsReview=true must be confirmed before any other action
+ */
+function checkInvoiceNeedsReview(invoice: Awaited<ReturnType<typeof db.getInvoiceById>>, action: string) {
+  if (invoice.source === "uploaded" && invoice.needsReview) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `This invoice requires review before it can be ${action}. Please confirm the uploaded invoice first.`,
+    });
+  }
 }
 
 function mapInvoiceToPayload(invoice: Awaited<ReturnType<typeof db.getInvoiceById>>) {
@@ -307,6 +322,7 @@ export const invoiceRouter = router({
       if (invoice.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be updated" });
       }
+      checkInvoiceNeedsReview(invoice, "updated");
 
       const settings = await db.getCompanySettingsByUserId(userId);
       if (!settings) {
@@ -414,6 +430,7 @@ export const invoiceRouter = router({
       if (invoice.type === "cancellation" && !invoice.cancelledInvoiceId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Cancellation invoices must reference an original invoice." });
       }
+      checkInvoiceNeedsReview(invoice, "sent");
 
       await db.issueInvoice(invoice.id);
       const updated = await db.getInvoiceById(invoice.id);
@@ -438,6 +455,7 @@ export const invoiceRouter = router({
       if (!invoice.sentAt || invoice.paidAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can be marked as paid" });
       }
+      checkInvoiceNeedsReview(invoice, "marked as paid");
 
       await db.markInvoiceAsPaid(invoice.id);
       const updated = await db.getInvoiceById(invoice.id);
@@ -464,6 +482,7 @@ export const invoiceRouter = router({
           message: "Invoices must be moved to the Rubbish bin before permanent deletion.",
         });
       }
+      checkInvoiceNeedsReview(invoice, "deleted");
 
       await db.deleteInvoice(input.id);
       return { success: true };
@@ -480,6 +499,7 @@ export const invoiceRouter = router({
       if (invoice.userId !== userId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
+      checkInvoiceNeedsReview(invoice, "archived");
 
       await db.archiveInvoice(input.id);
       const updated = await db.getInvoiceById(input.id);
@@ -500,6 +520,7 @@ export const invoiceRouter = router({
       if (invoice.status !== "draft") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only draft invoices can be moved to the Rubbish bin." });
       }
+      checkInvoiceNeedsReview(invoice, "moved to trash");
 
       await db.moveInvoiceToTrash(input.id);
       const updated = await db.getInvoiceById(input.id);
@@ -556,6 +577,7 @@ export const invoiceRouter = router({
       if (!isOpenToDraft && !isPaidToOpen) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid status transition for this invoice." });
       }
+      checkInvoiceNeedsReview(invoice, "reverted");
 
       await db.revertInvoiceStatus(invoice.id, input.targetStatus);
       const updated = await db.getInvoiceById(invoice.id);
@@ -566,6 +588,15 @@ export const invoiceRouter = router({
     .input(z.object({ invoiceId: z.number() }))
     .mutation(async ({ input, ctx }) => {
       try {
+        const invoice = await db.getInvoiceById(input.invoiceId);
+        if (!invoice) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+        }
+        if (invoice.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+        }
+        checkInvoiceNeedsReview(invoice, "cancelled");
+        
         const cancellationInvoiceId = await db.createCancellationInvoice(ctx.user.id, input.invoiceId);
         return { cancellationInvoiceId };
       } catch (err) {
@@ -578,6 +609,226 @@ export const invoiceRouter = router({
         }
         throw new TRPCError({ code: "BAD_REQUEST", message });
       }
+    }),
+
+  confirmUploadedInvoice: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        clientId: z.number().optional().nullable(),
+        invoiceNumber: z.string().optional(),
+        issueDate: z.date().optional(),
+        totalAmount: z.string().optional(),
+        items: z.array(lineItemSchema).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const invoice = await db.getInvoiceById(input.id);
+      
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      
+      if (invoice.userId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      
+      if (invoice.source !== "uploaded" || !invoice.needsReview) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This invoice does not need review",
+        });
+      }
+      
+      // Calculate totals if items provided
+      let subtotal = invoice.subtotal;
+      let total = invoice.total;
+      
+      if (input.items && input.items.length > 0) {
+        const normalizedItems = normalizeLineItems(input.items);
+        const totals = calculateTotals(normalizedItems);
+        subtotal = totals.subtotal.toFixed(2);
+        total = totals.total.toFixed(2);
+      } else if (input.totalAmount) {
+        total = input.totalAmount;
+        subtotal = input.totalAmount;
+      }
+      
+      // Update invoice with confirmed data
+      const updated = await db.updateInvoice(input.id, {
+        clientId: input.clientId ?? invoice.clientId,
+        invoiceNumber: input.invoiceNumber ?? invoice.invoiceNumber,
+        issueDate: input.issueDate ? new Date(input.issueDate) : invoice.issueDate,
+        subtotal,
+        total,
+        needsReview: false, // Clear review flag
+        items: input.items
+          ? normalizeLineItems(input.items).map((item) => ({
+              ...item,
+              quantity: item.quantity.toFixed(2),
+              unitPrice: item.unitPrice.toFixed(2),
+              lineTotal: item.lineTotal.toFixed(2),
+            }))
+          : undefined,
+      });
+      
+      return mapInvoiceToPayload(updated);
+    }),
+
+  cancelUploadedInvoice: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const invoice = await db.getInvoiceById(input.id);
+      
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      
+      if (invoice.userId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      
+      if (invoice.source !== "uploaded" || !invoice.needsReview) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only uploaded invoices pending review can be cancelled",
+        });
+      }
+      
+      // Delete PDF from S3 if it exists
+      if (invoice.originalPdfS3Key) {
+        try {
+          await deleteFromStorage(invoice.originalPdfS3Key);
+        } catch (error) {
+          console.error("[Invoice] Failed to delete PDF from S3:", error);
+          // Continue with DB delete even if S3 delete fails
+        }
+      }
+      
+      // Also try to delete from other file key fields
+      const keysToDelete = [
+        invoice.fileKey,
+        invoice.pdfFileKey,
+      ].filter((key): key is string => Boolean(key));
+      
+      for (const key of keysToDelete) {
+        if (key !== invoice.originalPdfS3Key) {
+          try {
+            await deleteFromStorage(key);
+          } catch (error) {
+            console.error("[Invoice] Failed to delete file from S3:", error);
+          }
+        }
+      }
+      
+      // Delete invoice from database
+      await db.deleteInvoice(input.id);
+      
+      return { success: true };
+    }),
+
+  uploadInvoice: protectedProcedure
+    .input(
+      z.object({
+        filename: z.string().min(1),
+        base64Data: z.string(),
+        mimeType: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      
+      // Validate MIME type (must be PDF)
+      const mimeType = input.mimeType || "application/pdf";
+      if (!mimeType.includes("pdf")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "File must be a PDF",
+        });
+      }
+      
+      // Convert base64 to buffer
+      const pdfBuffer = Buffer.from(input.base64Data, "base64");
+      
+      // Validate file size (max 50MB)
+      const maxSize = 50 * 1024 * 1024;
+      if (pdfBuffer.length > maxSize) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `File size exceeds maximum of ${maxSize / (1024 * 1024)}MB`,
+        });
+      }
+      
+      // Parse PDF to extract invoice data
+      const parsedData = await parseInvoicePdf(pdfBuffer);
+      
+      // Upload PDF to S3
+      const fileKey = generateFileKey("invoices", userId, input.filename);
+      await storagePut(fileKey, pdfBuffer, mimeType);
+      
+      // Get company settings for invoice number generation
+      const settings = await db.getCompanySettingsByUserId(userId);
+      if (!settings) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Company settings not found. Please configure your company settings first.",
+        });
+      }
+      
+      // Use parsed date or current date
+      const issueDate = parsedData.invoiceDate || new Date();
+      
+      // Generate invoice number (parsed invoice number is only a hint, not auto-saved)
+      // User must confirm in review dialog to avoid collisions
+      const { invoiceNumber: generatedNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
+        userId,
+        issueDate,
+        settings.invoiceNumberFormat ?? null,
+        settings.invoicePrefix ?? "RE"
+      );
+      
+      // Always use generated number - parsed number is only for pre-filling review dialog
+      const invoiceNumber = generatedNumber;
+      
+      // Create invoice with needsReview flag
+      const uploadedAt = new Date();
+      const created = await db.createInvoice({
+        userId,
+        clientId: null, // Will be set in review
+        invoiceNumber,
+        invoiceCounter,
+        invoiceYear,
+        status: "draft",
+        issueDate,
+        dueDate: null,
+        subtotal: parsedData.totalAmount || "0.00",
+        vatAmount: "0.00",
+        total: parsedData.totalAmount || "0.00",
+        source: "uploaded",
+        needsReview: parsedData.needsReview,
+        originalPdfS3Key: fileKey,
+        uploadedAt,
+        pdfFileKey: fileKey,
+        filename: input.filename,
+        fileKey: fileKey,
+        fileSize: pdfBuffer.length,
+        mimeType,
+        uploadDate: uploadedAt,
+        uploadedBy: userId,
+        items: [], // Empty items - user can add in review
+      });
+      
+      return {
+        invoice: mapInvoiceToPayload(created),
+        parsedData: {
+          clientName: parsedData.clientName,
+          invoiceDate: parsedData.invoiceDate,
+          totalAmount: parsedData.totalAmount,
+          invoiceNumber: parsedData.invoiceNumber,
+        },
+      };
     }),
 
   // TEMPORARY DEBUG ENDPOINT - Remove after diagnosis
