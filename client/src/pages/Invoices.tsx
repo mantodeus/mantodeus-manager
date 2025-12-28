@@ -303,7 +303,7 @@ export default function Invoices() {
                 Create Invoice
               </Button>
             </DialogTrigger>
-          <DialogContent 
+            <DialogContent 
             className="!fixed !inset-y-0 !right-0 !left-0 lg:!left-[var(--sidebar-width)] !m-0 !p-0 !w-auto !max-w-none !h-auto !translate-x-0 !translate-y-0 !top-0 !rounded-none border-l border-border bg-background shadow-xl flex flex-col data-[state=open]:!zoom-in-100"
             style={{ left: isMobile ? 0 : 'var(--sidebar-width)' }}
             showCloseButton={false}
