@@ -929,7 +929,40 @@ export async function getInvoicesByUserId(userId: number) {
     console.error('[TRACE] getInvoicesByUserId - error sqlState:', queryError?.sqlState);
     console.error('[TRACE] getInvoicesByUserId - error sqlMessage:', queryError?.sqlMessage);
     console.error('[TRACE] getInvoicesByUserId - error sql:', queryError?.sql);
-    console.error('[TRACE] getInvoicesByUserId - full error object:', JSON.stringify(queryError, Object.getOwnPropertyNames(queryError), 2));
+    
+    // Extract underlying MySQL error from cause property
+    if (queryError?.cause) {
+      console.error('[TRACE] getInvoicesByUserId - error.cause exists:', typeof queryError.cause);
+      console.error('[TRACE] getInvoicesByUserId - error.cause type:', queryError.cause?.constructor?.name);
+      console.error('[TRACE] getInvoicesByUserId - error.cause message:', queryError.cause?.message);
+      console.error('[TRACE] getInvoicesByUserId - error.cause code:', queryError.cause?.code);
+      console.error('[TRACE] getInvoicesByUserId - error.cause errno:', queryError.cause?.errno);
+      console.error('[TRACE] getInvoicesByUserId - error.cause sqlState:', queryError.cause?.sqlState);
+      console.error('[TRACE] getInvoicesByUserId - error.cause sqlMessage:', queryError.cause?.sqlMessage);
+    }
+    
+    // Try to extract all error properties recursively
+    const errorProps: any = {};
+    const extractErrorProps = (err: any, depth = 0): any => {
+      if (!err || depth > 3) return {};
+      const props: any = {};
+      for (const key of Object.getOwnPropertyNames(err)) {
+        try {
+          const value = err[key];
+          if (typeof value !== 'function' && typeof value !== 'object') {
+            props[key] = value;
+          } else if (key === 'cause' && value) {
+            props.cause = extractErrorProps(value, depth + 1);
+          }
+        } catch (e) {
+          // Ignore property access errors
+        }
+      }
+      return props;
+    };
+    
+    const allErrorProps = extractErrorProps(queryError);
+    console.error('[TRACE] getInvoicesByUserId - all error properties:', JSON.stringify(allErrorProps, null, 2));
     console.error('[TRACE] getInvoicesByUserId - error stack:', queryError?.stack);
     throw queryError;
   }
