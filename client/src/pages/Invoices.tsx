@@ -334,6 +334,7 @@ export default function Invoices() {
           </DialogContent>
         </Dialog>
       </div>
+      </div>
 
       {invoices.length === 0 ? (
         <Card className="p-8 text-center">
