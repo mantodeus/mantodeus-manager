@@ -95,6 +95,17 @@ function mapInvoiceToPayload(invoice: Awaited<ReturnType<typeof db.getInvoiceByI
   }
 }
 
+async function withCancellationMetadata<T extends { id: number }>(invoices: T[]) {
+  if (!invoices.length) return invoices;
+  const ids = invoices.map((invoice) => invoice.id);
+  const cancellationMap = await db.getCancellationInvoiceMapByOriginalIds(ids);
+  return invoices.map((invoice) => ({
+    ...invoice,
+    hasCancellation: cancellationMap.has(invoice.id),
+    cancellationInvoiceId: cancellationMap.get(invoice.id) ?? null,
+  }));
+}
+
 export const invoiceRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     console.error('[TRACE] invoices.list start');
@@ -118,8 +129,9 @@ export const invoiceRouter = router({
       console.error('[TRACE] invoices.list - before mapInvoiceToPayload');
       const mapped = invoices.map(mapInvoiceToPayload);
       console.error('[TRACE] invoices.list - after mapInvoiceToPayload, mapped.length:', mapped.length);
+      const withMeta = await withCancellationMetadata(mapped);
       console.error('[TRACE] invoices.list - returning result');
-      return mapped;
+      return withMeta;
     } catch (err) {
       console.error('[TRACE] invoices.list ERROR caught');
       console.error('[TRACE] invoices.list error type:', err instanceof Error ? err.constructor.name : typeof err);
@@ -132,12 +144,12 @@ export const invoiceRouter = router({
 
   listArchived: protectedProcedure.query(async ({ ctx }) => {
     const invoices = await db.getArchivedInvoicesByUserId(ctx.user.id);
-    return invoices.map(mapInvoiceToPayload);
+    return withCancellationMetadata(invoices.map(mapInvoiceToPayload));
   }),
 
   listTrashed: protectedProcedure.query(async ({ ctx }) => {
     const invoices = await db.getTrashedInvoicesByUserId(ctx.user.id);
-    return invoices.map(mapInvoiceToPayload);
+    return withCancellationMetadata(invoices.map(mapInvoiceToPayload));
   }),
 
   get: protectedProcedure
@@ -150,7 +162,8 @@ export const invoiceRouter = router({
       if (invoice.userId !== ctx.user.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
-      return mapInvoiceToPayload(invoice);
+      const withMeta = await withCancellationMetadata([mapInvoiceToPayload(invoice)]);
+      return withMeta[0];
     }),
 
   nextNumber: protectedProcedure
@@ -362,6 +375,9 @@ export const invoiceRouter = router({
       if (invoice.status !== "draft" || invoice.sentAt || invoice.paidAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be issued" });
       }
+      if (invoice.type === "cancellation" && !invoice.cancelledInvoiceId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cancellation invoices must reference an original invoice." });
+      }
 
       await db.issueInvoice(invoice.id);
       const updated = await db.getInvoiceById(invoice.id);
@@ -500,6 +516,24 @@ export const invoiceRouter = router({
       await db.revertInvoiceStatus(invoice.id, input.targetStatus);
       const updated = await db.getInvoiceById(invoice.id);
       return mapInvoiceToPayload(updated);
+    }),
+
+  createCancellation: protectedProcedure
+    .input(z.object({ invoiceId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const cancellationInvoiceId = await db.createCancellationInvoice(ctx.user.id, input.invoiceId);
+        return { cancellationInvoiceId };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to create cancellation invoice";
+        if (message.includes("not found")) {
+          throw new TRPCError({ code: "NOT_FOUND", message });
+        }
+        if (message.includes("access")) {
+          throw new TRPCError({ code: "FORBIDDEN", message });
+        }
+        throw new TRPCError({ code: "BAD_REQUEST", message });
+      }
     }),
 
   // TEMPORARY DEBUG ENDPOINT - Remove after diagnosis

@@ -321,6 +321,8 @@ export const invoices = mysqlTable("invoices", {
   invoiceYear: int("invoiceYear").notNull(),
   invoiceCounter: int("invoiceCounter").notNull(),
   status: mysqlEnum("status", ["draft", "open", "paid"]).notNull().default("draft"),
+  type: mysqlEnum("type", ["standard", "cancellation"]).notNull().default("standard"),
+  cancelledInvoiceId: int("cancelledInvoiceId").references(() => invoices.id),
   issueDate: timestamp("issueDate").defaultNow().notNull(),
   dueDate: timestamp("dueDate"),
   /** Timestamp when invoice was sent to client (null if not sent) */
@@ -355,6 +357,7 @@ export const invoices = mysqlTable("invoices", {
   index("invoices_trashedAt_idx").on(table.trashedAt),
   index("invoices_sentAt_idx").on(table.sentAt),
   index("invoices_paidAt_idx").on(table.paidAt),
+  uniqueIndex("invoices_cancelledInvoiceId_unique").on(table.cancelledInvoiceId),
 ]);
 
 export type Invoice = typeof invoices.$inferSelect;

@@ -79,6 +79,8 @@ export default function Invoices() {
   const [moveToRubbishTargetId, setMoveToRubbishTargetId] = useState<number | null>(null);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [revertTarget, setRevertTarget] = useState<{ id: number; targetStatus: "draft" | "open"; currentStatus: "open" | "paid" } | null>(null);
+  const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
+  const [cancellationTarget, setCancellationTarget] = useState<{ id: number; invoiceNumber: string } | null>(null);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -93,6 +95,17 @@ export default function Invoices() {
     onSuccess: () => {
       toast.success("Invoice marked as paid");
       refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const createCancellationMutation = trpc.invoices.createCancellation.useMutation({
+    onSuccess: (data) => {
+      toast.success("Cancellation invoice created.");
+      refetch();
+      setCancellationDialogOpen(false);
+      setCancellationTarget(null);
+      setEditingInvoice(data.cancellationInvoiceId);
+      setEditDialogOpen(true);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -179,6 +192,11 @@ export default function Invoices() {
     setRevertDialogOpen(true);
   };
 
+  const handleCreateCancellation = (invoice: { id: number; invoiceNumber: string }) => {
+    setCancellationTarget({ id: invoice.id, invoiceNumber: invoice.invoiceNumber });
+    setCancellationDialogOpen(true);
+  };
+
   const getStatusBadge = (invoice: any) => {
     const { status, sentAt, paidAt } = invoice;
 
@@ -258,6 +276,8 @@ export default function Invoices() {
             const isPaid = Boolean(invoice.paidAt);
             const isOpen = Boolean(invoice.sentAt) && !invoice.paidAt;
             const isDraft = !invoice.sentAt && !invoice.paidAt && invoice.status === "draft";
+            const isStandard = invoice.type !== "cancellation";
+            const canCancel = isStandard && !invoice.hasCancellation && (isOpen || isPaid);
             const availableActions = isDraft
               ? ["edit", "duplicate", "archive", "moveToTrash"]
               : isOpen
@@ -265,6 +285,15 @@ export default function Invoices() {
               : isPaid
               ? ["view", "archive", "revertToSent", "duplicate"]
               : ["view", "archive", "duplicate"];
+            if (canCancel) {
+              availableActions.push("createCancellation");
+            }
+            const originalInvoice = invoice.cancelledInvoiceId
+              ? invoices.find((entry) => entry.id === invoice.cancelledInvoiceId)
+              : null;
+            const cancellationInvoice = invoice.cancellationInvoiceId
+              ? invoices.find((entry) => entry.id === invoice.cancellationInvoiceId)
+              : null;
 
             return (
               <Card key={invoice.id} className="p-4 flex flex-col gap-3">
@@ -274,7 +303,42 @@ export default function Invoices() {
                       <FileText className="w-5 h-5 text-accent" />
                       <h3 className="font-regular text-lg">{invoice.invoiceNumber}</h3>
                       {getStatusBadge(invoice)}
+                      {invoice.type === "cancellation" && (
+                        <Badge variant="outline" className="text-xs">CANCELLATION</Badge>
+                      )}
                     </div>
+                    {invoice.type === "cancellation" && invoice.cancelledInvoiceId && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="px-0 text-xs"
+                        onClick={() => {
+                          if (originalInvoice) {
+                            setEditingInvoice(originalInvoice.id);
+                            setEditDialogOpen(true);
+                          }
+                        }}
+                        disabled={!originalInvoice}
+                      >
+                        Cancels invoice {originalInvoice?.invoiceNumber ?? `#${invoice.cancelledInvoiceId}`}
+                      </Button>
+                    )}
+                    {invoice.type === "standard" && invoice.hasCancellation && invoice.cancellationInvoiceId && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="px-0 text-xs"
+                        onClick={() => {
+                          if (cancellationInvoice) {
+                            setEditingInvoice(cancellationInvoice.id);
+                            setEditDialogOpen(true);
+                          }
+                        }}
+                        disabled={!cancellationInvoice}
+                      >
+                        View cancellation invoice
+                      </Button>
+                    )}
                     <p className="text-muted-foreground text-xs">
                       {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
                       {invoice.dueDate ? ` • Due: ${new Date(invoice.dueDate).toLocaleDateString("de-DE")}` : ""}
@@ -304,6 +368,9 @@ export default function Invoices() {
                       }
                       if (action === "revertToSent" && isPaid) {
                         handleRevertStatus(invoice.id, "paid");
+                      }
+                      if (action === "createCancellation" && canCancel) {
+                        handleCreateCancellation(invoice);
                       }
                       if (action === "edit" && isDraft) {
                         setEditingInvoice(invoice.id);
@@ -454,6 +521,24 @@ export default function Invoices() {
           setRevertDialogOpen(false);
         }}
         isReverting={revertMutation.isPending}
+      />
+
+      <DeleteConfirmDialog
+        open={cancellationDialogOpen}
+        onOpenChange={(open) => {
+          setCancellationDialogOpen(open);
+          if (!open) {
+            setCancellationTarget(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!cancellationTarget) return;
+          createCancellationMutation.mutate({ invoiceId: cancellationTarget.id });
+        }}
+        title="Create cancellation invoice?"
+        description={`This will create a new cancellation invoice that reverses invoice ${cancellationTarget?.invoiceNumber ?? ""}. The original invoice will remain unchanged.`}
+        confirmLabel="Create cancellation invoice"
+        isDeleting={createCancellationMutation.isPending}
       />
     </div>
   );

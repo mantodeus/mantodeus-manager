@@ -28,7 +28,8 @@ export type ItemAction =
   | "deletePermanently"
   | "revertToDraft"
   | "revertToSent"
-  | "markAsPaid";
+  | "markAsPaid"
+  | "createCancellation";
 
 interface ItemActionsMenuProps {
   /** Callback when an action is selected */
@@ -65,6 +66,7 @@ export function ItemActionsMenu({
     revertToDraft: { icon: RotateCcw, label: "Mark as not sent", variant: "destructive" as const },
     revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" as const },
     markAsPaid: { icon: DollarSign, label: "Mark as paid", variant: "default" as const },
+    createCancellation: { icon: RotateCcw, label: "Create cancellation invoice", variant: "destructive" as const },
   };
 
   const handleAction = useCallback(
