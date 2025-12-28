@@ -290,16 +290,23 @@ export const settingsRouter = router({
         });
       }
 
+      // 6. Clean and validate s3Key before storing (defensive guard)
+      // Remove leading slashes, remove any URL prefixes, ensure no duplicate folder prefixes
+      const cleanKey = s3Key
+        .replace(/^\/+/, '') // Remove leading slashes
+        .replace(/^https?:\/\/.*?\//, '') // Remove URL prefixes if any
+        .replace(/^(uploads\/logos\/)+/, 'uploads/logos/'); // Normalize folder prefix
+
       await db.uploadCompanyLogo(
         ctx.user.id,
-        s3Key,
+        cleanKey, // Use cleaned key for storage
         logoUrl,
         512, // Always 512x512 after processing
         512
       );
 
-      // 6. Return logoUrl (presigned)
-      return { logoUrl, s3Key };
+      // 7. Return logoUrl (presigned)
+      return { logoUrl, s3Key: cleanKey };
     }),
 
   /**

@@ -94,7 +94,7 @@ function getS3Client(): S3Client {
   const config = getS3Config();
 
   s3Client = new S3Client({
-    region: config.region,
+    region: 'us-east-1', // Infomaniak S3 requires us-east-1 regardless of env
     endpoint: config.endpoint,
     forcePathStyle: true, // Required for Infomaniak S3
     credentials: {
@@ -289,15 +289,25 @@ export async function createPresignedReadUrl(
   const client = getS3Client();
   const config = getS3Config();
 
+  // Temporary debug logging for production verification
+  console.log('[S3 LOGO READ]', {
+    bucket: config.bucket,
+    key,
+    endpoint: config.endpoint,
+    region: 'us-east-1',
+  });
+
   try {
     const command = new GetObjectCommand({
       Bucket: config.bucket,
       Key: key,
     });
 
-    return await getSignedUrl(client, command, {
+    const url = await getSignedUrl(client, command, {
       expiresIn: expiresInSeconds,
     });
+
+    return url;
   } catch (error) {
     console.error("[S3] Failed to create presigned read URL:", error);
     const message = error instanceof Error ? error.message : String(error);
