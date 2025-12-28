@@ -180,33 +180,21 @@ export default function Invoices() {
   };
 
   const getStatusBadge = (invoice: any) => {
-    const { status, sentAt, paidAt, dueDate } = invoice;
+    const { status, sentAt, paidAt } = invoice;
 
-    // Status logic:
-    // - draft: status === 'draft'
-    // - not sent: status === 'open' && sentAt === null
-    // - sent: status === 'open' && sentAt !== null
-    // - paid: status === 'paid'
-    // - overdue: dueDate < today && paidAt === null
-
-    if (status === 'paid') {
+    if (paidAt) {
       return <Badge variant="secondary" className="text-xs">PAID</Badge>;
     }
 
-    if (status === 'open' && sentAt) {
-      // Check if overdue
-      if (dueDate && new Date(dueDate) < new Date() && !paidAt) {
-        return <Badge variant="destructive" className="text-xs">OVERDUE</Badge>;
-      }
-      return <Badge variant="default" className="text-xs">SENT</Badge>;
+    if (sentAt) {
+      return <Badge variant="default" className="text-xs">OPEN</Badge>;
     }
 
-    if (status === 'open' && !sentAt) {
-      return <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600">NOT SENT</Badge>;
+    if (status === 'draft') {
+      return <Badge variant="outline" className="text-xs">DRAFT</Badge>;
     }
 
-    // Draft
-    return <Badge variant="outline" className="text-xs">DRAFT</Badge>;
+    return <Badge variant="outline" className="text-xs">OPEN</Badge>;
   };
 
   return (
