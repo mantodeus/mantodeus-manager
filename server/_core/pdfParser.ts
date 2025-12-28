@@ -5,8 +5,6 @@
  * NO AI/LLM - purely deterministic parsing.
  */
 
-import pdfParse from "pdf-parse";
-
 export interface ParsedInvoiceData {
   clientName: string | null;
   invoiceDate: Date | null;
@@ -17,9 +15,14 @@ export interface ParsedInvoiceData {
 
 /**
  * Extract text from PDF buffer
+ * pdf-parse is a CommonJS module, use dynamic import to handle it properly in ESM
  */
 async function extractPdfText(pdfBuffer: Buffer): Promise<string | null> {
   try {
+    // Dynamic import to handle CommonJS module in ESM context
+    const pdfParseModule = await import("pdf-parse");
+    // pdf-parse exports as default in CommonJS, but may be wrapped differently in ESM
+    const pdfParse = (pdfParseModule as any).default || pdfParseModule;
     const data = await pdfParse(pdfBuffer);
     return data.text || null;
   } catch (error) {
