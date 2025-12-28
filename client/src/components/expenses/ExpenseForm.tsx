@@ -4,7 +4,7 @@
  * Editable form for creating/editing expenses
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,11 +93,32 @@ export function ExpenseForm({
   const [deletingReceiptId, setDeletingReceiptId] = useState<number | null>(null);
   const [viewingReceiptId, setViewingReceiptId] = useState<number | null>(null);
 
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  const grossAmountRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
     }
   }, [initialData]);
+
+  // Autofocus first missing required field
+  useEffect(() => {
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      // Focus grossAmount if it's 0 or empty (required field)
+      if (formData.grossAmountCents === 0 && grossAmountRef.current) {
+        grossAmountRef.current.focus();
+        return;
+      }
+      // Otherwise focus description if empty
+      if (!formData.description && descriptionRef.current) {
+        descriptionRef.current.focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []); // Only on mount
 
   const deductibleCents = Math.round(
     (formData.grossAmountCents * formData.businessUsePct) / 100
@@ -140,6 +161,7 @@ export function ExpenseForm({
         <div className="grid gap-2">
           <Label htmlFor="description">Description</Label>
           <Input
+            ref={descriptionRef}
             id="description"
             value={formData.description || ""}
             onChange={(e) =>
@@ -162,6 +184,7 @@ export function ExpenseForm({
             <Label htmlFor="grossAmount">Gross Amount</Label>
             <div className="flex gap-2">
               <Input
+                ref={grossAmountRef}
                 id="grossAmount"
                 type="number"
                 step="0.01"

@@ -32,6 +32,7 @@ import InspectionsOverview from "./pages/InspectionsOverview";
 import InspectionUnitDetail from "./pages/InspectionUnitDetail";
 import Expenses from "./pages/Expenses";
 import ExpenseDetail from "./pages/ExpenseDetail";
+import ScanReceipt from "./pages/ScanReceipt";
 import { useEffect } from "react";
 import { initializeTheme } from "@/lib/theme";
 
@@ -182,6 +183,11 @@ function Router() {
       <Route path="/expenses">
         <DashboardLayout>
           <Expenses />
+        </DashboardLayout>
+      </Route>
+      <Route path="/expenses/scan">
+        <DashboardLayout>
+          <ScanReceipt />
         </DashboardLayout>
       </Route>
       <Route path="/expenses/:id">

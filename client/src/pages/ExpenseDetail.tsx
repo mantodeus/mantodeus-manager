@@ -59,10 +59,29 @@ export default function ExpenseDetail() {
   });
 
   const markInOrderMutation = trpc.expenses.markInOrder.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Expense marked as in order");
       utils.expenses.getById.invalidate({ id: expenseId! });
-      utils.expenses.list.invalidate();
+      
+      // Get list of expenses to find next Needs Review item
+      const expensesList = await utils.expenses.list.fetch({ includeVoid: false });
+      const needsReview = expensesList
+        .filter((e) => e.status === "needs_review")
+        .sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return dateB - dateA; // DESC
+        });
+
+      // Find next expense (skip current one)
+      const currentIndex = needsReview.findIndex((e) => e.id === expenseId);
+      const nextExpense = needsReview[currentIndex + 1];
+
+      if (nextExpense) {
+        navigate(`/expenses/${nextExpense.id}`);
+      } else {
+        navigate("/expenses");
+      }
     },
     onError: (err) => {
       toast.error(err.message || "Failed to mark expense as in order");
@@ -148,6 +167,34 @@ export default function ExpenseDetail() {
       });
     }
   };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + Enter → Save
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        // Don't trigger if typing in input/textarea
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement ||
+          e.target instanceof HTMLSelectElement
+        ) {
+          return;
+        }
+        e.preventDefault();
+        // Trigger save - find the save button
+        const saveButton = Array.from(document.querySelectorAll("button")).find(
+          (btn) => btn.textContent?.includes("Save") && !btn.disabled
+        ) as HTMLButtonElement | undefined;
+        if (saveButton) {
+          saveButton.click();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleMarkInOrder = () => {
     if (expenseId) {
