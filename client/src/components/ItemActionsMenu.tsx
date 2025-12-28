@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash, Eye, DollarSign } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash, Eye, DollarSign, CheckCircle2, XCircle } from "lucide-react";
 
 export type ItemAction =
   | "view"
@@ -29,7 +29,10 @@ export type ItemAction =
   | "revertToDraft"
   | "revertToSent"
   | "markAsPaid"
-  | "createCancellation";
+  | "createCancellation"
+  // Expense actions
+  | "markAsInOrder"
+  | "void";
 
 interface ItemActionsMenuProps {
   /** Callback when an action is selected */
@@ -67,6 +70,8 @@ export function ItemActionsMenu({
     revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" as const },
     markAsPaid: { icon: DollarSign, label: "Mark as paid", variant: "default" as const },
     createCancellation: { icon: RotateCcw, label: "Create cancellation invoice", variant: "destructive" as const },
+    markAsInOrder: { icon: CheckCircle2, label: "Mark as In Order", variant: "default" as const },
+    void: { icon: XCircle, label: "Void", variant: "destructive" as const },
   };
 
   const handleAction = useCallback(
