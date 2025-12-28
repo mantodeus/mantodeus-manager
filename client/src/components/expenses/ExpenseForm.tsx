@@ -15,6 +15,8 @@ import { CategorySelect, type ExpenseCategory } from "./CategorySelect";
 import { CurrencySelect } from "./CurrencySelect";
 import { ReceiptUploadZone } from "./ReceiptUploadZone";
 import { ReceiptPreviewList } from "./ReceiptPreviewList";
+import { SuggestionBadge } from "./SuggestionBadge";
+import { SuggestionControls } from "./SuggestionControls";
 import { formatCurrency } from "@/lib/currencyFormat";
 
 interface ExpenseFormData {
@@ -38,10 +40,19 @@ interface ReceiptFile {
   previewUrl?: string | null;
 }
 
+interface ExpenseSuggestion {
+  field: "category" | "vatMode" | "businessUsePct";
+  value: string | number;
+  confidence: number;
+  reason?: string | null;
+}
+
 interface ExpenseFormProps {
   initialData?: ExpenseFormData;
   receipts?: ReceiptFile[];
+  suggestions?: ExpenseSuggestion[];
   onSave: (data: ExpenseFormData) => void;
+  onAcceptSuggestion?: (field: string, value: string | number) => void;
   onMarkInOrder?: () => void;
   onVoid?: () => void;
   onDelete?: () => void;
@@ -49,6 +60,7 @@ interface ExpenseFormProps {
   onReceiptDelete?: (id: number) => void;
   onReceiptView?: (id: number) => void;
   isSaving?: boolean;
+  isAcceptingSuggestion?: boolean;
   isMarkingInOrder?: boolean;
   isVoiding?: boolean;
   isDeleting?: boolean;
@@ -62,7 +74,9 @@ interface ExpenseFormProps {
 export function ExpenseForm({
   initialData,
   receipts = [],
+  suggestions = [],
   onSave,
+  onAcceptSuggestion,
   onMarkInOrder,
   onVoid,
   onDelete,
@@ -70,6 +84,7 @@ export function ExpenseForm({
   onReceiptDelete,
   onReceiptView,
   isSaving = false,
+  isAcceptingSuggestion = false,
   isMarkingInOrder = false,
   isVoiding = false,
   isDeleting = false,
@@ -92,6 +107,8 @@ export function ExpenseForm({
 
   const [deletingReceiptId, setDeletingReceiptId] = useState<number | null>(null);
   const [viewingReceiptId, setViewingReceiptId] = useState<number | null>(null);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const [fieldEdited, setFieldEdited] = useState<Set<string>>(new Set());
 
   const descriptionRef = useRef<HTMLInputElement>(null);
   const grossAmountRef = useRef<HTMLInputElement>(null);
@@ -99,8 +116,60 @@ export function ExpenseForm({
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
+      // Reset dismissed suggestions and field edited state when data changes
+      setDismissedSuggestions(new Set());
+      setFieldEdited(new Set());
     }
   }, [initialData]);
+
+  // Filter visible suggestions (not dismissed, field not manually edited)
+  const visibleSuggestions = suggestions.filter(
+    (s) => !dismissedSuggestions.has(s.field) && !fieldEdited.has(s.field)
+  );
+
+  const handleAcceptSuggestion = (suggestion: ExpenseSuggestion) => {
+    if (onAcceptSuggestion) {
+      onAcceptSuggestion(suggestion.field, suggestion.value);
+    }
+    // Remove from dismissed (in case it was dismissed before)
+    setDismissedSuggestions((prev) => {
+      const next = new Set(prev);
+      next.delete(suggestion.field);
+      return next;
+    });
+  };
+
+  const handleDismissSuggestion = (field: string) => {
+    setDismissedSuggestions((prev) => new Set(prev).add(field));
+  };
+
+  const handleAcceptAllSuggestions = () => {
+    visibleSuggestions.forEach((suggestion) => {
+      if (onAcceptSuggestion) {
+        onAcceptSuggestion(suggestion.field, suggestion.value);
+      }
+    });
+  };
+
+  // Track when fields are manually edited
+  const handleCategoryChange = (value: ExpenseCategory) => {
+    setFieldEdited((prev) => new Set(prev).add("category"));
+    setFormData({ ...formData, category: value });
+  };
+
+  const handleBusinessUsePctChange = (value: number) => {
+    setFieldEdited((prev) => new Set(prev).add("businessUsePct"));
+    setFormData({
+      ...formData,
+      businessUsePct: Math.min(100, Math.max(0, value)),
+    });
+  };
+
+  const handleDescriptionChange = (value: string | null) => {
+    // When description changes, mark it as edited and trigger refetch
+    // (This will be handled by parent component)
+    setFormData({ ...formData, description: value });
+  };
 
   // Autofocus first missing required field
   useEffect(() => {
@@ -165,17 +234,41 @@ export function ExpenseForm({
             id="description"
             value={formData.description || ""}
             onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value || null })
+              handleDescriptionChange(e.target.value || null)
             }
             placeholder="e.g., Office supplies, Travel expenses..."
           />
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="category">Category</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="category">Category</Label>
+            {visibleSuggestions.find((s) => s.field === "category") && (
+              <div className="flex items-center gap-2">
+                <SuggestionBadge
+                  confidence={
+                    visibleSuggestions.find((s) => s.field === "category")?.confidence || 0
+                  }
+                  reason={
+                    visibleSuggestions.find((s) => s.field === "category")?.reason || null
+                  }
+                />
+                <SuggestionControls
+                  onAccept={() => {
+                    const suggestion = visibleSuggestions.find((s) => s.field === "category");
+                    if (suggestion) {
+                      handleAcceptSuggestion(suggestion);
+                    }
+                  }}
+                  onDismiss={() => handleDismissSuggestion("category")}
+                  isAccepting={isAcceptingSuggestion}
+                />
+              </div>
+            )}
+          </div>
           <CategorySelect
             value={formData.category}
-            onValueChange={(value) => setFormData({ ...formData, category: value })}
+            onValueChange={handleCategoryChange}
           />
         </div>
 
@@ -207,7 +300,31 @@ export function ExpenseForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="businessUsePct">Business Use (%)</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="businessUsePct">Business Use (%)</Label>
+              {visibleSuggestions.find((s) => s.field === "businessUsePct") && (
+                <div className="flex items-center gap-2">
+                  <SuggestionBadge
+                    confidence={
+                      visibleSuggestions.find((s) => s.field === "businessUsePct")?.confidence || 0
+                    }
+                    reason={
+                      visibleSuggestions.find((s) => s.field === "businessUsePct")?.reason || null
+                    }
+                  />
+                  <SuggestionControls
+                    onAccept={() => {
+                      const suggestion = visibleSuggestions.find((s) => s.field === "businessUsePct");
+                      if (suggestion) {
+                        handleAcceptSuggestion(suggestion);
+                      }
+                    }}
+                    onDismiss={() => handleDismissSuggestion("businessUsePct")}
+                    isAccepting={isAcceptingSuggestion}
+                  />
+                </div>
+              )}
+            </div>
             <Input
               id="businessUsePct"
               type="number"
@@ -216,10 +333,7 @@ export function ExpenseForm({
               value={formData.businessUsePct}
               onChange={(e) => {
                 const value = parseInt(e.target.value) || 0;
-                setFormData({
-                  ...formData,
-                  businessUsePct: Math.min(100, Math.max(0, value)),
-                });
+                handleBusinessUsePctChange(value);
               }}
             />
           </div>
@@ -301,6 +415,29 @@ export function ExpenseForm({
           />
         )}
       </div>
+
+      {/* Accept All Suggestions */}
+      {visibleSuggestions.length >= 2 && (
+        <>
+          <Separator />
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md border border-dashed">
+            <div>
+              <p className="text-sm font-medium">Multiple suggestions available</p>
+              <p className="text-xs text-muted-foreground">
+                Accept all suggestions at once
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAcceptAllSuggestions}
+              disabled={isAcceptingSuggestion}
+            >
+              Accept all suggestions
+            </Button>
+          </div>
+        </>
+      )}
 
       {/* Actions */}
       {showActions && (
