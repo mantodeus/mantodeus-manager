@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Quick fix script to add missing sentAt column to invoices table
- * This column was supposed to be added in migration 0015 but failed
+ * Quick fix script to add missing sentAt and paidAt columns to invoices table
+ * These columns were supposed to be added in migration 0015 but failed
+ * because MySQL doesn't support "IF NOT EXISTS" for ADD COLUMN
  */
 
 const mysql = require('mysql2/promise');
@@ -45,23 +46,53 @@ async function main() {
       }
     }
     
-    // Create index
-    console.log('📝 Creating index...');
+    // Add paidAt column
+    console.log('📝 Adding paidAt column...');
+    try {
+      await connection.execute(
+        'ALTER TABLE `invoices` ADD COLUMN `paidAt` timestamp NULL AFTER `sentAt`'
+      );
+      console.log('✅ Added paidAt column');
+    } catch (err) {
+      if (err.code === 'ER_DUP_FIELDNAME') {
+        console.log('✅ paidAt column already exists');
+      } else {
+        throw err;
+      }
+    }
+    
+    // Create sentAt index
+    console.log('📝 Creating sentAt index...');
     try {
       await connection.execute(
         'CREATE INDEX `invoices_sentAt_idx` ON `invoices` (`sentAt`)'
       );
-      console.log('✅ Created index');
+      console.log('✅ Created sentAt index');
     } catch (err) {
       if (err.code === 'ER_DUP_KEYNAME') {
-        console.log('✅ Index already exists');
+        console.log('✅ sentAt index already exists');
+      } else {
+        throw err;
+      }
+    }
+    
+    // Create paidAt index
+    console.log('📝 Creating paidAt index...');
+    try {
+      await connection.execute(
+        'CREATE INDEX `invoices_paidAt_idx` ON `invoices` (`paidAt`)'
+      );
+      console.log('✅ Created paidAt index');
+    } catch (err) {
+      if (err.code === 'ER_DUP_KEYNAME') {
+        console.log('✅ paidAt index already exists');
       } else {
         throw err;
       }
     }
     
     console.log('');
-    console.log('✅ Successfully added sentAt column and index!');
+    console.log('✅ Successfully added sentAt and paidAt columns with indexes!');
     console.log('🔄 Please restart PM2: npx pm2 restart mantodeus-manager');
   } catch (error) {
     console.error('❌ Error:', error.message);
