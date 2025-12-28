@@ -13,7 +13,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
-import { createPresignedUploadUrl, createPresignedReadUrl, deleteFromStorage } from "./storage";
+import { createPresignedUploadUrl, createPresignedReadUrl, deleteFromStorage, storagePut } from "./storage";
 
 // =============================================================================
 // CONSTANTS
@@ -67,6 +67,22 @@ function generateExpenseReceiptKey(expenseId: number, filename: string): string 
 }
 
 /**
+ * Sanitize filename to use as supplier name
+ * Removes extension and cleans up the name
+ */
+function sanitizeFilenameForSupplierName(filename: string): string {
+  // Remove extension
+  const withoutExt = filename.replace(/\.[^/.]+$/, "");
+  // Replace underscores and hyphens with spaces, then clean up
+  const cleaned = withoutExt
+    .replace(/[_-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  // If empty after cleaning, use a default
+  return cleaned || "Receipt";
+}
+
+/**
  * Validate that user owns the expense (or is admin)
  */
 async function validateExpenseOwnership(expenseId: number, userId: number, userRole: string): Promise<void> {
@@ -111,6 +127,48 @@ function validateVatCurrencyRules(data: {
       message: "German VAT requires EUR currency",
     });
   }
+}
+
+/**
+ * Create expense with deterministic defaults for receipt-based creation
+ * All expenses start in needs_review status
+ */
+async function createExpenseFromReceipt(
+  userId: number,
+  filename: string
+): Promise<number> {
+  const supplierName = sanitizeFilenameForSupplierName(filename);
+  const expenseDate = new Date();
+  
+  const expense = await db.createExpense({
+    createdBy: userId,
+    updatedByUserId: userId,
+    status: "needs_review",
+    source: "upload",
+    supplierName,
+    description: null,
+    expenseDate,
+    grossAmountCents: 0,
+    currency: "EUR",
+    vatMode: "none",
+    vatRate: null,
+    vatAmountCents: null,
+    businessUsePct: 100,
+    category: null,
+    paymentStatus: "unpaid",
+    paymentDate: null,
+    paymentMethod: null,
+    reviewedByUserId: null,
+    reviewedAt: null,
+    voidedByUserId: null,
+    voidedAt: null,
+    voidReason: null,
+    voidNote: null,
+    confidenceScore: null,
+    confidenceReason: null,
+  });
+  
+  return expense.id;
 }
 
 // =============================================================================
@@ -486,6 +544,131 @@ export const expenseRouter = router({
         code: "NOT_IMPLEMENTED",
         message: "OCR processing not yet implemented",
       });
+    }),
+
+  /**
+   * Bulk upload expense receipts
+   * Creates an expense for each file with deterministic defaults
+   * All expenses start in needs_review status
+   * 
+   * Behavior:
+   * - Max 10 files per request
+   * - Each file creates a new expense
+   * - Partial failures don't abort the batch
+   * - Returns list of created expense IDs
+   */
+  uploadExpenseReceiptsBulk: protectedProcedure
+    .input(
+      z.object({
+        files: z
+          .array(
+            z.object({
+              filename: z.string().min(1),
+              mimeType: z.string(),
+              fileSize: z.number().int().positive(),
+              base64Data: z.string(),
+            })
+          )
+          .min(1, "At least one file is required")
+          .max(10, "Maximum 10 files per request"),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const createdExpenseIds: number[] = [];
+      const errors: Array<{ filename: string; error: string }> = [];
+
+      // Process each file independently
+      for (const file of input.files) {
+        let expenseId: number | null = null;
+        try {
+          // Validate file size
+          if (file.fileSize > MAX_RECEIPT_SIZE) {
+            throw new Error(
+              `File size exceeds maximum of ${MAX_RECEIPT_SIZE / 1024 / 1024}MB`
+            );
+          }
+
+          // Validate MIME type
+          if (!ALLOWED_MIME_TYPES.includes(file.mimeType as any)) {
+            throw new Error(
+              `Invalid file type. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`
+            );
+          }
+
+          // Validate base64 data size matches fileSize (approximate)
+          const buffer = Buffer.from(file.base64Data, "base64");
+          if (buffer.length === 0) {
+            throw new Error("Invalid base64 data");
+          }
+
+          // Create expense with deterministic defaults
+          expenseId = await createExpenseFromReceipt(ctx.user.id, file.filename);
+
+          // Generate S3 key
+          const s3Key = generateExpenseReceiptKey(expenseId, file.filename);
+
+          let s3UploadSucceeded = false;
+          try {
+            // Upload file to S3
+            await storagePut(s3Key, file.base64Data, file.mimeType);
+            s3UploadSucceeded = true;
+
+            // Create expense_files row
+            await db.addExpenseFile({
+              expenseId,
+              s3Key,
+              mimeType: file.mimeType,
+              originalFilename: file.filename,
+              fileSize: file.fileSize,
+            });
+
+            createdExpenseIds.push(expenseId);
+          } catch (uploadError) {
+            // If S3 upload or file registration failed, clean up
+            if (s3UploadSucceeded) {
+              // S3 upload succeeded but file registration failed - clean up S3
+              try {
+                await deleteFromStorage(s3Key);
+              } catch (s3CleanupError) {
+                console.error(
+                  `[Expenses] Failed to cleanup S3 file ${s3Key}:`,
+                  s3CleanupError
+                );
+              }
+            }
+            // Clean up expense if it was created
+            if (expenseId !== null) {
+              try {
+                await db.deleteExpense(expenseId);
+              } catch (cleanupError) {
+                console.error(
+                  `[Expenses] Failed to cleanup orphaned expense ${expenseId}:`,
+                  cleanupError
+                );
+              }
+            }
+            throw uploadError; // Re-throw to be caught by outer catch
+          }
+        } catch (error) {
+          // Log error per file, but continue processing
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          errors.push({
+            filename: file.filename,
+            error: errorMessage,
+          });
+          console.error(
+            `[Expenses] Failed to process file ${file.filename}:`,
+            error
+          );
+        }
+      }
+
+      // Return results (even if some failed)
+      return {
+        createdExpenseIds,
+        errors: errors.length > 0 ? errors : undefined,
+      };
     }),
 });
 
