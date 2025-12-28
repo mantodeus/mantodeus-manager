@@ -48,10 +48,18 @@ export default function ExpenseDetail() {
   });
 
   const updateMutation = trpc.expenses.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast.success("Expense updated successfully");
       utils.expenses.getById.invalidate({ id: expenseId! });
       utils.expenses.list.invalidate();
+      
+      // If description changed, refetch to get new suggestions
+      if (variables.description !== undefined && variables.description !== expense?.description) {
+        // Small delay to ensure backend has processed
+        setTimeout(() => {
+          refetch();
+        }, 500);
+      }
     },
     onError: (err) => {
       toast.error(err.message || "Failed to update expense");
@@ -131,6 +139,27 @@ export default function ExpenseDetail() {
   });
 
   const getReceiptUrlMutation = trpc.expenses.getReceiptUrl.useMutation();
+
+  const acceptSuggestionMutation = trpc.expenses.acceptSuggestion.useMutation({
+    onSuccess: () => {
+      toast.success("Suggestion applied");
+      utils.expenses.getById.invalidate({ id: expenseId! });
+      utils.expenses.list.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to apply suggestion");
+    },
+  });
+
+  const handleAcceptSuggestion = (field: string, value: string | number) => {
+    if (!expenseId) return;
+
+    acceptSuggestionMutation.mutate({
+      expenseId,
+      field: field as "category" | "vatMode" | "businessUsePct",
+      value,
+    });
+  };
 
   const handleSave = (formData: {
     description: string | null;
@@ -272,6 +301,9 @@ export default function ExpenseDetail() {
   const canVoid = expense?.status === "in_order";
   const canDelete = expense?.status === "needs_review";
 
+  // Don't show suggestions for voided expenses
+  const suggestions = expense?.status !== "void" ? expense?.suggestions || [] : [];
+
   const receipts = expense?.receipts?.map((r) => ({
     id: r.id,
     filename: r.filename,
@@ -322,8 +354,10 @@ export default function ExpenseDetail() {
                   }
                 : undefined
             }
+            suggestions={suggestions}
             receipts={receipts}
             onSave={handleSave}
+            onAcceptSuggestion={handleAcceptSuggestion}
             onMarkInOrder={canMarkInOrder ? handleMarkInOrder : undefined}
             onVoid={canVoid ? handleVoid : undefined}
             onDelete={canDelete ? handleDelete : undefined}
@@ -331,6 +365,7 @@ export default function ExpenseDetail() {
             onReceiptDelete={!isNew ? handleReceiptDelete : undefined}
             onReceiptView={!isNew ? handleReceiptView : undefined}
             isSaving={createMutation.isPending || updateMutation.isPending}
+            isAcceptingSuggestion={acceptSuggestionMutation.isPending}
             isMarkingInOrder={markInOrderMutation.isPending}
             isVoiding={voidMutation.isPending}
             isDeleting={deleteMutation.isPending}
