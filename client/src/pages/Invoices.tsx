@@ -308,20 +308,9 @@ export default function Invoices() {
                       )}
                     </div>
                     {invoice.type === "cancellation" && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="px-0 text-xs"
-                        onClick={() => {
-                          if (originalInvoice) {
-                            setEditingInvoice(originalInvoice.id);
-                            setEditDialogOpen(true);
-                          }
-                        }}
-                        disabled={!originalInvoice}
-                      >
-                        Stornorechnung zu Rechnung {invoice.cancellationOfInvoiceNumber ?? "(unknown)"}
-                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Cancellation of invoice {invoice.cancellationOfInvoiceNumber ?? "(unknown)"}
+                      </p>
                     )}
                     {invoice.type === "standard" && invoice.hasCancellation && invoice.cancellationInvoiceId && (
                       <Button
@@ -460,6 +449,10 @@ export default function Invoices() {
                       setEditingInvoice(null);
                       refetch();
                     }}
+                    onOpenInvoice={(invoiceId) => {
+                      setEditingInvoice(invoiceId);
+                      setEditDialogOpen(true);
+                    }}
                   />
                 </div>
               </div>
@@ -550,12 +543,14 @@ function InvoiceForm({
   contacts,
   onClose,
   onSuccess,
+  onOpenInvoice,
 }: {
   mode: "create" | "edit";
   invoiceId?: number;
   contacts: Array<{ id: number; name: string }>;
   onClose: () => void;
   onSuccess: () => void;
+  onOpenInvoice?: (invoiceId: number) => void;
 }) {
   const isCreate = mode === "create";
   const [formState, setFormState] = useState<InvoiceFormState>(() => ({
@@ -635,7 +630,9 @@ function InvoiceForm({
   }
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
-  const isDraft = isCreate || invoice?.status === "draft";
+  const isCancellation = invoice?.type === "cancellation";
+  const isCancelledOriginal = Boolean(invoice?.isCancelled);
+  const isDraft = (isCreate || invoice?.status === "draft") && !isCancelledOriginal;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -692,15 +689,31 @@ function InvoiceForm({
 
   return (
     <form onSubmit={handleSave} className="space-y-8 max-w-full overflow-x-hidden">
-      {invoice?.type === "cancellation" && (
-        <div className="space-y-2">
+      {isCancellation && (
+        <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">Stornorechnung</h2>
+            <h2 className="text-lg font-semibold">Cancellation invoice</h2>
             <Badge variant="outline" className="text-xs">STORNO</Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            Stornorechnung zu Rechnung {invoice.cancellationOfInvoiceNumber ?? "(unknown)"}
+            Cancellation of invoice {invoice?.cancellationOfInvoiceNumber ?? "(unknown)"}
           </p>
+          {invoice?.cancelledInvoiceId && onOpenInvoice && (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="px-0 text-xs"
+              onClick={() => onOpenInvoice(invoice.cancelledInvoiceId as number)}
+            >
+              View original invoice
+            </Button>
+          )}
+        </div>
+      )}
+      {isCancelledOriginal && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+          Cancelled by invoice {invoice?.cancelledByInvoiceNumber ?? "(unknown)"}
         </div>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
