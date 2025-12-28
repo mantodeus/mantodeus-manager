@@ -105,6 +105,8 @@ async function withCancellationMetadata<T extends { id: number; type?: string; c
     .filter((invoice) => invoice.type === "cancellation" && invoice.cancelledInvoiceId)
     .map((invoice) => invoice.cancelledInvoiceId as number);
   const originalNumberMap = await db.getInvoiceNumbersByIds(cancellationTargets);
+  const cancellationInvoiceIds = Array.from(new Set(Array.from(cancellationMap.values())));
+  const cancellationSummaryMap = await db.getInvoiceSummariesByIds(cancellationInvoiceIds);
 
   return invoices.map((invoice) => {
     const cancellationOfInvoiceNumber =
@@ -114,12 +116,17 @@ async function withCancellationMetadata<T extends { id: number; type?: string; c
     if (invoice.type === "cancellation" && invoice.cancelledInvoiceId && !cancellationOfInvoiceNumber) {
       console.warn(`[Invoices] Cancellation invoice ${invoice.id} missing original invoice number.`);
     }
+    const cancelledBySummary = cancellationMap.has(invoice.id)
+      ? cancellationSummaryMap.get(cancellationMap.get(invoice.id) as number)
+      : null;
     return {
       ...invoice,
       isCancellation: invoice.type === "cancellation",
       hasCancellation: cancellationMap.has(invoice.id),
       cancellationInvoiceId: cancellationMap.get(invoice.id) ?? null,
       cancellationOfInvoiceNumber,
+      cancelledByInvoiceNumber: cancelledBySummary?.invoiceNumber ?? null,
+      isCancelled: Boolean(cancelledBySummary?.sentAt),
     };
   });
 }
@@ -148,8 +155,11 @@ export const invoiceRouter = router({
       const mapped = invoices.map(mapInvoiceToPayload);
       console.error('[TRACE] invoices.list - after mapInvoiceToPayload, mapped.length:', mapped.length);
       const withMeta = await withCancellationMetadata(mapped);
+      const visible = withMeta.filter(
+        (invoice) => !(invoice.hasCancellation && invoice.type !== "cancellation")
+      );
       console.error('[TRACE] invoices.list - returning result');
-      return withMeta;
+      return visible;
     } catch (err) {
       console.error('[TRACE] invoices.list ERROR caught');
       console.error('[TRACE] invoices.list error type:', err instanceof Error ? err.constructor.name : typeof err);
@@ -285,6 +295,10 @@ export const invoiceRouter = router({
       if (invoice.userId !== userId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
+      const cancellation = await db.getCancellationInvoiceByOriginalId(invoice.id);
+      if (cancellation?.sentAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled invoices are read-only." });
+      }
       // Archived invoices are view-only
       if (invoice.archivedAt) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Archived invoices cannot be updated" });
@@ -390,6 +404,10 @@ export const invoiceRouter = router({
       if (invoice.userId !== userId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
+      const cancellation = await db.getCancellationInvoiceByOriginalId(invoice.id);
+      if (cancellation?.sentAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled invoices are read-only." });
+      }
       if (invoice.status !== "draft" || invoice.sentAt || invoice.paidAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be issued" });
       }
@@ -412,6 +430,10 @@ export const invoiceRouter = router({
       }
       if (invoice.userId !== userId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      const cancellation = await db.getCancellationInvoiceByOriginalId(invoice.id);
+      if (cancellation?.sentAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled invoices are read-only." });
       }
       if (!invoice.sentAt || invoice.paidAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can be marked as paid" });
@@ -521,6 +543,10 @@ export const invoiceRouter = router({
       }
       if (invoice.userId !== userId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      const cancellation = await db.getCancellationInvoiceByOriginalId(invoice.id);
+      if (cancellation?.sentAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled invoices are read-only." });
       }
 
       // Validate transitions: open→draft (if sent), paid→open

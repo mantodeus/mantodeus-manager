@@ -930,6 +930,38 @@ export async function getInvoiceNumbersByIds(ids: number[]) {
   return map;
 }
 
+export async function getInvoiceSummariesByIds(ids: number[]) {
+  if (!ids.length) return new Map<number, { invoiceNumber: string; sentAt: Date | null }>();
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  const rows = await db
+    .select({ id: invoices.id, invoiceNumber: invoices.invoiceNumber, sentAt: invoices.sentAt })
+    .from(invoices)
+    .where(inArray(invoices.id, ids));
+
+  const map = new Map<number, { invoiceNumber: string; sentAt: Date | null }>();
+  for (const row of rows) {
+    map.set(Number(row.id), { invoiceNumber: row.invoiceNumber, sentAt: row.sentAt ?? null });
+  }
+  return map;
+}
+
+export async function getCancellationInvoiceByOriginalId(originalId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  const rows = await db
+    .select({ id: invoices.id, invoiceNumber: invoices.invoiceNumber, sentAt: invoices.sentAt })
+    .from(invoices)
+    .where(and(eq(invoices.cancelledInvoiceId, originalId), eq(invoices.type, "cancellation")))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
 export async function getCancellationInvoiceMapByOriginalIds(originalIds: number[]) {
   if (!originalIds.length) return new Map<number, number>();
   const db = await getDb();
