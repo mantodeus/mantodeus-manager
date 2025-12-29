@@ -22,8 +22,8 @@ interface ExpenseCardProps {
     currency: string;
     businessUsePct: number;
     status: "needs_review" | "in_order" | "void";
-    paid: boolean;
-    paidAt: Date | null;
+    paymentStatus: "paid" | "unpaid";
+    paymentDate: Date | null;
     receiptCount: number;
   };
   onAction: (action: ItemAction, expenseId: number) => void;
@@ -103,7 +103,7 @@ export function ExpenseCard({ expense, onAction, showVoid = false }: ExpenseCard
             <span className="text-sm text-muted-foreground">Business Use</span>
             <span className="text-sm font-medium">{expense.businessUsePct}%</span>
           </div>
-          {expense.paid && (
+          {expense.paymentStatus === "paid" && (
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Payment</span>
               <Badge variant="secondary" className="text-xs">Paid</Badge>

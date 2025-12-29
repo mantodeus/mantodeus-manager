@@ -10,7 +10,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Link, useRoute, useLocation } from "wouter";
 import { ExpenseForm } from "@/components/expenses/ExpenseForm";
@@ -18,8 +18,6 @@ import { VoidExpenseDialog } from "@/components/expenses/VoidExpenseDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
 import type { ExpenseCategory } from "@/components/expenses/CategorySelect";
-
-type ExpenseDetail = RouterOutputs["expenses"]["getById"];
 
 export default function ExpenseDetail() {
   const [, params] = useRoute("/expenses/:id");
@@ -30,14 +28,14 @@ export default function ExpenseDetail() {
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const { data: expense, isLoading, refetch } = trpc.expenses.getById.useQuery(
+  const { data: expense, isLoading, refetch } = trpc.expenses.getExpense.useQuery(
     { id: expenseId! },
     { enabled: !isNew && !!expenseId }
   );
 
   const utils = trpc.useUtils();
 
-  const createMutation = trpc.expenses.create.useMutation({
+  const createMutation = trpc.expenses.createManualExpense.useMutation({
     onSuccess: (data) => {
       toast.success("Expense created successfully");
       navigate(`/expenses/${data.id}`);
@@ -47,10 +45,10 @@ export default function ExpenseDetail() {
     },
   });
 
-  const updateMutation = trpc.expenses.update.useMutation({
+  const updateMutation = trpc.expenses.updateExpense.useMutation({
     onSuccess: (_, variables) => {
       toast.success("Expense updated successfully");
-      utils.expenses.getById.invalidate({ id: expenseId! });
+      utils.expenses.getExpense.invalidate({ id: expenseId! });
       utils.expenses.list.invalidate();
       
       // If description changed, refetch to get new suggestions
@@ -66,10 +64,10 @@ export default function ExpenseDetail() {
     },
   });
 
-  const markInOrderMutation = trpc.expenses.markInOrder.useMutation({
+  const markInOrderMutation = trpc.expenses.setExpenseStatus.useMutation({
     onSuccess: async () => {
       toast.success("Expense marked as in order");
-      utils.expenses.getById.invalidate({ id: expenseId! });
+      utils.expenses.getExpense.invalidate({ id: expenseId! });
       
       // Get list of expenses to find next Needs Review item
       const expensesList = await utils.expenses.list.fetch({ includeVoid: false });
@@ -96,11 +94,11 @@ export default function ExpenseDetail() {
     },
   });
 
-  const voidMutation = trpc.expenses.void.useMutation({
+  const voidMutation = trpc.expenses.setExpenseStatus.useMutation({
     onSuccess: () => {
       toast.success("Expense voided");
       setVoidDialogOpen(false);
-      utils.expenses.getById.invalidate({ id: expenseId! });
+      utils.expenses.getExpense.invalidate({ id: expenseId! });
       utils.expenses.list.invalidate();
     },
     onError: (err) => {
@@ -108,7 +106,7 @@ export default function ExpenseDetail() {
     },
   });
 
-  const deleteMutation = trpc.expenses.delete.useMutation({
+  const deleteMutation = trpc.expenses.deleteExpense.useMutation({
     onSuccess: () => {
       toast.success("Expense deleted");
       navigate("/expenses");
@@ -118,34 +116,23 @@ export default function ExpenseDetail() {
     },
   });
 
-  const uploadReceiptMutation = trpc.expenses.uploadReceipt.useMutation({
-    onSuccess: async () => {
-      toast.success("Receipt uploaded successfully");
-      // Force refetch to ensure UI updates immediately
-      await utils.expenses.getById.invalidate({ id: expenseId! });
-      await refetch();
-    },
-    onError: (err) => {
-      toast.error(err.message || "Failed to upload receipt");
-    },
-  });
+  const uploadReceiptMutation = trpc.expenses.uploadExpenseReceipt.useMutation();
+  const registerReceiptMutation = trpc.expenses.registerReceipt.useMutation();
 
-  const deleteReceiptMutation = trpc.expenses.deleteReceipt.useMutation({
+  const deleteReceiptMutation = trpc.expenses.deleteExpenseFile.useMutation({
     onSuccess: () => {
       toast.success("Receipt deleted successfully");
-      utils.expenses.getById.invalidate({ id: expenseId! });
+      utils.expenses.getExpense.invalidate({ id: expenseId! });
     },
     onError: (err) => {
       toast.error(err.message || "Failed to delete receipt");
     },
   });
 
-  const getReceiptUrlMutation = trpc.expenses.getReceiptUrl.useMutation();
-
-  const acceptSuggestionMutation = trpc.expenses.acceptSuggestion.useMutation({
+  const acceptSuggestionMutation = trpc.expenses.updateExpense.useMutation({
     onSuccess: () => {
       toast.success("Suggestion applied");
-      utils.expenses.getById.invalidate({ id: expenseId! });
+      utils.expenses.getExpense.invalidate({ id: expenseId! });
       utils.expenses.list.invalidate();
     },
     onError: (err) => {
@@ -156,10 +143,12 @@ export default function ExpenseDetail() {
   const handleAcceptSuggestion = (field: string, value: string | number) => {
     if (!expenseId) return;
 
+    const update: Record<string, string | number> = {};
+    update[field] = value;
+
     acceptSuggestionMutation.mutate({
-      expenseId,
-      field: field as "category" | "vatMode" | "businessUsePct",
-      value,
+      id: expenseId,
+      ...update,
     });
   };
 
@@ -174,15 +163,28 @@ export default function ExpenseDetail() {
     notes: string | null;
   }) => {
     if (isNew) {
+      if (!formData.category) {
+        toast.error("Please select a category before saving");
+        return;
+      }
+
+      const supplierName =
+        formData.description?.trim() || "Expense";
+
       createMutation.mutate({
+        supplierName,
         description: formData.description,
-        category: formData.category || undefined,
+        expenseDate: new Date(),
         grossAmountCents: formData.grossAmountCents,
         currency: formData.currency,
+        vatMode: "none",
+        vatRate: null,
+        vatAmountCents: null,
         businessUsePct: formData.businessUsePct,
-        paid: formData.paid,
-        paidAt: formData.paidAt || undefined,
-        notes: formData.notes,
+        category: formData.category,
+        paymentStatus: formData.paid ? "paid" : "unpaid",
+        paymentDate: formData.paid ? formData.paidAt || new Date() : null,
+        paymentMethod: null,
       });
     } else if (expenseId) {
       updateMutation.mutate({
@@ -192,9 +194,8 @@ export default function ExpenseDetail() {
         grossAmountCents: formData.grossAmountCents,
         currency: formData.currency,
         businessUsePct: formData.businessUsePct,
-        paid: formData.paid,
-        paidAt: formData.paidAt || undefined,
-        notes: formData.notes,
+        paymentStatus: formData.paid ? "paid" : "unpaid",
+        paymentDate: formData.paid ? formData.paidAt || new Date() : null,
       });
     }
   };
@@ -229,7 +230,7 @@ export default function ExpenseDetail() {
 
   const handleMarkInOrder = () => {
     if (expenseId) {
-      markInOrderMutation.mutate({ id: expenseId });
+      markInOrderMutation.mutate({ id: expenseId, status: "in_order" });
     }
   };
 
@@ -239,7 +240,7 @@ export default function ExpenseDetail() {
 
   const handleVoidConfirm = (reason: string) => {
     if (expenseId) {
-      voidMutation.mutate({ id: expenseId, reason });
+      voidMutation.mutate({ id: expenseId, status: "void", voidReason: reason });
     }
   };
 
@@ -259,32 +260,58 @@ export default function ExpenseDetail() {
       return;
     }
 
+    let successCount = 0;
+    let failureCount = 0;
+
     // Upload files sequentially to avoid race conditions
     for (const file of files) {
       try {
-        // Convert file to base64 for upload
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const base64 = reader.result as string;
-            const base64Data = base64.split(",")[1]; // Remove data:image/...;base64, prefix
-            resolve(base64Data);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        await uploadReceiptMutation.mutateAsync({
+        const { uploadUrl, s3Key } = await uploadReceiptMutation.mutateAsync({
           expenseId,
           filename: file.name,
           mimeType: file.type,
           fileSize: file.size,
-          base64Data,
         });
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type,
+          },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Storage upload failed (${uploadResponse.status})`);
+        }
+
+        await registerReceiptMutation.mutateAsync({
+          expenseId,
+          s3Key,
+          mimeType: file.type,
+          originalFilename: file.name,
+          fileSize: file.size,
+        });
+
+        successCount += 1;
       } catch (error) {
         console.error("Failed to upload receipt:", file.name, error);
-        // Continue with next file even if one fails
+        failureCount += 1;
       }
+    }
+
+    if (successCount > 0 && failureCount === 0) {
+      toast.success("Receipt uploaded successfully");
+    } else if (failureCount > 0) {
+      toast.error(
+        `Uploaded ${successCount} receipt${successCount === 1 ? "" : "s"} with ${failureCount} failure${failureCount === 1 ? "" : "s"}`
+      );
+    }
+
+    if (successCount > 0) {
+      await utils.expenses.getExpense.invalidate({ id: expenseId });
+      await refetch();
+      await utils.expenses.list.invalidate();
     }
   };
 
@@ -294,7 +321,7 @@ export default function ExpenseDetail() {
 
   const handleReceiptView = async (receiptId: number) => {
     try {
-      const result = await getReceiptUrlMutation.mutateAsync({ id: receiptId });
+      const result = await utils.expenses.getReceiptUrl.fetch({ fileId: receiptId });
       window.open(result.url, "_blank");
     } catch (error) {
       toast.error("Failed to open receipt");
@@ -316,14 +343,14 @@ export default function ExpenseDetail() {
   // Don't show suggestions for voided expenses
   const suggestions = expense?.status !== "void" ? expense?.suggestions || [] : [];
 
-  const receipts = expense?.receipts?.map((r) => ({
-    id: r.id,
-    filename: r.filename,
-    fileKey: r.fileKey,
-    mimeType: r.mimeType,
-    fileSize: r.fileSize,
-    uploadedAt: new Date(r.uploadedAt),
-    previewUrl: r.previewUrl || null,
+  const files = expense?.files?.map((file) => ({
+    id: file.id,
+    filename: file.originalFilename,
+    fileKey: file.s3Key,
+    mimeType: file.mimeType,
+    fileSize: file.fileSize,
+    uploadedAt: new Date(file.createdAt),
+    previewUrl: file.previewUrl || null,
   })) || [];
 
   return (
@@ -360,14 +387,14 @@ export default function ExpenseDetail() {
                     grossAmountCents: expense.grossAmountCents,
                     currency: expense.currency,
                     businessUsePct: expense.businessUsePct,
-                    paid: expense.paid,
-                    paidAt: expense.paidAt ? new Date(expense.paidAt) : null,
-                    notes: expense.notes,
+                    paid: expense.paymentStatus === "paid",
+                    paidAt: expense.paymentDate ? new Date(expense.paymentDate) : null,
+                    notes: null,
                   }
                 : undefined
             }
             suggestions={suggestions}
-            receipts={receipts}
+            files={files}
             onSave={handleSave}
             onAcceptSuggestion={handleAcceptSuggestion}
             onMarkInOrder={canMarkInOrder ? handleMarkInOrder : undefined}
@@ -381,7 +408,9 @@ export default function ExpenseDetail() {
             isMarkingInOrder={markInOrderMutation.isPending}
             isVoiding={voidMutation.isPending}
             isDeleting={deleteMutation.isPending}
-            isUploadingReceipt={uploadReceiptMutation.isPending}
+            isUploadingReceipt={
+              uploadReceiptMutation.isPending || registerReceiptMutation.isPending
+            }
             canMarkInOrder={canMarkInOrder}
             canVoid={canVoid}
             canDelete={canDelete}

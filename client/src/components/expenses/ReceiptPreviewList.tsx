@@ -21,7 +21,7 @@ interface ReceiptFile {
 }
 
 interface ReceiptPreviewListProps {
-  receipts: ReceiptFile[];
+  files: ReceiptFile[];
   onDelete?: (id: number) => void;
   onView?: (id: number) => void;
   isDeleting?: boolean;
@@ -30,7 +30,7 @@ interface ReceiptPreviewListProps {
 }
 
 export function ReceiptPreviewList({
-  receipts,
+  files,
   onDelete,
   onView,
   isDeleting = false,
@@ -38,7 +38,7 @@ export function ReceiptPreviewList({
   viewingId = null,
 }: ReceiptPreviewListProps) {
   // Safety: Handle empty array gracefully
-  if (!receipts || receipts.length === 0) {
+  if (!files || files.length === 0) {
     return (
       <div className="text-sm text-muted-foreground text-center py-4">
         No receipts uploaded
@@ -73,7 +73,7 @@ export function ReceiptPreviewList({
 
   return (
     <div className="space-y-2">
-      {receipts.map((receipt) => {
+      {files.map((receipt) => {
         const isDeletingThis = deletingId === receipt.id;
         const isViewingThis = viewingId === receipt.id;
         const canDelete = onDelete && !isDeleting;

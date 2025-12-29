@@ -12,7 +12,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { trpc } from "@/lib/trpc";
 import { Plus, Loader2, Receipt } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { ExpenseCard } from "@/components/expenses/ExpenseCard";
@@ -23,8 +23,6 @@ import { VoidExpenseDialog } from "@/components/expenses/VoidExpenseDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { CaptureFab } from "@/components/expenses/CaptureFab";
 import { BulkUploadDialog } from "@/components/expenses/BulkUploadDialog";
-
-type ExpenseListItem = RouterOutputs["expenses"]["list"][number];
 
 export default function Expenses() {
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
@@ -38,7 +36,7 @@ export default function Expenses() {
 
   const [, navigate] = useLocation();
 
-  const { data: expenses = [], isLoading, refetch } = trpc.expenses.list.useQuery({
+  const { data: expenses = [], isLoading } = trpc.expenses.list.useQuery({
     includeVoid: showVoid,
   });
 
@@ -62,7 +60,7 @@ export default function Expenses() {
         (expense.grossAmountCents * expense.businessUsePct) / 100
       );
 
-      const expenseDate = new Date(expense.incurredAt);
+      const expenseDate = new Date(expense.expenseDate);
       if (expenseDate.getFullYear() === currentYear) {
         yearTotal += deductibleCents;
         if (expenseDate >= quarterStart && expenseDate <= quarterEnd) {
@@ -88,7 +86,7 @@ export default function Expenses() {
     });
   const inOrder = expenses.filter((e) => e.status === "in_order");
 
-  const markInOrderMutation = trpc.expenses.markInOrder.useMutation({
+  const markInOrderMutation = trpc.expenses.setExpenseStatus.useMutation({
     onSuccess: () => {
       toast.success("Expense marked as in order");
       utils.expenses.list.invalidate();
@@ -98,7 +96,7 @@ export default function Expenses() {
     },
   });
 
-  const voidMutation = trpc.expenses.void.useMutation({
+  const voidMutation = trpc.expenses.setExpenseStatus.useMutation({
     onSuccess: () => {
       toast.success("Expense voided");
       setVoidDialogOpen(false);
@@ -110,7 +108,7 @@ export default function Expenses() {
     },
   });
 
-  const deleteMutation = trpc.expenses.delete.useMutation({
+  const deleteMutation = trpc.expenses.deleteExpense.useMutation({
     onSuccess: () => {
       toast.success("Expense deleted");
       setDeleteDialogOpen(false);
@@ -124,16 +122,25 @@ export default function Expenses() {
 
   const bulkUploadMutation = trpc.expenses.uploadReceiptsBulk.useMutation({
     onSuccess: async (data) => {
-      toast.success("Receipts uploaded successfully");
+      const createdIds = data.createdExpenseIds || [];
+      const errorCount = data.errors?.length || 0;
+
+      if (errorCount > 0) {
+        const successCount = createdIds.length;
+        toast.error(
+          `Uploaded ${successCount} receipt${successCount === 1 ? "" : "s"} with ${errorCount} failure${errorCount === 1 ? "" : "s"}`
+        );
+      } else {
+        toast.success("Receipts uploaded successfully");
+      }
+
       setBulkUploadOpen(false);
       // Force refetch to ensure UI updates immediately
       await utils.expenses.list.invalidate();
-      // If expenses were created, invalidate their individual queries
-      if (data && typeof data === "object" && "expenseIds" in data && Array.isArray(data.expenseIds)) {
+      // Invalidate individual expense queries
+      if (createdIds.length > 0) {
         await Promise.all(
-          (data.expenseIds as number[]).map((id) =>
-            utils.expenses.getById.invalidate({ id })
-          )
+          createdIds.map((id) => utils.expenses.getExpense.invalidate({ id }))
         );
       }
       navigate("/expenses");
@@ -183,7 +190,7 @@ export default function Expenses() {
       return;
     }
     if (action === "markAsInOrder") {
-      markInOrderMutation.mutate({ id: expenseId });
+      markInOrderMutation.mutate({ id: expenseId, status: "in_order" });
       return;
     }
     if (action === "void") {
@@ -217,7 +224,7 @@ export default function Expenses() {
         if (e.ctrlKey || e.metaKey) return; // Don't interfere with Cmd/Ctrl+I
         if (needsReview.length > 0) {
           e.preventDefault();
-          markInOrderMutation.mutate({ id: needsReview[0].id });
+      markInOrderMutation.mutate({ id: needsReview[0].id, status: "in_order" });
         }
       }
     };
@@ -228,7 +235,7 @@ export default function Expenses() {
 
   const handleVoidConfirm = (reason: string) => {
     if (voidTargetId) {
-      voidMutation.mutate({ id: voidTargetId, reason });
+      voidMutation.mutate({ id: voidTargetId, status: "void", voidReason: reason });
     }
   };
 

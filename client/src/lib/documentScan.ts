@@ -1,12 +1,9 @@
 /**
- * Document Scan Processing
+ * Receipt Image Processing
  * 
- * Client-side document processing pipeline:
- * - Edge detection
- * - Perspective correction
- * - Crop to document
+ * Client-side image enhancement pipeline:
  * - Convert to grayscale
- * - Increase contrast / sharpness
+ * - Increase contrast
  */
 
 export interface ScanResult {
@@ -15,8 +12,8 @@ export interface ScanResult {
 }
 
 /**
- * Process document image using canvas API
- * This is a simplified version - for production, consider opencv.js
+ * Process receipt image using canvas API
+ * This is a simplified version - for real document detection, use opencv.js
  */
 export async function processDocumentImage(file: File): Promise<ScanResult> {
   return new Promise((resolve, reject) => {
@@ -131,7 +128,6 @@ export async function processDocumentImage(file: File): Promise<ScanResult> {
  * Note: To use OpenCV.js, install: npm install opencv-ts
  * Then uncomment and implement the processWithOpenCV function below.
  * 
- * For now, we use the basic canvas-based processing which works well
- * for most document scanning needs.
+ * For now, we use basic grayscale + contrast enhancement.
  */
 

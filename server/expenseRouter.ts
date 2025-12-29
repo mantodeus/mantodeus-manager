@@ -238,12 +238,23 @@ export const expenseRouter = router({
       z
         .object({
           statusFilter: expenseStatusSchema.optional(),
+          includeVoid: z.boolean().optional(),
         })
         .optional()
     )
     .query(async ({ input, ctx }) => {
       const statusFilter = input?.statusFilter;
-      return await db.listExpensesByUser(ctx.user.id, statusFilter);
+      const includeVoid = input?.includeVoid ?? false;
+      const expenses = await db.listExpensesByUser(ctx.user.id, statusFilter, includeVoid);
+
+      const counts = await db.getExpenseFileCountsByExpenseIds(
+        expenses.map((expense) => expense.id)
+      );
+
+      return expenses.map((expense) => ({
+        ...expense,
+        receiptCount: counts.get(expense.id) ?? 0,
+      }));
     }),
 
   /**

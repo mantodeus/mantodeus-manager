@@ -30,7 +30,7 @@ interface ExpenseFormData {
   notes: string | null;
 }
 
-interface ReceiptFile {
+interface ExpenseFile {
   id: number;
   filename: string;
   fileKey: string;
@@ -49,7 +49,7 @@ interface ExpenseSuggestion {
 
 interface ExpenseFormProps {
   initialData?: ExpenseFormData;
-  receipts?: ReceiptFile[];
+  files?: ExpenseFile[];
   suggestions?: ExpenseSuggestion[];
   onSave: (data: ExpenseFormData) => void;
   onAcceptSuggestion?: (field: string, value: string | number) => void;
@@ -73,7 +73,7 @@ interface ExpenseFormProps {
 
 export function ExpenseForm({
   initialData,
-  receipts = [],
+  files = [],
   suggestions = [],
   onSave,
   onAcceptSuggestion,
@@ -404,9 +404,9 @@ export function ExpenseForm({
             />
           )}
         </div>
-        {receipts.length > 0 && (
+        {files.length > 0 && (
           <ReceiptPreviewList
-            receipts={receipts}
+            files={files}
             onDelete={onReceiptDelete ? handleReceiptDelete : undefined}
             onView={onReceiptView ? handleReceiptView : undefined}
             isDeleting={isDeleting}
