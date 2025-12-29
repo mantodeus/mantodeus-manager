@@ -413,6 +413,15 @@ export default function ExpenseDetail() {
             {isNew ? "Create a new expense" : "View and edit expense details"}
           </p>
         </div>
+        {!isNew && expenseId && (
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/expenses/scan?expenseId=${expenseId}`)}
+            className="ml-auto"
+          >
+            Scan receipt
+          </Button>
+        )}
       </div>
 
       {/* Form */}
