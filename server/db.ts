@@ -1734,17 +1734,34 @@ export async function createExpense(data: InsertExpense) {
 export async function getExpenseById(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
-  const result = await db.select().from(expenses).where(eq(expenses.id, id)).limit(1);
-  if (result.length === 0) {
+
+  const query = sql`SELECT * FROM expenses WHERE id = ${id} LIMIT 1`;
+  const result = await db.execute(query);
+  const rows = Array.isArray(result) ? result[0] : result;
+  const list = Array.isArray(rows) ? rows : [];
+
+  if (list.length === 0) {
     return null;
   }
-  
+
+  const row = list[0] as Expense & Partial<{
+    paymentStatus: "paid" | "unpaid";
+    paymentDate: Date | null;
+    paymentMethod: "cash" | "bank_transfer" | "card" | "online" | null;
+    confidenceScore: number | null;
+    confidenceReason: string | null;
+  }>;
+
   // Always include files (even if empty)
   const files = await getExpenseFilesByExpenseId(id);
-  
+
   return {
-    ...result[0],
+    ...row,
+    paymentStatus: row.paymentStatus ?? "unpaid",
+    paymentDate: row.paymentDate ?? null,
+    paymentMethod: row.paymentMethod ?? null,
+    confidenceScore: row.confidenceScore ?? null,
+    confidenceReason: row.confidenceReason ?? null,
     files,
   };
 }
@@ -1756,22 +1773,31 @@ export async function listExpensesByUser(
 ) {
   const db = await getDb();
   if (!db) return [];
-  
-  const conditions = [eq(expenses.createdBy, userId)];
-  
-  // Default: exclude void unless explicitly requested
-  if (statusFilter === undefined) {
-    if (!includeVoid) {
-      conditions.push(ne(expenses.status, "void"));
-    }
-  } else {
-    conditions.push(eq(expenses.status, statusFilter));
+
+  const VOID_STATUS: Expense["status"] = "void";
+
+  const baseWhere = eq(expenses.createdBy, userId);
+
+  if (statusFilter !== undefined) {
+    return await db
+      .select()
+      .from(expenses)
+      .where(and(baseWhere, eq(expenses.status, statusFilter)))
+      .orderBy(desc(expenses.expenseDate), desc(expenses.createdAt));
   }
-  
+
+  if (includeVoid) {
+    return await db
+      .select()
+      .from(expenses)
+      .where(baseWhere)
+      .orderBy(desc(expenses.expenseDate), desc(expenses.createdAt));
+  }
+
   return await db
     .select()
     .from(expenses)
-    .where(and(...conditions))
+    .where(and(baseWhere, ne(expenses.status, VOID_STATUS)))
     .orderBy(desc(expenses.expenseDate), desc(expenses.createdAt));
 }
 
@@ -1784,18 +1810,22 @@ export async function getExpenseFileCountsByExpenseIds(
   const db = await getDb();
   if (!db) return counts;
 
-  const rows = await db
-    .select({
-      expenseId: expenseFiles.expenseId,
-      count: sql<number>`count(*)`,
-    })
-    .from(expenseFiles)
-    .where(inArray(expenseFiles.expenseId, expenseIds))
-    .groupBy(expenseFiles.expenseId);
+  try {
+    const rows = await db
+      .select({
+        expenseId: expenseFiles.expenseId,
+        count: sql<number>`count(*)`,
+      })
+      .from(expenseFiles)
+      .where(inArray(expenseFiles.expenseId, expenseIds))
+      .groupBy(expenseFiles.expenseId);
 
-  rows.forEach((row) => {
-    counts.set(Number(row.expenseId), Number(row.count));
-  });
+    rows.forEach((row) => {
+      counts.set(Number(row.expenseId), Number(row.count));
+    });
+  } catch (error) {
+    console.error("[Expenses] Failed to load receipt counts:", error);
+  }
 
   return counts;
 }

@@ -238,13 +238,16 @@ export const expenseRouter = router({
       z
         .object({
           statusFilter: expenseStatusSchema.optional(),
-          includeVoid: z.boolean().optional(),
+          includeVoid: z.boolean().optional().default(false),
         })
         .optional()
     )
     .query(async ({ input, ctx }) => {
       const statusFilter = input?.statusFilter;
       const includeVoid = input?.includeVoid ?? false;
+      if (includeVoid !== true && includeVoid !== false) {
+        throw new Error("includeVoid must be boolean");
+      }
       const expenses = await db.listExpensesByUser(ctx.user.id, statusFilter, includeVoid);
 
       const counts = await db.getExpenseFileCountsByExpenseIds(
