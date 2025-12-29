@@ -1,28 +1,46 @@
-# Upload local build to server (Windows PowerShell)
-# Usage: .\scripts\upload-build.ps1
+#!/usr/bin/env pwsh
+# Upload local build to server
 
-$REMOTE_HOST = "mantodeus"
+$ErrorActionPreference = "Stop"
+
+$SERVER = "mantodeus"
 $APP_DIR = "/srv/customer/sites/manager.mantodeus.com"
-$ARCHIVE_NAME = "dist-$(Get-Date -Format 'yyyyMMdd-HHmmss').tar.gz"
+$ARCHIVE = "dist.tar.gz"
 
-Write-Host "📦 Creating archive of dist folder..." -ForegroundColor Cyan
-
-# Check if tar is available (Windows 10+ has tar)
-if (Get-Command tar -ErrorAction SilentlyContinue) {
-    tar -czf $ARCHIVE_NAME dist/
-} else {
-    Write-Host "❌ tar command not found. Please install tar or use 7-Zip/WinRAR to create dist.tar.gz" -ForegroundColor Red
+Write-Host "==> Checking for archive..." -ForegroundColor Cyan
+if (-not (Test-Path $ARCHIVE)) {
+    Write-Host "ERROR: $ARCHIVE not found. Run build first." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "📤 Uploading to server..." -ForegroundColor Cyan
-scp $ARCHIVE_NAME "${REMOTE_HOST}:/tmp/"
+$size = (Get-Item $ARCHIVE).Length / 1MB
+Write-Host "✅ Archive found: $([math]::Round($size, 2)) MB" -ForegroundColor Green
 
-Write-Host "🚀 Deploying on server..." -ForegroundColor Cyan
-ssh $REMOTE_HOST "cd '$APP_DIR' && tar -xzf /tmp/$ARCHIVE_NAME && npx pm2 restart mantodeus-manager || npx pm2 start dist/index.js --name mantodeus-manager && rm /tmp/$ARCHIVE_NAME && echo '✅ Deployment complete!'"
+Write-Host "`n==> Uploading to server..." -ForegroundColor Cyan
+scp $ARCHIVE "${SERVER}:/tmp/"
 
-Write-Host "🧹 Cleaning up local archive..." -ForegroundColor Cyan
-Remove-Item $ARCHIVE_NAME
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: Upload failed" -ForegroundColor Red
+    exit 1
+}
 
-Write-Host "✅ Done! Build deployed to server." -ForegroundColor Green
+Write-Host "✅ Upload complete" -ForegroundColor Green
 
+Write-Host "`n==> Deploying on server..." -ForegroundColor Cyan
+ssh $SERVER @"
+cd $APP_DIR
+echo '==> Extracting build...'
+tar -xzf /tmp/$ARCHIVE
+echo '==> Restarting PM2...'
+npx pm2 restart mantodeus-manager
+echo '==> Cleaning up...'
+rm /tmp/$ARCHIVE
+echo '✅ Deployment complete!'
+"@
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: Deployment failed" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "`n✅ All done! Build deployed successfully." -ForegroundColor Green
