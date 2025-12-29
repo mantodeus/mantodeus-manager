@@ -393,7 +393,15 @@ export async function createImage(image: InsertImage) {
   if (!db) throw new Error("Database not available");
   
   const result = await db.insert(images).values(image);
-  return result;
+  
+  // Extract insertId from Drizzle result
+  const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
+  if (!insertId) {
+    throw new Error("Failed to create image: no insert ID returned");
+  }
+  
+  // Return in format expected by callers: [{ id: insertId }]
+  return [{ id: Number(insertId) }];
 }
 
 export async function getImageById(imageId: number) {
@@ -2050,7 +2058,15 @@ export async function createFileMetadata(file: InsertFileMetadata) {
   
   try {
     const result = await db.insert(fileMetadata).values(file);
-    return result;
+    
+    // Extract insertId from Drizzle result (similar to createExpense pattern)
+    const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
+    if (!insertId) {
+      throw new Error("Failed to create file metadata: no insert ID returned");
+    }
+    
+    // Return in format expected by callers: [{ id: insertId }]
+    return [{ id: Number(insertId) }];
   } catch (error) {
     console.error("[Database] Failed to create file metadata:", error);
     console.error("[Database] File data:", JSON.stringify(file, null, 2));
