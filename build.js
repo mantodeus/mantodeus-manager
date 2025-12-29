@@ -192,7 +192,8 @@ try {
 // Step 3: Build frontend with Vite
 console.log('⚛️  Step 3: Building frontend with Vite...');
 try {
-  execSync('npx vite build', { cwd: __dirname, stdio: 'inherit' });
+  // Increase Node.js heap size to prevent OOM errors during Vite build
+  execSync('NODE_OPTIONS=--max-old-space-size=4096 npx vite build', { cwd: __dirname, stdio: 'inherit' });
   console.log('✅ Frontend build completed\n');
 } catch (error) {
   console.error('❌ Vite build failed:', error.message);

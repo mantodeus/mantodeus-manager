@@ -371,8 +371,9 @@ if (!viteEnv.VITE_SUPABASE_URL || !viteEnv.VITE_SUPABASE_ANON_KEY) {
   process.exit(1);
 }
 
-// Build Vite command with explicit env vars
-const viteCmd = 'npx vite build';
+// Build Vite command with explicit env vars and increased memory limit
+// Increase Node.js heap size to prevent OOM errors during Vite build
+const viteCmd = 'NODE_OPTIONS=--max-old-space-size=4096 npx vite build';
 const viteSuccess = runCommand(viteCmd, 'Frontend build (Vite)', viteEnv);
 
 if (!viteSuccess) {

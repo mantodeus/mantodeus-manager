@@ -32,6 +32,8 @@ echo "==> Install (frozen lockfile)"
 npx pnpm install --frozen-lockfile
 
 echo "==> Build"
+# Increase Node.js memory limit to prevent OOM during Vite build
+export NODE_OPTIONS=--max-old-space-size=4096
 npx pnpm run build
 
 echo "==> Verify build output"
