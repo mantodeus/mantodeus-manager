@@ -1,4 +1,4 @@
-qimport { InvoiceForm } from "@/components/invoices/InvoiceForm";
+import { InvoiceForm } from "@/components/invoices/InvoiceForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
