@@ -452,6 +452,13 @@ export default function Invoices() {
   );
 }
 
+// Helper to normalize empty strings to undefined (required for Radix Select)
+function normalizeSelectValue(value: string | undefined | null): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : trimmed;
+}
+
 function InvoiceForm({
   mode,
   invoiceId,
@@ -492,9 +499,16 @@ function InvoiceForm({
   useEffect(() => {
     if (!isCreate && getInvoiceQuery.data) {
       const invoice = getInvoiceQuery.data;
+      // Normalize clientId - ensure empty strings become undefined for Radix Select
+      const normalizedClientId = invoice.clientId 
+        ? String(invoice.clientId) 
+        : invoice.contactId 
+        ? String(invoice.contactId) 
+        : undefined;
+      
       setFormState({
         invoiceNumber: invoice.invoiceNumber,
-        clientId: invoice.clientId ? String(invoice.clientId) : invoice.contactId ? String(invoice.contactId) : undefined,
+        clientId: normalizeSelectValue(normalizedClientId),
         issueDate: invoice.issueDate ? new Date(invoice.issueDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
         dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split("T")[0] : undefined,
         notes: invoice.notes || "",
@@ -618,8 +632,15 @@ function InvoiceForm({
             <div className="space-y-2">
               <Label>Client (optional)</Label>
               <Select
-                value={formState.clientId ?? "none"}
-                onValueChange={(val) => setFormState((prev) => ({ ...prev, clientId: val === "none" ? undefined : val }))}
+                value={formState.clientId && formState.clientId.trim() !== "" ? formState.clientId : "none"}
+                onValueChange={(val) => {
+                  // Normalize empty strings to undefined (Radix requirement)
+                  const normalized = normalizeSelectValue(val);
+                  setFormState((prev) => ({ 
+                    ...prev, 
+                    clientId: normalized === undefined || val === "none" ? undefined : normalized 
+                  }));
+                }}
                 disabled={!isDraft}
               >
                 <SelectTrigger>
