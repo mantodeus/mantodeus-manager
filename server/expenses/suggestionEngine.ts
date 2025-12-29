@@ -72,10 +72,41 @@ const KEYWORD_CATEGORY_MAP: Record<string, string> = {
 // =============================================================================
 
 /**
- * Normalize supplier name for matching (case-insensitive, trimmed)
+ * Normalize supplier name for matching
+ * - Lowercase
+ * - Remove punctuation
+ * - Strip common suffixes (gmbh, ug, kg, ag, ltd, inc, llc)
+ * - Trim whitespace
  */
 function normalizeSupplierName(name: string): string {
-  return name.trim().toLowerCase();
+  let normalized = name.trim().toLowerCase();
+  
+  // Remove punctuation (keep spaces)
+  normalized = normalized.replace(/[^\w\s]/g, "");
+  
+  // Strip common suffixes
+  const suffixes = [
+    /\bgmbh\b/gi,
+    /\bug\b/gi,
+    /\bkg\b/gi,
+    /\bag\b/gi,
+    /\bltd\b/gi,
+    /\binc\b/gi,
+    /\bllc\b/gi,
+    /\bco\b/gi,
+    /\bcorp\b/gi,
+    /\bcorporation\b/gi,
+    /\bcompany\b/gi,
+  ];
+  
+  for (const suffix of suffixes) {
+    normalized = normalized.replace(suffix, "");
+  }
+  
+  // Clean up multiple spaces
+  normalized = normalized.replace(/\s+/g, " ").trim();
+  
+  return normalized;
 }
 
 /**

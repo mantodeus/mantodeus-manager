@@ -135,9 +135,9 @@ export default function Expenses() {
       }
 
       setBulkUploadOpen(false);
-      // Force refetch to ensure UI updates immediately
+      // Force refetch to ensure UI updates immediately (autofill may have run)
       await utils.expenses.list.invalidate();
-      // Invalidate individual expense queries
+      // Invalidate individual expense queries to get autofilled data
       if (createdIds.length > 0) {
         await Promise.all(
           createdIds.map((id) => utils.expenses.getExpense.invalidate({ id }))

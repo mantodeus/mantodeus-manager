@@ -14,6 +14,8 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { createPresignedUploadUrl, createPresignedReadUrl, deleteFromStorage, storagePut } from "./storage";
+import { applyExpenseAutofill } from "./expenses/autofillEngine";
+import { parseReceiptFilename } from "./expenses/filenameParser";
 
 // =============================================================================
 // CONSTANTS
@@ -132,13 +134,18 @@ function validateVatCurrencyRules(data: {
 /**
  * Create expense with deterministic defaults for receipt-based creation
  * All expenses start in needs_review status
+ * Uses filename parsing for initial values
  */
 async function createExpenseFromReceipt(
   userId: number,
   filename: string
 ): Promise<number> {
-  const supplierName = sanitizeFilenameForSupplierName(filename);
-  const expenseDate = new Date();
+  // Parse filename for initial values
+  const parsed = parseReceiptFilename(filename);
+  
+  // Use parsed supplier name or fallback to sanitized filename
+  const supplierName = parsed.supplierName || sanitizeFilenameForSupplierName(filename);
+  const expenseDate = parsed.expenseDate || new Date();
   
   const expense = await db.createExpense({
     createdBy: userId,
@@ -146,10 +153,10 @@ async function createExpenseFromReceipt(
     status: "needs_review",
     source: "upload",
     supplierName,
-    description: null,
+    description: parsed.description || null,
     expenseDate,
-    grossAmountCents: 0,
-    currency: "EUR",
+    grossAmountCents: parsed.grossAmountCents || 0,
+    currency: parsed.currency || "EUR",
     vatMode: "none",
     vatRate: null,
     vatAmountCents: null,
@@ -292,10 +299,27 @@ export const expenseRouter = router({
         })
       );
       
+      // Compute autofilled fields metadata (for UI indicators)
+      // Fields are considered autofilled if:
+      // 1. Expense is in needs_review status
+      // 2. Source is upload or scan (receipt-based)
+      // 3. Field has non-default value
+      const autofilledFields: string[] = [];
+      if (expense.status === "needs_review" && (expense.source === "upload" || expense.source === "scan")) {
+        if (expense.category) autofilledFields.push("category");
+        if (expense.vatMode && expense.vatMode !== "none") autofilledFields.push("vatMode");
+        if (expense.businessUsePct !== 100) autofilledFields.push("businessUsePct");
+        if (expense.description) autofilledFields.push("description");
+        if (expense.grossAmountCents > 0) autofilledFields.push("grossAmountCents");
+        // Don't mark supplierName as autofilled (always set from filename)
+        // Don't mark expenseDate as autofilled (always set)
+      }
+      
       return {
         ...expense,
         files: filesWithUrls, // Always an array, never undefined
         suggestions,
+        autofilledFields, // Metadata for UI indicators
       };
     }),
 
@@ -494,6 +518,10 @@ export const expenseRouter = router({
     .mutation(async ({ input, ctx }) => {
       await validateExpenseOwnership(input.expenseId, ctx.user.id, ctx.user.role);
 
+      // Check if this is the first receipt
+      const existingFiles = await db.getExpenseFilesByExpenseId(input.expenseId);
+      const isFirstReceipt = existingFiles.length === 0;
+
       const file = await db.addExpenseFile({
         expenseId: input.expenseId,
         s3Key: input.s3Key,
@@ -501,6 +529,23 @@ export const expenseRouter = router({
         originalFilename: input.originalFilename,
         fileSize: input.fileSize,
       });
+
+      // Apply autofill only if this is the first receipt
+      if (isFirstReceipt) {
+        try {
+          await applyExpenseAutofill(input.expenseId, {
+            filename: input.originalFilename,
+            userId: ctx.user.id,
+            isFirstReceipt: true,
+          });
+        } catch (autofillError) {
+          // Log but don't fail - autofill is best-effort
+          console.error(
+            `[Expenses] Autofill failed for expense ${input.expenseId}:`,
+            autofillError
+          );
+        }
+      }
 
       return file;
     }),
@@ -660,6 +705,21 @@ export const expenseRouter = router({
               originalFilename: file.filename,
               fileSize: file.fileSize,
             });
+
+            // Apply autofill (this is the first receipt, so autofill runs)
+            try {
+              await applyExpenseAutofill(expenseId, {
+                filename: file.filename,
+                userId: ctx.user.id,
+                isFirstReceipt: true,
+              });
+            } catch (autofillError) {
+              // Log but don't fail - autofill is best-effort
+              console.error(
+                `[Expenses] Autofill failed for expense ${expenseId}:`,
+                autofillError
+              );
+            }
 
             createdExpenseIds.push(expenseId);
           } catch (uploadError) {

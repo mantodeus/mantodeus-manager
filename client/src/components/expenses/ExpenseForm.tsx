@@ -11,6 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { CategorySelect, type ExpenseCategory } from "./CategorySelect";
 import { CurrencySelect } from "./CurrencySelect";
 import { ReceiptUploadZone } from "./ReceiptUploadZone";
@@ -18,6 +25,7 @@ import { ReceiptPreviewList } from "./ReceiptPreviewList";
 import { SuggestionBadge } from "./SuggestionBadge";
 import { SuggestionControls } from "./SuggestionControls";
 import { formatCurrency } from "@/lib/currencyFormat";
+import { Sparkles } from "lucide-react";
 
 interface ExpenseFormData {
   description: string | null;
@@ -51,6 +59,7 @@ interface ExpenseFormProps {
   initialData?: ExpenseFormData;
   files?: ExpenseFile[];
   suggestions?: ExpenseSuggestion[];
+  autofilledFields?: string[]; // Fields that were autofilled (for UI indicators)
   onSave: (data: ExpenseFormData) => void;
   onAcceptSuggestion?: (field: string, value: string | number) => void;
   onMarkInOrder?: () => void;
@@ -75,6 +84,7 @@ export function ExpenseForm({
   initialData,
   files = [],
   suggestions = [],
+  autofilledFields = [],
   onSave,
   onAcceptSuggestion,
   onMarkInOrder,
@@ -151,7 +161,7 @@ export function ExpenseForm({
     });
   };
 
-  // Track when fields are manually edited
+  // Track when fields are manually edited (removes autofill indicator)
   const handleCategoryChange = (value: ExpenseCategory) => {
     setFieldEdited((prev) => new Set(prev).add("category"));
     setFormData({ ...formData, category: value });
@@ -166,9 +176,44 @@ export function ExpenseForm({
   };
 
   const handleDescriptionChange = (value: string | null) => {
+    setFieldEdited((prev) => new Set(prev).add("description"));
     // When description changes, mark it as edited and trigger refetch
     // (This will be handled by parent component)
     setFormData({ ...formData, description: value });
+  };
+
+  const handleGrossAmountChange = (value: number) => {
+    setFieldEdited((prev) => new Set(prev).add("grossAmountCents"));
+    setFormData({
+      ...formData,
+      grossAmountCents: Math.round(value * 100),
+    });
+  };
+
+  // Check if field is autofilled and not manually edited
+  const isAutofilled = (fieldName: string): boolean => {
+    return autofilledFields.includes(fieldName) && !fieldEdited.has(fieldName);
+  };
+
+  // Autofill indicator component
+  const AutofillIndicator = ({ fieldName }: { fieldName: string }) => {
+    if (!isAutofilled(fieldName)) return null;
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="outline" className="text-xs gap-1">
+              <Sparkles className="h-3 w-3" />
+              Autofilled
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>This field was automatically filled based on filename or previous expenses</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
   };
 
   // Autofocus first missing required field
@@ -228,7 +273,10 @@ export function ExpenseForm({
       {/* Basic Information */}
       <div className="space-y-4">
         <div className="grid gap-2">
-          <Label htmlFor="description">Description</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="description">Description</Label>
+            <AutofillIndicator fieldName="description" />
+          </div>
           <Input
             ref={descriptionRef}
             id="description"
@@ -243,28 +291,31 @@ export function ExpenseForm({
         <div className="grid gap-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="category">Category</Label>
-            {visibleSuggestions.find((s) => s.field === "category") && (
-              <div className="flex items-center gap-2">
-                <SuggestionBadge
-                  confidence={
-                    visibleSuggestions.find((s) => s.field === "category")?.confidence || 0
-                  }
-                  reason={
-                    visibleSuggestions.find((s) => s.field === "category")?.reason || null
-                  }
-                />
-                <SuggestionControls
-                  onAccept={() => {
-                    const suggestion = visibleSuggestions.find((s) => s.field === "category");
-                    if (suggestion) {
-                      handleAcceptSuggestion(suggestion);
+            <div className="flex items-center gap-2">
+              <AutofillIndicator fieldName="category" />
+              {visibleSuggestions.find((s) => s.field === "category") && (
+                <div className="flex items-center gap-2">
+                  <SuggestionBadge
+                    confidence={
+                      visibleSuggestions.find((s) => s.field === "category")?.confidence || 0
                     }
-                  }}
-                  onDismiss={() => handleDismissSuggestion("category")}
-                  isAccepting={isAcceptingSuggestion}
-                />
-              </div>
-            )}
+                    reason={
+                      visibleSuggestions.find((s) => s.field === "category")?.reason || null
+                    }
+                  />
+                  <SuggestionControls
+                    onAccept={() => {
+                      const suggestion = visibleSuggestions.find((s) => s.field === "category");
+                      if (suggestion) {
+                        handleAcceptSuggestion(suggestion);
+                      }
+                    }}
+                    onDismiss={() => handleDismissSuggestion("category")}
+                    isAccepting={isAcceptingSuggestion}
+                  />
+                </div>
+              )}
+            </div>
           </div>
           <CategorySelect
             value={formData.category}
@@ -274,7 +325,10 @@ export function ExpenseForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="grossAmount">Gross Amount</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="grossAmount">Gross Amount</Label>
+              <AutofillIndicator fieldName="grossAmountCents" />
+            </div>
             <div className="flex gap-2">
               <Input
                 ref={grossAmountRef}
@@ -285,10 +339,7 @@ export function ExpenseForm({
                 value={formData.grossAmountCents / 100}
                 onChange={(e) => {
                   const value = parseFloat(e.target.value) || 0;
-                  setFormData({
-                    ...formData,
-                    grossAmountCents: Math.round(value * 100),
-                  });
+                  handleGrossAmountChange(value);
                 }}
                 placeholder="0.00"
               />
@@ -302,28 +353,31 @@ export function ExpenseForm({
           <div className="grid gap-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="businessUsePct">Business Use (%)</Label>
-              {visibleSuggestions.find((s) => s.field === "businessUsePct") && (
-                <div className="flex items-center gap-2">
-                  <SuggestionBadge
-                    confidence={
-                      visibleSuggestions.find((s) => s.field === "businessUsePct")?.confidence || 0
-                    }
-                    reason={
-                      visibleSuggestions.find((s) => s.field === "businessUsePct")?.reason || null
-                    }
-                  />
-                  <SuggestionControls
-                    onAccept={() => {
-                      const suggestion = visibleSuggestions.find((s) => s.field === "businessUsePct");
-                      if (suggestion) {
-                        handleAcceptSuggestion(suggestion);
+              <div className="flex items-center gap-2">
+                <AutofillIndicator fieldName="businessUsePct" />
+                {visibleSuggestions.find((s) => s.field === "businessUsePct") && (
+                  <div className="flex items-center gap-2">
+                    <SuggestionBadge
+                      confidence={
+                        visibleSuggestions.find((s) => s.field === "businessUsePct")?.confidence || 0
                       }
-                    }}
-                    onDismiss={() => handleDismissSuggestion("businessUsePct")}
-                    isAccepting={isAcceptingSuggestion}
-                  />
-                </div>
-              )}
+                      reason={
+                        visibleSuggestions.find((s) => s.field === "businessUsePct")?.reason || null
+                      }
+                    />
+                    <SuggestionControls
+                      onAccept={() => {
+                        const suggestion = visibleSuggestions.find((s) => s.field === "businessUsePct");
+                        if (suggestion) {
+                          handleAcceptSuggestion(suggestion);
+                        }
+                      }}
+                      onDismiss={() => handleDismissSuggestion("businessUsePct")}
+                      isAccepting={isAcceptingSuggestion}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
             <Input
               id="businessUsePct"
