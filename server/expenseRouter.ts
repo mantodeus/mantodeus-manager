@@ -233,7 +233,7 @@ export const expenseRouter = router({
    * List expenses for the current user
    * Default: excludes void expenses
    */
-  listExpenses: protectedProcedure
+  list: protectedProcedure
     .input(
       z
         .object({
