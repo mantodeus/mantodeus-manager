@@ -20,17 +20,23 @@ export interface ScanResult {
  */
 export async function processDocumentImage(file: File): Promise<ScanResult> {
   return new Promise((resolve, reject) => {
+    console.log("[documentScan] Starting processing for file:", file.name, file.type, file.size);
+    
     const img = new Image();
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     
     if (!ctx) {
-      reject(new Error("Canvas context not available"));
+      const error = new Error("Canvas context not available");
+      console.error("[documentScan] Canvas error:", error);
+      reject(error);
       return;
     }
 
     img.onload = () => {
       try {
+        console.log("[documentScan] Image loaded, dimensions:", img.width, "x", img.height);
+        
         // Set canvas size
         canvas.width = img.width;
         canvas.height = img.height;
@@ -41,6 +47,7 @@ export async function processDocumentImage(file: File): Promise<ScanResult> {
         // Get image data
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
+        console.log("[documentScan] Processing", data.length / 4, "pixels");
 
         // Convert to grayscale and enhance contrast
         for (let i = 0; i < data.length; i += 4) {
@@ -58,6 +65,8 @@ export async function processDocumentImage(file: File): Promise<ScanResult> {
           // Alpha channel (data[i + 3]) remains unchanged
         }
 
+        console.log("[documentScan] Image processing complete, converting to blob");
+
         // Put processed image data back
         ctx.putImageData(imageData, 0, 0);
 
@@ -65,12 +74,15 @@ export async function processDocumentImage(file: File): Promise<ScanResult> {
         canvas.toBlob(
           (blob) => {
             if (!blob) {
-              reject(new Error("Failed to create blob"));
+              const error = new Error("Failed to create blob");
+              console.error("[documentScan] Blob creation failed:", error);
+              reject(error);
               return;
             }
 
             // Create preview URL
             const previewUrl = URL.createObjectURL(blob);
+            console.log("[documentScan] Processing complete, blob size:", blob.size, "preview URL created");
 
             resolve({
               blob,
@@ -81,23 +93,33 @@ export async function processDocumentImage(file: File): Promise<ScanResult> {
           0.92 // High quality
         );
       } catch (error) {
+        console.error("[documentScan] Processing error:", error);
         reject(error);
       }
     };
 
-    img.onerror = () => {
-      reject(new Error("Failed to load image"));
+    img.onerror = (e) => {
+      const error = new Error("Failed to load image");
+      console.error("[documentScan] Image load error:", error, e);
+      reject(error);
     };
 
     // Load image from file
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
+        console.log("[documentScan] File read complete, loading image");
         img.src = e.target.result as string;
+      } else {
+        const error = new Error("FileReader result is null");
+        console.error("[documentScan] FileReader error:", error);
+        reject(error);
       }
     };
-    reader.onerror = () => {
-      reject(new Error("Failed to read file"));
+    reader.onerror = (e) => {
+      const error = new Error("Failed to read file");
+      console.error("[documentScan] FileReader error:", error, e);
+      reject(error);
     };
     reader.readAsDataURL(file);
   });
