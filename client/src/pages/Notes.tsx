@@ -52,6 +52,7 @@ type Note = {
 
 export default function Notes() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -267,7 +268,8 @@ export default function Notes() {
       if (isMultiSelectMode) {
         toggleSelection(note.id);
       } else {
-        openEditDialog(note);
+        // Navigate to note detail page instead of opening dialog
+        navigate(`/notes/${note.id}`);
       }
     };
 

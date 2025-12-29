@@ -23,10 +23,10 @@ import {
   type InsertExpense, type InsertExpenseFile,
   type Expense, type ExpenseFile,
   // Legacy types (kept for backward compatibility)
-  jobs, tasks, images, reports, comments, contacts, invoices, invoiceItems, notes, locations, 
+  jobs, tasks, images, reports, comments, contacts, invoices, invoiceItems, notes, noteFiles, locations, 
   InsertJob, InsertTask, InsertImage, InsertReport, InsertComment, InsertContact, 
-  InsertInvoice, InsertInvoiceItem, InsertNote, InsertLocation, jobContacts, jobDates, InsertJobDate,
-  type Invoice, type InvoiceItem
+  InsertInvoice, InsertInvoiceItem, InsertNote, InsertNoteFile, jobContacts, jobDates, InsertJobDate,
+  type Invoice, type InvoiceItem, type NoteFile
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 // Schema guards removed from hot path - initialized once at server startup
@@ -2127,6 +2127,41 @@ export async function restoreNoteFromTrash(id: number) {
     .update(notes)
     .set({ trashedAt: null })
     .where(and(eq(notes.id, id), isNotNull(notes.trashedAt)));
+}
+
+// ===== NOTE FILES QUERIES =====
+
+export async function getNoteFilesByNoteId(noteId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db
+    .select()
+    .from(noteFiles)
+    .where(eq(noteFiles.noteId, noteId))
+    .orderBy(desc(noteFiles.createdAt));
+}
+
+export async function createNoteFile(data: InsertNoteFile) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.insert(noteFiles).values(data);
+}
+
+export async function deleteNoteFile(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.delete(noteFiles).where(eq(noteFiles.id, id));
+}
+
+export async function getNoteFileById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(noteFiles).where(eq(noteFiles.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
 }
 
 // ===== LOCATIONS QUERIES =====

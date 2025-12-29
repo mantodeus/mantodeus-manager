@@ -1089,8 +1089,16 @@ export const appRouter = router({
     
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return await db.getNoteById(input.id);
+      .query(async ({ input, ctx }) => {
+        const note = await db.getNoteById(input.id);
+        if (!note) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && note.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to view this note" });
+        }
+        const files = await db.getNoteFilesByNoteId(input.id);
+        return { ...note, files };
       }),
     
     getByJob: protectedProcedure
@@ -1129,13 +1137,13 @@ export const appRouter = router({
       .input(z.object({
         id: z.number(),
         title: z.string().optional(),
-        content: z.string().optional(),
+        body: z.string().optional(), // Markdown content (stored as 'content' in DB)
         tags: z.string().optional(),
         jobId: z.number().optional(),
         contactId: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const { id, ...data } = input;
+        const { id, body, ...data } = input;
         const existing = await db.getNoteById(id);
         if (!existing) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
@@ -1143,7 +1151,9 @@ export const appRouter = router({
         if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to update this note" });
         }
-        await db.updateNote(id, data);
+        // Map 'body' to 'content' for database storage
+        const updateData = body !== undefined ? { ...data, content: body } : data;
+        await db.updateNote(id, updateData);
         return { success: true };
       }),
 
@@ -1218,6 +1228,168 @@ export const appRouter = router({
         }
         await db.deleteNote(input.id);
         return { success: true };
+      }),
+
+    // File attachment endpoints
+    uploadNoteFile: protectedProcedure
+      .input(z.object({
+        noteId: z.number(),
+        filename: z.string().min(1),
+        mimeType: z.string(),
+        fileSize: z.number().int().positive(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const note = await db.getNoteById(input.noteId);
+        if (!note) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && note.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to attach files to this note" });
+        }
+
+        // Validate file size (15MB max)
+        const MAX_FILE_SIZE = 15 * 1024 * 1024;
+        if (input.fileSize > MAX_FILE_SIZE) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+          });
+        }
+
+        // Validate MIME type
+        const ALLOWED_MIME_TYPES = [
+          "application/pdf",
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "image/heic",
+          "image/heif",
+          "image/webp",
+        ];
+        if (!ALLOWED_MIME_TYPES.includes(input.mimeType)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Invalid file type. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`,
+          });
+        }
+
+        // Generate S3 key
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-");
+        const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const s3Key = `notes/${input.noteId}/${dateStr}-${safeFilename}`;
+
+        // Create presigned upload URL
+        const { uploadUrl } = await createPresignedUploadUrl(s3Key, input.mimeType, 15 * 60); // 15 minutes
+
+        return {
+          uploadUrl,
+          s3Key,
+        };
+      }),
+
+    registerNoteFile: protectedProcedure
+      .input(z.object({
+        noteId: z.number(),
+        s3Key: z.string(),
+        mimeType: z.string(),
+        originalFilename: z.string(),
+        fileSize: z.number().int().positive(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const note = await db.getNoteById(input.noteId);
+        if (!note) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && note.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to attach files to this note" });
+        }
+
+        const result = await db.createNoteFile({
+          noteId: input.noteId,
+          s3Key: input.s3Key,
+          mimeType: input.mimeType,
+          originalFilename: input.originalFilename,
+          fileSize: input.fileSize,
+        });
+
+        const file = await db.getNoteFileById(result[0].id);
+        if (!file) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "File metadata not found after registration",
+          });
+        }
+
+        return file;
+      }),
+
+    getNoteFileUrl: protectedProcedure
+      .input(z.object({ fileId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const file = await db.getNoteFileById(input.fileId);
+        
+        if (!file) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note file not found" });
+        }
+
+        // Verify note ownership
+        const note = await db.getNoteById(file.noteId);
+        if (!note) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && note.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to access this file" });
+        }
+
+        const url = await createPresignedReadUrl(file.s3Key, 60 * 60); // 1 hour
+
+        return { url, file };
+      }),
+
+    deleteNoteFile: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        // Get file before delete for ownership check and S3 cleanup
+        const file = await db.getNoteFileById(input.id);
+        
+        if (!file) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note file not found" });
+        }
+
+        // Verify note ownership
+        const note = await db.getNoteById(file.noteId);
+        if (!note) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && note.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to delete this file" });
+        }
+
+        // Delete from DB
+        await db.deleteNoteFile(input.id);
+
+        // Best-effort S3 cleanup
+        try {
+          await deleteFromStorage(file.s3Key);
+        } catch (error) {
+          console.error(`[Notes] Failed to delete S3 file ${file.s3Key}:`, error);
+        }
+
+        return { success: true };
+      }),
+
+    getNoteFiles: protectedProcedure
+      .input(z.object({ noteId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const note = await db.getNoteById(input.noteId);
+        if (!note) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && note.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to view this note's files" });
+        }
+        return await db.getNoteFilesByNoteId(input.noteId);
       }),
   }),
   
