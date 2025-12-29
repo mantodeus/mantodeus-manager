@@ -119,9 +119,11 @@ export default function ExpenseDetail() {
   });
 
   const uploadReceiptMutation = trpc.expenses.uploadReceipt.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Receipt uploaded successfully");
-      utils.expenses.getById.invalidate({ id: expenseId! });
+      // Force refetch to ensure UI updates immediately
+      await utils.expenses.getById.invalidate({ id: expenseId! });
+      await refetch();
     },
     onError: (err) => {
       toast.error(err.message || "Failed to upload receipt");
@@ -257,22 +259,32 @@ export default function ExpenseDetail() {
       return;
     }
 
+    // Upload files sequentially to avoid race conditions
     for (const file of files) {
-      // Convert file to base64 for upload
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = reader.result as string;
-        const base64Data = base64.split(",")[1]; // Remove data:image/...;base64, prefix
+      try {
+        // Convert file to base64 for upload
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = reader.result as string;
+            const base64Data = base64.split(",")[1]; // Remove data:image/...;base64, prefix
+            resolve(base64Data);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
 
-        uploadReceiptMutation.mutate({
+        await uploadReceiptMutation.mutateAsync({
           expenseId,
           filename: file.name,
           mimeType: file.type,
           fileSize: file.size,
           base64Data,
         });
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error("Failed to upload receipt:", file.name, error);
+        // Continue with next file even if one fails
+      }
     }
   };
 
