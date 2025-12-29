@@ -30,9 +30,17 @@ Write-Host "`n==> Deploying on server..." -ForegroundColor Cyan
 ssh $SERVER @"
 cd $APP_DIR
 echo '==> Extracting build...'
+# Remove old dist if it exists, then extract
+rm -rf dist
 tar -xzf /tmp/$ARCHIVE
+echo '==> Verifying dist/index.js exists...'
+if [ ! -f dist/index.js ]; then
+  echo 'ERROR: dist/index.js not found after extraction'
+  ls -la dist/ || echo 'dist folder does not exist'
+  exit 1
+fi
 echo '==> Restarting PM2...'
-npx pm2 restart mantodeus-manager
+npx pm2 restart mantodeus-manager || npx pm2 start dist/index.js --name mantodeus-manager
 echo '==> Cleaning up...'
 rm /tmp/$ARCHIVE
 echo '✅ Deployment complete!'
