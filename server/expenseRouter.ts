@@ -16,6 +16,12 @@ import * as db from "./db";
 import { createPresignedUploadUrl, createPresignedReadUrl, deleteFromStorage, storagePut } from "./storage";
 import { applyExpenseAutofill } from "./expenses/autofillEngine";
 import { parseReceiptFilename } from "./expenses/filenameParser";
+import { getProposedFields } from "./expenses/proposedFields";
+import {
+  calculateOverallScore,
+  getMissingRequiredFields,
+  type ProposedFields,
+} from "./expenses/confidence";
 
 // =============================================================================
 // CONSTANTS
@@ -261,9 +267,64 @@ export const expenseRouter = router({
         expenses.map((expense) => expense.id)
       );
 
+      // For needs_review expenses, get review lane data
+      const needsReviewExpenses = expenses.filter((e) => e.status === "needs_review");
+      const reviewMetaMap = new Map<number, any>();
+
+      await Promise.all(
+        needsReviewExpenses.map(async (expense) => {
+          try {
+            const proposed = await getProposedFields(expense, ctx.user.id);
+            const overallScore = calculateOverallScore(expense, proposed);
+            const missingRequired = getMissingRequiredFields(expense);
+
+            // Only include proposed fields that differ from current values
+            const proposedFiltered: ProposedFields = {};
+            
+            if (proposed.supplierName && proposed.supplierName.value !== expense.supplierName) {
+              proposedFiltered.supplierName = proposed.supplierName;
+            }
+            if (proposed.description && proposed.description.value !== expense.description) {
+              proposedFiltered.description = proposed.description;
+            }
+            if (proposed.expenseDate) {
+              const currentDate = new Date(expense.expenseDate);
+              const proposedDate = new Date(proposed.expenseDate.value);
+              currentDate.setHours(0, 0, 0, 0);
+              proposedDate.setHours(0, 0, 0, 0);
+              if (currentDate.getTime() !== proposedDate.getTime()) {
+                proposedFiltered.expenseDate = proposed.expenseDate;
+              }
+            }
+            if (proposed.grossAmountCents && proposed.grossAmountCents.value !== expense.grossAmountCents) {
+              proposedFiltered.grossAmountCents = proposed.grossAmountCents;
+            }
+            if (proposed.category && proposed.category.value !== expense.category) {
+              proposedFiltered.category = proposed.category;
+            }
+            if (proposed.vatMode && proposed.vatMode.value !== expense.vatMode) {
+              proposedFiltered.vatMode = proposed.vatMode;
+            }
+            if (proposed.businessUsePct && proposed.businessUsePct.value !== expense.businessUsePct) {
+              proposedFiltered.businessUsePct = proposed.businessUsePct;
+            }
+
+            reviewMetaMap.set(expense.id, {
+              overallScore,
+              missingRequired,
+              proposed: proposedFiltered,
+            });
+          } catch (error) {
+            console.error(`[Expenses] Failed to get review meta for expense ${expense.id}:`, error);
+            // Continue without review meta for this expense
+          }
+        })
+      );
+
       return expenses.map((expense) => ({
         ...expense,
         receiptCount: counts.get(expense.id) ?? 0,
+        reviewMeta: reviewMetaMap.get(expense.id) || null,
       }));
     }),
 
@@ -396,6 +457,48 @@ export const expenseRouter = router({
       }
 
       const updated = await db.updateExpense(id, updates, ctx.user.id);
+      return updated;
+    }),
+
+  /**
+   * Apply proposed fields (user-confirmed from review lane)
+   * Only applies provided fields, does NOT change status
+   */
+  applyProposedFields: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        fields: z.object({
+          supplierName: z.string().optional(),
+          description: z.string().nullable().optional(),
+          expenseDate: z.date().optional(),
+          grossAmountCents: z.number().int().positive().optional(),
+          currency: z.string().length(3).optional(),
+          category: categorySchema.optional(),
+          vatMode: vatModeSchema.optional(),
+          businessUsePct: z.number().int().min(0).max(100).optional(),
+        }),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { id, fields } = input;
+
+      await validateExpenseOwnership(id, ctx.user.id, ctx.user.role);
+
+      // Validate VAT/currency rules if being updated
+      if (fields.vatMode || fields.currency) {
+        const existing = await db.getExpenseById(id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
+        }
+        validateVatCurrencyRules({
+          vatMode: fields.vatMode || existing.vatMode,
+          currency: fields.currency || existing.currency,
+        });
+      }
+
+      // Apply only provided fields (reuse updateExpense logic)
+      const updated = await db.updateExpense(id, fields, ctx.user.id);
       return updated;
     }),
 
