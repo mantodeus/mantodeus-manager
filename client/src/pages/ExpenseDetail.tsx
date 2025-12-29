@@ -316,9 +316,11 @@ export default function ExpenseDetail() {
     }
 
     if (successCount > 0) {
+      // Invalidate queries to ensure UI updates immediately
       await utils.expenses.getExpense.invalidate({ id: expenseId });
-      await refetch();
       await utils.expenses.list.invalidate();
+      // Refetch to get updated data (including autofilled fields)
+      await refetch();
     }
   };
 
@@ -396,6 +398,8 @@ export default function ExpenseDetail() {
     previewUrl: file.previewUrl || null,
   })) || [];
 
+  const autofilledFields = (expense as any)?.autofilledFields || [];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -446,6 +450,7 @@ export default function ExpenseDetail() {
                 : undefined
             }
             suggestions={suggestions}
+            autofilledFields={autofilledFields}
             files={files}
             onSave={handleSave}
             onAcceptSuggestion={handleAcceptSuggestion}
