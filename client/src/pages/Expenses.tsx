@@ -118,7 +118,9 @@ export default function Expenses() {
       toast.success("Expense deleted");
       setDeleteDialogOpen(false);
       setDeleteTargetId(null);
+      setExpandedExpenseId(null); // Close expanded card if deleted
       utils.expenses.list.invalidate();
+      utils.expenses.getExpense.invalidate(); // Invalidate all getExpense queries
     },
     onError: (err) => {
       toast.error(err.message || "Failed to delete expense");
@@ -356,7 +358,13 @@ export default function Expenses() {
 
   const handleVoidConfirm = (reason: string) => {
     if (voidTargetId) {
-      voidMutation.mutate({ id: voidTargetId, status: "void", voidReason: reason });
+      // reason is now the enum value from VoidExpenseDialog
+      voidMutation.mutate({ 
+        id: voidTargetId, 
+        status: "void", 
+        voidReason: reason as "duplicate" | "personal" | "mistake" | "wrong_document" | "other",
+        voidNote: null,
+      });
     }
   };
 
@@ -536,7 +544,7 @@ export default function Expenses() {
         }}
         onConfirm={handleDeleteConfirm}
         title="Delete Expense"
-        description="Are you sure you want to delete this expense? This action cannot be undone."
+        description="This will permanently delete the expense and its receipts. This action cannot be undone."
         confirmLabel="Delete"
         isDeleting={deleteMutation.isPending}
       />

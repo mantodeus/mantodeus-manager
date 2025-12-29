@@ -511,7 +511,12 @@ export const expenseRouter = router({
   setExpenseStatus: protectedProcedure
     .input(setExpenseStatusSchema)
     .mutation(async ({ input, ctx }) => {
-      const { id, status, voidReason, voidNote } = input;
+      let { id, status, voidReason, voidNote } = input;
+      
+      // Defensive: Coerce legacy "wrong" to "wrong_document" for backward compatibility
+      if (voidReason === "wrong") {
+        voidReason = "wrong_document";
+      }
       
       await validateExpenseOwnership(id, ctx.user.id, ctx.user.role);
 

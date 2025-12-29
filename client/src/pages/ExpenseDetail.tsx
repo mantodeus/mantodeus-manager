@@ -248,7 +248,13 @@ export default function ExpenseDetail() {
 
   const handleVoidConfirm = (reason: string) => {
     if (expenseId) {
-      voidMutation.mutate({ id: expenseId, status: "void", voidReason: reason });
+      // reason is now the enum value from VoidExpenseDialog
+      voidMutation.mutate({ 
+        id: expenseId, 
+        status: "void", 
+        voidReason: reason as "duplicate" | "personal" | "mistake" | "wrong_document" | "other",
+        voidNote: null, // Note is handled separately if needed
+      });
     }
   };
 
@@ -495,7 +501,7 @@ export default function ExpenseDetail() {
         }}
         onConfirm={handleDeleteConfirm}
         title="Delete Expense"
-        description="Are you sure you want to delete this expense? This action cannot be undone."
+        description="This will permanently delete the expense and its receipts. This action cannot be undone."
         confirmLabel="Delete"
         isDeleting={deleteMutation.isPending}
       />
