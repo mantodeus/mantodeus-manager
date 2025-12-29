@@ -81,6 +81,14 @@ export default function ScanReceipt() {
     const maxSize = 15 * 1024 * 1024; // 15MB
     if (file.size > maxSize) {
       setError(`File size exceeds ${maxSize / 1024 / 1024}MB limit`);
+      setScanState("idle");
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file");
+      setScanState("idle");
       return;
     }
 
@@ -89,14 +97,23 @@ export default function ScanReceipt() {
     setError(null);
 
     try {
-      // Process document
-      const result = await processDocumentImage(file);
+      console.log("[ScanReceipt] Processing document:", file.name, file.type, file.size);
+      
+      // Add minimum delay to ensure processing state is visible
+      const [result] = await Promise.all([
+        processDocumentImage(file),
+        new Promise(resolve => setTimeout(resolve, 500)), // Minimum 500ms delay
+      ]);
+      
+      console.log("[ScanReceipt] Processing complete:", result.blob.size, result.previewUrl);
       setScannedResult(result);
       setScanState("preview");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process document");
+      console.error("[ScanReceipt] Processing error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to process document";
+      setError(errorMessage);
       setScanState("idle");
-      toast.error("Failed to process document");
+      toast.error(`Failed to process document: ${errorMessage}`);
     }
 
     // Reset input
@@ -175,7 +192,10 @@ export default function ScanReceipt() {
         type="file"
         accept="image/*"
         capture="environment"
-        onChange={handleFileChange}
+        onChange={(e) => {
+          console.log("[ScanReceipt] File input changed:", e.target.files?.length);
+          handleFileChange(e);
+        }}
         className="hidden"
       />
 
@@ -233,34 +253,53 @@ export default function ScanReceipt() {
             </div>
           )}
 
-          {scanState === "preview" && scannedResult && (
+          {scanState === "preview" && (
             <div className="space-y-4">
-              <div className="relative w-full border rounded-lg overflow-hidden bg-muted">
-                <img
-                  src={scannedResult.previewUrl}
-                  alt="Scanned receipt"
-                  className="w-full h-auto max-h-[600px] object-contain"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleUseScan}
-                  className="flex-1"
-                  size="lg"
-                >
-                  <Check className="h-5 w-5 mr-2" />
-                  Use scan
-                </Button>
-                <Button
-                  onClick={handleRetake}
-                  variant="outline"
-                  className="flex-1"
-                  size="lg"
-                >
-                  <RotateCcw className="h-5 w-5 mr-2" />
-                  Retake
-                </Button>
-              </div>
+              {scannedResult ? (
+                <>
+                  <div className="relative w-full border rounded-lg overflow-hidden bg-muted">
+                    <img
+                      src={scannedResult.previewUrl}
+                      alt="Scanned receipt"
+                      className="w-full h-auto max-h-[600px] object-contain"
+                      onError={(e) => {
+                        console.error("[ScanReceipt] Preview image failed to load:", scannedResult.previewUrl);
+                        setError("Failed to load preview image");
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleUseScan}
+                      className="flex-1"
+                      size="lg"
+                    >
+                      <Check className="h-5 w-5 mr-2" />
+                      Use scan
+                    </Button>
+                    <Button
+                      onClick={handleRetake}
+                      variant="outline"
+                      className="flex-1"
+                      size="lg"
+                    >
+                      <RotateCcw className="h-5 w-5 mr-2" />
+                      Retake
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <AlertCircle className="h-12 w-12 text-destructive" />
+                  <p className="text-sm text-muted-foreground">
+                    No scanned result available. Please try again.
+                  </p>
+                  <Button onClick={handleRetake} variant="outline">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Retake
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
