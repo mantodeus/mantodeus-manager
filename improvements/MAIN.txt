@@ -24,3 +24,9 @@ git pull
 git merge back
 git merge front
 git push
+
+pm2 logs mantodeus-manager --lines 200
+
+set +H
+export DATABASE_URL='mysql://bm9k66_mantodeus:!lm4KuaadW@bm9k66.myd.infomaniak.com:3306/bm9k66_mantodeus_manager'
+npx pnpm drizzle-kit migrate

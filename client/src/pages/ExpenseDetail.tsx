@@ -19,6 +19,13 @@ import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
 import type { ExpenseCategory } from "@/components/expenses/CategorySelect";
 
+type SuggestionItem = {
+  field: "category" | "vatMode" | "businessUsePct";
+  value: string | number;
+  confidence: number;
+  reason?: string | null;
+};
+
 export default function ExpenseDetail() {
   const [, params] = useRoute("/expenses/:id");
   const [, navigate] = useLocation();
@@ -340,8 +347,44 @@ export default function ExpenseDetail() {
   const canVoid = expense?.status === "in_order";
   const canDelete = expense?.status === "needs_review";
 
+  const normalizeSuggestions = (raw: unknown): SuggestionItem[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw as SuggestionItem[];
+
+    const suggestions: SuggestionItem[] = [];
+    const obj = raw as Record<string, any>;
+
+    if (obj.category) {
+      suggestions.push({
+        field: "category",
+        value: obj.category.value,
+        confidence: obj.category.confidence,
+        reason: obj.category.reason,
+      });
+    }
+    if (obj.vatMode) {
+      suggestions.push({
+        field: "vatMode",
+        value: obj.vatMode.value,
+        confidence: obj.vatMode.confidence,
+        reason: obj.vatMode.reason,
+      });
+    }
+    if (obj.businessUsePct) {
+      suggestions.push({
+        field: "businessUsePct",
+        value: obj.businessUsePct.value,
+        confidence: obj.businessUsePct.confidence,
+        reason: obj.businessUsePct.reason,
+      });
+    }
+
+    return suggestions;
+  };
+
   // Don't show suggestions for voided expenses
-  const suggestions = expense?.status !== "void" ? expense?.suggestions || [] : [];
+  const suggestions =
+    expense?.status !== "void" ? normalizeSuggestions(expense?.suggestions) : [];
 
   const files = expense?.files?.map((file) => ({
     id: file.id,
