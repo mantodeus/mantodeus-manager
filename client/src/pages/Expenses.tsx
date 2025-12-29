@@ -16,6 +16,8 @@ import { trpc } from "@/lib/trpc";
 import { Plus, Loader2, Receipt } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { ExpenseCard } from "@/components/expenses/ExpenseCard";
+import { ReviewExpenseCard } from "@/components/expenses/ReviewExpenseCard";
+import { StickyReviewActions } from "@/components/expenses/StickyReviewActions";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/currencyFormat";
@@ -32,6 +34,7 @@ export default function Expenses() {
   const [showVoid, setShowVoid] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [expandedExpenseId, setExpandedExpenseId] = useState<number | null>(null);
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const [, navigate] = useLocation();
@@ -87,9 +90,11 @@ export default function Expenses() {
   const inOrder = expenses.filter((e) => e.status === "in_order");
 
   const markInOrderMutation = trpc.expenses.setExpenseStatus.useMutation({
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast.success("Expense marked as in order");
       utils.expenses.list.invalidate();
+      utils.expenses.getExpense.invalidate({ id: variables.id });
+      setExpandedExpenseId(null); // Close expanded card
     },
     onError: (err) => {
       toast.error(err.message || "Failed to mark expense as in order");
@@ -117,6 +122,28 @@ export default function Expenses() {
     },
     onError: (err) => {
       toast.error(err.message || "Failed to delete expense");
+    },
+  });
+
+  const applyFieldMutation = trpc.expenses.applyProposedFields.useMutation({
+    onSuccess: (_, variables) => {
+      toast.success("Field applied");
+      utils.expenses.list.invalidate();
+      utils.expenses.getExpense.invalidate({ id: variables.id });
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to apply field");
+    },
+  });
+
+  const applyAllMutation = trpc.expenses.applyProposedFields.useMutation({
+    onSuccess: (_, variables) => {
+      toast.success("All fields applied");
+      utils.expenses.list.invalidate();
+      utils.expenses.getExpense.invalidate({ id: variables.id });
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to apply fields");
     },
   });
 
@@ -200,7 +227,49 @@ export default function Expenses() {
     }
   };
 
-  // Keyboard navigation
+  const handleApplyField = (expenseId: number, field: string, value: any) => {
+    const fields: any = {};
+    fields[field] = value;
+    
+    // Convert date strings to Date objects if needed
+    if (field === "expenseDate" && typeof value === "string") {
+      fields[field] = new Date(value);
+    }
+    
+    applyFieldMutation.mutate({ id: expenseId, fields });
+  };
+
+  const handleApplyAll = (expenseId: number) => {
+    const expense = needsReview.find((e) => e.id === expenseId);
+    if (!expense || !expense.reviewMeta) return;
+
+    const fields: any = {};
+    const proposed = expense.reviewMeta.proposed;
+
+    if (proposed.supplierName) fields.supplierName = proposed.supplierName.value;
+    if (proposed.description) fields.description = proposed.description.value;
+    if (proposed.expenseDate) {
+      fields.expenseDate = typeof proposed.expenseDate.value === "string" 
+        ? new Date(proposed.expenseDate.value) 
+        : proposed.expenseDate.value;
+    }
+    if (proposed.grossAmountCents) fields.grossAmountCents = proposed.grossAmountCents.value;
+    if (proposed.category) fields.category = proposed.category.value;
+    if (proposed.vatMode) fields.vatMode = proposed.vatMode.value;
+    if (proposed.businessUsePct) fields.businessUsePct = proposed.businessUsePct.value;
+
+    applyAllMutation.mutate({ id: expenseId, fields });
+  };
+
+  const handleMarkInOrder = (expenseId: number) => {
+    markInOrderMutation.mutate({ id: expenseId, status: "in_order" });
+  };
+
+  const handleExpandChange = (expenseId: number, expanded: boolean) => {
+    setExpandedExpenseId(expanded ? expenseId : null);
+  };
+
+  // Keyboard shortcuts (desktop only)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle if not typing in an input/textarea
@@ -212,26 +281,78 @@ export default function Expenses() {
         return;
       }
 
-      // Enter → Edit first expense in Needs Review
-      if (e.key === "Enter" && needsReview.length > 0) {
-        e.preventDefault();
-        navigate(`/expenses/${needsReview[0].id}`);
+      // Don't handle if dialog is open
+      if (voidDialogOpen || deleteDialogOpen || bulkUploadOpen) {
         return;
       }
 
-      // I → Mark as In Order (first expense in Needs Review)
-      if (e.key === "i" || e.key === "I") {
-        if (e.ctrlKey || e.metaKey) return; // Don't interfere with Cmd/Ctrl+I
-        if (needsReview.length > 0) {
-          e.preventDefault();
-      markInOrderMutation.mutate({ id: needsReview[0].id, status: "in_order" });
+      // J / K → Focus next / previous needs_review card
+      if (e.key === "j" || e.key === "J") {
+        if (e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        const currentIndex = focusedIndex ?? -1;
+        const nextIndex = Math.min(currentIndex + 1, needsReview.length - 1);
+        setFocusedIndex(nextIndex);
+        const nextExpense = needsReview[nextIndex];
+        if (nextExpense && cardRefs.current.has(nextExpense.id)) {
+          cardRefs.current.get(nextExpense.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
         }
+        return;
+      }
+
+      if (e.key === "k" || e.key === "K") {
+        if (e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        const currentIndex = focusedIndex ?? needsReview.length;
+        const prevIndex = Math.max(currentIndex - 1, 0);
+        setFocusedIndex(prevIndex);
+        const prevExpense = needsReview[prevIndex];
+        if (prevExpense && cardRefs.current.has(prevExpense.id)) {
+          cardRefs.current.get(prevExpense.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return;
+      }
+
+      // A → Apply all (focused card)
+      if (e.key === "a" || e.key === "A") {
+        if (e.ctrlKey || e.metaKey) return;
+        if (focusedIndex !== null && focusedIndex >= 0 && focusedIndex < needsReview.length) {
+          e.preventDefault();
+          const expense = needsReview[focusedIndex];
+          if (expense && expense.reviewMeta && Object.keys(expense.reviewMeta.proposed).length >= 2) {
+            handleApplyAll(expense.id);
+          }
+        }
+        return;
+      }
+
+      // I → Mark in order (focused card)
+      if (e.key === "i" || e.key === "I") {
+        if (e.ctrlKey || e.metaKey) return;
+        if (focusedIndex !== null && focusedIndex >= 0 && focusedIndex < needsReview.length) {
+          e.preventDefault();
+          const expense = needsReview[focusedIndex];
+          if (expense && (!expense.reviewMeta || expense.reviewMeta.missingRequired.length === 0)) {
+            handleMarkInOrder(expense.id);
+          }
+        }
+        return;
+      }
+
+      // Enter → Edit focused expense or first expense
+      if (e.key === "Enter" && needsReview.length > 0) {
+        e.preventDefault();
+        const expenseId = focusedIndex !== null && focusedIndex >= 0 && focusedIndex < needsReview.length
+          ? needsReview[focusedIndex].id
+          : needsReview[0].id;
+        navigate(`/expenses/${expenseId}`);
+        return;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [needsReview, navigate, markInOrderMutation]);
+  }, [needsReview, navigate, focusedIndex, voidDialogOpen, deleteDialogOpen, bulkUploadOpen, handleApplyAll, handleMarkInOrder]);
 
   const handleVoidConfirm = (reason: string) => {
     if (voidTargetId) {
@@ -298,7 +419,7 @@ export default function Expenses() {
       </div>
 
       {/* Needs Review Section */}
-      <div className="space-y-4">
+      <div className="space-y-4 pb-24 md:pb-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Needs Review</h2>
           <Badge variant="outline">{needsReview.length}</Badge>
@@ -312,16 +433,56 @@ export default function Expenses() {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {needsReview.map((expense) => (
-              <ExpenseCard
-                key={expense.id}
-                expense={expense}
-                onAction={handleAction}
-                showVoid={false}
-              />
-            ))}
+            {needsReview.map((expense, index) => {
+              const isExpanded = expandedExpenseId === expense.id;
+              const proposedCount = expense.reviewMeta
+                ? Object.keys(expense.reviewMeta.proposed).length
+                : 0;
+              const canMarkInOrder = !expense.reviewMeta || expense.reviewMeta.missingRequired.length === 0;
+
+              return (
+                <div
+                  key={expense.id}
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(expense.id, el);
+                  }}
+                  className={focusedIndex === index ? "ring-2 ring-primary rounded-lg" : ""}
+                >
+                  <ReviewExpenseCard
+                    expense={expense as any}
+                    onApplyField={handleApplyField}
+                    onApplyAll={handleApplyAll}
+                    onMarkInOrder={handleMarkInOrder}
+                    isExpanded={isExpanded}
+                    onExpandChange={handleExpandChange}
+                    isApplying={applyFieldMutation.isPending || applyAllMutation.isPending}
+                    isMarkingInOrder={markInOrderMutation.isPending}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
+
+        {/* Sticky review actions (mobile only) */}
+        {expandedExpenseId !== null && needsReview.length > 0 && (() => {
+          const expense = needsReview.find((e) => e.id === expandedExpenseId);
+          if (!expense || !expense.reviewMeta) return null;
+          
+          const proposedCount = Object.keys(expense.reviewMeta.proposed).length;
+          const canMarkInOrder = expense.reviewMeta.missingRequired.length === 0;
+
+          return (
+            <StickyReviewActions
+              proposedCount={proposedCount}
+              canMarkInOrder={canMarkInOrder}
+              onApplyAll={() => handleApplyAll(expense.id)}
+              onMarkInOrder={() => handleMarkInOrder(expense.id)}
+              isApplying={applyFieldMutation.isPending || applyAllMutation.isPending}
+              isMarkingInOrder={markInOrderMutation.isPending}
+            />
+          );
+        })()}
       </div>
 
       {/* In Order Section */}

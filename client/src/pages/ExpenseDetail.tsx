@@ -130,6 +130,7 @@ export default function ExpenseDetail() {
     onSuccess: () => {
       toast.success("Receipt deleted successfully");
       utils.expenses.getExpense.invalidate({ id: expenseId! });
+      utils.expenses.list.invalidate(); // Update review meta
     },
     onError: (err) => {
       toast.error(err.message || "Failed to delete receipt");
