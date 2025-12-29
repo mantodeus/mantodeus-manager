@@ -241,7 +241,7 @@ export default function Invoices() {
           <h1 className="text-3xl font-regular">Invoices</h1>
           <p className="text-muted-foreground text-sm">Create, edit, and manage invoices</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 sm:gap-3">
           <input
             type="file"
             accept=".pdf,application/pdf"
@@ -288,19 +288,20 @@ export default function Invoices() {
               document.getElementById("invoice-upload-input")?.click();
             }}
             disabled={uploadInvoiceMutation.isPending}
+            className="h-10 whitespace-nowrap"
           >
             {uploadInvoiceMutation.isPending ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <Upload className="w-4 h-4 mr-2" />
             )}
-            Upload Invoice
+            Upload
           </Button>
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="h-10 whitespace-nowrap">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Invoice
+                Create
               </Button>
             </DialogTrigger>
             <DialogContent 
