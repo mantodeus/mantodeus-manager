@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Bold, Italic, Heading1, Heading2, List, CheckSquare, Code, Link as LinkIcon } from "lucide-react";
@@ -538,7 +538,7 @@ export default function NoteDetail() {
             {note.content ? (
               <Card className="p-6">
                 <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <Streamdown>{note.content}</Streamdown>
+                  <Markdown>{note.content}</Markdown>
                 </div>
               </Card>
             ) : (
