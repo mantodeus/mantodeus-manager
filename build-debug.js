@@ -373,8 +373,19 @@ if (!viteEnv.VITE_SUPABASE_URL || !viteEnv.VITE_SUPABASE_ANON_KEY) {
 
 // Build Vite command with explicit env vars and increased memory limit
 // Increase Node.js heap size to prevent OOM errors during Vite build
-const viteCmd = 'NODE_OPTIONS=--max-old-space-size=4096 npx vite build';
-const viteSuccess = runCommand(viteCmd, 'Frontend build (Vite)', viteEnv);
+// Windows requires different syntax for environment variables
+const isWindows = process.platform === 'win32';
+const viteCmd = isWindows 
+  ? 'npx vite build'
+  : 'NODE_OPTIONS=--max-old-space-size=4096 npx vite build';
+
+// Set NODE_OPTIONS in the environment for Windows
+const viteEnvWithMemory = {
+  ...viteEnv,
+  NODE_OPTIONS: '--max-old-space-size=4096',
+};
+
+const viteSuccess = runCommand(viteCmd, 'Frontend build (Vite)', viteEnvWithMemory);
 
 if (!viteSuccess) {
   console.error('\n❌ FATAL: Vite build failed');
