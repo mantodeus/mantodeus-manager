@@ -16,24 +16,30 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { processDocumentImage } from "@/lib/documentScan";
+import { scanDocument, type ScanResult } from "@/lib/documentScanner/scanPipeline";
+import { CornerAdjuster } from "@/components/expenses/CornerAdjuster";
 
 type ScanState = "idle" | "capturing" | "processing" | "preview" | "uploading";
 
 export default function ScanReceipt() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
-  const [scannedResult, setScannedResult] = useState<{
-    blob: Blob;
-    previewUrl: string;
-  } | null>(null);
+  const [scannedResult, setScannedResult] = useState<ScanResult | null>(null);
+  const [originalPreviewUrl, setOriginalPreviewUrl] = useState<string | null>(null);
+  const [showAdjuster, setShowAdjuster] = useState(false);
+
+  const searchParams = new URLSearchParams(location.split("?")[1] || "");
+  const expenseId = searchParams.get("expenseId")
+    ? Number(searchParams.get("expenseId"))
+    : null;
 
   const utils = trpc.useUtils();
 
-  const uploadMutation = trpc.expenses.uploadReceiptsBulk.useMutation();
+  const uploadReceiptMutation = trpc.expenses.uploadExpenseReceipt.useMutation();
+  const registerReceiptMutation = trpc.expenses.registerReceipt.useMutation();
 
   useEffect(() => {
     // Auto-trigger camera on mobile when page loads
@@ -53,8 +59,11 @@ export default function ScanReceipt() {
       if (scannedResult?.previewUrl) {
         URL.revokeObjectURL(scannedResult.previewUrl);
       }
+      if (originalPreviewUrl) {
+        URL.revokeObjectURL(originalPreviewUrl);
+      }
     };
-  }, [scannedResult?.previewUrl]);
+  }, [scannedResult?.previewUrl, originalPreviewUrl]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,6 +85,10 @@ export default function ScanReceipt() {
     }
 
     setOriginalFile(file);
+    if (originalPreviewUrl) {
+      URL.revokeObjectURL(originalPreviewUrl);
+    }
+    setOriginalPreviewUrl(URL.createObjectURL(file));
     setScanState("processing");
     setError(null);
 
@@ -84,12 +97,16 @@ export default function ScanReceipt() {
       
       // Add minimum delay to ensure processing state is visible
       const [result] = await Promise.all([
-        processDocumentImage(file),
+        scanDocument(file),
         new Promise(resolve => setTimeout(resolve, 500)), // Minimum 500ms delay
       ]);
       
       console.log("[ScanReceipt] Processing complete:", result.blob.size, result.previewUrl);
+      if (scannedResult?.previewUrl) {
+        URL.revokeObjectURL(scannedResult.previewUrl);
+      }
       setScannedResult(result);
+      setShowAdjuster(result.confidence < 0.5);
       setScanState("preview");
     } catch (err) {
       console.error("[ScanReceipt] Processing error:", err);
@@ -105,70 +122,60 @@ export default function ScanReceipt() {
 
   const handleUseScan = async () => {
     if (!scannedResult || !originalFile) return;
+    if (!expenseId || Number.isNaN(expenseId)) {
+      setError("Open this scanner from an expense to attach the scan.");
+      setScanState("preview");
+      return;
+    }
 
     setScanState("uploading");
 
     try {
-      // Convert blob to base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const base64 = reader.result as string;
-          const base64Data = base64.split(",")[1]; // Remove data:image/...;base64, prefix
+      const scanFile = new File([scannedResult.blob], "scan.jpg", {
+        type: "image/jpeg",
+      });
 
-          const result = await uploadMutation.mutateAsync({
-            files: [
-              {
-                filename: originalFile.name,
-                mimeType: "image/jpeg", // Processed images are JPEG
-                fileSize: scannedResult.blob.size,
-                base64Data,
-              },
-            ],
-          });
+      const { uploadUrl, s3Key } = await uploadReceiptMutation.mutateAsync({
+        expenseId,
+        filename: scanFile.name,
+        mimeType: scanFile.type,
+        fileSize: scanFile.size,
+      });
 
-          if (result.errors && result.errors.length > 0) {
-            const message =
-              result.errors[0]?.error || "Failed to upload scanned receipt";
-            setError(message);
-            setScanState("preview");
-            toast.error(message);
-            return;
-          }
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": scanFile.type,
+        },
+        body: scanFile,
+      });
 
-          const createdId = result.createdExpenseIds?.[0];
-          if (!createdId) {
-            const message = "Failed to create expense for scanned receipt";
-            setError(message);
-            setScanState("preview");
-            toast.error(message);
-            return;
-          }
+      if (!uploadResponse.ok) {
+        throw new Error(`Storage upload failed (${uploadResponse.status})`);
+      }
 
-          toast.success("Receipt scanned and uploaded successfully");
-          // Cleanup preview URL
-          if (scannedResult?.previewUrl) {
-            URL.revokeObjectURL(scannedResult.previewUrl);
-          }
-          // Force refetch to ensure UI updates immediately
-          await utils.expenses.getExpense.invalidate({ id: createdId });
-          await utils.expenses.list.invalidate();
-          navigate(`/expenses/${createdId}`);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Failed to upload receipt";
-          setError(message);
-          setScanState("preview");
-          toast.error(message);
-        }
-      };
-      reader.onerror = () => {
-        setError("Failed to read processed image");
-        setScanState("preview");
-      };
-      reader.readAsDataURL(scannedResult.blob);
+      await registerReceiptMutation.mutateAsync({
+        expenseId,
+        s3Key,
+        mimeType: scanFile.type,
+        originalFilename: originalFile.name,
+        fileSize: scanFile.size,
+      });
+
+      toast.success("Receipt scanned and uploaded successfully");
+      if (scannedResult?.previewUrl) {
+        URL.revokeObjectURL(scannedResult.previewUrl);
+      }
+      if (originalPreviewUrl) {
+        URL.revokeObjectURL(originalPreviewUrl);
+      }
+      await utils.expenses.getExpense.invalidate({ id: expenseId });
+      await utils.expenses.list.invalidate();
+      navigate(`/expenses/${expenseId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to prepare upload");
       setScanState("preview");
+      toast.error(err instanceof Error ? err.message : "Failed to upload receipt");
     }
   };
 
@@ -179,7 +186,12 @@ export default function ScanReceipt() {
     }
     setScannedResult(null);
     setOriginalFile(null);
+    if (originalPreviewUrl) {
+      URL.revokeObjectURL(originalPreviewUrl);
+    }
+    setOriginalPreviewUrl(null);
     setError(null);
+    setShowAdjuster(false);
     setScanState("idle");
     // Reset input
     if (fileInputRef.current) {
@@ -203,7 +215,7 @@ export default function ScanReceipt() {
         <div>
           <h1 className="text-3xl font-regular">Scan Receipt</h1>
           <p className="text-muted-foreground text-sm">
-            Capture and enhance a receipt image
+            Capture and process a receipt for review
           </p>
         </div>
       </div>
@@ -224,15 +236,23 @@ export default function ScanReceipt() {
       {/* Main Content */}
       <Card>
         <CardHeader>
-          <CardTitle>Receipt Capture</CardTitle>
+          <CardTitle>Document Scanner</CardTitle>
           <CardDescription>
             {scanState === "idle" && "Capture a receipt using your camera"}
-            {scanState === "processing" && "Enhancing receipt image..."}
-            {scanState === "preview" && "Review the scanned document"}
+            {scanState === "processing" && "Processing document..."}
+            {scanState === "preview" && "Review scan before saving"}
             {scanState === "uploading" && "Uploading receipt..."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!expenseId && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Open this scanner from an expense to attach the scan.
+              </AlertDescription>
+            </Alert>
+          )}
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -267,10 +287,10 @@ export default function ScanReceipt() {
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                Enhancing receipt image...
+                Processing document...
               </p>
               <p className="text-xs text-muted-foreground text-center">
-                Converting to black & white and boosting contrast
+                Detecting document edges and correcting perspective
               </p>
             </div>
           )}
@@ -279,6 +299,21 @@ export default function ScanReceipt() {
             <div className="space-y-4">
               {scannedResult ? (
                 <>
+                  {showAdjuster && originalFile && originalPreviewUrl ? (
+                    <CornerAdjuster
+                      file={originalFile}
+                      imageUrl={originalPreviewUrl}
+                      initialCorners={scannedResult.corners}
+                      onApply={(result) => {
+                        if (scannedResult.previewUrl) {
+                          URL.revokeObjectURL(scannedResult.previewUrl);
+                        }
+                        setScannedResult(result);
+                        setShowAdjuster(false);
+                      }}
+                      onCancel={() => setShowAdjuster(false)}
+                    />
+                  ) : (
                   <div className="relative w-full border rounded-lg overflow-hidden bg-muted">
                     <img
                       src={scannedResult.previewUrl}
@@ -290,14 +325,36 @@ export default function ScanReceipt() {
                       }}
                     />
                   </div>
+                  )}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      Confidence:{" "}
+                      {scannedResult.confidence >= 0.7
+                        ? "High"
+                        : scannedResult.confidence >= 0.5
+                        ? "Medium"
+                        : "Low"}
+                    </span>
+                    <span>{Math.round(scannedResult.confidence * 100)}%</span>
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       onClick={handleUseScan}
                       className="flex-1"
                       size="lg"
+                      disabled={showAdjuster || !expenseId}
                     >
                       <Check className="h-5 w-5 mr-2" />
                       Use scan
+                    </Button>
+                    <Button
+                      onClick={() => setShowAdjuster(true)}
+                      variant="outline"
+                      className="flex-1"
+                      size="lg"
+                      disabled={!originalPreviewUrl}
+                    >
+                      Adjust corners
                     </Button>
                     <Button
                       onClick={handleRetake}
