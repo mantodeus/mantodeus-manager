@@ -21,6 +21,7 @@ import ContactsRubbish from "./pages/ContactsRubbish";
 import Invoices from "./pages/Invoices";
 import InvoicesArchived from "./pages/InvoicesArchived";
 import InvoicesRubbish from "./pages/InvoicesRubbish";
+import InvoiceCreate from "./pages/InvoiceCreate";
 import Notes from "./pages/Notes";
 import NotesArchived from "./pages/NotesArchived";
 import NotesRubbish from "./pages/NotesRubbish";
@@ -143,6 +144,11 @@ function Router() {
       <Route path="/contacts/rubbish">
         <DashboardLayout>
           <ContactsRubbish />
+        </DashboardLayout>
+      </Route>
+      <Route path="/invoices/new">
+        <DashboardLayout>
+          <InvoiceCreate />
         </DashboardLayout>
       </Route>
       <Route path="/invoices">
