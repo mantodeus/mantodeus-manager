@@ -249,6 +249,7 @@ export const expenseRouter = router({
   /**
    * Get a single expense by ID
    * Includes suggestions for category, VAT mode, and business use %
+   * Always includes files array (even if empty) with presigned GET URLs for preview
    */
   getExpense: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -263,8 +264,23 @@ export const expenseRouter = router({
       const { getExpenseSuggestions } = await import("./expenses/suggestionEngine");
       const suggestions = await getExpenseSuggestions(expense.id, ctx.user.id);
       
+      // Ensure files array exists (always returned, even if empty)
+      const files = expense.files || [];
+      
+      // Generate presigned GET URLs for file preview (NOT PUT URLs)
+      const filesWithUrls = await Promise.all(
+        files.map(async (file) => {
+          const previewUrl = await createPresignedReadUrl(file.s3Key, 60 * 60); // 1 hour GET URL
+          return {
+            ...file,
+            previewUrl, // Presigned GET URL for preview/download
+          };
+        })
+      );
+      
       return {
         ...expense,
+        files: filesWithUrls, // Always an array, never undefined
         suggestions,
       };
     }),
