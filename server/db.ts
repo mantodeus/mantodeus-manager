@@ -1728,7 +1728,17 @@ export async function getExpenseById(id: number) {
   if (!db) throw new Error("Database not available");
   
   const result = await db.select().from(expenses).where(eq(expenses.id, id)).limit(1);
-  return result.length > 0 ? result[0] : null;
+  if (result.length === 0) {
+    return null;
+  }
+  
+  // Always include files (even if empty)
+  const files = await getExpenseFilesByExpenseId(id);
+  
+  return {
+    ...result[0],
+    files,
+  };
 }
 
 export async function listExpensesByUser(userId: number, statusFilter?: 'needs_review' | 'in_order' | 'void') {
