@@ -123,10 +123,19 @@ export default function Expenses() {
   });
 
   const bulkUploadMutation = trpc.expenses.uploadReceiptsBulk.useMutation({
-    onSuccess: () => {
+    onSuccess: async (data) => {
       toast.success("Receipts uploaded successfully");
       setBulkUploadOpen(false);
-      utils.expenses.list.invalidate();
+      // Force refetch to ensure UI updates immediately
+      await utils.expenses.list.invalidate();
+      // If expenses were created, invalidate their individual queries
+      if (data && typeof data === "object" && "expenseIds" in data && Array.isArray(data.expenseIds)) {
+        await Promise.all(
+          (data.expenseIds as number[]).map((id) =>
+            utils.expenses.getById.invalidate({ id })
+          )
+        );
+      }
       navigate("/expenses");
     },
     onError: (err) => {
