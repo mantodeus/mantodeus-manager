@@ -582,7 +582,7 @@ export const expenseRouter = router({
    * - Partial failures don't abort the batch
    * - Returns list of created expense IDs
    */
-  uploadExpenseReceiptsBulk: protectedProcedure
+  uploadReceiptsBulk: protectedProcedure
     .input(
       z.object({
         files: z
