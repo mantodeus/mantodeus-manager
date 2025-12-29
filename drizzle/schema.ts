@@ -416,6 +416,24 @@ export type Note = typeof notes.$inferSelect;
 export type InsertNote = typeof notes.$inferInsert;
 
 /**
+ * Note Files table - files attached to notes
+ */
+export const noteFiles = mysqlTable("note_files", {
+  id: int("id").primaryKey().autoincrement(),
+  noteId: int("noteId").notNull().references(() => notes.id, { onDelete: "cascade" }),
+  s3Key: varchar("s3Key", { length: 512 }).notNull(),
+  mimeType: varchar("mimeType", { length: 128 }).notNull(),
+  originalFilename: varchar("originalFilename", { length: 255 }).notNull(),
+  fileSize: int("fileSize").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("note_files_noteId_idx").on(table.noteId),
+]);
+
+export type NoteFile = typeof noteFiles.$inferSelect;
+export type InsertNoteFile = typeof noteFiles.$inferInsert;
+
+/**
  * Locations table - stores map locations/markers
  */
 export const locations = mysqlTable("locations", {
