@@ -8,7 +8,7 @@
     "dev": "tsx watch server/_core/index.ts",
     "build": "node build-debug.js",
     "build:split": "npm run build:frontend && npm run build:backend",
-    "build:frontend": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
+    "build:frontend": "vite build",
     "build:backend": "esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --banner:js=\"import './server/_core/load-env.js';\" --outdir=dist",
     "build:check": "node build.js",
     "start": "NODE_ENV=production node dist/index.js",
