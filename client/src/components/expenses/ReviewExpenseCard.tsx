@@ -12,7 +12,8 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Receipt, FileText, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import { Receipt, FileText, CheckCircle2, AlertCircle, XCircle, Trash2 } from "lucide-react";
+import { useLocation } from "wouter";
 import { getCategoryLabel } from "./CategorySelect";
 import { formatCurrency } from "@/lib/currencyFormat";
 import { getConfidenceLabel, getReviewScoreLabel, type ProposedFields } from "@/lib/expenseConfidence";
@@ -39,10 +40,12 @@ interface ReviewExpenseCardProps {
   onApplyField?: (expenseId: number, field: string, value: any) => void;
   onApplyAll?: (expenseId: number) => void;
   onMarkInOrder?: (expenseId: number) => void;
+  onDelete?: (expenseId: number) => void;
   isExpanded?: boolean;
   onExpandChange?: (expenseId: number, expanded: boolean) => void;
   isApplying?: boolean;
   isMarkingInOrder?: boolean;
+  isDeleting?: boolean;
 }
 
 export function ReviewExpenseCard({
@@ -50,15 +53,22 @@ export function ReviewExpenseCard({
   onApplyField,
   onApplyAll,
   onMarkInOrder,
+  onDelete,
   isExpanded = false,
   onExpandChange,
   isApplying = false,
   isMarkingInOrder = false,
+  isDeleting = false,
 }: ReviewExpenseCardProps) {
+  const [, navigate] = useLocation();
   const reviewMeta = expense.reviewMeta;
   const proposedCount = reviewMeta
     ? Object.keys(reviewMeta.proposed).length
     : 0;
+
+  const handleCardClick = () => {
+    navigate(`/expenses/${expense.id}`);
+  };
 
   const getScoreBadge = () => {
     if (!reviewMeta) return null;
@@ -103,7 +113,10 @@ export function ReviewExpenseCard({
   };
 
   return (
-    <Card className="hover:shadow-lg transition-all h-full">
+    <Card 
+      className="hover:shadow-lg transition-all h-full cursor-pointer"
+      onClick={handleCardClick}
+    >
       <CardHeader>
         {/* Top row: Supplier, Amount, Score */}
         <div className="flex items-start justify-between gap-2">
@@ -115,7 +128,7 @@ export function ReviewExpenseCard({
               {formatCurrency(expense.grossAmountCents / 100, expense.currency) || "—"}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             {getScoreBadge()}
             {onExpandChange && (
               <Button
@@ -318,6 +331,20 @@ export function ReviewExpenseCard({
               disabled={isMarkingInOrder || reviewMeta?.missingRequired.length !== 0}
             >
               Mark in order
+            </Button>
+          )}
+          {onDelete && expense.status === "needs_review" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(expense.id);
+              }}
+              disabled={isDeleting}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>

@@ -65,6 +65,16 @@ export default function ScanReceipt() {
     };
   }, [scannedResult?.previewUrl, originalPreviewUrl]);
 
+  // Timeout helper for scan pipeline
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error("Scan timeout")), timeoutMs)
+      ),
+    ]);
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -92,28 +102,45 @@ export default function ScanReceipt() {
     setScanState("processing");
     setError(null);
 
+    let processedResult: ScanResult | null = null;
+
     try {
       console.log("[ScanReceipt] Processing document:", file.name, file.type, file.size);
       
-      // Add minimum delay to ensure processing state is visible
-      const [result] = await Promise.all([
-        scanDocument(file),
-        new Promise(resolve => setTimeout(resolve, 500)), // Minimum 500ms delay
-      ]);
-      
-      console.log("[ScanReceipt] Processing complete:", result.blob.size, result.previewUrl);
-      if (scannedResult?.previewUrl) {
-        URL.revokeObjectURL(scannedResult.previewUrl);
+      // Best-effort scan with 8s timeout - NEVER block upload
+      try {
+        processedResult = await withTimeout(scanDocument(file), 8000);
+        console.log("[ScanReceipt] Processing complete:", processedResult.blob.size, processedResult.previewUrl);
+      } catch (scanError) {
+        console.error("[ScanReceipt] Scan failed, will use original:", scanError);
+        // Continue with original file - scan is best-effort only
+        processedResult = null;
       }
-      setScannedResult(result);
-      setShowAdjuster(result.confidence < 0.5);
+      
+      // Always proceed to preview, even if scan failed
+      if (processedResult) {
+        if (scannedResult?.previewUrl) {
+          URL.revokeObjectURL(scannedResult.previewUrl);
+        }
+        setScannedResult(processedResult);
+        setShowAdjuster(processedResult.confidence < 0.5);
+      } else {
+        // Use original file if scan failed
+        setScannedResult(null);
+        setShowAdjuster(false);
+      }
       setScanState("preview");
     } catch (err) {
-      console.error("[ScanReceipt] Processing error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to process document";
-      setError(errorMessage);
-      setScanState("idle");
-      toast.error(`Failed to process document: ${errorMessage}`);
+      console.error("[ScanReceipt] Unexpected error:", err);
+      // Even on unexpected error, proceed with original file
+      setScannedResult(null);
+      setShowAdjuster(false);
+      setScanState("preview");
+    } finally {
+      // Ensure loading state is always cleared
+      if (scanState === "processing") {
+        // State will be set above, but ensure we're not stuck
+      }
     }
 
     // Reset input
@@ -121,7 +148,7 @@ export default function ScanReceipt() {
   };
 
   const handleUseScan = async () => {
-    if (!scannedResult || !originalFile) return;
+    if (!originalFile) return;
     if (!expenseId || Number.isNaN(expenseId)) {
       setError("Open this scanner from an expense to attach the scan.");
       setScanState("preview");
@@ -129,25 +156,27 @@ export default function ScanReceipt() {
     }
 
     setScanState("uploading");
+    setError(null);
 
     try {
-      const scanFile = new File([scannedResult.blob], "scan.jpg", {
-        type: "image/jpeg",
-      });
+      // Use scanned result if available, otherwise use original file
+      const fileToUpload = scannedResult
+        ? new File([scannedResult.blob], "scan.jpg", { type: "image/jpeg" })
+        : originalFile;
 
       const { uploadUrl, s3Key } = await uploadReceiptMutation.mutateAsync({
         expenseId,
-        filename: scanFile.name,
-        mimeType: scanFile.type,
-        fileSize: scanFile.size,
+        filename: fileToUpload.name,
+        mimeType: fileToUpload.type,
+        fileSize: fileToUpload.size,
       });
 
       const uploadResponse = await fetch(uploadUrl, {
         method: "PUT",
         headers: {
-          "Content-Type": scanFile.type,
+          "Content-Type": fileToUpload.type,
         },
-        body: scanFile,
+        body: fileToUpload,
       });
 
       if (!uploadResponse.ok) {
@@ -157,12 +186,12 @@ export default function ScanReceipt() {
       await registerReceiptMutation.mutateAsync({
         expenseId,
         s3Key,
-        mimeType: scanFile.type,
+        mimeType: fileToUpload.type,
         originalFilename: originalFile.name,
-        fileSize: scanFile.size,
+        fileSize: fileToUpload.size,
       });
 
-      toast.success("Receipt scanned and uploaded successfully");
+      toast.success(scannedResult ? "Receipt scanned and uploaded successfully" : "Receipt uploaded successfully");
       if (scannedResult?.previewUrl) {
         URL.revokeObjectURL(scannedResult.previewUrl);
       }
@@ -173,9 +202,16 @@ export default function ScanReceipt() {
       await utils.expenses.list.invalidate();
       navigate(`/expenses/${expenseId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to prepare upload");
+      console.error("[ScanReceipt] Upload error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to upload receipt";
+      setError(errorMessage);
       setScanState("preview");
-      toast.error(err instanceof Error ? err.message : "Failed to upload receipt");
+      toast.error(errorMessage);
+    } finally {
+      // Ensure loading state is always cleared
+      if (scanState === "uploading") {
+        // State will be set above, but ensure we're not stuck
+      }
     }
   };
 
@@ -345,7 +381,7 @@ export default function ScanReceipt() {
                       disabled={showAdjuster || !expenseId}
                     >
                       <Check className="h-5 w-5 mr-2" />
-                      Use scan
+                      {scannedResult ? "Use scan" : "Upload original"}
                     </Button>
                     <Button
                       onClick={() => setShowAdjuster(true)}
