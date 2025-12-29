@@ -1,9 +1,9 @@
 /**
  * Scan Receipt Page
  * 
- * Mobile-first document scanner for receipts
+ * Mobile-first receipt capture for receipts
  * - Uses <input type="file" capture="environment" />
- * - Client-side document processing
+ * - Client-side grayscale + contrast enhancement
  * - Preview with confirmation before upload
  * - Redirect to /expenses/:id
  */
@@ -33,24 +33,7 @@ export default function ScanReceipt() {
 
   const utils = trpc.useUtils();
 
-  const uploadMutation = trpc.expenses.scanReceipt.useMutation({
-    onSuccess: async (data) => {
-      toast.success("Receipt scanned and uploaded successfully");
-      // Cleanup preview URL
-      if (scannedResult?.previewUrl) {
-        URL.revokeObjectURL(scannedResult.previewUrl);
-      }
-      // Force refetch to ensure UI updates immediately
-      await utils.expenses.getById.invalidate({ id: data.id });
-      await utils.expenses.list.invalidate();
-      navigate(`/expenses/${data.id}`);
-    },
-    onError: (err) => {
-      setError(err.message || "Failed to upload receipt");
-      setScanState("preview");
-      toast.error(err.message || "Failed to upload receipt");
-    },
-  });
+  const uploadMutation = trpc.expenses.uploadReceiptsBulk.useMutation();
 
   useEffect(() => {
     // Auto-trigger camera on mobile when page loads
@@ -129,15 +112,54 @@ export default function ScanReceipt() {
       // Convert blob to base64
       const reader = new FileReader();
       reader.onload = async () => {
-        const base64 = reader.result as string;
-        const base64Data = base64.split(",")[1]; // Remove data:image/...;base64, prefix
+        try {
+          const base64 = reader.result as string;
+          const base64Data = base64.split(",")[1]; // Remove data:image/...;base64, prefix
 
-        uploadMutation.mutate({
-          filename: originalFile.name,
-          mimeType: "image/jpeg", // Processed images are JPEG
-          fileSize: scannedResult.blob.size,
-          base64Data,
-        });
+          const result = await uploadMutation.mutateAsync({
+            files: [
+              {
+                filename: originalFile.name,
+                mimeType: "image/jpeg", // Processed images are JPEG
+                fileSize: scannedResult.blob.size,
+                base64Data,
+              },
+            ],
+          });
+
+          if (result.errors && result.errors.length > 0) {
+            const message =
+              result.errors[0]?.error || "Failed to upload scanned receipt";
+            setError(message);
+            setScanState("preview");
+            toast.error(message);
+            return;
+          }
+
+          const createdId = result.createdExpenseIds?.[0];
+          if (!createdId) {
+            const message = "Failed to create expense for scanned receipt";
+            setError(message);
+            setScanState("preview");
+            toast.error(message);
+            return;
+          }
+
+          toast.success("Receipt scanned and uploaded successfully");
+          // Cleanup preview URL
+          if (scannedResult?.previewUrl) {
+            URL.revokeObjectURL(scannedResult.previewUrl);
+          }
+          // Force refetch to ensure UI updates immediately
+          await utils.expenses.getExpense.invalidate({ id: createdId });
+          await utils.expenses.list.invalidate();
+          navigate(`/expenses/${createdId}`);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Failed to upload receipt";
+          setError(message);
+          setScanState("preview");
+          toast.error(message);
+        }
       };
       reader.onerror = () => {
         setError("Failed to read processed image");
@@ -181,7 +203,7 @@ export default function ScanReceipt() {
         <div>
           <h1 className="text-3xl font-regular">Scan Receipt</h1>
           <p className="text-muted-foreground text-sm">
-            Capture and process a receipt document
+            Capture and enhance a receipt image
           </p>
         </div>
       </div>
@@ -202,10 +224,10 @@ export default function ScanReceipt() {
       {/* Main Content */}
       <Card>
         <CardHeader>
-          <CardTitle>Document Scanner</CardTitle>
+          <CardTitle>Receipt Capture</CardTitle>
           <CardDescription>
             {scanState === "idle" && "Capture a receipt using your camera"}
-            {scanState === "processing" && "Processing document..."}
+            {scanState === "processing" && "Enhancing receipt image..."}
             {scanState === "preview" && "Review the scanned document"}
             {scanState === "uploading" && "Uploading receipt..."}
           </CardDescription>
@@ -245,10 +267,10 @@ export default function ScanReceipt() {
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                Processing document...
+                Enhancing receipt image...
               </p>
               <p className="text-xs text-muted-foreground text-center">
-                Detecting edges, correcting perspective, and enhancing contrast
+                Converting to black & white and boosting contrast
               </p>
             </div>
           )}

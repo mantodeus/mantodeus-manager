@@ -4,7 +4,8 @@ git pull origin main
 npx pnpm install
 npx pnpm drizzle-kit migrate
 npx pnpm install --frozen-lockfile
-npx pnpm run build && npx pm2 restart mantodeus-manager
+npx pnpm run build
+npx pm2 restart mantodeus-manager
 
 npx pm2 start dist/index.js --name mantodeus-manager
 npx pm2 save

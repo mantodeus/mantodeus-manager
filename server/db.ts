@@ -1749,7 +1749,11 @@ export async function getExpenseById(id: number) {
   };
 }
 
-export async function listExpensesByUser(userId: number, statusFilter?: 'needs_review' | 'in_order' | 'void') {
+export async function listExpensesByUser(
+  userId: number,
+  statusFilter?: "needs_review" | "in_order" | "void",
+  includeVoid = false
+) {
   const db = await getDb();
   if (!db) return [];
   
@@ -1757,7 +1761,9 @@ export async function listExpensesByUser(userId: number, statusFilter?: 'needs_r
   
   // Default: exclude void unless explicitly requested
   if (statusFilter === undefined) {
-    conditions.push(ne(expenses.status, 'void'));
+    if (!includeVoid) {
+      conditions.push(ne(expenses.status, "void"));
+    }
   } else {
     conditions.push(eq(expenses.status, statusFilter));
   }
@@ -1767,6 +1773,31 @@ export async function listExpensesByUser(userId: number, statusFilter?: 'needs_r
     .from(expenses)
     .where(and(...conditions))
     .orderBy(desc(expenses.expenseDate), desc(expenses.createdAt));
+}
+
+export async function getExpenseFileCountsByExpenseIds(
+  expenseIds: number[]
+): Promise<Map<number, number>> {
+  const counts = new Map<number, number>();
+  if (expenseIds.length === 0) return counts;
+
+  const db = await getDb();
+  if (!db) return counts;
+
+  const rows = await db
+    .select({
+      expenseId: expenseFiles.expenseId,
+      count: sql<number>`count(*)`,
+    })
+    .from(expenseFiles)
+    .where(inArray(expenseFiles.expenseId, expenseIds))
+    .groupBy(expenseFiles.expenseId);
+
+  rows.forEach((row) => {
+    counts.set(Number(row.expenseId), Number(row.count));
+  });
+
+  return counts;
 }
 
 export async function updateExpense(id: number, updates: Partial<InsertExpense>, userId: number) {

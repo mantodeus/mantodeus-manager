@@ -4,7 +4,7 @@
  * Dialog for bulk uploading multiple receipt files
  * - Drag & drop or file picker
  * - Client-side validation (max 10 files, 15MB per file)
- * - Upload via uploadExpenseReceiptsBulk
+ * - Upload via uploadReceiptsBulk
  */
 
 import { useState, useCallback } from "react";
