@@ -74,6 +74,18 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: path.resolve(projectRoot, "dist/public"),
       emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Split vendor chunks for better caching
+            'react-vendor': ['react', 'react-dom', 'react/jsx-runtime'],
+            'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+            'markdown-vendor': ['streamdown'],
+          },
+        },
+      },
+      // Report chunk sizes
+      chunkSizeWarningLimit: 1000, // 1MB
     },
     server: {
       host: true,
