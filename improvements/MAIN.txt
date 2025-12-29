@@ -1,3 +1,5 @@
+bash scripts/deploy-prod.sh
+
 cd /srv/customer/sites/manager.mantodeus.com
 git fetch origin
 git pull origin main
