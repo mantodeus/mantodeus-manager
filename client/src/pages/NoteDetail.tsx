@@ -13,11 +13,12 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText } from "lucide-react";
+import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import { Markdown } from "@/components/Markdown";
 import { WYSIWYGEditor } from "@/components/WYSIWYGEditor";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   Select,
   SelectContent,
@@ -117,8 +118,15 @@ export default function NoteDetail() {
   const [body, setBody] = useState("");
   const [selectedJobId, setSelectedJobId] = useState<string>("none");
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const titleInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Debounce title and body for autosave
+  const debouncedTitle = useDebounce(title, 1500);
+  const debouncedBody = useDebounce(body, 1500);
+  const debouncedJobId = useDebounce(selectedJobId, 1500);
+  const debouncedContactId = useDebounce(selectedContactId, 1500);
 
   const utils = trpc.useUtils();
   const { data: note, isLoading, error, refetch } = trpc.notes.getById.useQuery(
@@ -130,15 +138,51 @@ export default function NoteDetail() {
 
   const updateMutation = trpc.notes.update.useMutation({
     onSuccess: () => {
-      toast.success("Note saved");
-      setIsEditMode(false);
+      setSaveStatus("saved");
       refetch();
       utils.notes.list.invalidate();
+      // Reset saved status after 2 seconds
+      setTimeout(() => {
+        setSaveStatus((prev) => (prev === "saved" ? "idle" : prev));
+      }, 2000);
     },
     onError: (err) => {
+      setSaveStatus("error");
       toast.error(err.message || "Failed to save note");
+      // Reset error status after 3 seconds
+      setTimeout(() => {
+        setSaveStatus((prev) => (prev === "error" ? "idle" : prev));
+      }, 3000);
     },
   });
+
+  // Autosave when debounced values change in edit mode
+  useEffect(() => {
+    if (!isEditMode || !noteId) return;
+    if (!note) return; // Don't autosave until note is loaded
+    
+    // Skip if values haven't changed from original
+    const hasChanges = 
+      debouncedTitle !== (note.title || "") ||
+      debouncedBody !== (note.content || "") ||
+      debouncedJobId !== (note.jobId?.toString() || "none") ||
+      debouncedContactId !== (note.contactId?.toString() || "none");
+    
+    if (!hasChanges) return;
+    
+    // Don't autosave if title is empty
+    if (!debouncedTitle.trim()) return;
+    
+    setSaveStatus("saving");
+    updateMutation.mutate({
+      id: noteId,
+      title: debouncedTitle.trim(),
+      body: debouncedBody.trim() || undefined,
+      jobId: debouncedJobId && debouncedJobId !== "none" ? parseInt(debouncedJobId) : undefined,
+      contactId: debouncedContactId && debouncedContactId !== "none" ? parseInt(debouncedContactId) : undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedTitle, debouncedBody, debouncedJobId, debouncedContactId, isEditMode, noteId]);
 
   const uploadFileMutation = trpc.notes.uploadNoteFile.useMutation();
   const registerFileMutation = trpc.notes.registerNoteFile.useMutation();
@@ -184,6 +228,7 @@ export default function NoteDetail() {
       return;
     }
 
+    setSaveStatus("saving");
     updateMutation.mutate({
       id: noteId,
       title: title.trim(),
@@ -363,9 +408,33 @@ export default function NoteDetail() {
           ) : (
             <h1 className="text-3xl font-regular">{note.title}</h1>
           )}
-          <p className="text-muted-foreground text-sm">
-            {new Date(note.updatedAt).toLocaleDateString()}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-muted-foreground text-sm">
+              {new Date(note.updatedAt).toLocaleDateString()}
+            </p>
+            {isEditMode && saveStatus !== "idle" && (
+              <div className="flex items-center gap-1 text-xs">
+                {saveStatus === "saving" && (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    <span className="text-muted-foreground">Saving...</span>
+                  </>
+                )}
+                {saveStatus === "saved" && (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 text-primary" />
+                    <span className="text-primary">Saved</span>
+                  </>
+                )}
+                {saveStatus === "error" && (
+                  <>
+                    <AlertCircle className="h-3 w-3 text-destructive" />
+                    <span className="text-destructive">Error</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         {isEditMode && (
           <Button variant="ghost" onClick={handleCancel} size="sm">
