@@ -6,7 +6,7 @@ cd /srv/customer/sites/manager.mantodeus.com
 git fetch origin
 git pull origin main
 npx pnpm install
-npx pnpm drizzle-kit migrate
+npx pnpm run db:migrate
 npx pnpm install --frozen-lockfile
 npx pnpm run build
 npx pm2 restart mantodeus-manager
@@ -39,7 +39,7 @@ npx pm2 logs mantodeus-manager --lines 200
 
 set +H
 export DATABASE_URL='mysql://bm9k66_mantodeus:!lm4KuaadW@bm9k66.myd.infomaniak.com:3306/bm9k66_mantodeus_manager'
-npx pnpm drizzle-kit migrate
+npx pnpm run db:migrate
 
 .\scripts\build-local.ps1
 .\scripts\build-local.ps1 -SkipInstall
