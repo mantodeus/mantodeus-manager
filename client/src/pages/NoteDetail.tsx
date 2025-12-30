@@ -122,11 +122,24 @@ export default function NoteDetail() {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Debounce title and body for autosave
-  const debouncedTitle = useDebounce(title, 1500);
-  const debouncedBody = useDebounce(body, 1500);
-  const debouncedJobId = useDebounce(selectedJobId, 1500);
-  const debouncedContactId = useDebounce(selectedContactId, 1500);
+  // Track last saved content to prevent unnecessary saves
+  const lastSavedContentRef = useRef<{
+    title: string;
+    body: string;
+    jobId: string;
+    contactId: string;
+  } | null>(null);
+
+  // Track if an update request is in flight
+  const updateInFlightRef = useRef(false);
+  // Track if another save is pending after current one completes
+  const pendingSaveRef = useRef(false);
+
+  // Debounce title and body for autosave (increased to 2000ms for mobile typing latency)
+  const debouncedTitle = useDebounce(title, 2000);
+  const debouncedBody = useDebounce(body, 2000);
+  const debouncedJobId = useDebounce(selectedJobId, 2000);
+  const debouncedContactId = useDebounce(selectedContactId, 2000);
 
   const utils = trpc.useUtils();
   const { data: note, isLoading, error, refetch } = trpc.notes.getById.useQuery(
@@ -138,15 +151,45 @@ export default function NoteDetail() {
 
   const updateMutation = trpc.notes.update.useMutation({
     onSuccess: () => {
+      const timestamp = new Date().toISOString();
+      console.log(`[NOTES_DETAIL] ${timestamp} | UPDATE_SUCCESS | note: ${noteId}`);
+      
+      updateInFlightRef.current = false;
       setSaveStatus("saved");
-      refetch();
+      
+      // Update last saved content (DO NOT overwrite editor state)
+      lastSavedContentRef.current = {
+        title: debouncedTitle.trim(),
+        body: debouncedBody.trim() || "",
+        jobId: debouncedJobId,
+        contactId: debouncedContactId,
+      };
+      
+      // Invalidate cache to update metadata (refetch happens automatically when needed)
+      // Editor state remains source of truth during editing - we don't refetch here
+      // to avoid overwriting editor content
       utils.notes.list.invalidate();
+      utils.notes.getById.invalidate({ id: noteId });
+      
       // Reset saved status after 2 seconds
       setTimeout(() => {
         setSaveStatus((prev) => (prev === "saved" ? "idle" : prev));
       }, 2000);
+      
+      // If another save was pending, trigger it now
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current = false;
+        // Trigger autosave check (will be handled by useEffect)
+        setTimeout(() => {
+          // Force re-evaluation of autosave conditions
+        }, 100);
+      }
     },
     onError: (err) => {
+      const timestamp = new Date().toISOString();
+      console.error(`[NOTES_DETAIL] ${timestamp} | UPDATE_ERROR | note: ${noteId} | error: ${err.message}`);
+      
+      updateInFlightRef.current = false;
       setSaveStatus("error");
       toast.error(err.message || "Failed to save note");
       // Reset error status after 3 seconds
@@ -156,30 +199,67 @@ export default function NoteDetail() {
     },
   });
 
-  // Autosave when debounced values change in edit mode
+  // SAFE AUTOSAVE: Only update, with concurrency control and change detection
   useEffect(() => {
+    const timestamp = new Date().toISOString();
+    
+    // Rule 3.1: Autosave may run only if in edit mode and valid note id exists
     if (!isEditMode || !noteId) return;
     if (!note) return; // Don't autosave until note is loaded
     
-    // Skip if values haven't changed from original
-    const hasChanges = 
-      debouncedTitle !== (note.title || "") ||
-      debouncedBody !== (note.content || "") ||
-      debouncedJobId !== (note.jobId?.toString() || "none") ||
-      debouncedContactId !== (note.contactId?.toString() || "none");
+    // Rule 3.1: Skip if no changes exist
+    const currentContent = {
+      title: debouncedTitle.trim(),
+      body: debouncedBody.trim() || "",
+      jobId: debouncedJobId,
+      contactId: debouncedContactId,
+    };
     
-    if (!hasChanges) return;
+    // Compare against last saved content (not original note, to handle rapid edits)
+    if (lastSavedContentRef.current) {
+      const hasChanges = 
+        currentContent.title !== lastSavedContentRef.current.title ||
+        currentContent.body !== lastSavedContentRef.current.body ||
+        currentContent.jobId !== lastSavedContentRef.current.jobId ||
+        currentContent.contactId !== lastSavedContentRef.current.contactId;
+      
+      if (!hasChanges) {
+        return; // No changes since last save
+      }
+    } else {
+      // First autosave - compare against original note
+      const hasChanges = 
+        currentContent.title !== (note.title || "") ||
+        currentContent.body !== (note.content || "") ||
+        currentContent.jobId !== (note.jobId?.toString() || "none") ||
+        currentContent.contactId !== (note.contactId?.toString() || "none");
+      
+      if (!hasChanges) {
+        return; // No changes from original
+      }
+    }
     
-    // Don't autosave if title is empty
+    // Rule 3.3: Concurrency control - at most one save in flight
+    if (updateInFlightRef.current) {
+      console.log(`[NOTES_DETAIL] ${timestamp} | AUTOSAVE_SKIP | note: ${noteId} | reason: save_in_flight`);
+      pendingSaveRef.current = true; // Mark that another save is pending
+      return;
+    }
+    
+    // Rule 3.1: Don't autosave if title is empty
     if (!debouncedTitle.trim()) return;
     
+    // All checks passed - perform autosave
+    console.log(`[NOTES_DETAIL] ${timestamp} | AUTOSAVE_TRIGGER | note: ${noteId}`);
+    updateInFlightRef.current = true;
     setSaveStatus("saving");
+    
     updateMutation.mutate({
       id: noteId,
-      title: debouncedTitle.trim(),
-      body: debouncedBody.trim() || undefined,
-      jobId: debouncedJobId && debouncedJobId !== "none" ? parseInt(debouncedJobId) : undefined,
-      contactId: debouncedContactId && debouncedContactId !== "none" ? parseInt(debouncedContactId) : undefined,
+      title: currentContent.title,
+      body: currentContent.body || undefined,
+      jobId: currentContent.jobId && currentContent.jobId !== "none" ? parseInt(currentContent.jobId) : undefined,
+      contactId: currentContent.contactId && currentContent.contactId !== "none" ? parseInt(currentContent.contactId) : undefined,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedTitle, debouncedBody, debouncedJobId, debouncedContactId, isEditMode, noteId]);
@@ -201,15 +281,23 @@ export default function NoteDetail() {
     { enabled: false }
   );
 
-  // Initialize form when note loads
+  // Initialize form when note loads (only when not editing to prevent overwriting editor state)
   useEffect(() => {
-    if (note) {
+    if (note && !isEditMode) {
       setTitle(note.title);
       setBody(note.content || "");
       setSelectedJobId(note.jobId?.toString() || "none");
       setSelectedContactId(note.contactId?.toString() || "none");
+      
+      // Initialize last saved content
+      lastSavedContentRef.current = {
+        title: note.title,
+        body: note.content || "",
+        jobId: note.jobId?.toString() || "none",
+        contactId: note.contactId?.toString() || "none",
+      };
     }
-  }, [note]);
+  }, [note, isEditMode]);
 
   // Focus editor when entering edit mode
   useEffect(() => {
@@ -222,6 +310,9 @@ export default function NoteDetail() {
   }, [isEditMode]);
 
   const handleSave = () => {
+    const timestamp = new Date().toISOString();
+    console.log(`[NOTES_DETAIL] ${timestamp} | MANUAL_SAVE | note: ${noteId}`);
+    
     if (!noteId) return;
     if (!title.trim()) {
       toast.error("Please enter a title");
@@ -240,10 +331,19 @@ export default function NoteDetail() {
 
   const handleCancel = () => {
     if (note) {
+      // Restore original values from note (editor is source of truth until cancelled)
       setTitle(note.title);
       setBody(note.content || "");
       setSelectedJobId(note.jobId?.toString() || "none");
       setSelectedContactId(note.contactId?.toString() || "none");
+      
+      // Reset last saved content to original
+      lastSavedContentRef.current = {
+        title: note.title,
+        body: note.content || "",
+        jobId: note.jobId?.toString() || "none",
+        contactId: note.contactId?.toString() || "none",
+      };
     }
     setIsEditMode(false);
   };

@@ -2039,6 +2039,24 @@ export async function getNoteById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+/**
+ * Get note by client creation key and user ID (for idempotent creation)
+ */
+export async function getNoteByClientCreationKey(clientCreationKey: string, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db
+    .select()
+    .from(notes)
+    .where(and(
+      eq(notes.clientCreationKey, clientCreationKey),
+      eq(notes.createdBy, userId)
+    ))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function createNote(data: InsertNote) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

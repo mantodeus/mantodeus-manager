@@ -397,6 +397,8 @@ export const notes = mysqlTable("notes", {
   tags: varchar("tags", { length: 500 }),
   jobId: int("jobId").references(() => jobs.id),
   contactId: int("contactId").references(() => contacts.id),
+  /** Client-side creation key for idempotent note creation (unique per user) */
+  clientCreationKey: varchar("clientCreationKey", { length: 64 }),
   /** Timestamp when note was archived (null if active) */
   archivedAt: timestamp("archivedAt"),
   /** Timestamp when note was moved to trash (null if not trashed) */
@@ -410,6 +412,7 @@ export const notes = mysqlTable("notes", {
   index("notes_contactId_idx").on(table.contactId),
   index("notes_archivedAt_idx").on(table.archivedAt),
   index("notes_trashedAt_idx").on(table.trashedAt),
+  uniqueIndex("notes_clientCreationKey_createdBy_idx").on(table.clientCreationKey, table.createdBy),
 ]);
 
 export type Note = typeof notes.$inferSelect;

@@ -1132,16 +1132,36 @@ export const appRouter = router({
         tags: z.string().optional(),
         jobId: z.number().optional(),
         contactId: z.number().optional(),
+        clientCreationKey: z.string().optional(), // For idempotent creation
       }))
       .mutation(async ({ input, ctx }) => {
+        const sessionKey = `user_${ctx.user.id}_${Date.now()}`;
+        const timestamp = new Date().toISOString();
+        
+        // Log create request
+        console.log(`[NOTES_CREATE] ${timestamp} | session: ${sessionKey} | user: ${ctx.user.id} | key: ${input.clientCreationKey || 'none'}`);
+        
+        // Idempotent creation: if clientCreationKey provided, check for existing note
+        if (input.clientCreationKey) {
+          const existing = await db.getNoteByClientCreationKey(input.clientCreationKey, ctx.user.id);
+          if (existing) {
+            console.log(`[NOTES_CREATE] ${timestamp} | session: ${sessionKey} | IDEMPOTENT: returning existing note ${existing.id}`);
+            return { success: true, id: existing.id };
+          }
+        }
+        
+        // Create new note
         const result = await db.createNote({
           title: input.title,
           content: input.content || null,
           tags: input.tags || null,
           jobId: input.jobId || null,
           contactId: input.contactId || null,
+          clientCreationKey: input.clientCreationKey || null,
           createdBy: ctx.user.id,
         });
+        
+        console.log(`[NOTES_CREATE] ${timestamp} | session: ${sessionKey} | CREATED: new note ${result[0].id}`);
         return { success: true, id: result[0].id };
       }),
     
@@ -1155,17 +1175,26 @@ export const appRouter = router({
         contactId: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const timestamp = new Date().toISOString();
         const { id, body, ...data } = input;
+        
+        // Log update request
+        console.log(`[NOTES_UPDATE] ${timestamp} | note: ${id} | user: ${ctx.user.id}`);
+        
         const existing = await db.getNoteById(id);
         if (!existing) {
+          console.log(`[NOTES_UPDATE] ${timestamp} | note: ${id} | ERROR: not found`);
           throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
         }
         if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          console.log(`[NOTES_UPDATE] ${timestamp} | note: ${id} | ERROR: forbidden`);
           throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to update this note" });
         }
         // Map 'body' to 'content' for database storage
         const updateData = body !== undefined ? { ...data, content: body } : data;
         await db.updateNote(id, updateData);
+        
+        console.log(`[NOTES_UPDATE] ${timestamp} | note: ${id} | SUCCESS`);
         return { success: true };
       }),
 
