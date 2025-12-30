@@ -12,17 +12,6 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -54,9 +43,6 @@ type Note = {
 export default function Notes() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterJob, setFilterJob] = useState<string>("all");
   const [filterContact, setFilterContact] = useState<string>("all");
@@ -73,12 +59,6 @@ export default function Notes() {
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const [batchArchiveDialogOpen, setBatchArchiveDialogOpen] = useState(false);
 
-  // Form state
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [tags, setTags] = useState("");
-  const [selectedJobId, setSelectedJobId] = useState<string>("none");
-  const [selectedContactId, setSelectedContactId] = useState<string>("none");
 
   // Queries
   const utils = trpc.useUtils();
@@ -86,30 +66,6 @@ export default function Notes() {
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
 
-  // Mutations
-  const createNoteMutation = trpc.notes.create.useMutation({
-    onSuccess: () => {
-      toast.success("Note created successfully");
-      invalidateNoteLists();
-      resetForm();
-      setIsCreateDialogOpen(false);
-    },
-    onError: (error) => {
-      toast.error(`Failed to create note: ${error.message}`);
-    },
-  });
-
-  const updateNoteMutation = trpc.notes.update.useMutation({
-    onSuccess: () => {
-      toast.success("Note updated successfully");
-      invalidateNoteLists();
-      resetForm();
-      setIsEditDialogOpen(false);
-    },
-    onError: (error) => {
-      toast.error(`Failed to update note: ${error.message}`);
-    },
-  });
 
   const archiveNoteMutation = trpc.notes.archive.useMutation({
     onSuccess: () => {
@@ -137,47 +93,6 @@ export default function Notes() {
     utils.notes.listTrashed.invalidate();
   };
 
-  const resetForm = () => {
-    setTitle("");
-    setContent("");
-    setTags("");
-    setSelectedJobId("none");
-    setSelectedContactId("none");
-    setEditingNote(null);
-  };
-
-  const handleCreateNote = () => {
-    if (!title.trim()) {
-      toast.error("Please enter a title");
-      return;
-    }
-
-    createNoteMutation.mutate({
-      title: title.trim(),
-      content: content.trim() || undefined,
-      tags: tags.trim() || undefined,
-      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
-      contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
-    });
-  };
-
-  const handleUpdateNote = () => {
-    if (!editingNote) return;
-    if (!title.trim()) {
-      toast.error("Please enter a title");
-      return;
-    }
-
-    updateNoteMutation.mutate({
-      id: editingNote.id,
-      title: title.trim(),
-      content: content.trim() || undefined,
-      tags: tags.trim() || undefined,
-      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
-      contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
-    });
-  };
-
   const handleBatchDelete = () => {
     if (selectedIds.size === 0) return;
     setBatchDeleteDialogOpen(true);
@@ -194,7 +109,7 @@ export default function Notes() {
 
     switch (action) {
       case "edit":
-        openEditDialog(note);
+        navigate(`/notes/${note.id}`);
         break;
       case "duplicate":
         toast.info("Duplicate is coming soon.");
@@ -222,16 +137,6 @@ export default function Notes() {
       newSelected.add(noteId);
     }
     setSelectedIds(newSelected);
-  };
-
-  const openEditDialog = (note: Note) => {
-    setEditingNote(note);
-    setTitle(note.title);
-    setContent(note.content || "");
-    setTags(note.tags || "");
-    setSelectedJobId(note.jobId?.toString() || "none");
-    setSelectedContactId(note.contactId?.toString() || "none");
-    setIsEditDialogOpen(true);
   };
 
   // Filter notes helper
@@ -363,7 +268,7 @@ export default function Notes() {
           <p className="text-muted-foreground text-sm">Create and manage your notes</p>
         </div>
         <Button
-          onClick={() => setIsCreateDialogOpen(true)}
+          onClick={() => navigate("/notes/new")}
         >
           <Plus className="mr-2 h-4 w-4" />
           New Note
@@ -429,7 +334,7 @@ export default function Notes() {
             </p>
             {!searchQuery && filterJob === "all" && filterContact === "all" && (
               <Button
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={() => navigate("/notes/new")}
                 variant="outline"
                 className="mt-4"
               >
@@ -446,204 +351,6 @@ export default function Notes() {
 
       {/* Scroll-reveal footer for Archived/Rubbish navigation */}
       <ScrollRevealFooter basePath="/notes" />
-
-      {/* Create Note Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Create New Note</DialogTitle>
-            <DialogDescription>
-              Add a new note with optional links to projects and contacts
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="title">Title *</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter note title"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="content">Content</Label>
-              <Textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Enter note content"
-                rows={6}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="tags">Tags</Label>
-              <Input
-                id="tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="e.g., important, follow-up, meeting"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="job">Link to Job</Label>
-                <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select job (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {jobs && jobs.length > 0 ? (
-                      jobs.map((job) => (
-                        <SelectItem key={job.id} value={job.id.toString()}>
-                          {job.title}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-jobs" disabled>
-                        No jobs available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="contact">Link to Contact</Label>
-                <Select value={selectedContactId} onValueChange={setSelectedContactId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select contact (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {contacts.map((contact) => (
-                      <SelectItem key={contact.id} value={contact.id.toString()}>
-                        {contact.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                resetForm();
-                setIsCreateDialogOpen(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateNote}
-              disabled={createNoteMutation.isPending}
-            >
-              {createNoteMutation.isPending ? "Creating..." : "Create Note"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Note Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Note</DialogTitle>
-            <DialogDescription>
-              Update note details and links
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-title">Title *</Label>
-              <Input
-                id="edit-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter note title"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-content">Content</Label>
-              <Textarea
-                id="edit-content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Enter note content"
-                rows={6}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-tags">Tags</Label>
-              <Input
-                id="edit-tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="e.g., important, follow-up, meeting"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-job">Link to Job</Label>
-                <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select job (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {jobs && jobs.length > 0 ? (
-                      jobs.map((job) => (
-                        <SelectItem key={job.id} value={job.id.toString()}>
-                          {job.title}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-jobs" disabled>
-                        No jobs available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-contact">Link to Contact</Label>
-                <Select value={selectedContactId} onValueChange={setSelectedContactId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select contact (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {contacts.map((contact) => (
-                      <SelectItem key={contact.id} value={contact.id.toString()}>
-                        {contact.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                resetForm();
-                setIsEditDialogOpen(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateNote}
-              disabled={updateNoteMutation.isPending}
-            >
-              {updateNoteMutation.isPending ? "Updating..." : "Update Note"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Multi-Select Bar */}
       {isMultiSelectMode && (

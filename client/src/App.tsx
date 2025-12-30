@@ -23,6 +23,7 @@ import InvoicesArchived from "./pages/InvoicesArchived";
 import InvoicesRubbish from "./pages/InvoicesRubbish";
 import InvoiceCreate from "./pages/InvoiceCreate";
 import Notes from "./pages/Notes";
+import NoteNew from "./pages/NoteNew";
 import NotesArchived from "./pages/NotesArchived";
 import NotesRubbish from "./pages/NotesRubbish";
 import NoteDetail from "./pages/NoteDetail";
@@ -170,6 +171,11 @@ function Router() {
       <Route path="/notes">
         <DashboardLayout>
           <Notes />
+        </DashboardLayout>
+      </Route>
+      <Route path="/notes/new">
+        <DashboardLayout>
+          <NoteNew />
         </DashboardLayout>
       </Route>
       <Route path="/notes/archived">
