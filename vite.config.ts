@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
   // Get env vars - prefer Vite's loaded env, fallback to process.env
   const supabaseUrl = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
   const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+  const enableMath = (env.VITE_ENABLE_MATH || process.env.VITE_ENABLE_MATH) === 'true';
   
   // Debug logging
   console.log('[Vite Config] Mode:', mode);
@@ -59,14 +60,26 @@ export default defineConfig(({ mode }) => {
     throw new Error('Missing required Supabase environment variables. Build cannot continue.');
   }
   
+  const alias = {
+    "@": path.resolve(projectRoot, "client", "src"),
+    "@shared": path.resolve(projectRoot, "shared"),
+    "@assets": path.resolve(projectRoot, "attached_assets"),
+  };
+
+  if (!enableMath) {
+    alias["katex/dist/katex.min.css"] = path.resolve(
+      projectRoot,
+      "client",
+      "src",
+      "styles",
+      "empty-katex.css"
+    );
+  }
+
   return {
     plugins,
     resolve: {
-      alias: {
-        "@": path.resolve(projectRoot, "client", "src"),
-        "@shared": path.resolve(projectRoot, "shared"),
-        "@assets": path.resolve(projectRoot, "attached_assets"),
-      },
+      alias,
     },
     envDir, // Points to project root where .env file should be
     root: path.resolve(projectRoot, "client"),
