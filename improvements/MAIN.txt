@@ -1,11 +1,16 @@
 !lm4KuaadW
 
-.\scripts\build-and-upload.ps1
-.\scripts\build-and-upload.ps1 -SkipInstall
+.\scripts\build-local.ps1
+.\scripts\build-local.ps1 -SkipInstall
 
 bash scripts/deploy-from-archive.sh
 
 cd /srv/customer/sites/manager.mantodeus.com
+rm -rf dist
+tar -xzf /tmp/dist.tar.gz
+npx pm2 restart mantodeus-manager --update-env || npx pm2 start dist/index.js --name mantodeus-manager
+rm /tmp/dist.tar.gz
+
 
 cd /srv/customer/sites/manager.mantodeus.com
 git fetch origin
