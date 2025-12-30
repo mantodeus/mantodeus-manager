@@ -1,26 +1,5 @@
 !lm4KuaadW
 
-# ========================================
-# SIMPLE DEPLOYMENT WORKFLOW (Recommended)
-# ========================================
-
-# 1. Build locally (for testing)
-.\scripts\build-local.ps1
-.\scripts\build-local.ps1 -SkipInstall  # Skip install if deps haven't changed
-
-# 2. SSH to server and deploy
-ssh mantodeus
-cd /srv/customer/sites/manager.mantodeus.com
-git pull origin main
-bash scripts/deploy-manual.sh  # Runs in background, safe to disconnect
-
-# Monitor progress (optional):
-tail -f deploy-*.log
-
-# ========================================
-# OLD WORKFLOW (with upload - has SSH issues)
-# ========================================
-
 .\scripts\build-and-upload.ps1
 .\scripts\build-and-upload.ps1 -SkipInstall
 
