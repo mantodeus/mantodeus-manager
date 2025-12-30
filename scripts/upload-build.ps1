@@ -26,6 +26,16 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "✅ Upload complete" -ForegroundColor Green
 
+Write-Host "`n==> Testing SSH connection..." -ForegroundColor Cyan
+$testOutput = ssh $SERVER 'echo "SSH connection test successful"' 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "⚠️  WARNING: SSH connection test failed" -ForegroundColor Yellow
+    Write-Host "   Output: $testOutput" -ForegroundColor Gray
+    Write-Host "   Continuing anyway..." -ForegroundColor Yellow
+} else {
+    Write-Host "✅ SSH connection OK" -ForegroundColor Green
+}
+
 Write-Host "`n==> Deploying on server..." -ForegroundColor Cyan
 
 $remoteScript = @"
@@ -112,13 +122,33 @@ $remoteScript = $remoteScript -replace "`r`n", "`n"
 $deployLog = Join-Path $PWD "deploy-upload.log"
 Write-Host "   Logging to: $deployLog" -ForegroundColor Gray
 
-$remoteScript | ssh $SERVER 'bash -s' 2>&1 | Tee-Object -FilePath $deployLog
+# Create empty log file first to ensure it exists
+New-Item -Path $deployLog -ItemType File -Force | Out-Null
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "`n❌ ERROR: Deployment failed" -ForegroundColor Red
+# Capture both stdout and stderr, and capture exit code
+$output = $remoteScript | ssh $SERVER 'bash -s' 2>&1 | Tee-Object -FilePath $deployLog
+$sshExitCode = $LASTEXITCODE
+
+# Also write output to console
+$output | ForEach-Object { Write-Host $_ }
+
+if ($sshExitCode -ne 0) {
+    Write-Host "`n❌ ERROR: Deployment failed (exit code: $sshExitCode)" -ForegroundColor Red
     Write-Host "   Check the log file for details: $deployLog" -ForegroundColor Yellow
-    Write-Host "   Last 20 lines of log:" -ForegroundColor Yellow
-    Get-Content $deployLog -Tail 20 | ForEach-Object { Write-Host "   $_" -ForegroundColor Gray }
+    
+    if (Test-Path $deployLog) {
+        $logContent = Get-Content $deployLog -ErrorAction SilentlyContinue
+        if ($logContent) {
+            Write-Host "   Last 30 lines of log:" -ForegroundColor Yellow
+            $logContent | Select-Object -Last 30 | ForEach-Object { Write-Host "   $_" -ForegroundColor Gray }
+        } else {
+            Write-Host "   Log file is empty - SSH connection may have failed" -ForegroundColor Yellow
+            Write-Host "   Try running manually: ssh $SERVER 'cd $APP_DIR && ls -la'" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "   Log file was not created - SSH command may have failed before execution" -ForegroundColor Yellow
+        Write-Host "   Try testing SSH connection: ssh $SERVER 'echo test'" -ForegroundColor Yellow
+    }
     exit 1
 }
 
