@@ -224,7 +224,10 @@ type Note = {
 
 export default function NoteDetail() {
   const [, params] = useRoute("/notes/:id");
-  const noteId = params?.id ? parseInt(params.id) : null;
+  const noteId = params?.id ? parseInt(params.id, 10) : null;
+  
+  // Validate noteId is a valid number
+  const isValidNoteId = noteId !== null && !isNaN(noteId) && noteId > 0;
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [title, setTitle] = useState("");
@@ -233,9 +236,9 @@ export default function NoteDetail() {
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const utils = trpc.useUtils();
-  const { data: note, isLoading, refetch } = trpc.notes.getById.useQuery(
+  const { data: note, isLoading, error, refetch } = trpc.notes.getById.useQuery(
     { id: noteId! },
-    { enabled: !!noteId }
+    { enabled: isValidNoteId }
   );
 
   const updateMutation = trpc.notes.update.useMutation({
@@ -386,17 +389,42 @@ export default function NoteDetail() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  if (!isValidNoteId) {
+    return (
+      <div className="w-full space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/notes">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-regular">Invalid Note ID</h1>
+          </div>
+        </div>
+        <Card className="p-12 text-center">
+          <p className="text-muted-foreground">The note ID is invalid.</p>
+          <Link href="/notes">
+            <Button variant="outline" className="mt-4">
+              Back to Notes
+            </Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="w-full flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!note) {
+  if (error || (!isLoading && !note)) {
     return (
-      <div className="space-y-6">
+      <div className="w-full space-y-6">
         <div className="flex items-center gap-4">
           <Link href="/notes">
             <Button variant="ghost" size="icon">
@@ -422,7 +450,7 @@ export default function NoteDetail() {
   const files = note.files || [];
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="w-full max-w-none space-y-6 pb-24">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/notes">
@@ -455,7 +483,7 @@ export default function NoteDetail() {
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full">
         {isEditMode ? (
           <div className="space-y-4">
             {/* Markdown Toolbar */}
