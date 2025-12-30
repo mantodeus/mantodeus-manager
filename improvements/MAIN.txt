@@ -1,3 +1,5 @@
+.\scripts\build-and-upload.ps1
+
 cd /srv/customer/sites/manager.mantodeus.com
 
 cd /srv/customer/sites/manager.mantodeus.com
