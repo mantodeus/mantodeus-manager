@@ -1,3 +1,5 @@
+!lm4KuaadW
+
 .\scripts\build-and-upload.ps1
 
 .\scripts\build-and-upload.ps1 -SkipInstall

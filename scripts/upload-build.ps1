@@ -114,6 +114,7 @@ echo '==> Cleaning up archive...'
 rm /tmp/$ARCHIVE || echo 'WARN: Failed to remove archive (non-critical)'
 
 echo '✅ Deployment complete!'
+# Note: This script will be cleaned up by the caller
 "@
 
 # Normalize to LF to avoid CRLF issues on remote bash
@@ -125,9 +126,11 @@ $remoteScriptFile = "/tmp/deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss').sh"
 Write-Host "   Logging to: $deployLog" -ForegroundColor Gray
 Write-Host "   Creating remote script: $remoteScriptFile" -ForegroundColor Gray
 
-# Write script to local temp file first
+# Write script to local temp file first (without BOM for bash compatibility)
 $localScriptFile = Join-Path $env:TEMP "deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss').sh"
-$remoteScript | Out-File -FilePath $localScriptFile -Encoding utf8 -NoNewline
+# Use UTF8NoBOM to avoid BOM that bash can't handle
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($localScriptFile, $remoteScript, $utf8NoBom)
 
 # Upload script to server
 Write-Host "   Uploading deployment script..." -ForegroundColor Gray
@@ -143,9 +146,17 @@ New-Item -Path $deployLog -ItemType File -Force | Out-Null
 
 # Execute script on server and capture output
 Write-Host "   Executing deployment script..." -ForegroundColor Gray
-$sshCommand = "chmod +x $remoteScriptFile && bash $remoteScriptFile && rm -f $remoteScriptFile"
-$output = ssh $SERVER $sshCommand 2>&1 | Tee-Object -FilePath $deployLog
-$sshExitCode = $LASTEXITCODE
+
+# Simple approach: execute the script file directly with bash
+# Then clean up separately to avoid command parsing issues
+$output = ssh $SERVER "bash $remoteScriptFile" 2>&1 | Tee-Object -FilePath $deployLog
+$scriptExitCode = $LASTEXITCODE
+
+# Clean up the script file (run separately to avoid affecting exit code)
+ssh $SERVER "rm -f $remoteScriptFile" 2>&1 | Out-Null
+
+# Use the script's exit code
+$sshExitCode = $scriptExitCode
 
 # Clean up local script file
 Remove-Item $localScriptFile -ErrorAction SilentlyContinue
