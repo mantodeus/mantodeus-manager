@@ -7,9 +7,11 @@ import { defineConfig, loadEnv } from "vite";
 import { config } from "dotenv";
 
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin()];
-
 export default defineConfig(({ mode }) => {
+  const plugins = [react(), tailwindcss()];
+  if (mode !== "production") {
+    plugins.push(jsxLocPlugin());
+  }
   // Ensure envDir points to project root where .env file is located
   const projectRoot = path.resolve(import.meta.dirname);
   const envDir = projectRoot;
