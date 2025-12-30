@@ -42,7 +42,12 @@ if [ ! -f dist/index.js ]; then
   exit 1
 fi
 echo '==> Restarting PM2...'
-npx pm2 restart mantodeus-manager || npx pm2 start dist/index.js --name mantodeus-manager
+if npx pm2 restart mantodeus-manager; then
+  echo '==> PM2 restart ok'
+else
+  echo '==> PM2 app not found, starting new'
+  npx pm2 start dist/index.js --name mantodeus-manager
+fi
 echo '==> Cleaning up...'
 rm /tmp/$ARCHIVE
 echo '✅ Deployment complete!'
