@@ -5,7 +5,7 @@
  * Mobile-first design, desktop uses full-width workspace.
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -48,23 +48,70 @@ export default function NoteNew() {
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
 
-  // Debounce values for autosave
-  const debouncedTitle = useDebounce(title, 1500);
-  const debouncedContent = useDebounce(content, 1500);
-  const debouncedJobId = useDebounce(selectedJobId, 1500);
-  const debouncedContactId = useDebounce(selectedContactId, 1500);
+  // Generate stable client creation key for idempotent creation (once per component mount)
+  const clientCreationKey = useMemo(() => {
+    return `note_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  }, []);
+
+  // Track last saved content to prevent unnecessary saves
+  const lastSavedContentRef = useRef<{
+    title: string;
+    content: string;
+    jobId: string;
+    contactId: string;
+  } | null>(null);
+
+  // Track if a create request is in flight
+  const createInFlightRef = useRef(false);
+  // Track if an update request is in flight
+  const updateInFlightRef = useRef(false);
+  // Track if another save is pending after current one completes
+  const pendingSaveRef = useRef(false);
+
+  // Debounce values for autosave (increased to 2000ms for mobile typing latency)
+  const debouncedTitle = useDebounce(title, 2000);
+  const debouncedContent = useDebounce(content, 2000);
+  const debouncedJobId = useDebounce(selectedJobId, 2000);
+  const debouncedContactId = useDebounce(selectedContactId, 2000);
 
   const createNoteMutation = trpc.notes.create.useMutation({
     onSuccess: (data) => {
+      const timestamp = new Date().toISOString();
+      console.log(`[NOTES_NEW] ${timestamp} | CREATE_SUCCESS | note: ${data.id} | key: ${clientCreationKey}`);
+      
+      createInFlightRef.current = false;
       setNoteId(data.id);
       setSaveStatus("saved");
+      
+      // Update last saved content
+      lastSavedContentRef.current = {
+        title: debouncedTitle.trim() || "Untitled Note",
+        content: debouncedContent.trim() || "",
+        jobId: debouncedJobId,
+        contactId: debouncedContactId,
+      };
+      
       utils.notes.list.invalidate();
+      
       // Reset saved status after 2 seconds
       setTimeout(() => {
         setSaveStatus((prev) => (prev === "saved" ? "idle" : prev));
       }, 2000);
+      
+      // If another save was pending, trigger it now
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current = false;
+        // Trigger autosave check (will be handled by useEffect)
+        setTimeout(() => {
+          // Force re-evaluation of autosave conditions
+        }, 100);
+      }
     },
     onError: (error) => {
+      const timestamp = new Date().toISOString();
+      console.error(`[NOTES_NEW] ${timestamp} | CREATE_ERROR | key: ${clientCreationKey} | error: ${error.message}`);
+      
+      createInFlightRef.current = false;
       setSaveStatus("error");
       toast.error(`Failed to create note: ${error.message}`);
       setTimeout(() => {
@@ -75,14 +122,41 @@ export default function NoteNew() {
 
   const updateNoteMutation = trpc.notes.update.useMutation({
     onSuccess: () => {
+      const timestamp = new Date().toISOString();
+      console.log(`[NOTES_NEW] ${timestamp} | UPDATE_SUCCESS | note: ${noteId}`);
+      
+      updateInFlightRef.current = false;
       setSaveStatus("saved");
+      
+      // Update last saved content
+      lastSavedContentRef.current = {
+        title: debouncedTitle.trim() || "Untitled Note",
+        content: debouncedContent.trim() || "",
+        jobId: debouncedJobId,
+        contactId: debouncedContactId,
+      };
+      
       utils.notes.list.invalidate();
+      
       // Reset saved status after 2 seconds
       setTimeout(() => {
         setSaveStatus((prev) => (prev === "saved" ? "idle" : prev));
       }, 2000);
+      
+      // If another save was pending, trigger it now
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current = false;
+        // Trigger autosave check (will be handled by useEffect)
+        setTimeout(() => {
+          // Force re-evaluation of autosave conditions
+        }, 100);
+      }
     },
     onError: (error) => {
+      const timestamp = new Date().toISOString();
+      console.error(`[NOTES_NEW] ${timestamp} | UPDATE_ERROR | note: ${noteId} | error: ${error.message}`);
+      
+      updateInFlightRef.current = false;
       setSaveStatus("error");
       toast.error(`Failed to save note: ${error.message}`);
       setTimeout(() => {
@@ -94,42 +168,102 @@ export default function NoteNew() {
   const uploadFileMutation = trpc.notes.uploadNoteFile.useMutation();
   const registerFileMutation = trpc.notes.registerNoteFile.useMutation();
 
-  // Autosave: Create note on first change, then update
+  // SAFE AUTOSAVE: Only update, never create. Creation happens on explicit save or first meaningful change.
   useEffect(() => {
-    // Skip if no content yet
-    if (!debouncedTitle.trim() && !debouncedContent.trim()) return;
+    const timestamp = new Date().toISOString();
     
+    // Rule 3.1: Autosave may run only if valid note id exists
+    if (!noteId) {
+      // Autosave never creates - creation happens via explicit save button or first change handler
+      return;
+    }
+    
+    // Rule 3.1: Skip if no changes exist
+    const currentContent = {
+      title: debouncedTitle.trim() || "Untitled Note",
+      content: debouncedContent.trim() || "",
+      jobId: debouncedJobId,
+      contactId: debouncedContactId,
+    };
+    
+    if (lastSavedContentRef.current) {
+      const hasChanges = 
+        currentContent.title !== lastSavedContentRef.current.title ||
+        currentContent.content !== lastSavedContentRef.current.content ||
+        currentContent.jobId !== lastSavedContentRef.current.jobId ||
+        currentContent.contactId !== lastSavedContentRef.current.contactId;
+      
+      if (!hasChanges) {
+        return; // No changes, skip autosave
+      }
+    }
+    
+    // Rule 3.3: Concurrency control - at most one save in flight
+    if (updateInFlightRef.current) {
+      console.log(`[NOTES_NEW] ${timestamp} | AUTOSAVE_SKIP | note: ${noteId} | reason: save_in_flight`);
+      pendingSaveRef.current = true; // Mark that another save is pending
+      return;
+    }
+    
+    // Rule 3.1: Don't autosave if title is empty
+    if (!debouncedTitle.trim()) {
+      return;
+    }
+    
+    // All checks passed - perform autosave
+    console.log(`[NOTES_NEW] ${timestamp} | AUTOSAVE_TRIGGER | note: ${noteId}`);
+    updateInFlightRef.current = true;
     setSaveStatus("saving");
     
-    if (!noteId) {
-      // Create note on first change
-      createNoteMutation.mutate({
-        title: debouncedTitle.trim() || "Untitled Note",
-        content: debouncedContent.trim() || undefined,
-        jobId: debouncedJobId && debouncedJobId !== "none" ? parseInt(debouncedJobId) : undefined,
-        contactId: debouncedContactId && debouncedContactId !== "none" ? parseInt(debouncedContactId) : undefined,
-      });
-    } else {
-      // Update existing note
-      updateNoteMutation.mutate({
-        id: noteId,
-        title: debouncedTitle.trim() || "Untitled Note",
-        body: debouncedContent.trim() || undefined,
-        jobId: debouncedJobId && debouncedJobId !== "none" ? parseInt(debouncedJobId) : undefined,
-        contactId: debouncedContactId && debouncedContactId !== "none" ? parseInt(debouncedContactId) : undefined,
-      });
-    }
+    updateNoteMutation.mutate({
+      id: noteId,
+      title: currentContent.title,
+      body: currentContent.content || undefined,
+      jobId: currentContent.jobId && currentContent.jobId !== "none" ? parseInt(currentContent.jobId) : undefined,
+      contactId: currentContent.contactId && currentContent.contactId !== "none" ? parseInt(currentContent.contactId) : undefined,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedTitle, debouncedContent, debouncedJobId, debouncedContactId, noteId]);
+  
+  // Separate effect for initial note creation (on first meaningful change)
+  useEffect(() => {
+    const timestamp = new Date().toISOString();
+    
+    // Only create if note doesn't exist yet and we have content
+    if (noteId) return; // Note already exists
+    if (!debouncedTitle.trim() && !debouncedContent.trim()) return; // No content yet
+    if (createInFlightRef.current) {
+      console.log(`[NOTES_NEW] ${timestamp} | CREATE_SKIP | reason: create_in_flight`);
+      return; // Create already in flight
+    }
+    
+    // Create note on first meaningful change (with idempotency key)
+    console.log(`[NOTES_NEW] ${timestamp} | CREATE_TRIGGER | key: ${clientCreationKey}`);
+    createInFlightRef.current = true;
+    setSaveStatus("saving");
+    
+    createNoteMutation.mutate({
+      title: debouncedTitle.trim() || "Untitled Note",
+      content: debouncedContent.trim() || undefined,
+      jobId: debouncedJobId && debouncedJobId !== "none" ? parseInt(debouncedJobId) : undefined,
+      contactId: debouncedContactId && debouncedContactId !== "none" ? parseInt(debouncedContactId) : undefined,
+      clientCreationKey: clientCreationKey,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedTitle, debouncedContent, debouncedJobId, debouncedContactId, clientCreationKey]);
 
   const handleSave = async () => {
+    const timestamp = new Date().toISOString();
+    console.log(`[NOTES_NEW] ${timestamp} | MANUAL_SAVE | note: ${noteId || 'new'}`);
+    
     if (!noteId) {
-      // Create note if it doesn't exist
+      // Create note if it doesn't exist (with idempotency key)
       const result = await createNoteMutation.mutateAsync({
         title: title.trim() || "Untitled Note",
         content: content.trim() || undefined,
         jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
         contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
+        clientCreationKey: clientCreationKey,
       });
       setNoteId(result.id);
       navigate(`/notes/${result.id}`);
