@@ -27,7 +27,9 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "✅ Upload complete" -ForegroundColor Green
 
 Write-Host "`n==> Deploying on server..." -ForegroundColor Cyan
-ssh $SERVER @"
+
+$remoteScript = @"
+set -euo pipefail
 cd $APP_DIR
 echo '==> Extracting build...'
 # Remove old dist if it exists, then extract
@@ -45,6 +47,11 @@ echo '==> Cleaning up...'
 rm /tmp/$ARCHIVE
 echo '✅ Deployment complete!'
 "@
+
+# Normalize to LF to avoid CRLF issues on remote bash
+$remoteScript = $remoteScript -replace "`r`n", "`n"
+
+$remoteScript | ssh $SERVER 'bash -s'
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Deployment failed" -ForegroundColor Red
