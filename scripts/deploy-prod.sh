@@ -26,7 +26,7 @@ echo "==> Install dependencies"
 npx pnpm install
 
 echo "==> Run migrations"
-npx pnpm drizzle-kit migrate
+npx pnpm run db:migrate
 
 echo "==> Install (frozen lockfile)"
 npx pnpm install --frozen-lockfile
