@@ -52,12 +52,42 @@ CREATE TABLE IF NOT EXISTS `note_files` (
 	CONSTRAINT `note_files_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-ALTER TABLE `expense_files` ADD CONSTRAINT `expense_files_expenseId_expenses_id_fk` FOREIGN KEY (`expenseId`) REFERENCES `expenses`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `expenses` ADD CONSTRAINT `expenses_createdBy_users_id_fk` FOREIGN KEY (`createdBy`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `expenses` ADD CONSTRAINT `expenses_updatedByUserId_users_id_fk` FOREIGN KEY (`updatedByUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `expenses` ADD CONSTRAINT `expenses_reviewedByUserId_users_id_fk` FOREIGN KEY (`reviewedByUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `expenses` ADD CONSTRAINT `expenses_voidedByUserId_users_id_fk` FOREIGN KEY (`voidedByUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `note_files` ADD CONSTRAINT `note_files_noteId_notes_id_fk` FOREIGN KEY (`noteId`) REFERENCES `notes`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'expense_files_expenseId_expenses_id_fk' AND TABLE_NAME = 'expense_files');
+SET @sql = IF(@constraint_exists = 0, 'ALTER TABLE `expense_files` ADD CONSTRAINT `expense_files_expenseId_expenses_id_fk` FOREIGN KEY (`expenseId`) REFERENCES `expenses`(`id`) ON DELETE cascade ON UPDATE no action', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+--> statement-breakpoint
+SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'expenses_createdBy_users_id_fk' AND TABLE_NAME = 'expenses');
+SET @sql = IF(@constraint_exists = 0, 'ALTER TABLE `expenses` ADD CONSTRAINT `expenses_createdBy_users_id_fk` FOREIGN KEY (`createdBy`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+--> statement-breakpoint
+SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'expenses_updatedByUserId_users_id_fk' AND TABLE_NAME = 'expenses');
+SET @sql = IF(@constraint_exists = 0, 'ALTER TABLE `expenses` ADD CONSTRAINT `expenses_updatedByUserId_users_id_fk` FOREIGN KEY (`updatedByUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+--> statement-breakpoint
+SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'expenses_reviewedByUserId_users_id_fk' AND TABLE_NAME = 'expenses');
+SET @sql = IF(@constraint_exists = 0, 'ALTER TABLE `expenses` ADD CONSTRAINT `expenses_reviewedByUserId_users_id_fk` FOREIGN KEY (`reviewedByUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+--> statement-breakpoint
+SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'expenses_voidedByUserId_users_id_fk' AND TABLE_NAME = 'expenses');
+SET @sql = IF(@constraint_exists = 0, 'ALTER TABLE `expenses` ADD CONSTRAINT `expenses_voidedByUserId_users_id_fk` FOREIGN KEY (`voidedByUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+--> statement-breakpoint
+SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'note_files_noteId_notes_id_fk' AND TABLE_NAME = 'note_files');
+SET @sql = IF(@constraint_exists = 0, 'ALTER TABLE `note_files` ADD CONSTRAINT `note_files_noteId_notes_id_fk` FOREIGN KEY (`noteId`) REFERENCES `notes`(`id`) ON DELETE cascade ON UPDATE no action', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `expense_files_expenseId_idx` ON `expense_files` (`expenseId`);--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `expenses_createdBy_status_expenseDate_idx` ON `expenses` (`createdBy`,`status`,`expenseDate`);--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `expenses_createdBy_expenseDate_idx` ON `expenses` (`createdBy`,`expenseDate`);--> statement-breakpoint
