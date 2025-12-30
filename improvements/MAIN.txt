@@ -11,15 +11,14 @@ npx pnpm install --frozen-lockfile
 npx pnpm run build
 npx pm2 restart mantodeus-manager
 
+npx pm2 start dist/index.js --name mantodeus-manager
+npx pm2 save
+
 cd /srv/customer/sites/manager.mantodeus.com
 rm -rf dist
 tar -xzf /tmp/dist.tar.gz
 npx pm2 restart mantodeus-manager --update-env || npx pm2 start dist/index.js --name mantodeus-manager
 rm /tmp/dist.tar.gz
-
-
-npx pm2 start dist/index.js --name mantodeus-manager
-npx pm2 save
 
 npx pm2 stop mantodeus-manager
 npx pm2 start ecosystem.config.js
