@@ -1986,82 +1986,209 @@ export async function getExpenseFilesByExpenseId(expenseId: number) {
 
 // ===== NOTES QUERIES =====
 
+/**
+ * Helper to select note columns safely (handles missing clientCreationKey column)
+ */
+const selectNoteColumns = {
+  id: notes.id,
+  title: notes.title,
+  content: notes.content,
+  tags: notes.tags,
+  jobId: notes.jobId,
+  contactId: notes.contactId,
+  archivedAt: notes.archivedAt,
+  trashedAt: notes.trashedAt,
+  createdBy: notes.createdBy,
+  createdAt: notes.createdAt,
+  updatedAt: notes.updatedAt,
+};
+
+/**
+ * Wrapper for note queries that handles missing clientCreationKey column
+ */
+async function safeNoteQuery<T>(queryFn: () => Promise<T>): Promise<T> {
+  try {
+    return await queryFn();
+  } catch (error: any) {
+    // Handle case where clientCreationKey column doesn't exist yet
+    if (error?.message?.includes("clientCreationKey") || 
+        error?.message?.includes("Unknown column") ||
+        error?.code === "ER_BAD_FIELD_ERROR") {
+      console.log("[Database] clientCreationKey column not found, using explicit column selection (migration not run yet)");
+      throw new Error("RETRY_WITH_EXPLICIT_COLUMNS");
+    }
+    throw error;
+  }
+}
+
 export async function getNotesByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return db
-    .select()
-    .from(notes)
-    .where(and(
-      eq(notes.createdBy, userId),
-      isNull(notes.archivedAt),
-      isNull(notes.trashedAt)
-    ))
-    .orderBy(desc(notes.updatedAt));
+  try {
+    return await safeNoteQuery(async () => {
+      return db
+        .select()
+        .from(notes)
+        .where(and(
+          eq(notes.createdBy, userId),
+          isNull(notes.archivedAt),
+          isNull(notes.trashedAt)
+        ))
+        .orderBy(desc(notes.updatedAt));
+    });
+  } catch (error: any) {
+    if (error?.message === "RETRY_WITH_EXPLICIT_COLUMNS") {
+      return db
+        .select(selectNoteColumns)
+        .from(notes)
+        .where(and(
+          eq(notes.createdBy, userId),
+          isNull(notes.archivedAt),
+          isNull(notes.trashedAt)
+        ))
+        .orderBy(desc(notes.updatedAt));
+    }
+    throw error;
+  }
 }
 
 export async function getNotesByJob(jobId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return db
-    .select()
-    .from(notes)
-    .where(and(
-      eq(notes.jobId, jobId),
-      isNull(notes.archivedAt),
-      isNull(notes.trashedAt)
-    ))
-    .orderBy(desc(notes.updatedAt));
+  try {
+    return await safeNoteQuery(async () => {
+      return db
+        .select()
+        .from(notes)
+        .where(and(
+          eq(notes.jobId, jobId),
+          isNull(notes.archivedAt),
+          isNull(notes.trashedAt)
+        ))
+        .orderBy(desc(notes.updatedAt));
+    });
+  } catch (error: any) {
+    if (error?.message === "RETRY_WITH_EXPLICIT_COLUMNS") {
+      return db
+        .select(selectNoteColumns)
+        .from(notes)
+        .where(and(
+          eq(notes.jobId, jobId),
+          isNull(notes.archivedAt),
+          isNull(notes.trashedAt)
+        ))
+        .orderBy(desc(notes.updatedAt));
+    }
+    throw error;
+  }
 }
 
 export async function getNotesByContact(contactId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return db
-    .select()
-    .from(notes)
-    .where(and(
-      eq(notes.contactId, contactId),
-      isNull(notes.archivedAt),
-      isNull(notes.trashedAt)
-    ))
-    .orderBy(desc(notes.updatedAt));
+  try {
+    return await safeNoteQuery(async () => {
+      return db
+        .select()
+        .from(notes)
+        .where(and(
+          eq(notes.contactId, contactId),
+          isNull(notes.archivedAt),
+          isNull(notes.trashedAt)
+        ))
+        .orderBy(desc(notes.updatedAt));
+    });
+  } catch (error: any) {
+    if (error?.message === "RETRY_WITH_EXPLICIT_COLUMNS") {
+      return db
+        .select(selectNoteColumns)
+        .from(notes)
+        .where(and(
+          eq(notes.contactId, contactId),
+          isNull(notes.archivedAt),
+          isNull(notes.trashedAt)
+        ))
+        .orderBy(desc(notes.updatedAt));
+    }
+    throw error;
+  }
 }
 
 export async function getNoteById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
   
-  const result = await db.select().from(notes).where(eq(notes.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  try {
+    return await safeNoteQuery(async () => {
+      const result = await db.select().from(notes).where(eq(notes.id, id)).limit(1);
+      return result.length > 0 ? result[0] : undefined;
+    });
+  } catch (error: any) {
+    if (error?.message === "RETRY_WITH_EXPLICIT_COLUMNS") {
+      const result = await db
+        .select(selectNoteColumns)
+        .from(notes)
+        .where(eq(notes.id, id))
+        .limit(1);
+      return result.length > 0 ? result[0] : undefined;
+    }
+    throw error;
+  }
 }
 
 /**
  * Get note by client creation key and user ID (for idempotent creation)
+ * Returns undefined if column doesn't exist yet (backward compatibility)
  */
 export async function getNoteByClientCreationKey(clientCreationKey: string, userId: number) {
   const db = await getDb();
   if (!db) return undefined;
   
-  const result = await db
-    .select()
-    .from(notes)
-    .where(and(
-      eq(notes.clientCreationKey, clientCreationKey),
-      eq(notes.createdBy, userId)
-    ))
-    .limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  try {
+    const result = await db
+      .select()
+      .from(notes)
+      .where(and(
+        eq(notes.clientCreationKey, clientCreationKey),
+        eq(notes.createdBy, userId)
+      ))
+      .limit(1);
+    return result.length > 0 ? result[0] : undefined;
+  } catch (error: any) {
+    // Handle case where clientCreationKey column doesn't exist yet (before migration)
+    if (error?.message?.includes("clientCreationKey") || 
+        error?.message?.includes("Unknown column") ||
+        error?.code === "ER_BAD_FIELD_ERROR") {
+      console.log("[Database] clientCreationKey column not found, skipping idempotency check (migration not run yet)");
+      return undefined; // Column doesn't exist, skip idempotency check
+    }
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 export async function createNote(data: InsertNote) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return db.insert(notes).values(data);
+  try {
+    return db.insert(notes).values(data);
+  } catch (error: any) {
+    // Handle case where clientCreationKey column doesn't exist yet
+    // Remove clientCreationKey from data and retry
+    if (error?.message?.includes("clientCreationKey") || 
+        error?.message?.includes("Unknown column") ||
+        error?.code === "ER_BAD_FIELD_ERROR") {
+      console.log("[Database] clientCreationKey column not found, creating note without it (migration not run yet)");
+      const { clientCreationKey, ...dataWithoutKey } = data;
+      return db.insert(notes).values(dataWithoutKey);
+    }
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 export async function updateNote(id: number, data: Partial<InsertNote>) {
@@ -2082,29 +2209,62 @@ export async function getArchivedNotesByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return db
-    .select()
-    .from(notes)
-    .where(and(
-      eq(notes.createdBy, userId),
-      isNotNull(notes.archivedAt),
-      isNull(notes.trashedAt)
-    ))
-    .orderBy(desc(notes.archivedAt), desc(notes.updatedAt));
+  try {
+    return await safeNoteQuery(async () => {
+      return db
+        .select()
+        .from(notes)
+        .where(and(
+          eq(notes.createdBy, userId),
+          isNotNull(notes.archivedAt),
+          isNull(notes.trashedAt)
+        ))
+        .orderBy(desc(notes.archivedAt), desc(notes.updatedAt));
+    });
+  } catch (error: any) {
+    if (error?.message === "RETRY_WITH_EXPLICIT_COLUMNS") {
+      return db
+        .select(selectNoteColumns)
+        .from(notes)
+        .where(and(
+          eq(notes.createdBy, userId),
+          isNotNull(notes.archivedAt),
+          isNull(notes.trashedAt)
+        ))
+        .orderBy(desc(notes.archivedAt), desc(notes.updatedAt));
+    }
+    throw error;
+  }
 }
 
 export async function getTrashedNotesByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return db
-    .select()
-    .from(notes)
-    .where(and(
-      eq(notes.createdBy, userId),
-      isNotNull(notes.trashedAt)
-    ))
-    .orderBy(desc(notes.trashedAt), desc(notes.updatedAt));
+  try {
+    return await safeNoteQuery(async () => {
+      return db
+        .select()
+        .from(notes)
+        .where(and(
+          eq(notes.createdBy, userId),
+          isNotNull(notes.trashedAt)
+        ))
+        .orderBy(desc(notes.trashedAt), desc(notes.updatedAt));
+    });
+  } catch (error: any) {
+    if (error?.message === "RETRY_WITH_EXPLICIT_COLUMNS") {
+      return db
+        .select(selectNoteColumns)
+        .from(notes)
+        .where(and(
+          eq(notes.createdBy, userId),
+          isNotNull(notes.trashedAt)
+        ))
+        .orderBy(desc(notes.trashedAt), desc(notes.updatedAt));
+    }
+    throw error;
+  }
 }
 
 export async function archiveNote(id: number) {
