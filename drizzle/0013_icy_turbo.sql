@@ -1,4 +1,4 @@
-CREATE TABLE `expense_files` (
+CREATE TABLE IF NOT EXISTS `expense_files` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`expenseId` int NOT NULL,
 	`s3Key` varchar(512) NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE `expense_files` (
 	CONSTRAINT `expense_files_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `expenses` (
+CREATE TABLE IF NOT EXISTS `expenses` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`createdBy` int NOT NULL,
 	`updatedByUserId` int,
@@ -41,7 +41,7 @@ CREATE TABLE `expenses` (
 	CONSTRAINT `expenses_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `note_files` (
+CREATE TABLE IF NOT EXISTS `note_files` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`noteId` int NOT NULL,
 	`s3Key` varchar(512) NOT NULL,
@@ -58,8 +58,8 @@ ALTER TABLE `expenses` ADD CONSTRAINT `expenses_updatedByUserId_users_id_fk` FOR
 ALTER TABLE `expenses` ADD CONSTRAINT `expenses_reviewedByUserId_users_id_fk` FOREIGN KEY (`reviewedByUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `expenses` ADD CONSTRAINT `expenses_voidedByUserId_users_id_fk` FOREIGN KEY (`voidedByUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `note_files` ADD CONSTRAINT `note_files_noteId_notes_id_fk` FOREIGN KEY (`noteId`) REFERENCES `notes`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX `expense_files_expenseId_idx` ON `expense_files` (`expenseId`);--> statement-breakpoint
-CREATE INDEX `expenses_createdBy_status_expenseDate_idx` ON `expenses` (`createdBy`,`status`,`expenseDate`);--> statement-breakpoint
-CREATE INDEX `expenses_createdBy_expenseDate_idx` ON `expenses` (`createdBy`,`expenseDate`);--> statement-breakpoint
-CREATE INDEX `expenses_updatedByUserId_idx` ON `expenses` (`updatedByUserId`);--> statement-breakpoint
-CREATE INDEX `note_files_noteId_idx` ON `note_files` (`noteId`);
+CREATE INDEX IF NOT EXISTS `expense_files_expenseId_idx` ON `expense_files` (`expenseId`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `expenses_createdBy_status_expenseDate_idx` ON `expenses` (`createdBy`,`status`,`expenseDate`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `expenses_createdBy_expenseDate_idx` ON `expenses` (`createdBy`,`expenseDate`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `expenses_updatedByUserId_idx` ON `expenses` (`updatedByUserId`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `note_files_noteId_idx` ON `note_files` (`noteId`);

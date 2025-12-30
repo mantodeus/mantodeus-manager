@@ -1,5 +1,8 @@
 !lm4KuaadW
 
+
+bash scripts/deploy-prod.sh
+
 cd /srv/customer/sites/manager.mantodeus.com
 rm -rf dist
 tar -xzf /tmp/dist.tar.gz
@@ -15,6 +18,7 @@ npx pnpm drizzle-kit migrate
 npx pnpm install --frozen-lockfile
 npx pnpm run build
 npx pm2 restart mantodeus-manager
+
 
 npx pm2 start dist/index.js --name mantodeus-manager
 npx pm2 save
