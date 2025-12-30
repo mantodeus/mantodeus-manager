@@ -1,5 +1,7 @@
 .\scripts\build-and-upload.ps1
 
+.\scripts\build-and-upload.ps1 -SkipInstall
+
 cd /srv/customer/sites/manager.mantodeus.com
 
 cd /srv/customer/sites/manager.mantodeus.com

@@ -120,16 +120,37 @@ echo '✅ Deployment complete!'
 $remoteScript = $remoteScript -replace "`r`n", "`n"
 
 $deployLog = Join-Path $PWD "deploy-upload.log"
+$remoteScriptFile = "/tmp/deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss').sh"
+
 Write-Host "   Logging to: $deployLog" -ForegroundColor Gray
+Write-Host "   Creating remote script: $remoteScriptFile" -ForegroundColor Gray
+
+# Write script to local temp file first
+$localScriptFile = Join-Path $env:TEMP "deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss').sh"
+$remoteScript | Out-File -FilePath $localScriptFile -Encoding utf8 -NoNewline
+
+# Upload script to server
+Write-Host "   Uploading deployment script..." -ForegroundColor Gray
+scp $localScriptFile "${SERVER}:${remoteScriptFile}" 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ ERROR: Failed to upload deployment script" -ForegroundColor Red
+    Remove-Item $localScriptFile -ErrorAction SilentlyContinue
+    exit 1
+}
 
 # Create empty log file first to ensure it exists
 New-Item -Path $deployLog -ItemType File -Force | Out-Null
 
-# Capture both stdout and stderr, and capture exit code
-$output = $remoteScript | ssh $SERVER 'bash -s' 2>&1 | Tee-Object -FilePath $deployLog
+# Execute script on server and capture output
+Write-Host "   Executing deployment script..." -ForegroundColor Gray
+$sshCommand = "chmod +x $remoteScriptFile && bash $remoteScriptFile && rm -f $remoteScriptFile"
+$output = ssh $SERVER $sshCommand 2>&1 | Tee-Object -FilePath $deployLog
 $sshExitCode = $LASTEXITCODE
 
-# Also write output to console
+# Clean up local script file
+Remove-Item $localScriptFile -ErrorAction SilentlyContinue
+
+# Write output to console
 $output | ForEach-Object { Write-Host $_ }
 
 if ($sshExitCode -ne 0) {
