@@ -1,19 +1,20 @@
-import { Streamdown, defaultRehypePlugins, defaultRemarkPlugins } from "streamdown";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
-const enableMath = import.meta.env.VITE_ENABLE_MATH === "true";
-
-const rehypePlugins = Object.entries(defaultRehypePlugins)
-  .filter(([key]) => enableMath || key !== "katex")
-  .map(([, plugin]) => plugin);
-
-const remarkPlugins = Object.entries(defaultRemarkPlugins)
-  .filter(([key]) => enableMath || key !== "math")
-  .map(([, plugin]) => plugin);
-
+/**
+ * Lightweight Markdown component
+ * 
+ * Uses react-markdown instead of streamdown to avoid heavy dependencies:
+ * - No katex (math rendering)
+ * - No mermaid (diagrams)
+ * - No shiki (syntax highlighting)
+ * 
+ * Supports basic markdown + GitHub Flavored Markdown (tables, strikethrough, etc.)
+ */
 export function Markdown({ children }: { children: string }) {
   return (
-    <Streamdown rehypePlugins={rehypePlugins} remarkPlugins={remarkPlugins}>
+    <ReactMarkdown remarkPlugins={[remarkGfm]}>
       {children}
-    </Streamdown>
+    </ReactMarkdown>
   );
 }
