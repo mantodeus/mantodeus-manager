@@ -5,16 +5,17 @@
  * Mobile-first design, desktop uses full-width workspace.
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Save, Loader2, Paperclip, Trash2, FileText, Image as ImageIcon, User, Briefcase } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Paperclip, Trash2, FileText, Image as ImageIcon, User, Briefcase, CheckCircle2, AlertCircle } from "lucide-react";
 import { WYSIWYGEditor } from "@/components/WYSIWYGEditor";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   Select,
   SelectContent,
@@ -39,40 +40,109 @@ export default function NoteNew() {
   const [selectedJobId, setSelectedJobId] = useState<string>("none");
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
   const [files, setFiles] = useState<NoteFile[]>([]);
+  const [noteId, setNoteId] = useState<number | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
 
+  // Debounce values for autosave
+  const debouncedTitle = useDebounce(title, 1500);
+  const debouncedContent = useDebounce(content, 1500);
+  const debouncedJobId = useDebounce(selectedJobId, 1500);
+  const debouncedContactId = useDebounce(selectedContactId, 1500);
+
   const createNoteMutation = trpc.notes.create.useMutation({
     onSuccess: (data) => {
-      toast.success("Note created successfully");
+      setNoteId(data.id);
+      setSaveStatus("saved");
       utils.notes.list.invalidate();
-      navigate(`/notes/${data.id}`);
+      // Reset saved status after 2 seconds
+      setTimeout(() => {
+        setSaveStatus((prev) => (prev === "saved" ? "idle" : prev));
+      }, 2000);
     },
     onError: (error) => {
+      setSaveStatus("error");
       toast.error(`Failed to create note: ${error.message}`);
+      setTimeout(() => {
+        setSaveStatus((prev) => (prev === "error" ? "idle" : prev));
+      }, 3000);
+    },
+  });
+
+  const updateNoteMutation = trpc.notes.update.useMutation({
+    onSuccess: () => {
+      setSaveStatus("saved");
+      utils.notes.list.invalidate();
+      // Reset saved status after 2 seconds
+      setTimeout(() => {
+        setSaveStatus((prev) => (prev === "saved" ? "idle" : prev));
+      }, 2000);
+    },
+    onError: (error) => {
+      setSaveStatus("error");
+      toast.error(`Failed to save note: ${error.message}`);
+      setTimeout(() => {
+        setSaveStatus((prev) => (prev === "error" ? "idle" : prev));
+      }, 3000);
     },
   });
 
   const uploadFileMutation = trpc.notes.uploadNoteFile.useMutation();
   const registerFileMutation = trpc.notes.registerNoteFile.useMutation();
 
-  const handleSave = async () => {
-    // Create note first
-    const result = await createNoteMutation.mutateAsync({
-      title: title.trim() || "Untitled Note",
-      content: content.trim() || undefined,
-      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
-      contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
-    });
+  // Autosave: Create note on first change, then update
+  useEffect(() => {
+    // Skip if no content yet
+    if (!debouncedTitle.trim() && !debouncedContent.trim()) return;
+    
+    setSaveStatus("saving");
+    
+    if (!noteId) {
+      // Create note on first change
+      createNoteMutation.mutate({
+        title: debouncedTitle.trim() || "Untitled Note",
+        content: debouncedContent.trim() || undefined,
+        jobId: debouncedJobId && debouncedJobId !== "none" ? parseInt(debouncedJobId) : undefined,
+        contactId: debouncedContactId && debouncedContactId !== "none" ? parseInt(debouncedContactId) : undefined,
+      });
+    } else {
+      // Update existing note
+      updateNoteMutation.mutate({
+        id: noteId,
+        title: debouncedTitle.trim() || "Untitled Note",
+        body: debouncedContent.trim() || undefined,
+        jobId: debouncedJobId && debouncedJobId !== "none" ? parseInt(debouncedJobId) : undefined,
+        contactId: debouncedContactId && debouncedContactId !== "none" ? parseInt(debouncedContactId) : undefined,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedTitle, debouncedContent, debouncedJobId, debouncedContactId, noteId]);
 
-    // Upload files if any
-    if (files.length > 0 && result.id) {
-      // Files are already uploaded, just need to register them
-      // For new notes, we'll handle file uploads after creation
-      // This is a simplified version - in production, you might want to upload files first
+  const handleSave = async () => {
+    if (!noteId) {
+      // Create note if it doesn't exist
+      const result = await createNoteMutation.mutateAsync({
+        title: title.trim() || "Untitled Note",
+        content: content.trim() || undefined,
+        jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
+        contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
+      });
+      setNoteId(result.id);
+      navigate(`/notes/${result.id}`);
+    } else {
+      // Update and navigate
+      await updateNoteMutation.mutateAsync({
+        id: noteId,
+        title: title.trim() || "Untitled Note",
+        body: content.trim() || undefined,
+        jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
+        contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
+      });
+      navigate(`/notes/${noteId}`);
     }
   };
 
@@ -108,12 +178,36 @@ export default function NoteNew() {
           </Button>
         </Link>
         <div className="flex-1">
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Note title (optional)"
-            className="text-3xl font-regular border-none shadow-none px-0 focus-visible:ring-0 h-auto"
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Note title (optional)"
+              className="text-3xl font-regular border-none shadow-none px-0 focus-visible:ring-0 h-auto"
+            />
+            {saveStatus !== "idle" && (
+              <div className="flex items-center gap-1 text-xs">
+                {saveStatus === "saving" && (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    <span className="text-muted-foreground">Saving...</span>
+                  </>
+                )}
+                {saveStatus === "saved" && (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 text-primary" />
+                    <span className="text-primary">Saved</span>
+                  </>
+                )}
+                {saveStatus === "error" && (
+                  <>
+                    <AlertCircle className="h-3 w-3 text-destructive" />
+                    <span className="text-destructive">Error</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <Button variant="ghost" onClick={handleCancel} size="sm">
           Cancel
