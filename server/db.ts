@@ -2135,11 +2135,20 @@ export async function getNoteFilesByNoteId(noteId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return db
-    .select()
-    .from(noteFiles)
-    .where(eq(noteFiles.noteId, noteId))
-    .orderBy(desc(noteFiles.createdAt));
+  try {
+    return await db
+      .select()
+      .from(noteFiles)
+      .where(eq(noteFiles.noteId, noteId))
+      .orderBy(desc(noteFiles.createdAt));
+  } catch (error: any) {
+    // Table might not exist yet if migration hasn't been run
+    if (error?.message?.includes("doesn't exist") || error?.code === "ER_NO_SUCH_TABLE") {
+      console.warn("note_files table does not exist yet. Run migrations to create it.");
+      return [];
+    }
+    throw error;
+  }
 }
 
 export async function createNoteFile(data: InsertNoteFile) {

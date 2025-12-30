@@ -1097,7 +1097,19 @@ export const appRouter = router({
         if (ctx.user.role !== "admin" && note.createdBy !== ctx.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to view this note" });
         }
-        const files = await db.getNoteFilesByNoteId(input.id);
+        // Get files, but don't fail if table doesn't exist yet
+        let files = [];
+        try {
+          files = await db.getNoteFilesByNoteId(input.id);
+        } catch (error: any) {
+          // If table doesn't exist, return empty array (migration not run yet)
+          if (error?.message?.includes("doesn't exist") || error?.code === "ER_NO_SUCH_TABLE") {
+            console.warn("note_files table does not exist. Returning empty files array.");
+            files = [];
+          } else {
+            throw error;
+          }
+        }
         return { ...note, files };
       }),
     
