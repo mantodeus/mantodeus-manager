@@ -3,6 +3,8 @@
 .\scripts\build-and-upload.ps1
 .\scripts\build-and-upload.ps1 -SkipInstall
 
+bash scripts/deploy-from-archive.sh
+
 cd /srv/customer/sites/manager.mantodeus.com
 
 cd /srv/customer/sites/manager.mantodeus.com
