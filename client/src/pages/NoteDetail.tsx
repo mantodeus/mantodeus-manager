@@ -12,137 +12,20 @@ import { useRoute, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText } from "lucide-react";
 import { Markdown } from "@/components/Markdown";
+import { WYSIWYGEditor } from "@/components/WYSIWYGEditor";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Bold, Italic, Heading1, Heading2, List, CheckSquare, Code, Link as LinkIcon } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// Markdown Toolbar Component
-function MarkdownToolbar({
-  textareaRef,
-  value,
-  onChange,
-}: {
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const insertMarkdown = (before: string, after: string = "", placeholder: string = "text") => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = value.substring(start, end);
-    const replacement = selectedText || placeholder;
-
-    const newValue =
-      value.substring(0, start) + before + replacement + after + value.substring(end);
-    onChange(newValue);
-
-    // Restore cursor position
-    setTimeout(() => {
-      textarea.focus();
-      const newCursorPos = start + before.length + replacement.length + after.length;
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  };
-
-  const insertAtLineStart = (prefix: string) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const lines = value.substring(0, start).split("\n");
-    const currentLine = lines.length - 1;
-    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-    const lineText = value.substring(lineStart, start);
-
-    const newValue = value.substring(0, lineStart) + prefix + lineText + value.substring(start);
-    onChange(newValue);
-
-    setTimeout(() => {
-      textarea.focus();
-      const newCursorPos = start + prefix.length;
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  };
-
-  return (
-    <div className="flex flex-wrap items-center gap-2 p-2 border rounded-md bg-muted/50">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => insertMarkdown("**", "**", "bold text")}
-        title="Bold"
-      >
-        <Bold className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => insertMarkdown("*", "*", "italic text")}
-        title="Italic"
-      >
-        <Italic className="h-4 w-4" />
-      </Button>
-      <div className="w-px h-6 bg-border" />
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => insertAtLineStart("# ")}
-        title="Heading 1"
-      >
-        <Heading1 className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => insertAtLineStart("## ")}
-        title="Heading 2"
-      >
-        <Heading2 className="h-4 w-4" />
-      </Button>
-      <div className="w-px h-6 bg-border" />
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => insertAtLineStart("- ")}
-        title="Bullet List"
-      >
-        <List className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => insertAtLineStart("- [ ] ")}
-        title="Checklist"
-      >
-        <CheckSquare className="h-4 w-4" />
-      </Button>
-      <div className="w-px h-6 bg-border" />
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => insertMarkdown("`", "`", "code")}
-        title="Code"
-      >
-        <Code className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => insertMarkdown("[", "](url)", "link text")}
-        title="Link"
-      >
-        <LinkIcon className="h-4 w-4" />
-      </Button>
-    </div>
-  );
-}
 
 // Image thumbnail component with lazy loading
 function ImageThumbnail({ file, onView }: { file: NoteFile; onView: (file: NoteFile) => void }) {
@@ -232,14 +115,18 @@ export default function NoteDetail() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [selectedJobId, setSelectedJobId] = useState<string>("none");
+  const [selectedContactId, setSelectedContactId] = useState<string>("none");
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
   const { data: note, isLoading, error, refetch } = trpc.notes.getById.useQuery(
     { id: noteId! },
     { enabled: isValidNoteId }
   );
+  const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: jobs = [] } = trpc.jobs.list.useQuery();
 
   const updateMutation = trpc.notes.update.useMutation({
     onSuccess: () => {
@@ -275,6 +162,8 @@ export default function NoteDetail() {
     if (note) {
       setTitle(note.title);
       setBody(note.content || "");
+      setSelectedJobId(note.jobId?.toString() || "none");
+      setSelectedContactId(note.contactId?.toString() || "none");
     }
   }, [note]);
 
@@ -299,6 +188,8 @@ export default function NoteDetail() {
       id: noteId,
       title: title.trim(),
       body: body.trim() || undefined,
+      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
+      contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
     });
   };
 
@@ -306,6 +197,8 @@ export default function NoteDetail() {
     if (note) {
       setTitle(note.title);
       setBody(note.content || "");
+      setSelectedJobId(note.jobId?.toString() || "none");
+      setSelectedContactId(note.contactId?.toString() || "none");
     }
     setIsEditMode(false);
   };
@@ -486,16 +379,12 @@ export default function NoteDetail() {
       <div className="w-full">
         {isEditMode ? (
           <div className="space-y-4">
-            {/* Markdown Toolbar */}
-            <MarkdownToolbar textareaRef={bodyTextareaRef} value={body} onChange={setBody} />
-
-            {/* Markdown Editor */}
-            <Textarea
-              ref={bodyTextareaRef}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Start writing... (Markdown supported)"
-              className="min-h-[400px] font-mono text-sm"
+            {/* WYSIWYG Editor */}
+            <WYSIWYGEditor
+              content={body}
+              onChange={setBody}
+              placeholder="Start writing..."
+              autoFocus={true}
             />
 
             {/* Attachments in Edit Mode */}
@@ -531,33 +420,6 @@ export default function NoteDetail() {
               </Card>
             )}
 
-            {/* Add Attachment Button */}
-            <div>
-              <input
-                type="file"
-                id="file-upload"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  if (files.length > 0) {
-                    handleFileUpload(files);
-                  }
-                  e.target.value = "";
-                }}
-                accept="image/*,application/pdf"
-              />
-              <Button
-                variant="outline"
-                onClick={() => document.getElementById("file-upload")?.click()}
-                disabled={uploadFileMutation.isPending || registerFileMutation.isPending}
-              >
-                <Paperclip className="h-4 w-4 mr-2" />
-                {uploadFileMutation.isPending || registerFileMutation.isPending
-                  ? "Uploading..."
-                  : "Add Attachment"}
-              </Button>
-            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -607,6 +469,65 @@ export default function NoteDetail() {
           </div>
         )}
       </div>
+
+      {/* Bottom Action Bar (Edit Mode Only) */}
+      {isEditMode && (
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 flex items-center justify-center gap-4 md:justify-end md:pr-8 z-40">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              if (files.length > 0) {
+                handleFileUpload(files);
+              }
+              if (e.target) {
+                e.target.value = "";
+              }
+            }}
+            accept="image/*,application/pdf,.doc,.docx"
+          />
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadFileMutation.isPending || registerFileMutation.isPending}
+            className="flex-1 md:flex-initial"
+          >
+            <Paperclip className="h-4 w-4 mr-2" />
+            {uploadFileMutation.isPending || registerFileMutation.isPending
+              ? "Uploading..."
+              : "Add Attachment"}
+          </Button>
+          <Select value={selectedContactId} onValueChange={setSelectedContactId}>
+            <SelectTrigger className="flex-1 md:flex-initial md:w-[180px]">
+              <SelectValue placeholder="Link Contact" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No Contact</SelectItem>
+              {contacts.map((contact) => (
+                <SelectItem key={contact.id} value={contact.id.toString()}>
+                  {contact.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+            <SelectTrigger className="flex-1 md:flex-initial md:w-[180px]">
+              <SelectValue placeholder="Link Job" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No Job</SelectItem>
+              {jobs.map((job) => (
+                <SelectItem key={job.id} value={job.id.toString()}>
+                  {job.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Floating Action Button */}
       <div className="fixed bottom-6 right-6 z-50">
