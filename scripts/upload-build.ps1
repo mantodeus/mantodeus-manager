@@ -30,6 +30,7 @@ Write-Host "`n==> Deploying on server..." -ForegroundColor Cyan
 
 $remoteScript = @"
 set -euo pipefail
+set -x
 cd $APP_DIR
 echo '==> Extracting build...'
 # Remove old dist if it exists, then extract
@@ -56,7 +57,8 @@ echo '✅ Deployment complete!'
 # Normalize to LF to avoid CRLF issues on remote bash
 $remoteScript = $remoteScript -replace "`r`n", "`n"
 
-$remoteScript | ssh $SERVER 'bash -s'
+$deployLog = Join-Path $PWD "deploy.log"
+$remoteScript | ssh $SERVER 'bash -s' 2>&1 | Tee-Object -FilePath $deployLog
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Deployment failed" -ForegroundColor Red
