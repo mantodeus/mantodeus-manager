@@ -1,10 +1,5 @@
 !lm4KuaadW
 
-.\scripts\build-local.ps1
-.\scripts\build-local.ps1 -SkipInstall
-
-bash scripts/deploy-from-archive.sh
-
 cd /srv/customer/sites/manager.mantodeus.com
 rm -rf dist
 tar -xzf /tmp/dist.tar.gz
@@ -44,3 +39,8 @@ npx pm2 logs mantodeus-manager --lines 200
 set +H
 export DATABASE_URL='mysql://bm9k66_mantodeus:!lm4KuaadW@bm9k66.myd.infomaniak.com:3306/bm9k66_mantodeus_manager'
 npx pnpm drizzle-kit migrate
+
+.\scripts\build-local.ps1
+.\scripts\build-local.ps1 -SkipInstall
+
+bash scripts/deploy-from-archive.sh
