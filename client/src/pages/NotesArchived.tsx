@@ -16,7 +16,7 @@ import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 
 type Note = {
   id: number;
@@ -123,7 +123,7 @@ export default function NotesArchived() {
 
       {note.content && (
         <div className="text-sm text-muted-foreground mb-3 line-clamp-3 prose prose-sm dark:prose-invert max-w-none">
-          <Streamdown>{note.content}</Streamdown>
+          <Markdown>{note.content}</Markdown>
         </div>
       )}
 
