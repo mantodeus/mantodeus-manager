@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Gesture Recognition Hook
  *
  * Implements hold + swipe gesture detection according to Mobile Navigation Constitution.
@@ -8,7 +8,7 @@ import { useRef, useCallback, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/useMobile';
 import { useMobileNav } from './MobileNavProvider';
 import { GestureState } from './types';
-import type { Point } from './types';
+import type { Point, TabId } from './types';
 import { GESTURE_CONFIG, HapticIntent } from './constants';
 
 /**
@@ -21,7 +21,7 @@ function triggerHaptic(intent: HapticIntent) {
 
 export function useGestureRecognition() {
   const isMobile = useIsMobile();
-  const { setGestureState, gestureState, setPointerPosition } = useMobileNav();
+  const { setGestureState, gestureState, setPointerPosition, setActiveTab } = useMobileNav();
 
   const holdTimerRef = useRef<number | undefined>(undefined);
   const startPosRef = useRef<Point>({ x: 0, y: 0 });
@@ -88,6 +88,8 @@ export function useGestureRecognition() {
         const dx = currentPos.x - startPosRef.current.x;
         const dy = currentPos.y - startPosRef.current.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
+
+        setPointerPosition(currentPos);
 
         if (distance > 5) {
           window.getSelection?.()?.removeAllRanges?.();
@@ -170,6 +172,10 @@ export function useGestureRecognition() {
         return;
       }
 
+      const tabId = tabTrigger.getAttribute('data-tab-trigger') as TabId | null;
+      if (tabId) {
+        setActiveTab(tabId);
+      }
       if (e.clientY > window.innerHeight - GESTURE_CONFIG.SAFE_ZONE_BOTTOM) {
         return;
       }
@@ -205,6 +211,7 @@ export function useGestureRecognition() {
 
       startPosRef.current = { x: e.clientX, y: e.clientY };
       startTimeRef.current = Date.now();
+      setPointerPosition(startPosRef.current);
       setGestureState(GestureState.HOLD_PENDING);
 
       holdTimerRef.current = window.setTimeout(() => {
@@ -296,3 +303,4 @@ export function useGestureRecognition() {
     handlePointerCancel,
   };
 }
+

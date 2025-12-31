@@ -24,11 +24,13 @@ import { useDeviceCapabilities } from './useDeviceCapabilities';
 function calculateOffset(
   itemIndex: number,
   activeIndex: number | null,
-  scrollerSide: 'left' | 'right'
+  scrollerSide: 'left' | 'right' | 'center'
 ): number {
   if (activeIndex === null) return 0;
 
   const distance = Math.abs(itemIndex - activeIndex);
+
+  if (scrollerSide === 'center') return 0;
 
   let offset = 0;
   if (distance === 0) {
@@ -55,6 +57,8 @@ function calculateBlur(
   if (!FEATURES.PHASE_2_BLUR || !hasBlur || activeIndex === null) return 0;
 
   const distance = Math.abs(itemIndex - activeIndex);
+
+  if (scrollerSide === 'center') return 0;
 
   if (distance === 0) return 0; // Active: crisp
   if (distance === 1) return 0.5; // Neighbors: slight blur
@@ -95,7 +99,7 @@ function ModuleItem({
     <div
       data-module-item
       className={cn(
-        'flex items-center gap-3 px-6 py-4',
+        'flex items-center gap-3 px-5 py-3',
         'gesture-surface',
         'cursor-pointer select-none',
         'transition-all duration-150 ease-out',
@@ -112,12 +116,12 @@ function ModuleItem({
       }}
     >
       <Icon
-        className={cn('h-5 w-5', isActive && 'text-primary')}
+        className={cn('h-5 w-5 drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)]', isActive && 'text-primary')}
         strokeWidth={isActive ? 2.5 : 2}
       />
       <span
         className={cn(
-          'text-base font-medium',
+          'text-sm font-medium drop-shadow-[0_1px_6px_rgba(0,0,0,0.18)]',
           isActive && 'text-foreground font-semibold'
         )}
       >
@@ -220,23 +224,18 @@ export function ModuleScroller() {
     <div
       ref={scrollerRef}
       className={cn(
-        'fixed top-0 z-[1000]',
+        'fixed top-1/2 -translate-y-1/2 z-[1000]',
         'w-64', // Fixed width
-        'bg-background/95 backdrop-blur-sm',
-        'border-border',
-        'overflow-y-auto',
         'md:hidden', // Â§ 1.1: Mobile only
         'module-scroller',
         'gesture-surface',
         'animate-scroller-slide-in',
         // Position based on active tab (Ergonomic Law)
         scrollerSide === 'right'
-          ? 'right-0 border-l'
+          ? 'right-0'
           : scrollerSide === 'left'
-            ? 'left-0 border-r'
-            : 'left-1/2 -translate-x-1/2 border-x',
-        // Safe area support
-        'pb-[calc(56px+env(safe-area-inset-bottom))]' // Account for bottom tab bar
+            ? 'left-0'
+            : 'left-1/2 -translate-x-1/2',
       )}
       aria-label={`Module selector for ${activeTab}`}
       role="menu"
@@ -268,6 +267,10 @@ export function ModuleScroller() {
     </div>
   );
 }
+
+
+
+
 
 
 
