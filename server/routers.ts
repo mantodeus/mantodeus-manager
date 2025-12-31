@@ -873,6 +873,7 @@ export const appRouter = router({
         );
 
         // Save metadata to database (as legacy file upload)
+        const uploadDate = new Date();
         const result = await db.createInvoice({
           filename,
           fileKey,
@@ -885,11 +886,16 @@ export const appRouter = router({
           invoiceCounter,
           invoiceYear,
           issueDate,
-          uploadDate: new Date(),
+          uploadDate,
           uploadedBy: ctx.user.id,
+          uploadedAt: uploadDate,
           userId: ctx.user.id,
           status: "open", // Legacy uploads are treated as issued (open status with sentAt set)
           sentAt: issueDate, // Set sentAt for legacy uploads
+          type: "standard",
+          source: "uploaded",
+          needsReview: true,
+          originalPdfS3Key: fileKey,
           subtotal: "0.00",
           vatAmount: "0.00",
           total: "0.00",
