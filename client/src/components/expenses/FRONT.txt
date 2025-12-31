@@ -1,1 +1,1 @@
-FRONT
+FRONTChanges the navigation menu: OFFICE must have modules: invoices, expenses, statements, reports. FIELD must have projects, inspections, gallery and notes. TOOLS must have map, weather, contacts, calendar and settings. Modules tht dont exist, just create empty and have a notification coming soon when opening. Do not change the style of the navigation, just rearrange these modules and add the new empty modules
