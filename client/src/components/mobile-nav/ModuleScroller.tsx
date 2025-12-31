@@ -12,9 +12,10 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useMobileNav } from './MobileNavProvider';
-import { MODULE_REGISTRY, DEPTH_OFFSET, VISUAL_HIERARCHY } from './constants';
+import { MODULE_REGISTRY, DEPTH_OFFSET, VISUAL_HIERARCHY, FEATURES } from './constants';
 import { GestureState } from './types';
 import type { Module } from './types';
+import { useDeviceCapabilities } from './useDeviceCapabilities';
 
 /**
  * Calculate depth offset for a module item
@@ -43,6 +44,25 @@ function calculateOffset(
 }
 
 /**
+ * Calculate depth-of-field blur for Phase 2
+ * § 8.3: Blur is additive, not essential
+ */
+function calculateBlur(
+  itemIndex: number,
+  activeIndex: number | null,
+  hasBlur: boolean
+): number {
+  if (!FEATURES.PHASE_2_BLUR || !hasBlur || activeIndex === null) return 0;
+
+  const distance = Math.abs(itemIndex - activeIndex);
+
+  if (distance === 0) return 0; // Active: crisp
+  if (distance === 1) return 0.5; // Neighbors: slight blur
+  if (distance === 2) return 1; // Secondary: medium blur
+  return 2; // Distant: full blur
+}
+
+/**
  * Module item component
  */
 function ModuleItem({
@@ -51,6 +71,7 @@ function ModuleItem({
   isActive,
   isNeighbor,
   offset,
+  blur,
   onPointerMove,
 }: {
   module: Module;
@@ -58,6 +79,7 @@ function ModuleItem({
   isActive: boolean;
   isNeighbor: boolean;
   offset: number;
+  blur: number;
   onPointerMove: (index: number) => void;
 }) {
   const Icon = module.icon;
@@ -76,12 +98,17 @@ function ModuleItem({
       className={cn(
         'flex items-center gap-3 px-6 py-4',
         'cursor-pointer select-none',
-        'transition-all duration-150 ease-out', // § Phase 1: CSS only
-        isActive && 'border-l-2 border-primary' // Accent colour emphasis
+        'transition-all duration-150 ease-out',
+        // § Phase 2: Theme integration
+        isActive && [
+          'border-l-2 border-primary',
+          'bg-primary/5', // Subtle background highlight
+        ]
       )}
       style={{
         transform: `translateX(${offset}px) scale(${scale})`,
         opacity,
+        filter: blur > 0 ? `blur(${blur}px)` : undefined,
       }}
       onPointerMove={() => onPointerMove(index)}
     >
@@ -114,6 +141,7 @@ export function ModuleScroller() {
   } = useMobileNav();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const capabilities = useDeviceCapabilities(); // Phase 2: Device capability detection
 
   // § 6.1: Scope - only show modules for active tab
   const modules = MODULE_REGISTRY[activeTab];
@@ -195,6 +223,7 @@ export function ModuleScroller() {
             Math.abs(index - highlightedIndex) === 1;
 
           const offset = calculateOffset(index, highlightedIndex, scrollerSide);
+          const blur = calculateBlur(index, highlightedIndex, capabilities.hasBlur);
 
           return (
             <ModuleItem
@@ -204,6 +233,7 @@ export function ModuleScroller() {
               isActive={isActive}
               isNeighbor={isNeighbor}
               offset={offset}
+              blur={blur}
               onPointerMove={handlePointerMove}
             />
           );

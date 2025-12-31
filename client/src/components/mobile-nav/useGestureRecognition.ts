@@ -66,27 +66,19 @@ export function useGestureRecognition() {
   const lastScrollTimeRef = useRef<number>(0);
   const lastScrollYRef = useRef<number>(0);
 
-  // CRITICAL: Guard clause - mobile only (§ 1.2: No Cross-Contamination)
-  if (!isMobile) {
-    return {
-      handlePointerDown: () => {},
-      handlePointerMove: () => {},
-      handlePointerUp: () => {},
-      handlePointerCancel: () => {},
-    };
-  }
-
   /**
    * Cancel gesture and cleanup
    */
   const cancelGesture = useCallback(() => {
+    if (!isMobile) return; // Guard inside callback
+
     if (holdTimerRef.current) {
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = undefined;
     }
     setGestureState(GestureState.IDLE);
     setFlickDirection(null);
-  }, [setGestureState, setFlickDirection]);
+  }, [isMobile, setGestureState, setFlickDirection]);
 
   /**
    * Pointer down handler
@@ -95,6 +87,8 @@ export function useGestureRecognition() {
    */
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      if (!isMobile) return; // § 1.2: Mobile only guard
+
       // Validate touch origin (must be on tab trigger)
       const target = e.target as HTMLElement;
       const tabTrigger = target.closest('[data-tab-trigger]');
@@ -132,7 +126,7 @@ export function useGestureRecognition() {
         }
       }, GESTURE_CONFIG.HOLD_DURATION);
     },
-    [setGestureState]
+    [isMobile, setGestureState]
   );
 
   /**
@@ -141,6 +135,7 @@ export function useGestureRecognition() {
    */
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
+      if (!isMobile) return; // § 1.2: Mobile only guard
       if (gestureState === GestureState.IDLE) return;
 
       const currentPos = { x: e.clientX, y: e.clientY };
@@ -168,7 +163,7 @@ export function useGestureRecognition() {
         }
       }
     },
-    [gestureState, cancelGesture, setFlickDirection, setGestureState]
+    [isMobile, gestureState, cancelGesture, setFlickDirection, setGestureState]
   );
 
   /**
@@ -176,6 +171,8 @@ export function useGestureRecognition() {
    * § 6.2: State Safety - navigation occurs only on release
    */
   const handlePointerUp = useCallback(() => {
+    if (!isMobile) return; // § 1.2: Mobile only guard
+
     if (gestureState === GestureState.FLICK_ACTIVE) {
       // Navigation will be handled by ModuleScroller
       // Just transition to snapping state
@@ -183,14 +180,15 @@ export function useGestureRecognition() {
     } else {
       cancelGesture();
     }
-  }, [gestureState, cancelGesture, setGestureState]);
+  }, [isMobile, gestureState, cancelGesture, setGestureState]);
 
   /**
    * Pointer cancel handler
    */
   const handlePointerCancel = useCallback(() => {
+    if (!isMobile) return; // § 1.2: Mobile only guard
     cancelGesture();
-  }, [cancelGesture]);
+  }, [isMobile, cancelGesture]);
 
   /**
    * Monitor scroll velocity to cancel gesture if user is actively scrolling
