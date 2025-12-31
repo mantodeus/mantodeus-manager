@@ -175,9 +175,9 @@ export enum HapticIntent {
  */
 export const FEATURES = {
   PHASE_1_CORE: true, // Always enabled
-  PHASE_2_MOMENTUM: false, // Enable when Phase 2 starts
-  PHASE_2_BLUR: false,
-  PHASE_2_SPRINGS: false,
+  PHASE_2_MOMENTUM: true, // ✅ Phase 2 enabled
+  PHASE_2_BLUR: true, // ✅ Phase 2 enabled (device-gated)
+  PHASE_2_SPRINGS: true, // ✅ Phase 2 enabled (device-gated)
   PHASE_3_DEEP_LINKING: false,
   PHASE_3_HAPTICS: false,
 } as const;
