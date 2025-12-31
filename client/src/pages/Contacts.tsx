@@ -366,79 +366,81 @@ export default function Contacts() {
             </DialogContent>
           </Dialog>
         }
-        primaryAction={
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                New Contact
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingId ? "Edit Contact" : "Add New Contact"}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm mb-2">Name *</label>
-                  <Input
-                    placeholder="Contact name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-2">Email</label>
-                  <Input
-                    type="email"
-                    placeholder="email@example.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-2">Phone</label>
-                  <Input
-                    placeholder="+1 (555) 123-4567"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-2">Address</label>
-                  <Input
-                    placeholder="Street address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-2">Notes</label>
-                  <Textarea
-                    placeholder="Additional notes..."
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-                <Button
-                  onClick={handleSave}
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="w-full"
-                >
-                  {editingId
-                    ? updateMutation.isPending
-                      ? "Updating..."
-                      : "Update Contact"
-                    : createMutation.isPending
-                    ? "Creating..."
-                    : "Create Contact"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        }
       />
+
+      {/* Top-of-Page Action Row */}
+      <div className="flex items-center justify-end gap-2 pb-2 border-b">
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              New Contact
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingId ? "Edit Contact" : "Add New Contact"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm mb-2">Name *</label>
+                <Input
+                  placeholder="Contact name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-2">Email</label>
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-2">Phone</label>
+                <Input
+                  placeholder="+1 (555) 123-4567"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-2">Address</label>
+                <Input
+                  placeholder="Street address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-2">Notes</label>
+                <Textarea
+                  placeholder="Additional notes..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <Button
+                onClick={handleSave}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="w-full"
+              >
+                {editingId
+                  ? updateMutation.isPending
+                    ? "Updating..."
+                    : "Update Contact"
+                  : createMutation.isPending
+                  ? "Creating..."
+                  : "Create Contact"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       {/* Active Contacts Grid */}
       <div className="space-y-4">

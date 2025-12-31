@@ -24,7 +24,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { formatCurrency } from "@/lib/currencyFormat";
 import { VoidExpenseDialog } from "@/components/expenses/VoidExpenseDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { CaptureFab } from "@/components/expenses/CaptureFab";
 import { BulkUploadDialog } from "@/components/expenses/BulkUploadDialog";
 
 export default function Expenses() {
@@ -388,15 +387,17 @@ export default function Expenses() {
       <PageHeader
         title="Expenses"
         subtitle="Track and manage your business expenses"
-        primaryAction={
-          <Link href="/expenses/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Expense
-            </Button>
-          </Link>
-        }
       />
+
+      {/* Top-of-Page Action Row */}
+      <div className="flex items-center justify-end gap-2 pb-2 border-b">
+        <Link href="/expenses/new">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            New Expense
+          </Button>
+        </Link>
+      </div>
 
       {/* Header Cards */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -549,11 +550,6 @@ export default function Expenses() {
         isDeleting={deleteMutation.isPending}
       />
 
-      {/* Capture FAB */}
-      <CaptureFab
-        onBulkUpload={() => setBulkUploadOpen(true)}
-        onManual={() => navigate("/expenses/new")}
-      />
 
       {/* Bulk Upload Dialog */}
       <BulkUploadDialog

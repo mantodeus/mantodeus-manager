@@ -794,13 +794,6 @@ export default function Notes() {
     </Sheet>
   );
 
-  const primaryAction = (
-    <Button onClick={() => navigate("/notes/new")}>
-      <Plus className="mr-2 h-4 w-4" />
-      New Note
-    </Button>
-  );
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -808,8 +801,15 @@ export default function Notes() {
         subtitle="Create and manage your notes"
         searchSlot={searchSlot}
         filterSlot={filterSlot}
-        primaryAction={primaryAction}
       />
+
+      {/* Top-of-Page Action Row */}
+      <div className="flex items-center justify-end gap-2 pb-2 border-b">
+        <Button onClick={() => navigate("/notes/new")}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Note
+        </Button>
+      </div>
 
       {/* Active Notes Grid */}
       <div className="space-y-4">

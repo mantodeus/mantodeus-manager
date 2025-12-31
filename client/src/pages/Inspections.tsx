@@ -137,51 +137,49 @@ export default function Inspections() {
         title="Inspections"
         subtitle={project?.name}
         titleClassName="text-2xl font-bold"
-        primaryAction={
-          <div className="flex gap-2">
-            {(() => {
-              // Find first inspection with an ID (server-synced)
-              const inspectionWithId = allInspections.find(i => i.id && typeof i.id === 'number');
-              return inspectionWithId ? (
-                <Button
-                  onClick={() => {
-                    const inspectionId = inspectionWithId.id;
-                    if (inspectionId && typeof inspectionId === 'number') {
-                      generatePDFMutation.mutate({ inspectionId });
-                    } else {
-                      toast.error("No inspection found to export");
-                    }
-                  }}
-                  disabled={generatePDFMutation.isPending}
-                  variant="outline"
-                  size="lg"
-                  className="h-12 px-6"
-                >
-                  {generatePDFMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <FileDown className="h-5 w-5 mr-2" />
-                      Export PDF
-                    </>
-                  )}
-                </Button>
-              ) : null;
-            })()}
-            <Button
-              onClick={() => setCreateUnitDialogOpen(true)}
-              size="lg"
-              className="h-12 px-6"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              New Abseil / Section
-            </Button>
-          </div>
-        }
       />
+
+      {/* Top-of-Page Action Row */}
+      <div className="flex items-center justify-end gap-2 pb-2 border-b">
+        {(() => {
+          // Find first inspection with an ID (server-synced)
+          const inspectionWithId = allInspections.find(i => i.id && typeof i.id === 'number');
+          return inspectionWithId ? (
+            <Button
+              onClick={() => {
+                const inspectionId = inspectionWithId.id;
+                if (inspectionId && typeof inspectionId === 'number') {
+                  generatePDFMutation.mutate({ inspectionId });
+                } else {
+                  toast.error("No inspection found to export");
+                }
+              }}
+              disabled={generatePDFMutation.isPending}
+              variant="outline"
+              size="sm"
+            >
+              {generatePDFMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Export PDF
+                </>
+              )}
+            </Button>
+          ) : null;
+        })()}
+        <Button
+          onClick={() => setCreateUnitDialogOpen(true)}
+          size="sm"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          New Abseil / Section
+        </Button>
+      </div>
 
       {/* Inspections List */}
       {allInspections.length === 0 && allUnits.length === 0 ? (
