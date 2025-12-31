@@ -276,6 +276,14 @@
     opacity: 0.85;
   }
 
+  .tab-label {
+    text-transform: uppercase;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    opacity: 0.85;
+  }
+
   .bottom-tab-bar {
     height: calc(56px + env(safe-area-inset-bottom) + 12px);
     padding-bottom: calc(env(safe-area-inset-bottom) + 12px);

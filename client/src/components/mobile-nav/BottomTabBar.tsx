@@ -1,9 +1,7 @@
-﻿/**
+/**
  * Bottom Tab Bar Component
  *
  * Fixed 3-tab navigation bar for mobile.
- * Â§ 2.1: Bottom Tab Bar - Exactly three tabs: Office, Field, Tools
- * Â§ 10: Context Anchoring - Tab label reveals above icon when scroller active
  */
 
 import { cn } from '@/lib/utils';
@@ -24,7 +22,7 @@ export function BottomTabBar() {
   const gesture = useGestureRecognition();
 
   const handleTabClick = (tabId: TabId) => {
-    // Simple tap switches tabs (Â§ 4.1: tap alone doesn't activate scroller)
+    // Simple tap switches tabs (tap alone doesn't activate scroller)
     if (gestureState === GestureState.IDLE) {
       setActiveTab(tabId);
     }
@@ -36,11 +34,31 @@ export function BottomTabBar() {
         'fixed bottom-0 left-0 right-0 z-[1000]',
         'bg-background/95 backdrop-blur-md',
         'border-t border-border',
-        'md:hidden', // Â§ 1.1: Mobile only
-        // Safe area support for notched devices
-        'bottom-tab-bar'
+        'md:hidden', // Mobile only
+        'bottom-tab-bar',
+        'relative'
       )}
     >
+      {scrollerVisible && (
+        <div className="pointer-events-none absolute bottom-full left-0 right-0 mb-1 flex items-center justify-around px-4">
+          {TABS.map((tab) => {
+            const isActive = tab.id === activeTab;
+
+            return (
+              <span
+                key={tab.id}
+                className={cn(
+                  'tab-label whitespace-nowrap',
+                  isActive ? 'opacity-100' : 'opacity-0'
+                )}
+              >
+                {tab.label.toUpperCase()}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex h-14 items-center justify-around px-4">
         {TABS.map((tab) => {
           const isActive = tab.id === activeTab;
@@ -49,14 +67,14 @@ export function BottomTabBar() {
           return (
             <button
               key={tab.id}
-              data-tab-trigger={tab.id} // Â§ 4.2: Valid touch origin marker
+              data-tab-trigger={tab.id}
               className={cn(
                 'gesture-surface',
                 'relative flex flex-col items-center justify-center',
                 'min-w-[64px] h-12',
                 'transition-all duration-150',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                'active:scale-95', // Tactile feedback
+                'active:scale-95',
                 isActive
                   ? 'text-foreground'
                   : 'text-muted-foreground'
@@ -69,24 +87,6 @@ export function BottomTabBar() {
               aria-label={`${tab.label} tab`}
               aria-current={isActive ? 'page' : undefined}
             >
-              {/*
-                Â§ 10.1: Context Label Reveal
-                Label appears ONLY when scroller is active AND this tab is active
-              */}
-              {scrollerVisible && isActive && (
-                <span
-                  className={cn(
-                    'absolute -top-4 left-1/2 -translate-x-1/2',
-                    'text-xs font-medium tracking-wide',
-                    'animate-context-label-reveal',
-                    'whitespace-nowrap'
-                  )}
-                >
-                  {tab.label.toUpperCase()}
-                </span>
-              )}
-
-              {/* Tab icon */}
               <Icon
                 className={cn(
                   'h-6 w-6',
@@ -101,5 +101,3 @@ export function BottomTabBar() {
     </div>
   );
 }
-
-
