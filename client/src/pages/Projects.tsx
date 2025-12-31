@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
+import { PageHeader } from "@/components/PageHeader";
 
 type ProjectListItem = RouterOutputs["projects"]["list"][number];
 
@@ -275,16 +276,16 @@ export default function Projects() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-regular">Projects</h1>
-          <p className="text-muted-foreground text-sm">Manage your client projects and work</p>
-        </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Project
-        </Button>
-      </div>
+      <PageHeader
+        title="Projects"
+        subtitle="Manage your client projects and work"
+        primaryAction={
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Project
+          </Button>
+        }
+      />
 
       {/* Active Projects Grid */}
       <div className="space-y-4">

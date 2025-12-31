@@ -15,6 +15,7 @@ import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function ContactsArchived() {
   const { data: archivedContacts = [], isLoading } = trpc.contacts.listArchived.useQuery();
@@ -118,20 +119,17 @@ export default function ContactsArchived() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/contacts">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-regular flex items-center gap-3">
-            <Archive className="h-8 w-8 text-muted-foreground" />
-            Archived Contacts
-          </h1>
-          <p className="text-muted-foreground text-sm">Contacts you've archived. You can restore them anytime.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Archived Contacts"
+        subtitle="Contacts you've archived. You can restore them anytime."
+        leading={
+          <Link href="/contacts">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Archived Contacts Grid */}
       <div className="space-y-4">

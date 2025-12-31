@@ -64,6 +64,8 @@ export interface MobileNavContextValue {
   setHighlightedIndex: (index: number | null) => void;
   pointerPosition: Point | null;
   setPointerPosition: (point: Point | null) => void;
+  lastUsedModuleByTab: Record<TabId, string | null>;
+  setLastUsedModule: (tab: TabId, path: string) => void;
 }
 
 /**

@@ -9,12 +9,13 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Tag, Archive, Loader2 } from "lucide-react";
+import { ArrowLeft, Tag, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { PageHeader } from "@/components/PageHeader";
 
 type Note = {
   id: number;
@@ -154,22 +155,17 @@ export default function NotesArchived() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
+      <PageHeader
+        title="Archived Notes"
+        subtitle="Notes you've archived. You can restore them anytime."
+        leading={
           <Link href="/notes">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-3xl font-regular flex items-center gap-3">
-              <Archive className="h-8 w-8 text-muted-foreground" />
-              Archived Notes
-            </h1>
-            <p className="text-muted-foreground text-sm">Notes you've archived. You can restore them anytime.</p>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Archived Notes Grid */}
       <div className="space-y-4">

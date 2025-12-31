@@ -28,6 +28,9 @@ import NotesArchived from "./pages/NotesArchived";
 import NotesRubbish from "./pages/NotesRubbish";
 import NoteDetail from "./pages/NoteDetail";
 import Maps from "./pages/Maps";
+import Gallery from "./pages/Gallery";
+import Statements from "./pages/Statements";
+import Weather from "./pages/Weather";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Inspections from "./pages/Inspections";
@@ -128,6 +131,11 @@ function Router() {
           <Reports />
         </DashboardLayout>
       </Route>
+      <Route path="/statements">
+        <DashboardLayout>
+          <Statements />
+        </DashboardLayout>
+      </Route>
       <Route path="/calendar">
         <DashboardLayout>
           <Calendar />
@@ -193,9 +201,19 @@ function Router() {
           <NoteDetail />
         </DashboardLayout>
       </Route>
+      <Route path="/gallery">
+        <DashboardLayout>
+          <Gallery />
+        </DashboardLayout>
+      </Route>
       <Route path="/maps">
         <DashboardLayout>
           <Maps />
+        </DashboardLayout>
+      </Route>
+      <Route path="/weather">
+        <DashboardLayout>
+          <Weather />
         </DashboardLayout>
       </Route>
       <Route path="/expenses">

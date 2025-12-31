@@ -9,7 +9,7 @@ import { useIsMobile } from '@/hooks/useMobile';
 import { useMobileNav } from './MobileNavProvider';
 import { GestureState } from './types';
 import type { Point, TabId } from './types';
-import { GESTURE_CONFIG, HapticIntent } from './constants';
+import { GESTURE_CONFIG, HapticIntent, MODULE_REGISTRY } from './constants';
 
 /**
  * Haptic feedback stub (semantic contract only).
@@ -21,7 +21,14 @@ function triggerHaptic(intent: HapticIntent) {
 
 export function useGestureRecognition() {
   const isMobile = useIsMobile();
-  const { setGestureState, gestureState, setPointerPosition, setActiveTab } = useMobileNav();
+  const {
+    setGestureState,
+    gestureState,
+    setPointerPosition,
+    setActiveTab,
+    setHighlightedIndex,
+    activeTab,
+  } = useMobileNav();
 
   const holdTimerRef = useRef<number | undefined>(undefined);
   const startPosRef = useRef<Point>({ x: 0, y: 0 });
@@ -133,6 +140,10 @@ export function useGestureRecognition() {
       setPointerPosition(null);
 
       if (gestureState === GestureState.DRAGGING) {
+        setGestureState(GestureState.SNAPPING);
+      } else if (gestureState === GestureState.HOLD_ACTIVE) {
+        const lastIndex = Math.max(0, MODULE_REGISTRY[activeTab].length - 1);
+        setHighlightedIndex(prev => prev ?? lastIndex);
         setGestureState(GestureState.SNAPPING);
       } else {
         cancelGesture();

@@ -5,13 +5,29 @@
  * Pull-down reveal provides navigation to archived/rubbish views.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -20,12 +36,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Tag, FileText, Loader2 } from "lucide-react";
+import { Plus, Search, Tag, FileText, Loader2, SlidersHorizontal } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
+import { PageHeader } from "@/components/PageHeader";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 type Note = {
   id: number;
@@ -39,14 +62,50 @@ type Note = {
   updatedAt: Date;
   archivedAt?: Date | null;
   trashedAt?: Date | null;
+  fileCount?: number | null;
+};
+
+type FilterState = {
+  job: string;
+  contact: string;
+  created: "all" | "today" | "last7" | "last30" | "custom";
+  createdFrom: string;
+  createdTo: string;
+  updated: "all" | "recent" | "older";
+  hasAttachments: "all" | "yes" | "no";
+  hasChecklist: "all" | "yes" | "no";
+  hasLinks: "all" | "yes" | "no";
+  pinned: "all" | "only";
+  draft: "all" | "only";
+  author: "all" | "me" | "others";
+};
+
+const defaultFilters: FilterState = {
+  job: "all",
+  contact: "all",
+  created: "all",
+  createdFrom: "",
+  createdTo: "",
+  updated: "all",
+  hasAttachments: "all",
+  hasChecklist: "all",
+  hasLinks: "all",
+  pinned: "all",
+  draft: "all",
+  author: "all",
 };
 
 export default function Notes() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterJob, setFilterJob] = useState<string>("all");
-  const [filterContact, setFilterContact] = useState<string>("all");
+  const [searchDraft, setSearchDraft] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [draftFilters, setDraftFilters] = useState<FilterState>(defaultFilters);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -60,13 +119,26 @@ export default function Notes() {
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const [batchArchiveDialogOpen, setBatchArchiveDialogOpen] = useState(false);
 
-
   // Queries
   const utils = trpc.useUtils();
   const { data: activeNotes = [], isLoading: activeLoading } = trpc.notes.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: jobs = [] } = trpc.jobs.list.useQuery();
 
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    setSearchDraft(searchQuery);
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [isSearchOpen, searchQuery]);
+
+  useEffect(() => {
+    if (isFilterOpen) {
+      setDraftFilters(filters);
+    }
+  }, [isFilterOpen, filters]);
 
   const archiveNoteMutation = trpc.notes.archive.useMutation({
     onSuccess: () => {
@@ -140,19 +212,123 @@ export default function Notes() {
     setSelectedIds(newSelected);
   };
 
+  const applySearch = () => {
+    setSearchQuery(searchDraft.trim());
+    setIsSearchOpen(false);
+  };
+
+  const clearSearch = () => {
+    setSearchDraft("");
+    setSearchQuery("");
+    setIsSearchOpen(false);
+  };
+
+  const clearDraftFilters = () => {
+    setDraftFilters(defaultFilters);
+  };
+
+  const applyFilters = () => {
+    setFilters(draftFilters);
+    setIsFilterOpen(false);
+  };
+
+  const parseDateInput = (value: string, endOfDay = false) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    if (endOfDay) {
+      date.setHours(23, 59, 59, 999);
+    }
+    return date;
+  };
+
+  const isWithinRange = (date: Date, from: Date | null, to: Date | null) => {
+    if (from && date < from) return false;
+    if (to && date > to) return false;
+    return true;
+  };
+
   // Filter notes helper
   const filterNotes = (notes: Note[]) => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const last7 = new Date(startOfToday);
+    last7.setDate(last7.getDate() - 6);
+    const last30 = new Date(startOfToday);
+    last30.setDate(last30.getDate() - 29);
+    const createdFrom = parseDateInput(filters.createdFrom);
+    const createdTo = parseDateInput(filters.createdTo, true);
+
     return notes.filter((note) => {
+      const noteContent = note.content || "";
+      const noteTags = (note.tags || "")
+        .split(",")
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean);
+      const hasChecklist = /(^|\n)\s*[-*]\s+\[( |x|X)\]/.test(noteContent);
+      const hasLinks = /https?:\/\/\S+|\[[^\]]+\]\([^)]+\)/.test(noteContent);
+      const hasAttachments = (note.fileCount ?? 0) > 0;
+      const isPinned = noteTags.includes("pinned");
+      const isDraft = noteTags.includes("draft");
+
       const matchesSearch =
         note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.tags?.toLowerCase().includes(searchQuery.toLowerCase());
+        note.content?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesJob = filterJob === "all" || note.jobId?.toString() === filterJob;
+      const matchesJob =
+        filters.job === "all" ||
+        (filters.job === "unassigned" ? !note.jobId : note.jobId?.toString() === filters.job);
       const matchesContact =
-        filterContact === "all" || note.contactId?.toString() === filterContact;
+        filters.contact === "all" ||
+        (filters.contact === "unassigned"
+          ? !note.contactId
+          : note.contactId?.toString() === filters.contact);
 
-      return matchesSearch && matchesJob && matchesContact;
+      const createdAt = new Date(note.createdAt);
+      const updatedAt = new Date(note.updatedAt);
+      const matchesCreated =
+        filters.created === "all" ||
+        (filters.created === "today" && createdAt >= startOfToday) ||
+        (filters.created === "last7" && createdAt >= last7) ||
+        (filters.created === "last30" && createdAt >= last30) ||
+        (filters.created === "custom" && isWithinRange(createdAt, createdFrom, createdTo));
+
+      const matchesUpdated =
+        filters.updated === "all" ||
+        (filters.updated === "recent" && updatedAt >= last7) ||
+        (filters.updated === "older" && updatedAt < last7);
+
+      const matchesAttachments =
+        filters.hasAttachments === "all" ||
+        (filters.hasAttachments === "yes" ? hasAttachments : !hasAttachments);
+      const matchesChecklist =
+        filters.hasChecklist === "all" ||
+        (filters.hasChecklist === "yes" ? hasChecklist : !hasChecklist);
+      const matchesLinks =
+        filters.hasLinks === "all" || (filters.hasLinks === "yes" ? hasLinks : !hasLinks);
+
+      const matchesPinned =
+        filters.pinned === "all" || (filters.pinned === "only" ? isPinned : true);
+      const matchesDraft = filters.draft === "all" || (filters.draft === "only" ? isDraft : true);
+
+      const matchesAuthor =
+        filters.author === "all" ||
+        (filters.author === "me" && user?.id && note.createdBy === user.id) ||
+        (filters.author === "others" && user?.id && note.createdBy !== user.id);
+
+      return (
+        matchesSearch &&
+        matchesJob &&
+        matchesContact &&
+        matchesCreated &&
+        matchesUpdated &&
+        matchesAttachments &&
+        matchesChecklist &&
+        matchesLinks &&
+        matchesPinned &&
+        matchesDraft &&
+        matchesAuthor
+      );
     });
   };
 
@@ -261,67 +437,378 @@ export default function Notes() {
     );
   }
 
+  const hasActiveFilters =
+    searchQuery ||
+    filters.job !== "all" ||
+    filters.contact !== "all" ||
+    filters.created !== "all" ||
+    filters.createdFrom ||
+    filters.createdTo ||
+    filters.updated !== "all" ||
+    filters.hasAttachments !== "all" ||
+    filters.hasChecklist !== "all" ||
+    filters.hasLinks !== "all" ||
+    filters.pinned !== "all" ||
+    filters.draft !== "all" ||
+    filters.author !== "all";
+
+  const searchSlot = (
+    <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Search notes">
+          <Search className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Search notes</DialogTitle>
+        </DialogHeader>
+        <Input
+          ref={searchInputRef}
+          placeholder="Search title, body text, or headings..."
+          value={searchDraft}
+          onChange={(e) => setSearchDraft(e.target.value)}
+        />
+        <DialogFooter>
+          <Button variant="ghost" onClick={clearSearch}>
+            Clear
+          </Button>
+          <Button onClick={applySearch}>Search</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const filterSlot = (
+    <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Filter notes">
+          <SlidersHorizontal className="h-4 w-4" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="p-0">
+        <SheetHeader>
+          <SheetTitle>Filters</SheetTitle>
+        </SheetHeader>
+        <div className="px-4 pb-4 overflow-y-auto">
+          <Accordion type="multiple" defaultValue={["associations", "time", "content", "status"]}>
+            <AccordionItem value="associations">
+              <AccordionTrigger>Associations</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Job</div>
+                    <Select
+                      value={draftFilters.job}
+                      onValueChange={(value) =>
+                        setDraftFilters((prev) => ({ ...prev, job: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="All jobs" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Jobs</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {jobs.length === 0 ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            No jobs available
+                          </div>
+                        ) : (
+                          jobs.map((job) => (
+                            <SelectItem key={job.id} value={job.id.toString()}>
+                              {job.title}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Contact</div>
+                    <Select
+                      value={draftFilters.contact}
+                      onValueChange={(value) =>
+                        setDraftFilters((prev) => ({ ...prev, contact: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="All contacts" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Contacts</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {contacts.length === 0 ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            No contacts available
+                          </div>
+                        ) : (
+                          contacts.map((contact) => (
+                            <SelectItem key={contact.id} value={contact.id.toString()}>
+                              {contact.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="time">
+              <AccordionTrigger>Time</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Created</div>
+                    <Select
+                      value={draftFilters.created}
+                      onValueChange={(value) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          created: value as FilterState["created"],
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any time</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="last7">Last 7 days</SelectItem>
+                        <SelectItem value="last30">Last 30 days</SelectItem>
+                        <SelectItem value="custom">Custom range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {draftFilters.created === "custom" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          type="date"
+                          value={draftFilters.createdFrom}
+                          onChange={(e) =>
+                            setDraftFilters((prev) => ({
+                              ...prev,
+                              createdFrom: e.target.value,
+                            }))
+                          }
+                        />
+                        <Input
+                          type="date"
+                          value={draftFilters.createdTo}
+                          onChange={(e) =>
+                            setDraftFilters((prev) => ({
+                              ...prev,
+                              createdTo: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Updated</div>
+                    <Select
+                      value={draftFilters.updated}
+                      onValueChange={(value) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          updated: value as FilterState["updated"],
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any time</SelectItem>
+                        <SelectItem value="recent">Recently edited</SelectItem>
+                        <SelectItem value="older">Older notes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="content">
+              <AccordionTrigger>Content</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Attachments</div>
+                    <Select
+                      value={draftFilters.hasAttachments}
+                      onValueChange={(value) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          hasAttachments: value as FilterState["hasAttachments"],
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Checklist</div>
+                    <Select
+                      value={draftFilters.hasChecklist}
+                      onValueChange={(value) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          hasChecklist: value as FilterState["hasChecklist"],
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Links</div>
+                    <Select
+                      value={draftFilters.hasLinks}
+                      onValueChange={(value) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          hasLinks: value as FilterState["hasLinks"],
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="status">
+              <AccordionTrigger>Status</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Pinned</div>
+                    <Select
+                      value={draftFilters.pinned}
+                      onValueChange={(value) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          pinned: value as FilterState["pinned"],
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any</SelectItem>
+                        <SelectItem value="only">Pinned only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Draft</div>
+                    <Select
+                      value={draftFilters.draft}
+                      onValueChange={(value) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          draft: value as FilterState["draft"],
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any</SelectItem>
+                        <SelectItem value="only">Drafts only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Created by</div>
+                    <Select
+                      value={draftFilters.author}
+                      onValueChange={(value) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          author: value as FilterState["author"],
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Anyone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Anyone</SelectItem>
+                        <SelectItem value="me">Me</SelectItem>
+                        <SelectItem value="others">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+        <SheetFooter>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="flex-1" onClick={clearDraftFilters}>
+              Clear all
+            </Button>
+            <Button className="flex-1" onClick={applyFilters}>
+              Apply filters
+            </Button>
+          </div>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+
+  const primaryAction = (
+    <Button onClick={() => navigate("/notes/new")}>
+      <Plus className="mr-2 h-4 w-4" />
+      New Note
+    </Button>
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-regular">Notes</h1>
-          <p className="text-muted-foreground text-sm">Create and manage your notes</p>
-        </div>
-        <Button
-          onClick={() => navigate("/notes/new")}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          New Note
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search notes..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={filterJob} onValueChange={setFilterJob}>
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by job" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Jobs</SelectItem>
-            {jobs.length === 0 ? (
-              <div className="px-2 py-1.5 text-sm text-muted-foreground">No jobs available</div>
-            ) : (
-              jobs.map((job) => (
-                <SelectItem key={job.id} value={job.id.toString()}>
-                  {job.title}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
-        <Select value={filterContact} onValueChange={setFilterContact}>
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by contact" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Contacts</SelectItem>
-            {contacts.length === 0 ? (
-              <div className="px-2 py-1.5 text-sm text-muted-foreground">No contacts available</div>
-            ) : (
-              contacts.map((contact) => (
-                <SelectItem key={contact.id} value={contact.id.toString()}>
-                  {contact.name}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
-      </div>
+      <PageHeader
+        title="Notes"
+        subtitle="Create and manage your notes"
+        searchSlot={searchSlot}
+        filterSlot={filterSlot}
+        primaryAction={primaryAction}
+      />
 
       {/* Active Notes Grid */}
       <div className="space-y-4">
@@ -329,11 +816,11 @@ export default function Notes() {
           <Card className="p-12 text-center">
             <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground mb-2">
-              {searchQuery || filterJob !== "all" || filterContact !== "all"
+              {hasActiveFilters
                 ? "No notes found matching your filters"
                 : "No notes yet"}
             </p>
-            {!searchQuery && filterJob === "all" && filterContact === "all" && (
+            {!hasActiveFilters && (
               <Button
                 onClick={() => navigate("/notes/new")}
                 variant="outline"

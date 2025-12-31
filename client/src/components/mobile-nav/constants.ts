@@ -19,6 +19,8 @@ import {
   MapPin,
   Calendar as CalendarIcon,
   Settings as SettingsIcon,
+  CloudSun,
+  FileSpreadsheet,
   Briefcase,
   Clipboard,
   Wrench,
@@ -104,12 +106,6 @@ type _AssertThreeTabs = typeof TABS extends readonly [any, any, any]
 export const MODULE_REGISTRY = {
   office: [
     {
-      id: 'projects',
-      label: 'Projects',
-      path: '/projects',
-      icon: FolderOpen,
-    },
-    {
       id: 'invoices',
       label: 'Invoices',
       path: '/invoices',
@@ -121,16 +117,21 @@ export const MODULE_REGISTRY = {
       path: '/expenses',
       icon: Receipt,
     },
-    { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
     {
-      id: 'contacts-office',
-      label: 'Contacts',
-      path: '/contacts',
-      icon: Users,
+      id: 'statements',
+      label: 'Statements',
+      path: '/statements',
+      icon: FileSpreadsheet,
     },
-    { id: 'notes-office', label: 'Notes', path: '/notes', icon: StickyNote },
+    { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
   ],
   field: [
+    {
+      id: 'projects',
+      label: 'Projects',
+      path: '/projects',
+      icon: FolderOpen,
+    },
     {
       id: 'inspections',
       label: 'Inspections',
@@ -138,17 +139,23 @@ export const MODULE_REGISTRY = {
       icon: ClipboardCheck,
     },
     { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image },
-    { id: 'notes-field', label: 'Notes', path: '/notes', icon: StickyNote },
+    { id: 'notes', label: 'Notes', path: '/notes', icon: StickyNote },
   ],
   tools: [
     { id: 'map', label: 'Map', path: '/maps', icon: MapPin },
-    { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarIcon },
+    {
+      id: 'weather',
+      label: 'Weather',
+      path: '/weather',
+      icon: CloudSun,
+    },
     {
       id: 'contacts-tools',
       label: 'Contacts',
       path: '/contacts',
       icon: Users,
     },
+    { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarIcon },
     {
       id: 'settings',
       label: 'Settings',
