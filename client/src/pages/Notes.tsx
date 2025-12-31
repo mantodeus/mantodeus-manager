@@ -49,7 +49,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 
 type Note = {
   id: number;
@@ -390,7 +390,7 @@ export default function Notes() {
 
         {note.content && (
           <div className="text-sm text-muted-foreground mb-3 line-clamp-3 prose prose-sm dark:prose-invert max-w-none">
-            <Streamdown>{note.content}</Streamdown>
+            <Markdown>{note.content}</Markdown>
           </div>
         )}
 
