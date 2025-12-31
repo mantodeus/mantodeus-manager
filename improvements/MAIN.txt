@@ -31,8 +31,6 @@ bash infra/deploy/deploy.sh
 
 git reset --hard origin/main
 
-git checkout main
-git pull
 git merge back
 git merge front
 git push
