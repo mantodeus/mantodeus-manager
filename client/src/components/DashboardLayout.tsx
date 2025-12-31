@@ -17,7 +17,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE } from "@/const";
@@ -118,7 +117,6 @@ function DashboardLayoutContent({
   const [isResizing, setIsResizing] = useState(false);
   const [dataDialogOpen, setDataDialogOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -278,18 +276,7 @@ function DashboardLayoutContent({
 
       <SidebarInset>
         {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tab-title text-foreground">
-                    {(activeMenuItem?.label ?? APP_TITLE).toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <div className="h-0" />
         )}
         <main className="app-content flex-1 min-w-0 p-4 md:pb-4">
           {children}
@@ -318,20 +305,9 @@ function MobileDashboardLayoutContent({
 }: {
   children: React.ReactNode;
 }) {
-  const [location] = useLocation();
-  const activeMenuItem = menuItems.find(item => item.path === location);
-
   return (
     <div className="flex min-h-svh w-full flex-col">
-      <div className="flex border-b h-14 items-center justify-between bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="tab-title text-foreground">
-              {(activeMenuItem?.label ?? APP_TITLE).toUpperCase()}
-            </span>
-          </div>
-        </div>
-      </div>
+      <div className="h-0" />
 
       <main className="app-content flex-1 min-w-0 p-4">
         {children}

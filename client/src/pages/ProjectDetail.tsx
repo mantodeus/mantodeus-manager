@@ -24,7 +24,7 @@ import { ProjectCheckIn } from "@/components/ProjectCheckIn";
 import { GenerateProjectReportDialog } from "@/components/GenerateProjectReportDialog";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
-import { FileText } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function ProjectDetail() {
   const [, params] = useRoute("/projects/:id");
@@ -145,10 +145,15 @@ export default function ProjectDetail() {
     return new Date(date).toLocaleDateString();
   };
 
+  const actionHeader = <PageHeader />;
+
   if (projectLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        {actionHeader}
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
       </div>
     );
   }
@@ -156,6 +161,7 @@ export default function ProjectDetail() {
   if (!project) {
     return (
       <div className="space-y-6">
+        {actionHeader}
         <Link href="/projects">
           <Button variant="ghost">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -173,6 +179,7 @@ export default function ProjectDetail() {
 
   return (
     <div className="space-y-6">
+      <PageHeader />
       <div className="flex items-center justify-between">
         <Link href="/projects">
           <Button variant="ghost">

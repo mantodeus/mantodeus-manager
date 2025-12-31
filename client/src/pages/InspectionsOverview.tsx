@@ -60,8 +60,11 @@ export default function InspectionsOverview() {
 
   if (projectsLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="p-4 space-y-4 max-w-4xl mx-auto">
+        <PageHeader title="Inspections" titleClassName="text-2xl font-bold" />
+        <div className="flex items-center justify-center p-8">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
       </div>
     );
   }
@@ -73,6 +76,7 @@ export default function InspectionsOverview() {
         <PageHeader
           title="Inspections"
           subtitle="Select a project to view or create inspections"
+          titleClassName="text-2xl font-bold"
         />
 
         {projects.length === 0 ? (
@@ -120,6 +124,7 @@ export default function InspectionsOverview() {
       <PageHeader
         title="Inspections"
         subtitle={selectedProject?.name}
+        titleClassName="text-2xl font-bold"
         leading={
           <Button
             variant="ghost"

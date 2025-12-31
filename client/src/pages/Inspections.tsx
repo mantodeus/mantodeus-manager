@@ -123,7 +123,12 @@ export default function Inspections() {
 
   // Show skeleton while loading (first load only)
   if (inspectionsLoading || offlineDataLoading) {
-    return <InspectionOverviewSkeleton />;
+    return (
+      <div className="p-4 space-y-4 max-w-4xl mx-auto">
+        <PageHeader title="Inspections" titleClassName="text-2xl font-bold" />
+        <InspectionOverviewSkeleton />
+      </div>
+    );
   }
 
   return (
@@ -131,6 +136,7 @@ export default function Inspections() {
       <PageHeader
         title="Inspections"
         subtitle={project?.name}
+        titleClassName="text-2xl font-bold"
         primaryAction={
           <div className="flex gap-2">
             {(() => {

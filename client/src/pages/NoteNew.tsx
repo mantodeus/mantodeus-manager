@@ -16,6 +16,7 @@ import { WYSIWYGEditor } from "@/components/WYSIWYGEditor";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
+import { PageHeader } from "@/components/PageHeader";
 import {
   Select,
   SelectContent,
@@ -304,7 +305,7 @@ export default function NoteNew() {
 
   return (
     <div className="w-full max-w-none space-y-6 pb-24">
-      {/* Header */}
+      <PageHeader />
       <div className="flex items-center gap-4">
         <Link href="/notes">
           <Button variant="ghost" size="icon">

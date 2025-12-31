@@ -10,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +74,7 @@ export default function Maps() {
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   
   type SearchResult = {
     id: string;
@@ -653,127 +655,155 @@ export default function Maps() {
       <PageHeader
         title="Maps"
         subtitle="View and manage job locations on the map"
-      />
-
-      {/* Search Bar */}
-      <div className="relative mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search projects, contacts, or locations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
-            className="pl-10 pr-10"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => {
-                setSearchQuery("");
+        searchSlot={
+          <Dialog
+            open={isSearchOpen}
+            onOpenChange={(open) => {
+              setIsSearchOpen(open);
+              if (!open) {
                 setShowSearchResults(false);
-              }}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Search Results Dropdown */}
-        {showSearchResults && (
-          <Card className="absolute z-50 w-full mt-2 max-h-96 overflow-y-auto">
-            {searchResults.length > 0 ? (
-              <div className="p-2">
-                {searchResults.map((result) => (
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Search maps">
+                <Search className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Search maps</DialogTitle>
+                <DialogDescription>
+                  Search projects, contacts, or locations.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search projects, contacts, or locations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
                   <button
-                    key={result.id}
-                    onClick={() => handleSearchSelect(result)}
-                    className="w-full text-left p-3 hover:bg-muted rounded-md transition-colors flex items-start gap-3"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setShowSearchResults(false);
+                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    <MapPin className="h-4 w-4 text-accent mt-1 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="truncate">
-                          {result.name}
-                        </span>
-                        <span
-                          className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
-                          style={{
-                            backgroundColor:
-                              result.type === "job"
-                                ? "rgba(0, 255, 136, 0.1)"
-                                : result.type === "contact"
-                                ? "rgba(59, 130, 246, 0.1)"
-                                : "rgba(156, 163, 175, 0.1)",
-                            color:
-                              result.type === "job"
-                                ? "#00ff88"
-                                : result.type === "contact"
-                                ? "#3b82f6"
-                                : "#9ca3af",
-                          }}
-                        >
-                          {result.type === "job" ? "Job" : result.type === "contact" ? "Contact" : "Location"}
-                        </span>
-                      </div>
-                      {result.address && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          {result.address}
-                        </p>
-                      )}
-                    </div>
+                    <X className="h-4 w-4" />
                   </button>
-                ))}
+                )}
               </div>
-            ) : searchQuery.trim().length >= 3 ? (
-              <div className="p-2">
-                <div className="p-3 text-center text-muted-foreground mb-2">
-                  <p className="text-sm">No locations found matching "{searchQuery}"</p>
-                </div>
-                <button
-                  onClick={async () => {
-                    // Geocode the search query using backend
-                    try {
-                      const result = await geocodeMutation.mutateAsync({ address: searchQuery });
-                      if (result && result.latitude && result.longitude) {
-                        setSelectedLocation({ lat: parseFloat(result.latitude), lng: parseFloat(result.longitude) });
-                        setAddress(result.formattedAddress || searchQuery);
-                        setName(result.formattedAddress || searchQuery);
-                        setIsAddDialogOpen(true);
-                        setSearchQuery("");
-                        setShowSearchResults(false);
-                        
-                        // Center map on new location
-                        if (mapRef.current) {
-                          mapRef.current.setCenter({ lat: parseFloat(result.latitude), lng: parseFloat(result.longitude) });
-                          mapRef.current.setZoom(15);
-                        }
-                      } else {
-                        toast.error("Could not find this address");
-                      }
-                    } catch (error) {
-                      toast.error("Failed to geocode address");
-                      console.error(error);
-                    }
-                  }}
-                  className="w-full text-left p-3 hover:bg-muted rounded-md transition-colors flex items-start gap-3 border border-dashed border-border"
-                >
-                  <MapPin className="h-4 w-4 text-accent mt-1 flex-shrink-0" />
-                  <div className="flex-1">
-                    <span className="text-accent">
-                      Add "{searchQuery}" as new location
-                    </span>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Geocode this address and add to map
-                    </p>
-                  </div>
-                </button>
-              </div>
-            ) : null}
-          </Card>
-        )}
-      </div>
+              {showSearchResults && (
+                <Card className="max-h-96 overflow-y-auto">
+                  {searchResults.length > 0 ? (
+                    <div className="p-2">
+                      {searchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          onClick={() => handleSearchSelect(result)}
+                          className="w-full text-left p-3 hover:bg-muted rounded-md transition-colors flex items-start gap-3"
+                        >
+                          <MapPin className="h-4 w-4 text-accent mt-1 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="truncate">
+                                {result.name}
+                              </span>
+                              <span
+                                className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
+                                style={{
+                                  backgroundColor:
+                                    result.type === "job"
+                                      ? "rgba(0, 255, 136, 0.1)"
+                                      : result.type === "contact"
+                                      ? "rgba(59, 130, 246, 0.1)"
+                                      : "rgba(156, 163, 175, 0.1)",
+                                  color:
+                                    result.type === "job"
+                                      ? "#00ff88"
+                                      : result.type === "contact"
+                                      ? "#3b82f6"
+                                      : "#9ca3af",
+                                }}
+                              >
+                                {result.type === "job"
+                                  ? "Job"
+                                  : result.type === "contact"
+                                  ? "Contact"
+                                  : "Location"}
+                              </span>
+                            </div>
+                            {result.address && (
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {result.address}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : searchQuery.trim().length >= 3 ? (
+                    <div className="p-2">
+                      <div className="p-3 text-center text-muted-foreground mb-2">
+                        <p className="text-sm">No locations found matching "{searchQuery}"</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          // Geocode the search query using backend
+                          try {
+                            const result = await geocodeMutation.mutateAsync({ address: searchQuery });
+                            if (result && result.latitude && result.longitude) {
+                              setSelectedLocation({ lat: parseFloat(result.latitude), lng: parseFloat(result.longitude) });
+                              setAddress(result.formattedAddress || searchQuery);
+                              setName(result.formattedAddress || searchQuery);
+                              setIsAddDialogOpen(true);
+                              setSearchQuery("");
+                              setShowSearchResults(false);
+                              
+                              // Center map on new location
+                              if (mapRef.current) {
+                                mapRef.current.setCenter({ lat: parseFloat(result.latitude), lng: parseFloat(result.longitude) });
+                                mapRef.current.setZoom(15);
+                              }
+                            } else {
+                              toast.error("Could not find this address");
+                            }
+                          } catch (error) {
+                            toast.error("Failed to geocode address");
+                            console.error(error);
+                          }
+                        }}
+                        className="w-full text-left p-3 hover:bg-muted rounded-md transition-colors flex items-start gap-3 border border-dashed border-border"
+                      >
+                        <MapPin className="h-4 w-4 text-accent mt-1 flex-shrink-0" />
+                        <div className="flex-1">
+                          <span className="text-accent">
+                            Add "{searchQuery}" as new location
+                          </span>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Geocode this address and add to map
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  ) : null}
+                </Card>
+              )}
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsSearchOpen(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
       {/* Map and Locations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

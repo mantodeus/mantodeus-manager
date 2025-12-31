@@ -114,7 +114,12 @@ export default function ProjectsRubbish() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Rubbish Bin"
+        title={
+          <span className="flex items-center gap-3">
+            <Trash2 className="h-8 w-8 text-muted-foreground" />
+            Rubbish Bin
+          </span>
+        }
         subtitle="Deleted projects. Items here can be restored or permanently deleted."
         leading={
           <Link href="/projects">
