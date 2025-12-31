@@ -35,6 +35,7 @@ import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
+import { Streamdown } from "streamdown";
 
 type Note = {
   id: number;
@@ -303,9 +304,9 @@ export default function Notes() {
         </div>
 
         {note.content && (
-          <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
-            {note.content}
-          </p>
+          <div className="text-sm text-muted-foreground mb-3 line-clamp-3 prose prose-sm dark:prose-invert max-w-none">
+            <Streamdown>{note.content}</Streamdown>
+          </div>
         )}
 
         {note.tags && (
@@ -353,7 +354,7 @@ export default function Notes() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-regular">Notes</h1>
