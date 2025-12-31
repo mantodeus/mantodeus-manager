@@ -58,6 +58,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const isMobile = useIsMobile();
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
@@ -72,6 +73,16 @@ export default function DashboardLayout({
   // Routing is handled by App.tsx, so we just show loading here
   if (loading || !user) {
     return <DashboardLayoutSkeleton />
+  }
+
+  if (isMobile) {
+    return (
+      <MobileNavProvider>
+        <MobileDashboardLayoutContent>
+          {children}
+        </MobileDashboardLayoutContent>
+      </MobileNavProvider>
+    );
   }
 
   return (
@@ -280,7 +291,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 min-w-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-4">
+        <main className="app-content flex-1 min-w-0 p-4 md:pb-4">
           {children}
         </main>
       </SidebarInset>
@@ -299,5 +310,37 @@ function DashboardLayoutContent({
         onOpenChange={setDataDialogOpen}
       />
     </>
+  );
+}
+
+function MobileDashboardLayoutContent({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [location] = useLocation();
+  const activeMenuItem = menuItems.find(item => item.path === location);
+
+  return (
+    <div className="flex min-h-svh w-full flex-col">
+      <div className="flex border-b h-14 items-center justify-between bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-1">
+            <span className="tracking-tight text-foreground">
+              {activeMenuItem?.label ?? APP_TITLE}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <main className="app-content flex-1 min-w-0 p-4">
+        {children}
+      </main>
+
+      {/* Άυ 1.1: Mobile Navigation (Mobile only, Desktop unchanged) */}
+      <ScrollerOverlay />
+      <ModuleScroller />
+      <BottomTabBar />
+    </div>
   );
 }

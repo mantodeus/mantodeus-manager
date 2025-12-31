@@ -1,0 +1,304 @@
+# 🔒 Mobile Navigation System — Documentation
+
+This directory contains the complete documentation for the Mantodeus Manager mobile navigation system.
+
+---
+
+## 📚 Documents
+
+### 1. [CONSTITUTION.md](./CONSTITUTION.md)
+**The legally-binding specification**
+
+This document defines the non-negotiable laws governing mobile navigation. It supersedes all informal discussions, mockups, or partial implementations.
+
+**Key Sections:**
+- Platform Sovereignty (Mobile only, Desktop unchanged)
+- Navigation Model (3-tab system, module ownership)
+- Primary Gesture (Hold + Flick)
+- Ergonomic Law (Thumb biomechanics)
+- Performance Budgets
+- Accessibility Requirements
+- Absolute Prohibitions
+
+**Use this when:**
+- Planning new features
+- Reviewing pull requests
+- Resolving design debates
+- Onboarding new developers
+
+---
+
+### 2. [IMPLEMENTATION-PLAN.md](./IMPLEMENTATION-PLAN.md)
+**Technical analysis and premium enhancements**
+
+Detailed technical breakdown of how to elevate the constitutional spec to Apple-grade premium quality.
+
+**Key Sections:**
+- Aesthetic Enhancements (Depth-of-field blur, spring physics)
+- Performance Refinement (Device capability detection)
+- Accessibility Compliance (WCAG 2.2 AA)
+- Gesture Refinement (Edge case prevention)
+- Visual Specifications (Bottom tab bar, scroller overlay)
+- Phased Rollout Strategy
+
+**Use this when:**
+- Implementing new phases
+- Understanding device-gated features
+- Optimizing performance
+- Adding premium polish
+
+---
+
+### 3. [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPING.md)
+**Constitution → Code translation**
+
+Maps every constitutional requirement to concrete implementation checkpoints with test criteria.
+
+**Key Sections:**
+- § 1-16 mapped to code examples
+- TypeScript implementation snippets
+- Test criteria checklists
+- Quick reference for reviews
+
+**Use this when:**
+- Writing code
+- Testing compliance
+- Conducting code reviews
+- Debugging constitutional violations
+
+---
+
+## 🏗️ Implementation Architecture
+
+### File Structure
+
+```
+client/src/components/mobile-nav/
+├── index.ts                      # Central exports
+├── types.ts                      # TypeScript interfaces
+├── constants.ts                  # Constitutional values
+├── MobileNavProvider.tsx         # Context provider
+├── BottomTabBar.tsx              # 3-tab fixed navigation
+├── ModuleScroller.tsx            # Gesture-driven module list
+├── ScrollerOverlay.tsx           # Backdrop dimming
+├── useGestureRecognition.ts      # Hold + flick detection
+├── useDeviceCapabilities.ts      # Device capability detection
+├── useScrollPhysics.ts           # Momentum scrolling
+└── usePerformanceMonitor.ts      # Performance telemetry
+```
+
+---
+
+## 📊 Current Status
+
+### ✅ Phase 1: Core (COMPLETE)
+- Bottom tab bar (3 tabs: Office, Field, Tools)
+- Hold + flick gesture (250ms ± 30ms)
+- Module scroller with depth displacement
+- Instant navigation on release
+- Desktop unchanged (sidebar remains)
+
+### ✅ Phase 2: Premium Feel (COMPLETE)
+- Device capability detection
+- Depth-of-field blur (device-gated)
+- Backdrop blur overlay (device-gated)
+- Momentum scrolling physics
+- Performance observer
+- Theme integration (Green/Orchid Mantis)
+
+### ⏸️ Phase 3: Native-Ready Polish (PLANNED)
+- WCAG 2.2 AA accessibility compliance
+- Deep linking (`/inspections?tab=field`)
+- State restoration (tab + scroll position)
+- Haptic semantic implementation
+- Landscape/foldable device support
+
+---
+
+## 🧪 Testing
+
+### Constitutional Compliance Checklist
+
+**Phase 1 Requirements:**
+- [ ] § 1.1: Desktop unchanged (sidebar works identically)
+- [ ] § 2.1: Exactly 3 tabs (Office, Field, Tools)
+- [ ] § 2.2: Field tab default on app open
+- [ ] § 4.1: Hold (250ms ± 30ms) activates scroller
+- [ ] § 4.2: Only tab icons trigger gesture
+- [ ] § 5.2: Up+Right → Right scroller
+- [ ] § 6.1: Only active tab modules shown
+- [ ] § 6.2: Navigation only on finger release
+- [ ] § 8: Depth displacement (28/14/0px)
+- [ ] § 9: Visual hierarchy (1.08 scale, opacity)
+- [ ] § 10.1: Context label in tab bar only
+- [ ] § 11: Performance budgets (<16ms, <150ms, <300ms)
+- [ ] § 14: All prohibitions honored
+
+**Phase 2 Requirements:**
+- [ ] Device capability detection working
+- [ ] Blur disabled on <4GB devices
+- [ ] Offset works without blur
+- [ ] Backdrop blur on capable devices
+- [ ] Performance observer logging metrics
+
+### Manual Testing Steps
+
+1. **Gesture Recognition**
+   ```
+   - Quick tap (<220ms) → No scroller ✓
+   - Hold (250ms) + flick up+right → Right scroller ✓
+   - Drag finger → Module highlights follow ✓
+   - Release → Navigate to highlighted module ✓
+   ```
+
+2. **Edge Cases**
+   ```
+   - Edge swipe (<16px from edge) → No activation ✓
+   - Movement during hold (>10px) → Gesture cancelled ✓
+   - Fast scrolling → Gesture cancelled ✓
+   ```
+
+3. **Device Capability**
+   ```
+   - High-end device → Blur visible ✓
+   - Low-end device → No blur, offset works ✓
+   - prefers-reduced-transparency → No blur ✓
+   ```
+
+4. **Desktop Safety**
+   ```
+   - Resize to ≥768px → Bottom bar hidden ✓
+   - Sidebar still works → No regressions ✓
+   ```
+
+---
+
+## 🔧 Development Commands
+
+### Build
+```bash
+npm run build
+```
+
+### Dev Server
+```bash
+npm run dev
+```
+
+### Type Check
+```bash
+npm run type-check
+```
+
+### Constitutional Validation
+Check implementation against [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPING.md)
+
+---
+
+## 📖 Key Principles
+
+### 1. Navigation is Trust
+Every gesture must feel **deliberate, readable, predictable, and calm**.
+
+### 2. Mobile First by Law
+Desktop behaviour **must never change**. Mobile enhancements are isolated.
+
+### 3. Blur is Additive
+Depth displacement solves finger occlusion. Blur enhances but is not essential.
+
+### 4. Guarantees vs Enhancements
+**Guarantees** (Phase 1) work everywhere.
+**Enhancements** (Phase 2) degrade gracefully.
+
+### 5. No Silent Drift
+Changes to navigation require constitutional amendment with documented rationale.
+
+---
+
+## 🐛 Troubleshooting
+
+### Error: React #310
+**Cause:** Hooks called conditionally
+**Fix:** Ensure all hooks in `useGestureRecognition.ts` are called unconditionally at top level
+
+### Scroller Not Appearing
+**Check:**
+1. Mobile breakpoint (<768px)?
+2. Hold duration reached (250ms)?
+3. Tab icon clicked (has `data-tab-trigger`)?
+4. Flick detected (upward + lateral movement)?
+
+### Blur Not Working
+**Check:**
+1. `FEATURES.PHASE_2_BLUR === true`?
+2. Device memory ≥4GB?
+3. `prefers-reduced-transparency` not set?
+4. Browser supports `backdrop-filter`?
+
+### Performance Issues
+**Check:**
+1. Console for performance warnings
+2. DevTools → Performance → Record gesture
+3. Dropped frames > 2 per gesture?
+4. Disable blur on low-end devices
+
+---
+
+## 📝 Contributing
+
+### Adding New Modules
+1. Update `MODULE_REGISTRY` in [constants.ts](../../client/src/components/mobile-nav/constants.ts)
+2. Ensure module belongs to exactly one tab (§ 3)
+3. Add route to Wouter in [App.tsx](../../client/src/App.tsx)
+4. Test navigation to new module
+
+### Changing Gesture Behavior
+1. Propose constitutional amendment
+2. Document rationale in commit message
+3. Update [CONSTITUTION.md](./CONSTITUTION.md)
+4. Update [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPING.md)
+5. Update test criteria
+
+### Modifying Performance Budgets
+Constitutional change required (§ 11.1)
+
+**Current budgets:**
+- Gesture response: < 16ms
+- Scroller render: < 150ms
+- Navigation total: < 300ms
+- Max dropped frames: 2
+
+---
+
+## 🎯 Design Philosophy
+
+This navigation system is designed to feel like a **physical object**, not a digital interface.
+
+**Physical Metaphors:**
+- **Hold** = deliberate grip
+- **Flick** = physical gesture
+- **Snap** = magnetic alignment
+- **Depth displacement** = hand shadow avoidance
+- **Blur** = depth-of-field (camera lens)
+
+**Anti-Patterns Avoided:**
+- Accidental activation (gestures are deliberate)
+- Ripple/wave effects (calm over flashy)
+- Cross-tab contamination (modules belong to one tab)
+- Desktop changes (mobile-first, desktop untouched)
+
+---
+
+## 📜 License & Governance
+
+This navigation system is governed by the [Mobile Navigation Constitution](./CONSTITUTION.md).
+
+All changes must comply with § 15 (Change Authority).
+
+Silent drift is not allowed.
+
+---
+
+**Last Updated:** 2024-12-31
+**Current Phase:** Phase 2 Complete
+**Next Milestone:** Phase 3 (Accessibility)

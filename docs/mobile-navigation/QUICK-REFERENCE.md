@@ -1,0 +1,270 @@
+# 📋 Mobile Navigation — Quick Reference
+
+**For rapid lookup during development and code review.**
+
+---
+
+## ⚡ Constitutional Quick Facts
+
+| Requirement | Value | Section |
+|-------------|-------|---------|
+| **Tabs** | Exactly 3: Office, Field, Tools | § 2.1 |
+| **Default tab** | Field (not configurable) | § 2.2 |
+| **Hold duration** | 250ms ± 30ms (220-280ms) | § 4.1 |
+| **Movement cancel** | 10px during hold | § 10 |
+| **Edge dead zone** | 16px from screen edges | § 14 |
+| **Scroll velocity cancel** | 150px/s | § 10 |
+| **Gesture response** | < 16ms | § 11.1 |
+| **Scroller render** | < 150ms | § 11.1 |
+| **Navigation total** | < 300ms | § 11.1 |
+| **Max dropped frames** | 2 per gesture | § 11.1 |
+| **Mobile breakpoint** | 768px | § 1.1 |
+
+---
+
+## 🎨 Visual Hierarchy
+
+| Element | Scale | Opacity | Offset |
+|---------|-------|---------|--------|
+| **Active module** | 1.08 | 100% | 28px toward center |
+| **Neighbor (±1)** | 1.0 | 75% | 14px toward center |
+| **Distant (±2+)** | 1.0 | 35% | 0px |
+| **Background dim** | — | 10% | — |
+
+**Phase 2 Blur (device-gated):**
+- Active: 0px blur (crisp)
+- Neighbor (±1): 0.5px blur
+- Secondary (±2): 1px blur
+- Distant (±3+): 2px blur
+
+---
+
+## 🗂️ Module Registry
+
+### Office Tab
+1. Projects → `/projects`
+2. Invoices → `/invoices`
+3. Expenses → `/expenses`
+4. Reports → `/reports`
+5. Contacts → `/contacts`
+6. Notes → `/notes`
+
+### Field Tab (Default)
+1. Inspections → `/inspections`
+2. Gallery → `/gallery`
+3. Notes → `/notes`
+
+### Tools Tab
+1. Map → `/maps`
+2. Calendar → `/calendar`
+3. Contacts → `/contacts`
+4. Settings → `/settings` (always last)
+
+---
+
+## 🎯 Gesture State Machine
+
+```
+IDLE
+  ↓ (tap + hold 250ms on tab icon)
+HOLD_PENDING
+  ↓ (moved >10px → cancel)
+  ↓ (250ms elapsed)
+HOLD_ACTIVE
+  ↓ (vertical flick detected)
+FLICK_ACTIVE
+  ↓ (finger lifted)
+SNAPPING
+  ↓ (navigate to module)
+IDLE
+```
+
+---
+
+## 🔧 Feature Flags
+
+```typescript
+// constants.ts
+export const FEATURES = {
+  PHASE_1_CORE: true,          // Always on
+  PHASE_2_MOMENTUM: true,      // ✅ Enabled
+  PHASE_2_BLUR: true,          // ✅ Enabled (device-gated)
+  PHASE_2_SPRINGS: true,       // ✅ Enabled (device-gated)
+  PHASE_3_DEEP_LINKING: false, // ⏸️ Not implemented
+  PHASE_3_HAPTICS: false,      // ⏸️ Not implemented
+};
+```
+
+---
+
+## 🛡️ Device Capability Gates
+
+```typescript
+// Low-end device detection
+hasBlur = false if:
+  - navigator.deviceMemory < 4GB
+  - prefers-reduced-transparency: reduce
+  - CSS.supports('backdrop-filter') === false
+
+hasSpringPhysics = false if:
+  - navigator.deviceMemory < 4GB
+
+hasHaptics = 'vibrate' in navigator
+```
+
+---
+
+## 🚫 Absolute Prohibitions
+
+| Prohibited | Reason | Section |
+|------------|--------|---------|
+| Accidental edge activation | Too close to iOS back gesture | § 14.1 |
+| Mid-flick routing | Navigation only on release | § 14.2 |
+| Decorative motion | Every animation serves function | § 14.3 |
+| Ripple/wave animations | Calm over flashy | § 14.4 |
+| Cross-tab scroller | Modules belong to one tab | § 14.5 |
+| Navigation without hold | Quick tap ≠ gesture | § 14.6 |
+| Desktop changes | Mobile-first by law | § 14.7 |
+
+---
+
+## 📁 File Locations
+
+| File | Purpose |
+|------|---------|
+| `constants.ts` | All magic numbers, module registry |
+| `types.ts` | TypeScript interfaces |
+| `MobileNavProvider.tsx` | Context state |
+| `BottomTabBar.tsx` | 3-tab fixed bar |
+| `ModuleScroller.tsx` | Gesture-driven list |
+| `ScrollerOverlay.tsx` | Backdrop dim |
+| `useGestureRecognition.ts` | Hold + flick logic |
+| `useDeviceCapabilities.ts` | Device detection |
+| `useScrollPhysics.ts` | Momentum (Phase 2) |
+| `usePerformanceMonitor.ts` | Telemetry (Phase 2) |
+
+---
+
+## 🧪 Test Checklist (1-Minute)
+
+```bash
+# Phase 1
+[ ] Desktop (≥768px) → Bottom bar hidden
+[ ] Mobile (<768px) → Bottom bar visible
+[ ] Quick tap → No scroller
+[ ] Hold 250ms → Scroller appears
+[ ] Flick up+right → Right scroller
+[ ] Release → Navigate to module
+[ ] Edge swipe → No activation
+
+# Phase 2
+[ ] High-end device → Blur visible
+[ ] Low-end device → No blur
+[ ] Console → [Device Capabilities] logged
+[ ] Console → [Performance] metrics logged
+```
+
+---
+
+## 🐛 Common Issues
+
+### Scroller Won't Appear
+1. Check mobile breakpoint (`window.innerWidth < 768`)
+2. Check hold duration reached (`>= 220ms`)
+3. Check touch on tab icon (`data-tab-trigger`)
+4. Check vertical movement (`dy < 0`)
+
+### React Error #310
+**Cause:** Hooks called conditionally
+**Fix:** All hooks must be at top level (before any returns)
+
+### Blur Not Working
+1. Check `FEATURES.PHASE_2_BLUR === true`
+2. Check device memory (`navigator.deviceMemory`)
+3. Check browser support (`CSS.supports('backdrop-filter')`)
+
+### Navigation Not Working
+1. Check finger released (not mid-drag)
+2. Check `highlightedIndex !== null`
+3. Check route exists in Wouter
+
+---
+
+## 💡 Performance Tips
+
+**Optimize:**
+- Use `React.memo` on `ModuleItem`
+- Memoize `calculateOffset` and `calculateBlur`
+- Use `requestAnimationFrame` for gesture updates
+
+**Avoid:**
+- Layout reflows during gestures
+- Heavy computations in pointer move handlers
+- Event listener leaks (always cleanup)
+
+---
+
+## 📝 Code Snippets
+
+### Add New Module
+```typescript
+// constants.ts - Add to MODULE_REGISTRY
+office: [
+  // ...existing modules
+  { id: 'new-module', label: 'New Module', path: '/new-module', icon: NewIcon },
+]
+```
+
+### Disable Phase 2 Feature
+```typescript
+// constants.ts
+export const FEATURES = {
+  // ...
+  PHASE_2_BLUR: false, // Disable blur globally
+};
+```
+
+### Check Device Capabilities
+```typescript
+const capabilities = useDeviceCapabilities();
+
+if (capabilities.hasBlur) {
+  // Apply blur enhancement
+}
+```
+
+### Monitor Performance
+```typescript
+const { startGesture, markScrollerRender, markNavigationComplete } = usePerformanceMonitor();
+
+startGesture(); // On pointer down
+markScrollerRender(); // When scroller appears
+markNavigationComplete(); // After navigation
+```
+
+---
+
+## 🎓 Key Concepts
+
+**Guarantees (Phase 1):**
+Work everywhere, never fail
+
+**Enhancements (Phase 2):**
+Device-gated, degrade gracefully
+
+**Deliberate Gestures:**
+250ms hold prevents accidents
+
+**Ergonomic Mapping:**
+Thumb arcs → flick direction
+
+**Finger Authority:**
+UI follows finger, never leads
+
+**State Safety:**
+Navigation only on release
+
+---
+
+**Last Updated:** 2024-12-31
+**Quick Lookup Version:** 1.0

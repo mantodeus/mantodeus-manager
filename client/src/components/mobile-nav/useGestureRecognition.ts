@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Gesture Recognition Hook
  *
  * Implements hold + flick gesture detection according to Mobile Navigation Constitution.
- * § 4: PRIMARY GESTURE — HOLD → FLICK
- * § 5: ERGONOMIC LAW
- * § 10: EDGE CASE: Accidental Activation Prevention
+ * Â§ 4: PRIMARY GESTURE â€” HOLD â†’ FLICK
+ * Â§ 5: ERGONOMIC LAW
+ * Â§ 10: EDGE CASE: Accidental Activation Prevention
  */
 
 import { useRef, useCallback, useEffect } from 'react';
@@ -15,7 +15,7 @@ import type { Point, FlickDirection } from './types';
 import { GESTURE_CONFIG, HapticIntent } from './constants';
 
 /**
- * Haptic feedback stub (§ 13.2: Semantic Contract Only)
+ * Haptic feedback stub (Â§ 13.2: Semantic Contract Only)
  * Logs intent for future native implementation
  */
 function triggerHaptic(intent: HapticIntent) {
@@ -26,9 +26,9 @@ function triggerHaptic(intent: HapticIntent) {
 
 /**
  * Detect flick direction based on start and current position
- * § 5.2: Direction Mapping (DO NOT INVERT)
- * Up + Right → Right scroller
- * Up + Left → Left scroller
+ * Â§ 5.2: Direction Mapping (DO NOT INVERT)
+ * Up + Right â†’ Right scroller
+ * Up + Left â†’ Left scroller
  */
 function detectFlickDirection(
   startPos: Point,
@@ -44,9 +44,9 @@ function detectFlickDirection(
 
   // Constitutional mapping (DO NOT INVERT)
   if (dx > 0) {
-    return 'right'; // Up + Right → Right scroller
+    return 'right'; // Up + Right â†’ Right scroller
   } else if (dx < 0) {
-    return 'left'; // Up + Left → Left scroller
+    return 'left'; // Up + Left â†’ Left scroller
   }
 
   return null; // Pure vertical (no lateral component)
@@ -59,7 +59,6 @@ export function useGestureRecognition() {
     setFlickDirection,
     gestureState,
   } = useMobileNav();
-
   const holdTimerRef = useRef<number | undefined>(undefined);
   const startPosRef = useRef<Point>({ x: 0, y: 0 });
   const startTimeRef = useRef<number>(0);
@@ -82,12 +81,12 @@ export function useGestureRecognition() {
 
   /**
    * Pointer down handler
-   * § 4.1: Activation Rule
-   * § 4.2: Valid Touch Origin
+   * Â§ 4.1: Activation Rule
+   * Â§ 4.2: Valid Touch Origin
    */
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (!isMobile) return; // § 1.2: Mobile only guard
+      if (!isMobile) return; // Â§ 1.2: Mobile only guard
 
       // Validate touch origin (must be on tab trigger)
       const target = e.target as HTMLElement;
@@ -97,7 +96,11 @@ export function useGestureRecognition() {
         return; // Invalid origin, ignore
       }
 
-      // § 10: Edge case prevention - check for edge activation
+      if (e.clientY > window.innerHeight - GESTURE_CONFIG.SAFE_ZONE_BOTTOM) {
+        return; // Ignore system swipe zone
+      }
+
+      // Edge case prevention - check for edge activation
       if (
         e.clientX < GESTURE_CONFIG.EDGE_DEAD_ZONE ||
         e.clientX > window.innerWidth - GESTURE_CONFIG.EDGE_DEAD_ZONE
@@ -105,12 +108,16 @@ export function useGestureRecognition() {
         return; // Too close to edge, ignore
       }
 
+      e.preventDefault();
+      e.stopPropagation();
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+
       // Record start position and time
       startPosRef.current = { x: e.clientX, y: e.clientY };
       startTimeRef.current = Date.now();
       setGestureState(GestureState.HOLD_PENDING);
 
-      // Start hold timer (250ms ± 30ms window)
+      // Start hold timer (250ms Â± 30ms window)
       holdTimerRef.current = window.setTimeout(() => {
         const elapsed = Date.now() - startTimeRef.current;
 
@@ -131,11 +138,11 @@ export function useGestureRecognition() {
 
   /**
    * Pointer move handler
-   * § 7.1: Finger Authority - finger position is source of truth
+   * Â§ 7.1: Finger Authority - finger position is source of truth
    */
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (!isMobile) return; // § 1.2: Mobile only guard
+      if (!isMobile) return; // Â§ 1.2: Mobile only guard
       if (gestureState === GestureState.IDLE) return;
 
       const currentPos = { x: e.clientX, y: e.clientY };
@@ -146,7 +153,11 @@ export function useGestureRecognition() {
         const dy = currentPos.y - startPosRef.current.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance > GESTURE_CONFIG.MOVEMENT_CANCEL_THRESHOLD) {
+                if (distance > 5) {
+          window.getSelection?.()?.removeAllRanges?.();
+        }
+
+if (distance > GESTURE_CONFIG.MOVEMENT_CANCEL_THRESHOLD) {
           cancelGesture();
           return;
         }
@@ -168,10 +179,10 @@ export function useGestureRecognition() {
 
   /**
    * Pointer up handler
-   * § 6.2: State Safety - navigation occurs only on release
+   * Â§ 6.2: State Safety - navigation occurs only on release
    */
   const handlePointerUp = useCallback(() => {
-    if (!isMobile) return; // § 1.2: Mobile only guard
+    if (!isMobile) return; // Â§ 1.2: Mobile only guard
 
     if (gestureState === GestureState.FLICK_ACTIVE) {
       // Navigation will be handled by ModuleScroller
@@ -186,13 +197,13 @@ export function useGestureRecognition() {
    * Pointer cancel handler
    */
   const handlePointerCancel = useCallback(() => {
-    if (!isMobile) return; // § 1.2: Mobile only guard
+    if (!isMobile) return; // Â§ 1.2: Mobile only guard
     cancelGesture();
   }, [isMobile, cancelGesture]);
 
   /**
    * Monitor scroll velocity to cancel gesture if user is actively scrolling
-   * § 10: Edge Case Prevention
+   * Â§ 10: Edge Case Prevention
    */
   useEffect(() => {
     const handleScroll = () => {
@@ -239,3 +250,13 @@ export function useGestureRecognition() {
     handlePointerCancel,
   };
 }
+
+
+
+
+
+
+
+
+
+
