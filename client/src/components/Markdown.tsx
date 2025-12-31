@@ -1,5 +1,4 @@
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 /**
  * Lightweight Markdown component
@@ -8,12 +7,13 @@ import remarkGfm from "remark-gfm";
  * - No katex (math rendering)
  * - No mermaid (diagrams)
  * - No shiki (syntax highlighting)
+ * - No tables (GitHub Flavored Markdown disabled)
  * 
- * Supports basic markdown + GitHub Flavored Markdown (tables, strikethrough, etc.)
+ * Supports basic markdown only (headings, lists, links, bold, italic, code blocks, etc.)
  */
 export function Markdown({ children }: { children: string }) {
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+    <ReactMarkdown>
       {children}
     </ReactMarkdown>
   );
