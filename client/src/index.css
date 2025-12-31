@@ -242,6 +242,7 @@
   .module-item span {
     font-size: 0.95rem;
     letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   .module-item:not(.is-active) {
@@ -269,7 +270,7 @@
 
   .tab-title {
     text-transform: uppercase;
-    font-size: 13px;
+    font-size: 0.95rem;
     letter-spacing: 0.14em;
     font-weight: 500;
     opacity: 0.85;
