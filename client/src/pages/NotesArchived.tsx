@@ -15,6 +15,7 @@ import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { Streamdown } from "streamdown";
 
 type Note = {
   id: number;
@@ -120,9 +121,9 @@ export default function NotesArchived() {
       </div>
 
       {note.content && (
-        <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
-          {note.content}
-        </p>
+        <div className="text-sm text-muted-foreground mb-3 line-clamp-3 prose prose-sm dark:prose-invert max-w-none">
+          <Streamdown>{note.content}</Streamdown>
+        </div>
       )}
 
       {note.tags && (
@@ -153,7 +154,7 @@ export default function NotesArchived() {
   );
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-8 px-4 pb-24">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <Link href="/notes">

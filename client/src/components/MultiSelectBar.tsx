@@ -40,7 +40,7 @@ export function MultiSelectBar({
   if (selectedCount === 0) return null;
 
   return (
-    <Card className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 shadow-2xl border-2 border-accent bg-background/95 backdrop-blur">
+    <Card className="fixed left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 shadow-2xl border-2 border-accent bg-background/95 backdrop-blur" style={{ bottom: `calc(6rem + env(safe-area-inset-bottom))` }}>
       <div className="flex items-center gap-6">
         <span
           className="text-sm font-medium"
