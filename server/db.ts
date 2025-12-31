@@ -1346,6 +1346,8 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     cancelledInvoiceId,
     issueDate,
     dueDate: data.dueDate ?? null,
+    sentAt: (data as any).sentAt ?? null,
+    paidAt: (data as any).paidAt ?? null,
     notes: data.notes ?? null,
     servicePeriodStart: data.servicePeriodStart ?? null,
     servicePeriodEnd: data.servicePeriodEnd ?? null,
