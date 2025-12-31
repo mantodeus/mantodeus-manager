@@ -792,11 +792,11 @@ export const invoiceRouter = router({
       // Always use generated number - parsed number is only for pre-filling review dialog
       const invoiceNumber = generatedNumber;
       
-      // Create invoice with needsReview flag
+      // Create invoice and immediately mark it as issued (uploaded invoices are finalised)
       const uploadedAt = new Date();
       const created = await db.createInvoice({
         userId,
-        clientId: null, // Will be set in review
+        clientId: null, // Can be updated later if needed
         invoiceNumber,
         invoiceCounter,
         invoiceYear,
@@ -807,7 +807,7 @@ export const invoiceRouter = router({
         vatAmount: "0.00",
         total: parsedData.totalAmount || "0.00",
         source: "uploaded",
-        needsReview: parsedData.needsReview,
+        needsReview: false,
         originalPdfS3Key: fileKey,
         uploadedAt,
         pdfFileKey: fileKey,
@@ -819,9 +819,15 @@ export const invoiceRouter = router({
         uploadedBy: userId,
         items: [], // Empty items - user can add in review
       });
-      
+
+      await db.issueInvoice(created.id);
+      const finalized = await db.getInvoiceById(created.id);
+      if (!finalized) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to load uploaded invoice" });
+      }
+
       return {
-        invoice: mapInvoiceToPayload(created),
+        invoice: mapInvoiceToPayload(finalized),
         parsedData: {
           clientName: parsedData.clientName,
           invoiceDate: parsedData.invoiceDate,

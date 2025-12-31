@@ -874,7 +874,7 @@ export const appRouter = router({
 
         // Save metadata to database (as legacy file upload)
         const uploadDate = new Date();
-        const result = await db.createInvoice({
+        const invoice = await db.createInvoice({
           filename,
           fileKey,
           fileSize,
@@ -890,11 +890,9 @@ export const appRouter = router({
           uploadedBy: ctx.user.id,
           uploadedAt: uploadDate,
           userId: ctx.user.id,
-          status: "open", // Legacy uploads are treated as issued (open status with sentAt set)
-          sentAt: issueDate, // Set sentAt for legacy uploads
           type: "standard",
           source: "uploaded",
-          needsReview: true,
+          needsReview: false,
           originalPdfS3Key: fileKey,
           subtotal: "0.00",
           vatAmount: "0.00",
@@ -902,7 +900,8 @@ export const appRouter = router({
           items: [],
         });
 
-        return { success: true, id: result.id, url, fileKey };
+        await db.issueInvoice(invoice.id);
+        return { success: true, id: invoice.id, url, fileKey };
       }),
 
     // Get a presigned URL for direct browser upload (requires CORS on bucket)
@@ -969,12 +968,16 @@ export const appRouter = router({
           issueDate: issueDate instanceof Date ? issueDate : new Date(issueDate),
           uploadDate: input.uploadDate || new Date(),
           uploadedBy: ctx.user.id,
+          uploadedAt: input.uploadDate || new Date(),
           userId: ctx.user.id,
           status: "draft", // Always 'draft' on creation (constitution)
           items: [],
           subtotal: "0.00",
           vatAmount: "0.00",
           total: "0.00",
+          source: "uploaded",
+          needsReview: false,
+          originalPdfS3Key: input.fileKey,
         });
         
         // Immediately issue the invoice to maintain legacy behavior

@@ -1302,18 +1302,35 @@ export async function generateInvoiceNumber(
 
   // If no matching invoices found, use the seed as starting point
   if (!maxParsed) {
-    return {
+    const candidate = {
       invoiceNumber: effectiveSeed,
       invoiceCounter: seedParsed.value,
       invoiceYear,
     };
+    try {
+      await ensureUniqueInvoiceNumber(userId, candidate.invoiceNumber);
+      return candidate;
+    } catch {
+      // Collision on seed; fall through to retry logic below.
+      maxParsed = seedParsed;
+      maxValue = seedParsed.value;
+    }
   }
 
   // Increment from the highest found number
-  const nextCounter = maxParsed.value + 1;
   const padding = seedValue ? seedParsed.padding : maxParsed.padding;
-  const invoiceNumber = formatInvoiceNumber(maxParsed, nextCounter, padding);
-  return { invoiceNumber, invoiceCounter: nextCounter, invoiceYear };
+  let nextCounter = maxParsed.value + 1;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const invoiceNumber = formatInvoiceNumber(maxParsed, nextCounter, padding);
+    try {
+      await ensureUniqueInvoiceNumber(userId, invoiceNumber);
+      return { invoiceNumber, invoiceCounter: nextCounter, invoiceYear };
+    } catch {
+      nextCounter += 1;
+    }
+  }
+
+  throw new Error("Failed to generate a unique invoice number after multiple attempts.");
 }
 
 export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: Array<Omit<InsertInvoiceItem, "invoiceId">> }) {
