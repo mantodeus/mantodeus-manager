@@ -1,15 +1,15 @@
-# 🔒 Mobile Navigation System — Documentation Index
+﻿# ðŸ”’ Mobile Navigation System â€” Documentation Index
 
 Complete documentation for the Mantodeus Manager mobile navigation system.
 
-**Status:** Phase 2 Complete ✅
+**Status:** Phase 2 Complete âœ…
 **Last Updated:** 2024-12-31
 
 ---
 
-## 📚 Documentation Files
+## ðŸ“š Documentation Files
 
-### 1. 🏛️ [CONSTITUTION.md](./CONSTITUTION.md) — **START HERE**
+### 1. ðŸ›ï¸ [CONSTITUTION.md](./CONSTITUTION.md) â€” **START HERE**
 **The legally-binding specification (6.3 KB)**
 
 This is the single source of truth. All code must comply with this document.
@@ -21,14 +21,14 @@ This is the single source of truth. All code must comply with this document.
 - Resolving design debates
 
 **Key Contents:**
-- 16 constitutional sections (§ 1-16)
+- 16 constitutional sections (Â§ 1-16)
 - Absolute prohibitions
 - Performance budgets
 - Change authority rules
 
 ---
 
-### 2. 📋 [QUICK-REFERENCE.md](./QUICK-REFERENCE.md)
+### 2. ðŸ“‹ [QUICK-REFERENCE.md](./QUICK-REFERENCE.md)
 **Rapid lookup for daily development (6.3 KB)**
 
 Quick facts, code snippets, and test checklists for developers.
@@ -48,7 +48,7 @@ Quick facts, code snippets, and test checklists for developers.
 
 ---
 
-### 3. 📖 [README.md](./README.md)
+### 3. ðŸ“– [README.md](./README.md)
 **Complete overview and navigation guide (8.3 KB)**
 
 Comprehensive introduction to the mobile navigation system.
@@ -69,7 +69,7 @@ Comprehensive introduction to the mobile navigation system.
 
 ---
 
-### 4. 🎨 [IMPLEMENTATION-PLAN.md](./IMPLEMENTATION-PLAN.md)
+### 4. ðŸŽ¨ [IMPLEMENTATION-PLAN.md](./IMPLEMENTATION-PLAN.md)
 **Technical analysis and premium enhancements (30 KB)**
 
 Detailed technical breakdown of aesthetic and performance refinements.
@@ -90,8 +90,8 @@ Detailed technical breakdown of aesthetic and performance refinements.
 
 ---
 
-### 5. 🗺️ [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPING.md)
-**Constitution → Code translation (33 KB)**
+### 5. ðŸ—ºï¸ [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPING.md)
+**Constitution â†’ Code translation (33 KB)**
 
 Maps every constitutional section to concrete implementation checkpoints.
 
@@ -102,75 +102,75 @@ Maps every constitutional section to concrete implementation checkpoints.
 - Need implementation examples
 
 **Key Contents:**
-- § 1-16 mapped to TypeScript code
+- Â§ 1-16 mapped to TypeScript code
 - Test criteria for each section
 - Implementation checkpoints
 - Quick reference checklist
 
 ---
 
-## 🧭 Navigation Guide
+## ðŸ§­ Navigation Guide
 
 ### "I want to..."
 
 **...understand what mobile navigation is:**
-→ Start with [README.md](./README.md)
+â†’ Start with [README.md](./README.md)
 
 **...know the rules:**
-→ Read [CONSTITUTION.md](./CONSTITUTION.md)
+â†’ Read [CONSTITUTION.md](./CONSTITUTION.md)
 
 **...write code:**
-→ Use [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) + [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPING.md)
+â†’ Use [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) + [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPING.md)
 
 **...implement Phase 2 features:**
-→ Follow [IMPLEMENTATION-PLAN.md](./IMPLEMENTATION-PLAN.md)
+â†’ Follow [IMPLEMENTATION-PLAN.md](./IMPLEMENTATION-PLAN.md)
 
 **...test the system:**
-→ Use test checklists in [QUICK-REFERENCE.md](./QUICK-REFERENCE.md)
+â†’ Use test checklists in [QUICK-REFERENCE.md](./QUICK-REFERENCE.md)
 
 **...review a pull request:**
-→ Check against [CONSTITUTION.md](./CONSTITUTION.md) + [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPING.md)
+â†’ Check against [CONSTITUTION.md](./CONSTITUTION.md) + [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPING.md)
 
 **...debug an issue:**
-→ See troubleshooting in [README.md](./README.md) and [QUICK-REFERENCE.md](./QUICK-REFERENCE.md)
+â†’ See troubleshooting in [README.md](./README.md) and [QUICK-REFERENCE.md](./QUICK-REFERENCE.md)
 
 **...add a new module:**
-→ Follow instructions in [README.md § Contributing](./README.md#contributing)
+â†’ Follow instructions in [README.md Â§ Contributing](./README.md#contributing)
 
 **...change gesture behavior:**
-→ Requires constitutional amendment (see [CONSTITUTION.md § 15](./CONSTITUTION.md#15-change-authority))
+â†’ Requires constitutional amendment (see [CONSTITUTION.md Â§ 15](./CONSTITUTION.md#15-change-authority))
 
 ---
 
-## 📊 Phase Status
+## ðŸ“Š Phase Status
 
 | Phase | Status | Documentation |
 |-------|--------|---------------|
-| **Phase 1: Core** | ✅ Complete | All sections of CONSTITUTION.md implemented |
-| **Phase 2: Premium Feel** | ✅ Complete | Device-gated blur, momentum, telemetry |
-| **Phase 3: Native-Ready** | ⏸️ Planned | Accessibility, deep linking, haptics |
+| **Phase 1: Core** | âœ… Complete | All sections of CONSTITUTION.md implemented |
+| **Phase 2: Premium Feel** | âœ… Complete | Device-gated blur, momentum, telemetry |
+| **Phase 3: Native-Ready** | â¸ï¸ Planned | Accessibility, deep linking, haptics |
 
 ---
 
-## 🎯 Key Files in Codebase
+## ðŸŽ¯ Key Files in Codebase
 
 ```
 client/src/components/mobile-nav/
-├── constants.ts              ← Constitutional values (§ all)
-├── types.ts                  ← TypeScript interfaces
-├── MobileNavProvider.tsx     ← State management (§ 2.2)
-├── BottomTabBar.tsx          ← 3-tab bar (§ 2.1, § 10)
-├── ModuleScroller.tsx        ← Gesture list (§ 6, § 7, § 8, § 9)
-├── ScrollerOverlay.tsx       ← Backdrop (§ 9.3)
-├── useGestureRecognition.ts  ← Hold + flick (§ 4, § 5)
-├── useDeviceCapabilities.ts  ← Device detection (Phase 2)
-├── useScrollPhysics.ts       ← Momentum (Phase 2)
-└── usePerformanceMonitor.ts  ← Telemetry (§ 11.1)
+â”œâ”€â”€ constants.ts              â† Constitutional values (Â§ all)
+â”œâ”€â”€ types.ts                  â† TypeScript interfaces
+â”œâ”€â”€ MobileNavProvider.tsx     â† State management (Â§ 2.2)
+â”œâ”€â”€ BottomTabBar.tsx          â† 3-tab bar (Â§ 2.1, Â§ 10)
+â”œâ”€â”€ ModuleScroller.tsx        â† Gesture list (Â§ 6, Â§ 7, Â§ 8, Â§ 9)
+â”œâ”€â”€ ScrollerOverlay.tsx       â† Backdrop (Â§ 9.3)
+â”œâ”€â”€ useGestureRecognition.ts  â† Hold + swipe up (Â§ 4, Â§ 5)
+â”œâ”€â”€ useDeviceCapabilities.ts  â† Device detection (Phase 2)
+â”œâ”€â”€ useScrollPhysics.ts       â† Momentum (Phase 2)
+â””â”€â”€ usePerformanceMonitor.ts  â† Telemetry (Â§ 11.1)
 ```
 
 ---
 
-## 🔗 External References
+## ðŸ”— External References
 
 - [React Rules of Hooks](https://react.dev/warnings/invalid-hook-call-warning)
 - [WCAG 2.2 AA Guidelines](https://www.w3.org/WAI/WCAG22/quickref/)
@@ -179,35 +179,36 @@ client/src/components/mobile-nav/
 
 ---
 
-## 📞 Quick Help
+## ðŸ“ž Quick Help
 
 ### Common Questions
 
 **Q: Can I add a fourth tab?**
-A: No. § 2.1 prohibits this.
+A: No. Â§ 2.1 prohibits this.
 
 **Q: Can I change the hold duration?**
-A: Requires constitutional amendment (§ 15). Current: 250ms ± 30ms
+A: Requires constitutional amendment (Â§ 15). Current: 250ms Â± 30ms
 
 **Q: Why is blur not working?**
 A: Check device memory (<4GB), browser support, and `FEATURES.PHASE_2_BLUR` flag
 
 **Q: Can desktop use this navigation?**
-A: No. § 1.1: Mobile only. Desktop sidebar remains unchanged.
+A: No. Â§ 1.1: Mobile only. Desktop sidebar remains unchanged.
 
 **Q: How do I disable Phase 2 features?**
 A: Set `FEATURES.PHASE_2_*` flags to `false` in `constants.ts`
 
 ---
 
-## 📜 License
+## ðŸ“œ License
 
 This navigation system is governed by the [Mobile Navigation Constitution](./CONSTITUTION.md).
 
-All changes must comply with **§ 15: Change Authority**.
+All changes must comply with **Â§ 15: Change Authority**.
 
 ---
 
 **Documentation Version:** 1.0
 **Implementation Version:** Phase 2 Complete
 **Next Milestone:** Phase 3 (Accessibility)
+

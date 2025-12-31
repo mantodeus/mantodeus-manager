@@ -3,7 +3,7 @@
  *
  * Implements momentum scrolling and snap physics for Phase 2.
  * § 7.2: Motion Rules
- * § 11: Flick Momentum Physics
+ * § 11: Swipe Momentum Physics
  */
 
 import { useRef, useCallback } from 'react';

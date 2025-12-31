@@ -11,7 +11,7 @@ import type {
   MobileNavContextValue,
   TabId,
   GestureState,
-  FlickDirection,
+  Point,
 } from './types';
 import { GestureState as GestureStateEnum } from './types';
 
@@ -29,10 +29,11 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
 
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 
-  const [flickDirection, setFlickDirection] = useState<FlickDirection>(null);
+  const [pointerPosition, setPointerPosition] = useState<Point | null>(null);
 
   const scrollerVisible =
-    gestureState === GestureStateEnum.FLICK_ACTIVE ||
+    gestureState === GestureStateEnum.HOLD_ACTIVE ||
+    gestureState === GestureStateEnum.DRAGGING ||
     gestureState === GestureStateEnum.MOMENTUM ||
     gestureState === GestureStateEnum.SNAPPING;
 
@@ -44,8 +45,8 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
     scrollerVisible,
     highlightedIndex,
     setHighlightedIndex,
-    flickDirection,
-    setFlickDirection,
+    pointerPosition,
+    setPointerPosition,
   };
 
   return (

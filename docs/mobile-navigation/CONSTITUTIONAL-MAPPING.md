@@ -1,4 +1,4 @@
-# 🔒 NAVIGATION CONSTITUTION → CODE MAPPING
+﻿# ðŸ”’ NAVIGATION CONSTITUTION â†’ CODE MAPPING
 
 **Purpose:** Map each constitutional requirement to concrete implementation checkpoints.
 
@@ -6,9 +6,9 @@ This document ensures no constitutional requirement is missed during implementat
 
 ---
 
-## § 1. PLATFORM SOVEREIGNTY
+## Â§ 1. PLATFORM SOVEREIGNTY
 
-### § 1.1 Mobile First — By Law
+### Â§ 1.1 Mobile First â€” By Law
 
 **Constitutional Requirement:**
 - Mobile navigation rules apply only on mobile breakpoints
@@ -27,13 +27,13 @@ export const MOBILE_BREAKPOINT = 768; // Must match existing useMobile.tsx
 
 **Test Criteria:**
 - [ ] Desktop sidebar functions identically before/after implementation
-- [ ] Mobile nav components never render on desktop (≥768px)
+- [ ] Mobile nav components never render on desktop (â‰¥768px)
 - [ ] No CSS media query leakage between mobile/desktop
 - [ ] Wouter routing unchanged (routes work on both platforms)
 
 ---
 
-### § 1.2 No Cross-Contamination
+### Â§ 1.2 No Cross-Contamination
 
 **Constitutional Requirement:**
 - Mobile gestures must never activate on desktop
@@ -62,9 +62,9 @@ export function useGestureRecognition() {
 
 ---
 
-## § 2. NAVIGATION MODEL (FOUNDATIONAL)
+## Â§ 2. NAVIGATION MODEL (FOUNDATIONAL)
 
-### § 2.1 Bottom Tab Bar
+### Â§ 2.1 Bottom Tab Bar
 
 **Constitutional Requirement:**
 - Exactly three bottom navigation tabs: Office, Field, Tools
@@ -93,7 +93,7 @@ type _AssertThreeTabs = typeof TABS extends readonly [any, any, any] ? true : ne
 
 ---
 
-### § 2.2 Default State
+### Â§ 2.2 Default State
 
 **Constitutional Requirement:**
 - App must open into Field tab on mobile
@@ -109,13 +109,13 @@ const [activeTab, setActiveTab] = useState<TabId>('field'); // Hard-coded defaul
 ```
 
 **Test Criteria:**
-- [ ] Fresh app load → Field tab active
-- [ ] After navigation → Field remains default on app restart
+- [ ] Fresh app load â†’ Field tab active
+- [ ] After navigation â†’ Field remains default on app restart
 - [ ] No user preference storage for default tab
 
 ---
 
-### § 2.3 Tab Meaning
+### Â§ 2.3 Tab Meaning
 
 **Constitutional Requirement:**
 - Office = administrative, financial, planning
@@ -134,17 +134,17 @@ const [activeTab, setActiveTab] = useState<TabId>('field'); // Hard-coded defaul
 ```
 
 **Test Criteria:**
-- [ ] Module placement matches semantic categorization (see § 3)
+- [ ] Module placement matches semantic categorization (see Â§ 3)
 
 ---
 
-## § 3. MODULE OWNERSHIP (LOCKED)
+## Â§ 3. MODULE OWNERSHIP (LOCKED)
 
-### § 3.1-3.3 Module Mapping
+### Â§ 3.1-3.3 Module Mapping
 
 **Constitutional Requirement:**
 - Each module belongs to one and only one tab
-- Specific module → tab assignments locked
+- Specific module â†’ tab assignments locked
 
 **Implementation Checkpoint:**
 ```typescript
@@ -185,12 +185,12 @@ type _AssertNoOverlap = /* Add type check for duplicate module IDs across tabs *
 
 ---
 
-## § 4. PRIMARY GESTURE — HOLD → FLICK
+## Â§ 4. PRIMARY GESTURE â€” HOLD â†’ FLICK
 
-### § 4.1 Activation Rule
+### Â§ 4.1 Activation Rule
 
 **Constitutional Requirement:**
-- Only activate via: Tap → Hold (250ms ± 30ms) → Vertical Flick
+- Only activate via: Tap â†’ Hold (250ms Â± 30ms) â†’ Vertical Swipe Up
 - Simple tap must never activate scroller
 
 **Implementation Checkpoint:**
@@ -198,7 +198,7 @@ type _AssertNoOverlap = /* Add type check for duplicate module IDs across tabs *
 // constants.ts
 export const GESTURE_CONFIG = {
   HOLD_DURATION: 250,           // ms (constitutional)
-  HOLD_TOLERANCE: 30,           // ± tolerance
+  HOLD_TOLERANCE: 30,           // Â± tolerance
   MOVEMENT_CANCEL_THRESHOLD: 10, // px (cancel if moved during hold)
   EDGE_DEAD_ZONE: 16,           // px from screen edges
   SCROLL_VELOCITY_CANCEL: 150   // px/s (cancel if scrolling)
@@ -230,7 +230,7 @@ const handlePointerDown = (e: PointerEvent) => {
 
 ---
 
-### § 4.2 Valid Touch Origin
+### Â§ 4.2 Valid Touch Origin
 
 **Constitutional Requirement:**
 - Gesture must originate on bottom tab icon
@@ -261,229 +261,41 @@ const handlePointerDown = (e: PointerEvent) => {
 ```
 
 **Test Criteria:**
-- [ ] Touch on tab icon → gesture starts
-- [ ] Touch on tab label → gesture starts (label is child of trigger)
-- [ ] Touch on empty bar space → no gesture
-- [ ] Touch on screen content → no gesture
+- [ ] Touch on tab icon â†’ gesture starts
+- [ ] Touch on tab label â†’ gesture starts (label is child of trigger)
+- [ ] Touch on empty bar space â†’ no gesture
+- [ ] Touch on screen content â†’ no gesture
 
 ---
 
-## § 5. ERGONOMIC LAW (NON-NEGOTIABLE)
+## Â§ 5. ERGONOMIC LAW (NON-NEGOTIABLE)
 
-### § 5.1-5.2 Thumb Biomechanics
-
-**Constitutional Requirement:**
-- Up + Right flick → Right-side scroller
-- Up + Left flick → Left-side scroller
-- Mapping may never be inverted
-
-**Implementation Checkpoint:**
-```typescript
-// useGestureRecognition.ts
-function detectFlickDirection(
-  startPos: Point,
-  currentPos: Point
-): 'left' | 'right' | null {
-  const dx = currentPos.x - startPos.x;
-  const dy = currentPos.y - startPos.y;
-
-  // Require vertical movement (dy < 0 means upward)
-  if (dy >= 0 || Math.abs(dy) < 20) {
-    return null; // Not a valid upward flick
-  }
-
-  // Constitutional mapping (DO NOT INVERT)
-  if (dx > 0) {
-    return 'right'; // Up + Right → Right scroller
-  } else if (dx < 0) {
-    return 'left';  // Up + Left → Left scroller
-  }
-
-  return null; // Pure vertical (no lateral component)
-}
-
-// ModuleScroller.tsx
-const scrollerSide = flickDirection; // 'left' or 'right'
-const scrollerClass = scrollerSide === 'right'
-  ? 'right-0'  // Right edge
-  : 'left-0';  // Left edge
-```
-
-**Test Criteria:**
-- [ ] Right-handed flick (up+right) → scroller on right edge
-- [ ] Left-handed flick (up+left) → scroller on left edge
-- [ ] Pure vertical flick → no scroller (or default to right)
-- [ ] Code comment warns against inverting mapping
-
----
-
-## § 6. MODULE SCROLLER — BEHAVIOUR
-
-### § 6.1 Scope
+### Â§ 5.1-5.2 Thumb Biomechanics
 
 **Constitutional Requirement:**
-- Scroller shows only modules belonging to active tab
-- Cross-tab scrolling forbidden
+- Scroller placement is tab-based (swipe direction ignored):
+  - Office -> left
+  - Field -> center
+  - Tools -> right
 
-**Implementation Checkpoint:**
-```typescript
-// ModuleScroller.tsx
-interface ModuleScrollerProps {
-  activeTab: TabId;
-  // No prop for "all modules" or "multiple tabs"
-}
+`	s
+const scrollerSide =
+  activeTab === 'office' ? 'left' : activeTab === 'tools' ? 'right' : 'center';
+`
 
-const ModuleScroller = ({ activeTab }: ModuleScrollerProps) => {
-  // CRITICAL: Only show modules for active tab
-  const modules = MODULE_REGISTRY[activeTab];
-
-  return (
-    <div className="module-scroller">
-      {modules.map((module, index) => (
-        <ModuleItem key={module.id} module={module} index={index} />
-      ))}
-    </div>
-  );
-};
-```
-
-**Test Criteria:**
-- [ ] Office tab → shows only Office modules (6 items)
-- [ ] Field tab → shows only Field modules (3 items)
-- [ ] Tools tab → shows only Tools modules (4 items, Settings last)
-- [ ] No way to access other tab's modules from scroller
-
----
-
-### § 6.2 State Safety
-
-**Constitutional Requirement:**
-- Scroller may never change app state until finger release
-- Highlighting during drag is preview-only
-- Navigation occurs only on release
-
-**Implementation Checkpoint:**
-```typescript
-// useGestureRecognition.ts
-const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
-
-const handlePointerMove = (e: PointerEvent) => {
-  if (state !== GestureState.FLICK_ACTIVE) return;
-
-  const newIndex = calculateIndexFromPosition(e.clientY);
-
-  // PREVIEW ONLY: Update highlight, but don't navigate
-  setHighlightedIndex(newIndex);
-
-  // FORBIDDEN: navigate(modules[newIndex].path) ❌
-};
-
-const handlePointerUp = () => {
-  if (highlightedIndex !== null) {
-    // ONLY NOW: Navigate to highlighted module
-    const module = modules[highlightedIndex];
-    navigate(module.path);
-  }
-
-  // Reset state
-  setHighlightedIndex(null);
-  setState(GestureState.IDLE);
-};
-```
-
-**Test Criteria:**
-- [ ] Dragging finger updates highlight only (visual preview)
-- [ ] Lifting finger before scroller appears → no navigation
-- [ ] Lifting finger on module → navigate to that module
-- [ ] No route change occurs during pointer move
-
----
-
-## § 7. FLICK-THROUGH INTERACTION
-
-### § 7.1 Finger Authority
-
-**Constitutional Requirement:**
-- Finger position is source of truth
-- UI must never move ahead of finger
-
-**Implementation Checkpoint:**
-```typescript
-// useScrollPhysics.ts (Phase 2 only)
-const handlePointerMove = (e: PointerEvent) => {
-  const currentY = e.clientY;
-
-  // CRITICAL: Update scroll position based on CURRENT finger position
-  // Never extrapolate, predict, or "lead" the finger
-  scrollPosition.current = calculateScrollFromFingerY(currentY);
-
-  requestAnimationFrame(() => {
-    updateScrollerUI(scrollPosition.current);
-  });
-};
-```
-
-**Test Criteria:**
-- [ ] Scroller content aligns with finger position within 1 frame
-- [ ] No "springy" or "elastic" lag behind finger
-- [ ] Pausing finger → UI pauses immediately
-- [ ] No predictive scrolling or momentum while finger is down
-
----
-
-### § 7.2 Motion Rules
-
-**Constitutional Requirement:**
-- Slow movement → precise stepping
-- Fast movement → momentum scrolling (Phase 2)
-- Finger pause → snap to nearest
-
-**Implementation Checkpoint:**
-```typescript
-// Phase 1: No momentum, just direct scroll
-const handlePointerMove = (e: PointerEvent) => {
-  const index = calculateNearestIndex(e.clientY);
-  setHighlightedIndex(index); // Instant snap
-};
-
-// Phase 2: Momentum with velocity detection
-const velocityTracker = {
-  samples: [] as Array<{ time: number, y: number }>,
-
-  getVelocity(): number {
-    if (this.samples.length < 2) return 0;
-    const first = this.samples[0];
-    const last = this.samples[this.samples.length - 1];
-    return (last.y - first.y) / (last.time - first.time);
-  }
-};
-
-const handlePointerMove = (e: PointerEvent) => {
-  velocityTracker.add(e.clientY);
-
-  const velocity = velocityTracker.getVelocity();
-
-  if (Math.abs(velocity) < 50) {
-    // Slow movement: instant snap
-    setHighlightedIndex(calculateNearestIndex(e.clientY));
-  } else {
-    // Fast movement: allow momentum (Phase 2)
-    // Constitutional: Only if finger has paused or been lifted
-  }
-};
-```
-
-**Test Criteria:**
-- [ ] Phase 1: Always snaps to nearest item (no momentum)
-- [ ] Phase 2: Fast flick → momentum scroll, then snap
-- [ ] Pausing finger → highlight snaps within 120ms
+- [ ] Office hold + swipe up -> left scroller
+- [ ] Field hold + swipe up -> centered scroller
+- [ ] Tools hold + swipe up -> right scroller
+- [ ] Swipe direction has no effect
+- [ ] Phase 2: Fast swipe â†’ momentum scroll, then snap
+- [ ] Pausing finger â†’ highlight snaps within 120ms
 - [ ] Snap easing feels deliberate, not springy
 
 ---
 
-## § 8. DEPTH DISPLACEMENT (READABILITY LAW)
+## Â§ 8. DEPTH DISPLACEMENT (READABILITY LAW)
 
-### § 8.1 Purpose
+### Â§ 8.1 Purpose
 
 **Constitutional Requirement:**
 - Prevent finger occlusion of text
@@ -495,8 +307,8 @@ const handlePointerMove = (e: PointerEvent) => {
 // constants.ts
 export const DEPTH_OFFSET = {
   ACTIVE: 28,        // px (maximum displacement)
-  NEIGHBOR_1: 14,    // px (±1 from active)
-  NEIGHBOR_2: 0,     // px (±2+ from active)
+  NEIGHBOR_1: 14,    // px (Â±1 from active)
+  NEIGHBOR_2: 0,     // px (Â±2+ from active)
 } as const;
 
 // ModuleItem.tsx
@@ -527,13 +339,13 @@ function calculateOffset(
 
 **Test Criteria:**
 - [ ] Active item pushed 28px toward center
-- [ ] Neighbors (±1) pushed 14px toward center
-- [ ] Distant items (±2+) have 0px offset
+- [ ] Neighbors (Â±1) pushed 14px toward center
+- [ ] Distant items (Â±2+) have 0px offset
 - [ ] Text remains readable on all items (not occluded by finger)
 
 ---
 
-### § 8.2 Displacement Rules
+### Â§ 8.2 Displacement Rules
 
 **Constitutional Requirement:**
 - Offsets applied laterally toward screen center
@@ -544,8 +356,8 @@ function calculateOffset(
 // Proportional mapping (linear, no curves)
 const offsetMap = [
   { distance: 0, offset: 28 },  // Active
-  { distance: 1, offset: 14 },  // ±1
-  { distance: 2, offset: 0 }    // ±2+
+  { distance: 1, offset: 14 },  // Â±1
+  { distance: 2, offset: 0 }    // Â±2+
 ];
 
 // Linear interpolation forbidden (discrete steps only)
@@ -553,13 +365,13 @@ const offsetMap = [
 ```
 
 **Test Criteria:**
-- [ ] Offset changes are discrete (28 → 14 → 0), not gradual
+- [ ] Offset changes are discrete (28 â†’ 14 â†’ 0), not gradual
 - [ ] No easing between offset values (instant transition)
 - [ ] Direction always toward center (never toward edges)
 
 ---
 
-### § 8.3 Blur
+### Â§ 8.3 Blur
 
 **Constitutional Requirement:**
 - Blur is additive, not essential
@@ -603,9 +415,9 @@ const deviceCapabilities = {
 
 ---
 
-## § 9. VISUAL HIERARCHY (MANDATORY)
+## Â§ 9. VISUAL HIERARCHY (MANDATORY)
 
-### § 9.1 Active Item
+### Â§ 9.1 Active Item
 
 **Constitutional Requirement:**
 - Highest opacity
@@ -658,7 +470,7 @@ const itemStyle = {
 
 ---
 
-### § 9.2 Inactive Items
+### Â§ 9.2 Inactive Items
 
 **Constitutional Requirement:**
 - Reduced opacity
@@ -684,7 +496,7 @@ const itemStyle = {
 
 ---
 
-### § 9.3 Background
+### Â§ 9.3 Background
 
 **Constitutional Requirement:**
 - App background dims subtly during scroller activation
@@ -717,9 +529,9 @@ overlayLight: theme === 'green-mantis'
 
 ---
 
-## § 10. CONTEXT ANCHORING
+## Â§ 10. CONTEXT ANCHORING
 
-### § 10.1 Bottom Bar Authority
+### Â§ 10.1 Bottom Bar Authority
 
 **Constitutional Requirement:**
 - Context shown only in bottom bar
@@ -766,14 +578,14 @@ const isScrollerActive = gestureState === GestureState.FLICK_ACTIVE;
 ```
 
 **Test Criteria:**
-- [ ] Scroller inactive → all tabs show icon only
-- [ ] Scroller active → active tab shows "Office" / "Field" / "Tools" above icon
+- [ ] Scroller inactive â†’ all tabs show icon only
+- [ ] Scroller active â†’ active tab shows "Office" / "Field" / "Tools" above icon
 - [ ] Inactive tabs remain icon-only during scroller
 - [ ] Label animates smoothly (280ms)
 
 ---
 
-### § 10.2 Prohibition
+### Â§ 10.2 Prohibition
 
 **Constitutional Requirement:**
 - Tab labels must never appear inside scroller
@@ -782,30 +594,30 @@ const isScrollerActive = gestureState === GestureState.FLICK_ACTIVE;
 ```typescript
 // ModuleScroller.tsx
 // FORBIDDEN:
-// <div className="scroller-header">{activeTab.toUpperCase()}</div> ❌
+// <div className="scroller-header">{activeTab.toUpperCase()}</div> âŒ
 
 // Module items show ONLY module name, never tab name
 <div className="module-item">
   <module.icon />
-  <span>{module.label}</span> {/* "Projects", not "Office → Projects" */}
+  <span>{module.label}</span> {/* "Projects", not "Office â†’ Projects" */}
 </div>
 ```
 
 **Test Criteria:**
 - [ ] Scroller contains zero references to "Office" / "Field" / "Tools"
 - [ ] Module items show module name only
-- [ ] No breadcrumb-style "Tab → Module" text
+- [ ] No breadcrumb-style "Tab â†’ Module" text
 
 ---
 
-## § 11. PERFORMANCE LAW
+## Â§ 11. PERFORMANCE LAW
 
-### § 11.1 Budgets
+### Â§ 11.1 Budgets
 
 **Constitutional Requirement:**
 - Gesture response: < 16 ms
 - Scroller appearance: < 150 ms
-- Tap → screen navigation: < 300 ms
+- Tap â†’ screen navigation: < 300 ms
 - Max dropped frames per gesture: 2
 
 **Implementation Checkpoint:**
@@ -835,12 +647,12 @@ performance.measure('gesture-response', { start: gestureStart });
 **Test Criteria:**
 - [ ] 95% of gestures respond in < 16ms (< 1 frame at 60fps)
 - [ ] Scroller renders in < 150ms on iPhone SE 2020
-- [ ] Tap → new screen in < 300ms
+- [ ] Tap â†’ new screen in < 300ms
 - [ ] No more than 2 dropped frames per gesture (measure with DevTools)
 
 ---
 
-### § 11.2 Degradation
+### Â§ 11.2 Degradation
 
 **Constitutional Requirement:**
 - Enhancements must degrade gracefully
@@ -852,7 +664,7 @@ performance.measure('gesture-response', { start: gestureStart });
 const scrollerOverlayStyle = {
   backgroundColor: 'var(--overlay-light)',
   backdropFilter: deviceCapabilities.hasBlur ? 'blur(8px)' : 'none'
-  // If blur unsupported → solid overlay still works
+  // If blur unsupported â†’ solid overlay still works
 };
 
 // Example: Spring physics degrades to CSS ease-out
@@ -868,9 +680,9 @@ const snapAnimation = deviceCapabilities.hasSpringPhysics
 
 ---
 
-## § 12. ACCESSIBILITY LAW
+## Â§ 12. ACCESSIBILITY LAW
 
-### § 12.1 Compliance
+### Â§ 12.1 Compliance
 
 **Constitutional Requirement:**
 - Navigation must meet WCAG 2.2 AA
@@ -926,7 +738,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
 
 ---
 
-### § 12.2 Mandatory Support
+### Â§ 12.2 Mandatory Support
 
 **Constitutional Requirement:**
 - Keyboard navigation
@@ -966,13 +778,13 @@ useEffect(() => {
 - [ ] Keyboard users can access all modules
 - [ ] Focus trapped in scroller when active
 - [ ] Focus returns to tab trigger after close
-- [ ] `prefers-reduced-motion` → instant transitions
+- [ ] `prefers-reduced-motion` â†’ instant transitions
 
 ---
 
-## § 13. PHASE AUTHORITY
+## Â§ 13. PHASE AUTHORITY
 
-### § 13.1 Phase Separation
+### Â§ 13.1 Phase Separation
 
 **Constitutional Requirement:**
 - Phase 1: Core (must ship)
@@ -1007,7 +819,7 @@ if (FEATURES.PHASE_2_MOMENTUM) {
 
 ---
 
-### § 13.2 Guarantees vs Enhancements
+### Â§ 13.2 Guarantees vs Enhancements
 
 **Constitutional Requirement:**
 - Guarantees must always work
@@ -1017,10 +829,10 @@ if (FEATURES.PHASE_2_MOMENTUM) {
 ```typescript
 // Guarantees (cannot be disabled):
 const GUARANTEES = {
-  offsetPreventsOcclusion: true,    // § 8 requirement
-  instantNavigation: true,           // § 6.2 requirement
-  desktopUnchanged: true,            // § 1.1 requirement
-  holdGestureActivation: true        // § 4.1 requirement
+  offsetPreventsOcclusion: true,    // Â§ 8 requirement
+  instantNavigation: true,           // Â§ 6.2 requirement
+  desktopUnchanged: true,            // Â§ 1.1 requirement
+  holdGestureActivation: true        // Â§ 4.1 requirement
 };
 
 // Enhancements (can be disabled):
@@ -1033,18 +845,18 @@ const ENHANCEMENTS = {
 ```
 
 **Test Criteria:**
-- [ ] Disabling all enhancements → core functionality intact
+- [ ] Disabling all enhancements â†’ core functionality intact
 - [ ] Guarantees tested on lowest-end target device
 - [ ] Enhancements enhance, never replace guarantees
 
 ---
 
-## § 14. PROHIBITIONS (ABSOLUTE)
+## Â§ 14. PROHIBITIONS (ABSOLUTE)
 
 **Constitutional Requirement:**
 The following are forbidden:
 1. Accidental edge activation
-2. Mid-flick routing
+2. Mid-swipe routing
 3. Decorative motion without purpose
 4. Ripple/wave animations
 5. Cross-tab scroller content
@@ -1059,7 +871,7 @@ if (e.clientX < GESTURE_CONFIG.EDGE_DEAD_ZONE ||
   return; // Too close to edge, ignore
 }
 
-// 2. Mid-flick routing prevention
+// 2. Mid-swipe routing prevention
 // Navigation ONLY in handlePointerUp, never handlePointerMove
 
 // 3. No decorative motion
@@ -1093,7 +905,7 @@ if (!isMobile) {
 
 ---
 
-## § 15. CHANGE AUTHORITY
+## Â§ 15. CHANGE AUTHORITY
 
 **Constitutional Requirement:**
 - Changes must be deliberate, documented, improve ergonomics/clarity/safety
@@ -1110,7 +922,7 @@ if (!isMobile) {
 // 4. Update tests to match new values
 
 // Example:
-// HOLD_DURATION: 250 → 280
+// HOLD_DURATION: 250 â†’ 280
 // Reason: User testing showed 250ms too quick for accessibility
 // Commit: "Constitutional change: increase hold duration for a11y"
 ```
@@ -1123,7 +935,7 @@ if (!isMobile) {
 
 ---
 
-## § 16. FINAL PRINCIPLE
+## Â§ 16. FINAL PRINCIPLE
 
 **Constitutional Requirement:**
 > "Navigation is not animation. Navigation is trust."
@@ -1157,14 +969,14 @@ Every gesture must:
 
 ---
 
-## 🔒 CONSTITUTIONAL ENFORCEMENT
+## ðŸ”’ CONSTITUTIONAL ENFORCEMENT
 
 **Implementation must:**
-1. ✅ Pass all test criteria in this document
-2. ✅ Match all code checkpoints exactly
-3. ✅ Honor all absolute prohibitions
-4. ✅ Meet all performance budgets
-5. ✅ Achieve all accessibility requirements
+1. âœ… Pass all test criteria in this document
+2. âœ… Match all code checkpoints exactly
+3. âœ… Honor all absolute prohibitions
+4. âœ… Meet all performance budgets
+5. âœ… Achieve all accessibility requirements
 
 **Any deviation requires:**
 1. Constitutional amendment (documented change to spec)
@@ -1176,32 +988,32 @@ Every gesture must:
 
 ---
 
-## 📋 QUICK REFERENCE CHECKLIST
+## ðŸ“‹ QUICK REFERENCE CHECKLIST
 
 Use this during implementation reviews:
 
 **Phase 1 (Core):**
-- [ ] § 1: Desktop unchanged, mobile-only guards active
-- [ ] § 2: Three tabs (Office, Field, Tools), Field default
-- [ ] § 3: Module registry matches spec exactly
-- [ ] § 4: Hold (250ms ± 30ms) → flick activation only
-- [ ] § 5: Up+Right → right scroller (ergonomic mapping)
-- [ ] § 6: Only active tab modules shown, no navigation until release
-- [ ] § 7: Finger is source of truth, instant snap on pause
-- [ ] § 8: Offset only (28/14/0px toward center), no blur yet
-- [ ] § 9: Active 1.08 scale, 100% opacity, accent border
-- [ ] § 10: Context label in tab bar only (not in scroller)
-- [ ] § 11: < 16ms response, < 150ms render, < 300ms navigation
-- [ ] § 14: Zero prohibitions violated
+- [ ] Â§ 1: Desktop unchanged, mobile-only guards active
+- [ ] Â§ 2: Three tabs (Office, Field, Tools), Field default
+- [ ] Â§ 3: Module registry matches spec exactly
+- [ ] Â§ 4: Hold (250ms Â± 30ms) â†’ swipe activation only
+- [ ] Â§ 5: Office left / Field center / Tools right (tab-based placement)
+- [ ] Â§ 6: Only active tab modules shown, no navigation until release
+- [ ] Â§ 7: Finger is source of truth, instant snap on pause
+- [ ] Â§ 8: Offset only (28/14/0px toward center), no blur yet
+- [ ] Â§ 9: Active 1.08 scale, 100% opacity, accent border
+- [ ] Â§ 10: Context label in tab bar only (not in scroller)
+- [ ] Â§ 11: < 16ms response, < 150ms render, < 300ms navigation
+- [ ] Â§ 14: Zero prohibitions violated
 
 **Phase 2 (Premium Feel):**
-- [ ] § 8.3: Blur capability-gated, offset still works without blur
-- [ ] § 7.2: Momentum scrolling (device-gated)
-- [ ] § 9: Spring physics fallback to CSS ease-out
-- [ ] § 11: Performance observer active, tracking metrics
+- [ ] Â§ 8.3: Blur capability-gated, offset still works without blur
+- [ ] Â§ 7.2: Momentum scrolling (device-gated)
+- [ ] Â§ 9: Spring physics fallback to CSS ease-out
+- [ ] Â§ 11: Performance observer active, tracking metrics
 
 **Phase 3 (Native-Ready):**
-- [ ] § 12: WCAG 2.2 AA compliance (keyboard, screen reader, focus)
+- [ ] Â§ 12: WCAG 2.2 AA compliance (keyboard, screen reader, focus)
 - [ ] Deep linking functional (`/inspections?tab=field`)
 - [ ] Haptic intents logged (not implemented as vibration)
 - [ ] Landscape/foldable device tested
@@ -1211,3 +1023,7 @@ Use this during implementation reviews:
 **End of Constitutional Mapping**
 
 This document is authoritative. Code must conform to this spec, not the other way around.
+
+
+
+

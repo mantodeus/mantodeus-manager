@@ -1,4 +1,4 @@
-# 🔒 MANTODEUS MANAGER — MOBILE NAVIGATION CONSTITUTION
+﻿# ðŸ”’ MANTODEUS MANAGER â€” MOBILE NAVIGATION CONSTITUTION
 
 **Status:** Binding
 **Scope:** Mobile only
@@ -25,7 +25,7 @@ This constitution overrides all informal discussion, mockups, or partial impleme
 
 ## 1. PLATFORM SOVEREIGNTY
 
-### 1.1 Mobile First — By Law
+### 1.1 Mobile First â€” By Law
 
 Mobile navigation rules apply only on mobile breakpoints.
 
@@ -97,14 +97,14 @@ Modules may not appear in multiple tabs.
 
 ---
 
-## 4. PRIMARY GESTURE — HOLD → FLICK
+## 4. PRIMARY GESTURE - HOLD -> SWIPE UP
 
 ### 4.1 Activation Rule
 
 A module scroller may only be activated by:
-**Tap → Hold → Vertical Flick**
+**Tap -> Hold -> Vertical Swipe Up**
 
-Hold duration: **250 ms ± 30 ms**
+Hold duration: **250 ms Â± 30 ms**
 
 A simple tap must never activate the scroller.
 
@@ -124,16 +124,19 @@ A thumb arcs outward toward the side of the hand holding the phone.
 
 Navigation must respect this physical truth.
 
-### 5.2 Direction Mapping
+### 5.2 Tab-Based Placement
 
-- **Up + Right flick** → Right-side scroller
-- **Up + Left flick** → Left-side scroller
+Scroller position is determined only by the active tab:
 
-This mapping may never be inverted.
+- **Office** -> Left-side scroller
+- **Field** -> Centered scroller
+- **Tools** -> Right-side scroller
+
+Swipe direction does not affect placement.
 
 ---
 
-## 6. MODULE SCROLLER — BEHAVIOUR
+## 6. MODULE SCROLLER â€” BEHAVIOUR
 
 ### 6.1 Scope
 
@@ -161,8 +164,8 @@ UI must never move ahead of the finger.
 
 ### 7.2 Motion Rules
 
-- Slow movement → precise stepping
-- Fast movement → momentum scrolling (if enabled by phase)
+- Slow movement â†’ precise stepping
+- Fast movement â†’ momentum scrolling (if enabled by phase)
 - When finger pauses, selection snaps to nearest item.
 
 ---
@@ -245,7 +248,7 @@ The system must meet these guarantees:
 
 - **Gesture response:** < 16 ms
 - **Scroller appearance:** < 150 ms
-- **Tap → screen navigation:** < 300 ms
+- **Tap -> Hold -> Vertical Swipe Up** < 300 ms
 - **Maximum dropped frames per gesture:** 2
 
 These are testable requirements.
@@ -301,7 +304,7 @@ No phase may partially borrow features from a later phase.
 The following are forbidden:
 
 1. Accidental edge activation
-2. Mid-flick routing
+2. Mid-swipe routing
 3. Decorative motion without purpose
 4. Ripple/wave animations
 5. Cross-tab scroller content
@@ -338,4 +341,6 @@ Anything that compromises trust is a regression.
 
 ---
 
-🔒 **END OF NAVIGATION CONSTITUTION**
+ðŸ”’ **END OF NAVIGATION CONSTITUTION**
+
+
