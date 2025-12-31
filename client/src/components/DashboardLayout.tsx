@@ -1,4 +1,4 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+﻿import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -283,7 +283,7 @@ function DashboardLayoutContent({
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
+                  <span className="tab-title text-foreground">
                     {activeMenuItem?.label ?? APP_TITLE}
                   </span>
                 </div>
@@ -296,7 +296,7 @@ function DashboardLayoutContent({
         </main>
       </SidebarInset>
 
-      {/* § 1.1: Mobile Navigation (Mobile only, Desktop unchanged) */}
+      {/* Â§ 1.1: Mobile Navigation (Mobile only, Desktop unchanged) */}
       {isMobile && (
         <>
           <ScrollerOverlay />
@@ -326,7 +326,7 @@ function MobileDashboardLayoutContent({
       <div className="flex border-b h-14 items-center justify-between bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <div className="flex flex-col gap-1">
-            <span className="tracking-tight text-foreground">
+            <span className="tab-title text-foreground">
               {activeMenuItem?.label ?? APP_TITLE}
             </span>
           </div>
@@ -337,10 +337,11 @@ function MobileDashboardLayoutContent({
         {children}
       </main>
 
-      {/* Άυ 1.1: Mobile Navigation (Mobile only, Desktop unchanged) */}
+      {/* Î†Ï… 1.1: Mobile Navigation (Mobile only, Desktop unchanged) */}
       <ScrollerOverlay />
       <ModuleScroller />
       <BottomTabBar />
     </div>
   );
 }
+
