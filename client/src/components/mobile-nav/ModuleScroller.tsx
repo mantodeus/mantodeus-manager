@@ -105,7 +105,6 @@ function ModuleItem({
         'transition-all duration-150 ease-out',
         // Â§ Phase 2: Theme integration
         isActive && [
-          'border-l-2 border-primary',
           'bg-primary/5', // Subtle background highlight
         ]
       )}
@@ -168,7 +167,8 @@ export function ModuleScroller() {
     if (!firstItem) return;
 
     const itemHeight = firstItem.getBoundingClientRect().height;
-    const relativeY = pointerPosition.y - listRect.top;
+    const virtualTop = Math.max(0, window.innerHeight - listRect.height);
+    const relativeY = pointerPosition.y - virtualTop;
     const rawIndex = Math.floor(relativeY / itemHeight);
     const clampedIndex = Math.max(0, Math.min(modules.length - 1, rawIndex));
 
@@ -272,6 +272,9 @@ export function ModuleScroller() {
     </div>
   );
 }
+
+
+
 
 
 

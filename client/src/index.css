@@ -229,12 +229,12 @@
   }
 
   .bottom-tab-bar {
-    height: calc(56px + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
-  }\n
+    height: calc(56px + env(safe-area-inset-bottom) + 12px);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
+  }
   @media (max-width: 767px) {
     .app-content {
-      padding-bottom: calc(56px + env(safe-area-inset-bottom));
+      padding-bottom: calc(56px + env(safe-area-inset-bottom) + 12px);
     }
   }
 
@@ -310,4 +310,7 @@
     animation: scroller-slide-in 120ms ease-out;
   }
 }
+
+
+
 
