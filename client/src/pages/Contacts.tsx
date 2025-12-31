@@ -344,7 +344,7 @@ export default function Contacts() {
           <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
             <DialogTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Search contacts">
-                <Search className="h-4 w-4" />
+                <Search className="h-5 w-5" />
               </Button>
             </DialogTrigger>
             <DialogContent>
