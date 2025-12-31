@@ -2,12 +2,11 @@
  * Module Scroller Component
  *
  * Vertical module list with depth displacement for readability.
- * Â§ 6: MODULE SCROLLER â€” BEHAVIOUR
- * Â§ 7: FLICK-THROUGH INTERACTION
- * Â§ 8: DEPTH DISPLACEMENT (READABILITY LAW)
- * Â§ 9: VISUAL HIERARCHY
+ * Section 6: Module scroller behavior
+ * Section 7: Swipe interaction
+ * Section 8: Depth displacement (readability law)
+ * Section 9: Visual hierarchy
  */
-
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
@@ -52,7 +51,8 @@ function calculateOffset(
 function calculateBlur(
   itemIndex: number,
   activeIndex: number | null,
-  hasBlur: boolean
+  hasBlur: boolean,
+  scrollerSide: 'left' | 'right' | 'center'
 ): number {
   if (!FEATURES.PHASE_2_BLUR || !hasBlur || activeIndex === null) return 0;
 
@@ -249,7 +249,12 @@ export function ModuleScroller() {
             Math.abs(index - highlightedIndex) === 1;
 
           const offset = calculateOffset(index, highlightedIndex, scrollerSide);
-          const blur = calculateBlur(index, highlightedIndex, capabilities.hasBlur);
+          const blur = calculateBlur(
+            index,
+            highlightedIndex,
+            capabilities.hasBlur,
+            scrollerSide
+          );
 
           return (
             <ModuleItem
@@ -267,6 +272,8 @@ export function ModuleScroller() {
     </div>
   );
 }
+
+
 
 
 
