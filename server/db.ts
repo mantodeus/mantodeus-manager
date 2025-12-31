@@ -179,6 +179,7 @@ async function ensureInvoiceSchema(db: any) {
       ALTER TABLE invoices
         ADD COLUMN IF NOT EXISTS invoiceYear INT NOT NULL DEFAULT 0 AFTER invoiceNumber,
         ADD COLUMN IF NOT EXISTS invoiceCounter INT NOT NULL DEFAULT 0 AFTER invoiceYear,
+        ADD COLUMN IF NOT EXISTS cancelledInvoiceId INT NULL AFTER type,
         ADD COLUMN IF NOT EXISTS issueDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER status,
         ADD COLUMN IF NOT EXISTS servicePeriodStart DATETIME NULL AFTER notes,
         ADD COLUMN IF NOT EXISTS servicePeriodEnd DATETIME NULL AFTER servicePeriodStart,
@@ -194,6 +195,10 @@ async function ensureInvoiceSchema(db: any) {
         ADD COLUMN IF NOT EXISTS mimeType VARCHAR(100) NULL AFTER fileSize,
         ADD COLUMN IF NOT EXISTS uploadDate DATETIME NULL AFTER mimeType,
         ADD COLUMN IF NOT EXISTS uploadedBy INT NULL AFTER uploadDate,
+        ADD COLUMN IF NOT EXISTS uploadedAt DATETIME NULL AFTER uploadedBy,
+        ADD COLUMN IF NOT EXISTS source ENUM('created','uploaded') NOT NULL DEFAULT 'created' AFTER uploadedAt,
+        ADD COLUMN IF NOT EXISTS needsReview BOOLEAN NOT NULL DEFAULT 0 AFTER source,
+        ADD COLUMN IF NOT EXISTS originalPdfS3Key VARCHAR(500) NULL AFTER needsReview,
         ADD COLUMN IF NOT EXISTS archivedAt DATETIME NULL AFTER updatedAt,
         ADD COLUMN IF NOT EXISTS trashedAt DATETIME NULL AFTER archivedAt
     `);
