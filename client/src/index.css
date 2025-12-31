@@ -249,22 +249,34 @@
   }
 
   .scroller--center .module-item {
+    flex-direction: column;
+    align-items: center;
     text-align: center;
     justify-content: center;
+    gap: 6px;
+  }
+
+  .scroller--center .module-item span {
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    font-weight: 500;
   }
 
   .scroller--right .module-item {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
     text-align: right;
-    justify-content: flex-end;
   }
 
   .tab-title {
     text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 0.12em;
+    font-size: 13px;
+    letter-spacing: 0.14em;
     font-weight: 500;
     opacity: 0.85;
-  }.bottom-tab-bar {
+  }
+
+  .bottom-tab-bar {
     height: calc(56px + env(safe-area-inset-bottom) + 12px);
     padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
   }
