@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { scanDocument, type ScanResult } from "@/lib/documentScanner/scanPipeline";
 import { CornerAdjuster } from "@/components/expenses/CornerAdjuster";
+import { PageHeader } from "@/components/PageHeader";
 
 type ScanState = "idle" | "capturing" | "processing" | "preview" | "uploading";
 
@@ -241,7 +242,7 @@ export default function ScanReceipt() {
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
-      {/* Header */}
+      <PageHeader />
       <div className="flex items-center gap-4">
         <Link href="/expenses">
           <Button variant="ghost" size="icon">

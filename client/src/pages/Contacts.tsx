@@ -8,15 +8,15 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Mail, MapPin, Phone, Plus, Map, Loader2, Users } from "lucide-react";
+import { Mail, MapPin, Phone, Plus, Map, Loader2, Users, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
@@ -27,6 +27,9 @@ export default function Contacts() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [returnTo, setReturnTo] = useState<string | null>(null);
@@ -78,6 +81,15 @@ export default function Contacts() {
     utils.contacts.listArchived.invalidate();
     utils.contacts.listTrashed.invalidate();
   };
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    setSearchDraft(searchTerm);
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [isSearchOpen, searchTerm]);
 
   const filteredActiveContacts = activeContacts.filter((contact) =>
     contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -146,6 +158,17 @@ export default function Contacts() {
     setFormData({ name: "", email: "", phone: "", address: "", notes: "" });
     setEditingId(null);
     setIsDialogOpen(false);
+  };
+
+  const applySearch = () => {
+    setSearchTerm(searchDraft.trim());
+    setIsSearchOpen(false);
+  };
+
+  const clearSearch = () => {
+    setSearchDraft("");
+    setSearchTerm("");
+    setIsSearchOpen(false);
   };
 
   const handleBatchDelete = async () => {
@@ -317,6 +340,32 @@ export default function Contacts() {
       <PageHeader
         title="Contacts"
         subtitle="Manage your clients and contacts"
+        searchSlot={
+          <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Search contacts">
+                <Search className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Search contacts</DialogTitle>
+              </DialogHeader>
+              <Input
+                ref={searchInputRef}
+                placeholder="Search contacts..."
+                value={searchDraft}
+                onChange={(e) => setSearchDraft(e.target.value)}
+              />
+              <DialogFooter>
+                <Button variant="ghost" onClick={clearSearch}>
+                  Clear
+                </Button>
+                <Button onClick={applySearch}>Search</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        }
         primaryAction={
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -390,15 +439,6 @@ export default function Contacts() {
           </Dialog>
         }
       />
-
-      {/* Search */}
-      <div>
-        <Input
-          placeholder="Search contacts..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
 
       {/* Active Contacts Grid */}
       <div className="space-y-4">

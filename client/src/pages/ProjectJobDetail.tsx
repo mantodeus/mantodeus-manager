@@ -19,6 +19,7 @@ import { EditProjectJobDialog } from "@/components/EditProjectJobDialog";
 import { ProjectFileGallery } from "@/components/ProjectFileGallery";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function ProjectJobDetail() {
   const [, params] = useRoute("/projects/:projectId/jobs/:jobId");
@@ -84,10 +85,15 @@ export default function ProjectJobDetail() {
       .filter(Boolean);
   };
 
+  const actionHeader = <PageHeader />;
+
   if (projectLoading || jobLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        {actionHeader}
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
       </div>
     );
   }
@@ -95,6 +101,7 @@ export default function ProjectJobDetail() {
   if (!project) {
     return (
       <div className="space-y-6">
+        {actionHeader}
         <Link href="/projects">
           <Button variant="ghost">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -113,6 +120,7 @@ export default function ProjectJobDetail() {
   if (!job) {
     return (
       <div className="space-y-6">
+        {actionHeader}
         <Link href={`/projects/${projectId}`}>
           <Button variant="ghost">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -132,6 +140,7 @@ export default function ProjectJobDetail() {
 
   return (
     <div className="space-y-6">
+      <PageHeader />
       <div className="flex items-center justify-between">
         <Link href={`/projects/${projectId}`}>
           <Button variant="ghost">

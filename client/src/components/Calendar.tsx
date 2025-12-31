@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import { PageHeader } from "@/components/PageHeader";
 
 type ViewMode = 'daily' | 'weekly' | 'monthly';
 
@@ -320,20 +321,21 @@ export default function Calendar() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-muted-foreground text-sm">Loading calendar...</div>
+      <div className="space-y-6">
+        <PageHeader />
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-muted-foreground text-sm">Loading calendar...</div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-regular">Calendar</h1>
-          <p className="text-muted-foreground text-sm">View jobs and tasks by date</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Calendar"
+        subtitle="View jobs and tasks by date"
+      />
 
       {/* View Mode Selector */}
       <div className="flex gap-2">

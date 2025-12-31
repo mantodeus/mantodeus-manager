@@ -9,7 +9,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Tag, Loader2 } from "lucide-react";
+import { ArrowLeft, Tag, Loader2, Archive } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
@@ -156,7 +156,12 @@ export default function NotesArchived() {
   return (
     <div className="container mx-auto py-8 px-4">
       <PageHeader
-        title="Archived Notes"
+        title={
+          <span className="flex items-center gap-3">
+            <Archive className="h-8 w-8 text-muted-foreground" />
+            Archived Notes
+          </span>
+        }
         subtitle="Notes you've archived. You can restore them anytime."
         leading={
           <Link href="/notes">

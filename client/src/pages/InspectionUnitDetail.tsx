@@ -23,6 +23,7 @@ import { InspectionAnnotationCanvas } from "@/components/InspectionAnnotationCan
 import { InspectionMediaViewer } from "@/components/InspectionMediaViewer";
 import { InspectionUnitDetailSkeleton } from "@/components/InspectionSkeletons";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function InspectionUnitDetail() {
   const [, params] = useRoute("/projects/:projectId/inspections/units/:unitId");
@@ -259,14 +260,22 @@ export default function InspectionUnitDetail() {
     }
   };
 
+  const actionHeader = <PageHeader />;
+
   // Show skeleton while loading
   if ((serverLoading && !isLocalId) || (offlineDataLoading && isLocalId)) {
-    return <InspectionUnitDetailSkeleton />;
+    return (
+      <div className="p-4 space-y-4 max-w-4xl mx-auto">
+        {actionHeader}
+        <InspectionUnitDetailSkeleton />
+      </div>
+    );
   }
 
   if (!unit && !offlineUnit) {
     return (
       <div className="p-4">
+        {actionHeader}
         <p className="text-muted-foreground">Unit not found</p>
         <Link href={`/projects/${projectId}/inspections`}>
           <Button variant="outline" className="mt-4">
@@ -280,7 +289,7 @@ export default function InspectionUnitDetail() {
 
   return (
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
-      {/* Header */}
+      <PageHeader />
       <div className="flex items-center gap-4">
         <Link href={`/projects/${projectId}/inspections`}>
           <Button variant="ghost" size="icon">

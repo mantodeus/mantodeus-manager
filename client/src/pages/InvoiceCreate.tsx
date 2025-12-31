@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { ArrowLeft } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function InvoiceCreate() {
   const [, navigate] = useLocation();
@@ -13,6 +14,7 @@ export default function InvoiceCreate() {
 
   return (
     <div className="space-y-6">
+      <PageHeader />
       <div className="flex items-center gap-4">
         <Link href="/invoices">
           <Button variant="ghost" size="icon">

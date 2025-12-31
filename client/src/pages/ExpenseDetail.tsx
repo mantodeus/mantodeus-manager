@@ -18,6 +18,7 @@ import { VoidExpenseDialog } from "@/components/expenses/VoidExpenseDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
 import type { ExpenseCategory } from "@/components/expenses/CategorySelect";
+import { PageHeader } from "@/components/PageHeader";
 
 type SuggestionItem = {
   field: "category" | "vatMode" | "businessUsePct";
@@ -346,8 +347,11 @@ export default function ExpenseDetail() {
 
   if (isLoading && !isNew) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        <PageHeader />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
       </div>
     );
   }
@@ -409,7 +413,7 @@ export default function ExpenseDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      <PageHeader />
       <div className="flex items-center gap-4">
         <Link href="/expenses">
           <Button variant="ghost" size="icon">
@@ -508,4 +512,3 @@ export default function ExpenseDetail() {
     </div>
   );
 }
-
