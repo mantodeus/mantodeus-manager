@@ -375,7 +375,9 @@ if (!viteEnv.VITE_SUPABASE_URL || !viteEnv.VITE_SUPABASE_ANON_KEY) {
 // Increase Node.js heap size to prevent OOM errors during Vite build
 // Use node directly with vite binary to ensure NODE_OPTIONS is properly applied
 const viteBinPath = join(__dirname, 'node_modules', '.bin', 'vite');
+const viteJsPath = join(__dirname, 'node_modules', 'vite', 'bin', 'vite.js');
 const viteBinExists = existsSync(viteBinPath);
+const viteJsExists = existsSync(viteJsPath);
 
 const defaultMaxOldSpace = 4096;
 let nodeOptions = process.env.NODE_OPTIONS || '';
@@ -395,9 +397,11 @@ const maxOldSpaceValue = maxOldSpaceMatch ? maxOldSpaceMatch[1] : defaultMaxOldS
 // Use node directly with vite binary if available, otherwise fall back to npx
 // This ensures NODE_OPTIONS is properly applied to the vite process
 // Direct node execution is more reliable than npx for memory settings
-const viteCmd = viteBinExists 
-  ? `node --max-old-space-size=${maxOldSpaceValue} "${viteBinPath}" build`
-  : `NODE_OPTIONS="${nodeOptions}" npx vite build`;
+const viteCmd = viteJsExists
+  ? `node --max-old-space-size=${maxOldSpaceValue} "${viteJsPath}" build`
+  : (viteBinExists
+    ? `node --max-old-space-size=${maxOldSpaceValue} "${viteBinPath}" build`
+    : `NODE_OPTIONS="${nodeOptions}" npx vite build`);
 
 const viteEnvWithMemory = {
   ...viteEnv,
@@ -406,7 +410,7 @@ const viteEnvWithMemory = {
 
 console.log(`\n🔧 Using NODE_OPTIONS for Vite: ${nodeOptions || '(none)'}`);
 console.log(`🔧 Vite command: ${viteCmd}`);
-if (viteBinExists) {
+if (viteJsExists || viteBinExists) {
   console.log(`🔧 Using direct node execution with ${maxOldSpaceValue}MB memory limit`);
 }
 
