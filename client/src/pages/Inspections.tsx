@@ -15,6 +15,7 @@ import { useState, useEffect, useMemo } from "react";
 import { unitStorage, inspectionStorage } from "@/lib/offlineStorage";
 import { toast } from "sonner";
 import { InspectionOverviewSkeleton } from "@/components/InspectionSkeletons";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function Inspections() {
   const [, params] = useRoute("/projects/:projectId/inspections");
@@ -127,59 +128,54 @@ export default function Inspections() {
 
   return (
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Inspections</h1>
-          {project && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {project.name}
-            </p>
-          )}
-        </div>
-        <div className="flex gap-2">
-          {(() => {
-            // Find first inspection with an ID (server-synced)
-            const inspectionWithId = allInspections.find(i => i.id && typeof i.id === 'number');
-            return inspectionWithId ? (
-              <Button
-                onClick={() => {
-                  const inspectionId = inspectionWithId.id;
-                  if (inspectionId && typeof inspectionId === 'number') {
-                    generatePDFMutation.mutate({ inspectionId });
-                  } else {
-                    toast.error("No inspection found to export");
-                  }
-                }}
-                disabled={generatePDFMutation.isPending}
-                variant="outline"
-                size="lg"
-                className="h-12 px-6"
-              >
-                {generatePDFMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <FileDown className="h-5 w-5 mr-2" />
-                    Export PDF
-                  </>
-                )}
-              </Button>
-            ) : null;
-          })()}
-          <Button
-            onClick={() => setCreateUnitDialogOpen(true)}
-            size="lg"
-            className="h-12 px-6"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            New Abseil / Section
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Inspections"
+        subtitle={project?.name}
+        primaryAction={
+          <div className="flex gap-2">
+            {(() => {
+              // Find first inspection with an ID (server-synced)
+              const inspectionWithId = allInspections.find(i => i.id && typeof i.id === 'number');
+              return inspectionWithId ? (
+                <Button
+                  onClick={() => {
+                    const inspectionId = inspectionWithId.id;
+                    if (inspectionId && typeof inspectionId === 'number') {
+                      generatePDFMutation.mutate({ inspectionId });
+                    } else {
+                      toast.error("No inspection found to export");
+                    }
+                  }}
+                  disabled={generatePDFMutation.isPending}
+                  variant="outline"
+                  size="lg"
+                  className="h-12 px-6"
+                >
+                  {generatePDFMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="h-5 w-5 mr-2" />
+                      Export PDF
+                    </>
+                  )}
+                </Button>
+              ) : null;
+            })()}
+            <Button
+              onClick={() => setCreateUnitDialogOpen(true)}
+              size="lg"
+              className="h-12 px-6"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              New Abseil / Section
+            </Button>
+          </div>
+        }
+      />
 
       {/* Inspections List */}
       {allInspections.length === 0 && allUnits.length === 0 ? (
