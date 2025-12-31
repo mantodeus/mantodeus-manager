@@ -284,7 +284,7 @@ function DashboardLayoutContent({
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
                   <span className="tab-title text-foreground">
-                    {activeMenuItem?.label ?? APP_TITLE}
+                    {(activeMenuItem?.label ?? APP_TITLE).toUpperCase()}
                   </span>
                 </div>
               </div>
@@ -327,7 +327,7 @@ function MobileDashboardLayoutContent({
         <div className="flex items-center gap-3">
           <div className="flex flex-col gap-1">
             <span className="tab-title text-foreground">
-              {activeMenuItem?.label ?? APP_TITLE}
+              {(activeMenuItem?.label ?? APP_TITLE).toUpperCase()}
             </span>
           </div>
         </div>
