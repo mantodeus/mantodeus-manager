@@ -1029,8 +1029,12 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     invoiceCounter: data.invoiceCounter ?? 0,
     invoiceYear: data.invoiceYear ?? issueDate.getFullYear(),
     status: data.status ?? "draft",
+    type: (data as any).type ?? null,
+    cancelledInvoiceId: (data as any).cancelledInvoiceId ?? null,
     issueDate,
     dueDate: data.dueDate ?? null,
+    sentAt: (data as any).sentAt ?? null,
+    paidAt: (data as any).paidAt ?? null,
     notes: data.notes ?? null,
     servicePeriodStart: data.servicePeriodStart ?? null,
     servicePeriodEnd: data.servicePeriodEnd ?? null,
@@ -1046,6 +1050,10 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     mimeType: data.mimeType ?? null,
     uploadDate: data.uploadDate ?? null,
     uploadedBy: data.uploadedBy ?? null,
+    uploadedAt: (data as any).uploadedAt ?? data.uploadDate ?? null,
+    source: (data as any).source ?? null,
+    needsReview: (data as any).needsReview ?? false,
+    originalPdfS3Key: (data as any).originalPdfS3Key ?? data.fileKey ?? null,
     userId: data.userId,
   };
 
