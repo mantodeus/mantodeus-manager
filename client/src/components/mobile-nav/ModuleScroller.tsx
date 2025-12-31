@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Module Scroller Component
  *
  * Vertical module list with depth displacement for readability.
- * § 6: MODULE SCROLLER — BEHAVIOUR
- * § 7: FLICK-THROUGH INTERACTION
- * § 8: DEPTH DISPLACEMENT (READABILITY LAW)
- * § 9: VISUAL HIERARCHY
+ * Â§ 6: MODULE SCROLLER â€” BEHAVIOUR
+ * Â§ 7: FLICK-THROUGH INTERACTION
+ * Â§ 8: DEPTH DISPLACEMENT (READABILITY LAW)
+ * Â§ 9: VISUAL HIERARCHY
  */
 
 import { useEffect, useRef, useCallback } from 'react';
@@ -19,7 +19,7 @@ import { useDeviceCapabilities } from './useDeviceCapabilities';
 
 /**
  * Calculate depth offset for a module item
- * § 8.2: Displacement Rules - strictly proportional to proximity
+ * Â§ 8.2: Displacement Rules - strictly proportional to proximity
  */
 function calculateOffset(
   itemIndex: number,
@@ -39,13 +39,13 @@ function calculateOffset(
     offset = DEPTH_OFFSET.NEIGHBOR_2; // 0px
   }
 
-  // § 8.2: Apply toward center (constitutional requirement)
+  // Â§ 8.2: Apply toward center (constitutional requirement)
   return scrollerSide === 'right' ? -offset : offset;
 }
 
 /**
  * Calculate depth-of-field blur for Phase 2
- * § 8.3: Blur is additive, not essential
+ * Â§ 8.3: Blur is additive, not essential
  */
 function calculateBlur(
   itemIndex: number,
@@ -84,7 +84,7 @@ function ModuleItem({
 }) {
   const Icon = module.icon;
 
-  // § 9: Visual Hierarchy
+  // Â§ 9: Visual Hierarchy
   const opacity = isActive
     ? VISUAL_HIERARCHY.ACTIVE.opacity
     : isNeighbor
@@ -97,9 +97,10 @@ function ModuleItem({
     <div
       className={cn(
         'flex items-center gap-3 px-6 py-4',
+        'gesture-surface',
         'cursor-pointer select-none',
         'transition-all duration-150 ease-out',
-        // § Phase 2: Theme integration
+        // Â§ Phase 2: Theme integration
         isActive && [
           'border-l-2 border-primary',
           'bg-primary/5', // Subtle background highlight
@@ -143,21 +144,21 @@ export function ModuleScroller() {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const capabilities = useDeviceCapabilities(); // Phase 2: Device capability detection
 
-  // § 6.1: Scope - only show modules for active tab
+  // Â§ 6.1: Scope - only show modules for active tab
   const modules = MODULE_REGISTRY[activeTab];
 
-  // § 7.2: Motion Rules - finger pause → snap to nearest
+  // Â§ 7.2: Motion Rules - finger pause â†’ snap to nearest
   const handlePointerMove = useCallback(
     (index: number) => {
       if (gestureState === GestureState.FLICK_ACTIVE) {
-        // § 7.1: Finger Authority - update highlight based on finger position
+        // Â§ 7.1: Finger Authority - update highlight based on finger position
         setHighlightedIndex(index);
       }
     },
     [gestureState, setHighlightedIndex]
   );
 
-  // § 6.2: State Safety - navigation occurs only on release
+  // Â§ 6.2: State Safety - navigation occurs only on release
   useEffect(() => {
     if (gestureState === GestureState.SNAPPING && highlightedIndex !== null) {
       const module = modules[highlightedIndex];
@@ -197,14 +198,16 @@ export function ModuleScroller() {
     <div
       ref={scrollerRef}
       className={cn(
-        'fixed top-0 bottom-0 z-[1000]',
+        'fixed top-0 z-[1000]',
         'w-64', // Fixed width
         'bg-background/95 backdrop-blur-sm',
         'border-border',
         'overflow-y-auto',
-        'md:hidden', // § 1.1: Mobile only
+        'md:hidden', // Â§ 1.1: Mobile only
+        'module-scroller',
+        'gesture-surface',
         'animate-scroller-slide-in',
-        // Position based on flick direction (§ 5: Ergonomic Law)
+        // Position based on flick direction (Â§ 5: Ergonomic Law)
         scrollerSide === 'right'
           ? 'right-0 border-l'
           : 'left-0 border-r',
@@ -214,7 +217,7 @@ export function ModuleScroller() {
       aria-label={`Module selector for ${activeTab}`}
       role="menu"
     >
-      {/* § 10.2: Prohibition - Tab labels must never appear inside scroller */}
+      {/* Â§ 10.2: Prohibition - Tab labels must never appear inside scroller */}
       <div className="py-4">
         {modules.map((module, index) => {
           const isActive = index === highlightedIndex;
@@ -242,3 +245,6 @@ export function ModuleScroller() {
     </div>
   );
 }
+
+
+
