@@ -1,127 +1,215 @@
-﻿/**
+/**
  * Gesture Recognition Hook
  *
- * Implements hold + flick gesture detection according to Mobile Navigation Constitution.
- * Â§ 4: PRIMARY GESTURE â€” HOLD â†’ FLICK
- * Â§ 5: ERGONOMIC LAW
- * Â§ 10: EDGE CASE: Accidental Activation Prevention
+ * Implements hold + swipe gesture detection according to Mobile Navigation Constitution.
  */
 
 import { useRef, useCallback, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/useMobile';
 import { useMobileNav } from './MobileNavProvider';
 import { GestureState } from './types';
-import type { Point, FlickDirection } from './types';
+import type { Point } from './types';
 import { GESTURE_CONFIG, HapticIntent } from './constants';
 
 /**
- * Haptic feedback stub (Â§ 13.2: Semantic Contract Only)
- * Logs intent for future native implementation
+ * Haptic feedback stub (semantic contract only).
  */
 function triggerHaptic(intent: HapticIntent) {
   console.log(`[Haptic Intent] ${intent}`);
-  // Future native app will wire this to platform haptics
-  // Web implementation blocked until user research validates need
-}
-
-/**
- * Detect flick direction based on start and current position
- * Â§ 5.2: Direction Mapping (DO NOT INVERT)
- * Up + Right â†’ Right scroller
- * Up + Left â†’ Left scroller
- */
-function detectFlickDirection(
-  startPos: Point,
-  currentPos: Point
-): FlickDirection {
-  const dx = currentPos.x - startPos.x;
-  const dy = currentPos.y - startPos.y;
-
-  // Require upward movement (dy < 0 means upward)
-  if (dy >= 0 || Math.abs(dy) < 20) {
-    return null; // Not a valid upward flick
-  }
-
-  // Constitutional mapping (DO NOT INVERT)
-  if (dx > 0) {
-    return 'right'; // Up + Right â†’ Right scroller
-  } else if (dx < 0) {
-    return 'left'; // Up + Left â†’ Left scroller
-  }
-
-  return null; // Pure vertical (no lateral component)
+  // Future native app will wire this to platform haptics.
 }
 
 export function useGestureRecognition() {
   const isMobile = useIsMobile();
-  const {
-    setGestureState,
-    setFlickDirection,
-    gestureState,
-  } = useMobileNav();
+  const { setGestureState, gestureState, setPointerPosition } = useMobileNav();
+
   const holdTimerRef = useRef<number | undefined>(undefined);
   const startPosRef = useRef<Point>({ x: 0, y: 0 });
   const startTimeRef = useRef<number>(0);
   const lastScrollTimeRef = useRef<number>(0);
   const lastScrollYRef = useRef<number>(0);
+  const activePointerIdRef = useRef<number | null>(null);
+  const windowMoveHandlerRef = useRef<((event: PointerEvent) => void) | null>(
+    null
+  );
+  const windowUpHandlerRef = useRef<((event: PointerEvent) => void) | null>(
+    null
+  );
+  const windowCancelHandlerRef = useRef<((event: PointerEvent) => void) | null>(
+    null
+  );
 
-  /**
-   * Cancel gesture and cleanup
-   */
+  const removeWindowListeners = useCallback(() => {
+    if (windowMoveHandlerRef.current) {
+      window.removeEventListener('pointermove', windowMoveHandlerRef.current);
+      windowMoveHandlerRef.current = null;
+    }
+    if (windowUpHandlerRef.current) {
+      window.removeEventListener('pointerup', windowUpHandlerRef.current);
+      windowUpHandlerRef.current = null;
+    }
+    if (windowCancelHandlerRef.current) {
+      window.removeEventListener(
+        'pointercancel',
+        windowCancelHandlerRef.current
+      );
+      windowCancelHandlerRef.current = null;
+    }
+  }, []);
+
   const cancelGesture = useCallback(() => {
-    if (!isMobile) return; // Guard inside callback
+    if (!isMobile) return;
 
     if (holdTimerRef.current) {
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = undefined;
     }
-    setGestureState(GestureState.IDLE);
-    setFlickDirection(null);
-  }, [isMobile, setGestureState, setFlickDirection]);
 
-  /**
-   * Pointer down handler
-   * Â§ 4.1: Activation Rule
-   * Â§ 4.2: Valid Touch Origin
-   */
+    removeWindowListeners();
+    activePointerIdRef.current = null;
+    setPointerPosition(null);
+    setGestureState(GestureState.IDLE);
+  }, [isMobile, removeWindowListeners, setGestureState, setPointerPosition]);
+
+  const processPointerMove = useCallback(
+    (clientX: number, clientY: number, pointerId: number) => {
+      if (!isMobile) return;
+      if (gestureState === GestureState.IDLE) return;
+      if (
+        activePointerIdRef.current !== null &&
+        pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
+
+      const currentPos = { x: clientX, y: clientY };
+
+      if (gestureState === GestureState.HOLD_PENDING) {
+        const dx = currentPos.x - startPosRef.current.x;
+        const dy = currentPos.y - startPosRef.current.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 5) {
+          window.getSelection?.()?.removeAllRanges?.();
+        }
+
+        if (distance > GESTURE_CONFIG.MOVEMENT_CANCEL_THRESHOLD) {
+          cancelGesture();
+          return;
+        }
+      }
+
+      if (
+        gestureState === GestureState.HOLD_ACTIVE ||
+        gestureState === GestureState.DRAGGING
+      ) {
+        setGestureState(GestureState.DRAGGING);
+        setPointerPosition(currentPos);
+      }
+    },
+    [
+      isMobile,
+      gestureState,
+      cancelGesture,
+      setGestureState,
+      setPointerPosition,
+    ]
+  );
+
+  const processPointerUp = useCallback(
+    (pointerId: number) => {
+      if (!isMobile) return;
+      if (
+        activePointerIdRef.current !== null &&
+        pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
+
+      activePointerIdRef.current = null;
+      removeWindowListeners();
+      setPointerPosition(null);
+
+      if (gestureState === GestureState.DRAGGING) {
+        setGestureState(GestureState.SNAPPING);
+      } else {
+        cancelGesture();
+      }
+    },
+    [
+      isMobile,
+      gestureState,
+      cancelGesture,
+      removeWindowListeners,
+      setGestureState,
+      setPointerPosition,
+    ]
+  );
+
+  const processPointerCancel = useCallback(
+    (pointerId: number) => {
+      if (
+        activePointerIdRef.current !== null &&
+        pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
+      cancelGesture();
+    },
+    [cancelGesture]
+  );
+
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (!isMobile) return; // Â§ 1.2: Mobile only guard
+      if (!isMobile) return;
 
-      // Validate touch origin (must be on tab trigger)
       const target = e.target as HTMLElement;
       const tabTrigger = target.closest('[data-tab-trigger]');
 
       if (!tabTrigger) {
-        return; // Invalid origin, ignore
+        return;
       }
 
       if (e.clientY > window.innerHeight - GESTURE_CONFIG.SAFE_ZONE_BOTTOM) {
-        return; // Ignore system swipe zone
+        return;
       }
 
-      // Edge case prevention - check for edge activation
       if (
         e.clientX < GESTURE_CONFIG.EDGE_DEAD_ZONE ||
         e.clientX > window.innerWidth - GESTURE_CONFIG.EDGE_DEAD_ZONE
       ) {
-        return; // Too close to edge, ignore
+        return;
       }
 
       e.preventDefault();
       e.stopPropagation();
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
 
-      // Record start position and time
+      activePointerIdRef.current = e.pointerId;
+      removeWindowListeners();
+      setPointerPosition(null);
+
+      windowMoveHandlerRef.current = (event: PointerEvent) => {
+        processPointerMove(event.clientX, event.clientY, event.pointerId);
+      };
+      windowUpHandlerRef.current = (event: PointerEvent) => {
+        processPointerUp(event.pointerId);
+      };
+      windowCancelHandlerRef.current = (event: PointerEvent) => {
+        processPointerCancel(event.pointerId);
+      };
+
+      window.addEventListener('pointermove', windowMoveHandlerRef.current);
+      window.addEventListener('pointerup', windowUpHandlerRef.current);
+      window.addEventListener('pointercancel', windowCancelHandlerRef.current);
+
       startPosRef.current = { x: e.clientX, y: e.clientY };
       startTimeRef.current = Date.now();
       setGestureState(GestureState.HOLD_PENDING);
 
-      // Start hold timer (250ms Â± 30ms window)
       holdTimerRef.current = window.setTimeout(() => {
         const elapsed = Date.now() - startTimeRef.current;
 
-        // Constitutional check: 220-280ms window
         if (
           elapsed >=
             GESTURE_CONFIG.HOLD_DURATION - GESTURE_CONFIG.HOLD_TOLERANCE &&
@@ -130,81 +218,42 @@ export function useGestureRecognition() {
         ) {
           triggerHaptic(HapticIntent.HOLD_RECOGNIZED);
           setGestureState(GestureState.HOLD_ACTIVE);
+          setPointerPosition(startPosRef.current);
         }
       }, GESTURE_CONFIG.HOLD_DURATION);
     },
-    [isMobile, setGestureState]
+    [
+      isMobile,
+      processPointerMove,
+      processPointerUp,
+      processPointerCancel,
+      removeWindowListeners,
+      setGestureState,
+      setPointerPosition,
+    ]
   );
 
-  /**
-   * Pointer move handler
-   * Â§ 7.1: Finger Authority - finger position is source of truth
-   */
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (!isMobile) return; // Â§ 1.2: Mobile only guard
-      if (gestureState === GestureState.IDLE) return;
-
-      const currentPos = { x: e.clientX, y: e.clientY };
-
-      // Check if moved too much during hold (cancel gesture)
-      if (gestureState === GestureState.HOLD_PENDING) {
-        const dx = currentPos.x - startPosRef.current.x;
-        const dy = currentPos.y - startPosRef.current.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance > 5) {
-          window.getSelection?.()?.removeAllRanges?.();
-        }
-
-if (distance > GESTURE_CONFIG.MOVEMENT_CANCEL_THRESHOLD) {
-          cancelGesture();
-          return;
-        }
-      }
-
-      // If hold is active, detect flick direction
-      if (gestureState === GestureState.HOLD_ACTIVE) {
-        const direction = detectFlickDirection(startPosRef.current, currentPos);
-
-        if (direction !== null) {
-          setFlickDirection(direction);
-          setGestureState(GestureState.FLICK_ACTIVE);
-          // Module scroller will appear now
-        }
-      }
+      processPointerMove(e.clientX, e.clientY, e.pointerId);
     },
-    [isMobile, gestureState, cancelGesture, setFlickDirection, setGestureState]
+    [processPointerMove]
   );
 
-  /**
-   * Pointer up handler
-   * Â§ 6.2: State Safety - navigation occurs only on release
-   */
-  const handlePointerUp = useCallback(() => {
-    if (!isMobile) return; // Â§ 1.2: Mobile only guard
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      processPointerUp(e.pointerId);
+    },
+    [processPointerUp]
+  );
 
-    if (gestureState === GestureState.FLICK_ACTIVE) {
-      // Navigation will be handled by ModuleScroller
-      // Just transition to snapping state
-      setGestureState(GestureState.SNAPPING);
-    } else {
-      cancelGesture();
-    }
-  }, [isMobile, gestureState, cancelGesture, setGestureState]);
+  const handlePointerCancel = useCallback(
+    (e: React.PointerEvent) => {
+      processPointerCancel(e.pointerId);
+    },
+    [processPointerCancel]
+  );
 
-  /**
-   * Pointer cancel handler
-   */
-  const handlePointerCancel = useCallback(() => {
-    if (!isMobile) return; // Â§ 1.2: Mobile only guard
-    cancelGesture();
-  }, [isMobile, cancelGesture]);
-
-  /**
-   * Monitor scroll velocity to cancel gesture if user is actively scrolling
-   * Â§ 10: Edge Case Prevention
-   */
   useEffect(() => {
     const handleScroll = () => {
       const now = Date.now();
@@ -213,10 +262,9 @@ if (distance > GESTURE_CONFIG.MOVEMENT_CANCEL_THRESHOLD) {
       if (lastScrollTimeRef.current > 0) {
         const timeDiff = now - lastScrollTimeRef.current;
         const scrollDiff = Math.abs(currentScrollY - lastScrollYRef.current);
-        const velocity = scrollDiff / timeDiff; // px/ms
+        const velocity = scrollDiff / timeDiff;
 
         if (velocity * 1000 > GESTURE_CONFIG.SCROLL_VELOCITY_CANCEL) {
-          // User is actively scrolling, cancel gesture
           cancelGesture();
         }
       }
@@ -232,16 +280,14 @@ if (distance > GESTURE_CONFIG.MOVEMENT_CANCEL_THRESHOLD) {
     };
   }, [cancelGesture]);
 
-  /**
-   * Cleanup on unmount
-   */
   useEffect(() => {
     return () => {
       if (holdTimerRef.current) {
         clearTimeout(holdTimerRef.current);
       }
+      removeWindowListeners();
     };
-  }, []);
+  }, [removeWindowListeners]);
 
   return {
     handlePointerDown,
@@ -250,13 +296,3 @@ if (distance > GESTURE_CONFIG.MOVEMENT_CANCEL_THRESHOLD) {
     handlePointerCancel,
   };
 }
-
-
-
-
-
-
-
-
-
-

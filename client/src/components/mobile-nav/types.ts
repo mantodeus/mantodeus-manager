@@ -2,36 +2,27 @@
  * Mobile Navigation Constitution - Types
  *
  * TypeScript interfaces and types for the mobile navigation system.
- * See: Mobile Navigation Constitution
  */
 
 import type { LucideIcon } from 'lucide-react';
 
 /**
- * Tab ID type (§ 2.1: Bottom Tab Bar)
- * Literal union ensures only valid tab IDs
+ * Tab ID type (Constitution: Bottom Tab Bar)
  */
 export type TabId = 'office' | 'field' | 'tools';
 
 /**
- * Gesture state machine (§ 14: Component Structure)
+ * Gesture state machine
  */
 export enum GestureState {
   IDLE = 'idle',
   HOLD_PENDING = 'hold_pending',
   HOLD_ACTIVE = 'hold_active',
-  FLICK_ACTIVE = 'flick_active',
+  DRAGGING = 'dragging',
   MOMENTUM = 'momentum',
   SNAPPING = 'snapping',
   DISABLED = 'disabled', // Desktop mode
 }
-
-/**
- * Flick direction (§ 5: Ergonomic Law)
- * Right flick = right scroller (thumb arc)
- * Left flick = left scroller (thumb arc)
- */
-export type FlickDirection = 'left' | 'right' | null;
 
 /**
  * Point coordinates
@@ -61,7 +52,7 @@ export interface Tab {
 }
 
 /**
- * Mobile navigation context (§ 14: Component Structure)
+ * Mobile navigation context
  */
 export interface MobileNavContextValue {
   activeTab: TabId;
@@ -71,8 +62,8 @@ export interface MobileNavContextValue {
   scrollerVisible: boolean;
   highlightedIndex: number | null;
   setHighlightedIndex: (index: number | null) => void;
-  flickDirection: FlickDirection;
-  setFlickDirection: (direction: FlickDirection) => void;
+  pointerPosition: Point | null;
+  setPointerPosition: (point: Point | null) => void;
 }
 
 /**
@@ -87,7 +78,7 @@ export interface GestureConfig {
 }
 
 /**
- * Device capabilities (§ 13.2: Performance Gating)
+ * Device capabilities
  */
 export interface DeviceCapabilities {
   hasBlur: boolean;

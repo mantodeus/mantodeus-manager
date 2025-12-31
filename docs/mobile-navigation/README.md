@@ -1,10 +1,10 @@
-# 🔒 Mobile Navigation System — Documentation
+﻿# ðŸ”’ Mobile Navigation System â€” Documentation
 
 This directory contains the complete documentation for the Mantodeus Manager mobile navigation system.
 
 ---
 
-## 📚 Documents
+## ðŸ“š Documents
 
 ### 1. [CONSTITUTION.md](./CONSTITUTION.md)
 **The legally-binding specification**
@@ -14,7 +14,7 @@ This document defines the non-negotiable laws governing mobile navigation. It su
 **Key Sections:**
 - Platform Sovereignty (Mobile only, Desktop unchanged)
 - Navigation Model (3-tab system, module ownership)
-- Primary Gesture (Hold + Flick)
+- Primary Gesture (Hold + Swipe Up)
 - Ergonomic Law (Thumb biomechanics)
 - Performance Budgets
 - Accessibility Requirements
@@ -50,12 +50,12 @@ Detailed technical breakdown of how to elevate the constitutional spec to Apple-
 ---
 
 ### 3. [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPING.md)
-**Constitution → Code translation**
+**Constitution â†’ Code translation**
 
 Maps every constitutional requirement to concrete implementation checkpoints with test criteria.
 
 **Key Sections:**
-- § 1-16 mapped to code examples
+- Â§ 1-16 mapped to code examples
 - TypeScript implementation snippets
 - Test criteria checklists
 - Quick reference for reviews
@@ -68,37 +68,37 @@ Maps every constitutional requirement to concrete implementation checkpoints wit
 
 ---
 
-## 🏗️ Implementation Architecture
+## ðŸ—ï¸ Implementation Architecture
 
 ### File Structure
 
 ```
 client/src/components/mobile-nav/
-├── index.ts                      # Central exports
-├── types.ts                      # TypeScript interfaces
-├── constants.ts                  # Constitutional values
-├── MobileNavProvider.tsx         # Context provider
-├── BottomTabBar.tsx              # 3-tab fixed navigation
-├── ModuleScroller.tsx            # Gesture-driven module list
-├── ScrollerOverlay.tsx           # Backdrop dimming
-├── useGestureRecognition.ts      # Hold + flick detection
-├── useDeviceCapabilities.ts      # Device capability detection
-├── useScrollPhysics.ts           # Momentum scrolling
-└── usePerformanceMonitor.ts      # Performance telemetry
+â”œâ”€â”€ index.ts                      # Central exports
+â”œâ”€â”€ types.ts                      # TypeScript interfaces
+â”œâ”€â”€ constants.ts                  # Constitutional values
+â”œâ”€â”€ MobileNavProvider.tsx         # Context provider
+â”œâ”€â”€ BottomTabBar.tsx              # 3-tab fixed navigation
+â”œâ”€â”€ ModuleScroller.tsx            # Gesture-driven module list
+â”œâ”€â”€ ScrollerOverlay.tsx           # Backdrop dimming
+â”œâ”€â”€ useGestureRecognition.ts      # Hold + swipe up detection
+â”œâ”€â”€ useDeviceCapabilities.ts      # Device capability detection
+â”œâ”€â”€ useScrollPhysics.ts           # Momentum scrolling
+â””â”€â”€ usePerformanceMonitor.ts      # Performance telemetry
 ```
 
 ---
 
-## 📊 Current Status
+## ðŸ“Š Current Status
 
-### ✅ Phase 1: Core (COMPLETE)
+### âœ… Phase 1: Core (COMPLETE)
 - Bottom tab bar (3 tabs: Office, Field, Tools)
-- Hold + flick gesture (250ms ± 30ms)
+- Hold + swipe up gesture (250ms Â± 30ms)
 - Module scroller with depth displacement
 - Instant navigation on release
 - Desktop unchanged (sidebar remains)
 
-### ✅ Phase 2: Premium Feel (COMPLETE)
+### âœ… Phase 2: Premium Feel (COMPLETE)
 - Device capability detection
 - Depth-of-field blur (device-gated)
 - Backdrop blur overlay (device-gated)
@@ -106,7 +106,7 @@ client/src/components/mobile-nav/
 - Performance observer
 - Theme integration (Green/Orchid Mantis)
 
-### ⏸️ Phase 3: Native-Ready Polish (PLANNED)
+### â¸ï¸ Phase 3: Native-Ready Polish (PLANNED)
 - WCAG 2.2 AA accessibility compliance
 - Deep linking (`/inspections?tab=field`)
 - State restoration (tab + scroll position)
@@ -115,24 +115,24 @@ client/src/components/mobile-nav/
 
 ---
 
-## 🧪 Testing
+## ðŸ§ª Testing
 
 ### Constitutional Compliance Checklist
 
 **Phase 1 Requirements:**
-- [ ] § 1.1: Desktop unchanged (sidebar works identically)
-- [ ] § 2.1: Exactly 3 tabs (Office, Field, Tools)
-- [ ] § 2.2: Field tab default on app open
-- [ ] § 4.1: Hold (250ms ± 30ms) activates scroller
-- [ ] § 4.2: Only tab icons trigger gesture
-- [ ] § 5.2: Up+Right → Right scroller
-- [ ] § 6.1: Only active tab modules shown
-- [ ] § 6.2: Navigation only on finger release
-- [ ] § 8: Depth displacement (28/14/0px)
-- [ ] § 9: Visual hierarchy (1.08 scale, opacity)
-- [ ] § 10.1: Context label in tab bar only
-- [ ] § 11: Performance budgets (<16ms, <150ms, <300ms)
-- [ ] § 14: All prohibitions honored
+- [ ] Â§ 1.1: Desktop unchanged (sidebar works identically)
+- [ ] Â§ 2.1: Exactly 3 tabs (Office, Field, Tools)
+- [ ] Â§ 2.2: Field tab default on app open
+- [ ] Â§ 4.1: Hold (250ms Â± 30ms) activates scroller
+- [ ] Â§ 4.2: Only tab icons trigger gesture
+- [ ] Â§ 5.2: Office left / Field center / Tools right (tab-based placement)
+- [ ] Â§ 6.1: Only active tab modules shown
+- [ ] Â§ 6.2: Navigation only on finger release
+- [ ] Â§ 8: Depth displacement (28/14/0px)
+- [ ] Â§ 9: Visual hierarchy (1.08 scale, opacity)
+- [ ] Â§ 10.1: Context label in tab bar only
+- [ ] Â§ 11: Performance budgets (<16ms, <150ms, <300ms)
+- [ ] Â§ 14: All prohibitions honored
 
 **Phase 2 Requirements:**
 - [ ] Device capability detection working
@@ -144,36 +144,38 @@ client/src/components/mobile-nav/
 ### Manual Testing Steps
 
 1. **Gesture Recognition**
-   ```
+   `
    - Quick tap (<220ms) → No scroller ✓
-   - Hold (250ms) + flick up+right → Right scroller ✓
+   - Hold (250ms) + swipe up on Office → Left scroller ✓
+   - Hold (250ms) + swipe up on Field → Center scroller ✓
+   - Hold (250ms) + swipe up on Tools → Right scroller ✓
    - Drag finger → Module highlights follow ✓
    - Release → Navigate to highlighted module ✓
-   ```
+   `
 
 2. **Edge Cases**
    ```
-   - Edge swipe (<16px from edge) → No activation ✓
-   - Movement during hold (>10px) → Gesture cancelled ✓
-   - Fast scrolling → Gesture cancelled ✓
+   - Edge swipe (<16px from edge) â†’ No activation âœ“
+   - Movement during hold (>10px) â†’ Gesture cancelled âœ“
+   - Fast scrolling â†’ Gesture cancelled âœ“
    ```
 
 3. **Device Capability**
    ```
-   - High-end device → Blur visible ✓
-   - Low-end device → No blur, offset works ✓
-   - prefers-reduced-transparency → No blur ✓
+   - High-end device â†’ Blur visible âœ“
+   - Low-end device â†’ No blur, offset works âœ“
+   - prefers-reduced-transparency â†’ No blur âœ“
    ```
 
 4. **Desktop Safety**
    ```
-   - Resize to ≥768px → Bottom bar hidden ✓
-   - Sidebar still works → No regressions ✓
+   - Resize to â‰¥768px â†’ Bottom bar hidden âœ“
+   - Sidebar still works â†’ No regressions âœ“
    ```
 
 ---
 
-## 🔧 Development Commands
+## ðŸ”§ Development Commands
 
 ### Build
 ```bash
@@ -195,7 +197,7 @@ Check implementation against [CONSTITUTIONAL-MAPPING.md](./CONSTITUTIONAL-MAPPIN
 
 ---
 
-## 📖 Key Principles
+## ðŸ“– Key Principles
 
 ### 1. Navigation is Trust
 Every gesture must feel **deliberate, readable, predictable, and calm**.
@@ -215,7 +217,7 @@ Changes to navigation require constitutional amendment with documented rationale
 
 ---
 
-## 🐛 Troubleshooting
+## ðŸ› Troubleshooting
 
 ### Error: React #310
 **Cause:** Hooks called conditionally
@@ -226,29 +228,29 @@ Changes to navigation require constitutional amendment with documented rationale
 1. Mobile breakpoint (<768px)?
 2. Hold duration reached (250ms)?
 3. Tab icon clicked (has `data-tab-trigger`)?
-4. Flick detected (upward + lateral movement)?
+4. Hold + swipe up detected?
 
 ### Blur Not Working
 **Check:**
 1. `FEATURES.PHASE_2_BLUR === true`?
-2. Device memory ≥4GB?
+2. Device memory â‰¥4GB?
 3. `prefers-reduced-transparency` not set?
 4. Browser supports `backdrop-filter`?
 
 ### Performance Issues
 **Check:**
 1. Console for performance warnings
-2. DevTools → Performance → Record gesture
+2. DevTools â†’ Performance â†’ Record gesture
 3. Dropped frames > 2 per gesture?
 4. Disable blur on low-end devices
 
 ---
 
-## 📝 Contributing
+## ðŸ“ Contributing
 
 ### Adding New Modules
 1. Update `MODULE_REGISTRY` in [constants.ts](../../client/src/components/mobile-nav/constants.ts)
-2. Ensure module belongs to exactly one tab (§ 3)
+2. Ensure module belongs to exactly one tab (Â§ 3)
 3. Add route to Wouter in [App.tsx](../../client/src/App.tsx)
 4. Test navigation to new module
 
@@ -260,7 +262,7 @@ Changes to navigation require constitutional amendment with documented rationale
 5. Update test criteria
 
 ### Modifying Performance Budgets
-Constitutional change required (§ 11.1)
+Constitutional change required (Â§ 11.1)
 
 **Current budgets:**
 - Gesture response: < 16ms
@@ -270,13 +272,13 @@ Constitutional change required (§ 11.1)
 
 ---
 
-## 🎯 Design Philosophy
+## ðŸŽ¯ Design Philosophy
 
 This navigation system is designed to feel like a **physical object**, not a digital interface.
 
 **Physical Metaphors:**
 - **Hold** = deliberate grip
-- **Flick** = physical gesture
+- **Swipe Up** = physical gesture
 - **Snap** = magnetic alignment
 - **Depth displacement** = hand shadow avoidance
 - **Blur** = depth-of-field (camera lens)
@@ -289,11 +291,11 @@ This navigation system is designed to feel like a **physical object**, not a dig
 
 ---
 
-## 📜 License & Governance
+## ðŸ“œ License & Governance
 
 This navigation system is governed by the [Mobile Navigation Constitution](./CONSTITUTION.md).
 
-All changes must comply with § 15 (Change Authority).
+All changes must comply with Â§ 15 (Change Authority).
 
 Silent drift is not allowed.
 
@@ -302,3 +304,6 @@ Silent drift is not allowed.
 **Last Updated:** 2024-12-31
 **Current Phase:** Phase 2 Complete
 **Next Milestone:** Phase 3 (Accessibility)
+
+
+

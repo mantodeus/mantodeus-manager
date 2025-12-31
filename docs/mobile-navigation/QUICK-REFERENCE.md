@@ -1,103 +1,103 @@
-# 📋 Mobile Navigation — Quick Reference
+﻿# ðŸ“‹ Mobile Navigation â€” Quick Reference
 
 **For rapid lookup during development and code review.**
 
 ---
 
-## ⚡ Constitutional Quick Facts
+## âš¡ Constitutional Quick Facts
 
 | Requirement | Value | Section |
 |-------------|-------|---------|
-| **Tabs** | Exactly 3: Office, Field, Tools | § 2.1 |
-| **Default tab** | Field (not configurable) | § 2.2 |
-| **Hold duration** | 250ms ± 30ms (220-280ms) | § 4.1 |
-| **Movement cancel** | 10px during hold | § 10 |
-| **Edge dead zone** | 16px from screen edges | § 14 |
-| **Scroll velocity cancel** | 150px/s | § 10 |
-| **Gesture response** | < 16ms | § 11.1 |
-| **Scroller render** | < 150ms | § 11.1 |
-| **Navigation total** | < 300ms | § 11.1 |
-| **Max dropped frames** | 2 per gesture | § 11.1 |
-| **Mobile breakpoint** | 768px | § 1.1 |
+| **Tabs** | Exactly 3: Office, Field, Tools | Â§ 2.1 |
+| **Default tab** | Field (not configurable) | Â§ 2.2 |
+| **Hold duration** | 250ms Â± 30ms (220-280ms) | Â§ 4.1 |
+| **Movement cancel** | 10px during hold | Â§ 10 |
+| **Edge dead zone** | 16px from screen edges | Â§ 14 |
+| **Scroll velocity cancel** | 150px/s | Â§ 10 |
+| **Gesture response** | < 16ms | Â§ 11.1 |
+| **Scroller render** | < 150ms | Â§ 11.1 |
+| **Navigation total** | < 300ms | Â§ 11.1 |
+| **Max dropped frames** | 2 per gesture | Â§ 11.1 |
+| **Mobile breakpoint** | 768px | Â§ 1.1 |
 
 ---
 
-## 🎨 Visual Hierarchy
+## ðŸŽ¨ Visual Hierarchy
 
 | Element | Scale | Opacity | Offset |
 |---------|-------|---------|--------|
 | **Active module** | 1.08 | 100% | 28px toward center |
-| **Neighbor (±1)** | 1.0 | 75% | 14px toward center |
-| **Distant (±2+)** | 1.0 | 35% | 0px |
-| **Background dim** | — | 10% | — |
+| **Neighbor (Â±1)** | 1.0 | 75% | 14px toward center |
+| **Distant (Â±2+)** | 1.0 | 35% | 0px |
+| **Background dim** | â€” | 10% | â€” |
 
 **Phase 2 Blur (device-gated):**
 - Active: 0px blur (crisp)
-- Neighbor (±1): 0.5px blur
-- Secondary (±2): 1px blur
-- Distant (±3+): 2px blur
+- Neighbor (Â±1): 0.5px blur
+- Secondary (Â±2): 1px blur
+- Distant (Â±3+): 2px blur
 
 ---
 
-## 🗂️ Module Registry
+## ðŸ—‚ï¸ Module Registry
 
 ### Office Tab
-1. Projects → `/projects`
-2. Invoices → `/invoices`
-3. Expenses → `/expenses`
-4. Reports → `/reports`
-5. Contacts → `/contacts`
-6. Notes → `/notes`
+1. Projects â†’ `/projects`
+2. Invoices â†’ `/invoices`
+3. Expenses â†’ `/expenses`
+4. Reports â†’ `/reports`
+5. Contacts â†’ `/contacts`
+6. Notes â†’ `/notes`
 
 ### Field Tab (Default)
-1. Inspections → `/inspections`
-2. Gallery → `/gallery`
-3. Notes → `/notes`
+1. Inspections â†’ `/inspections`
+2. Gallery â†’ `/gallery`
+3. Notes â†’ `/notes`
 
 ### Tools Tab
-1. Map → `/maps`
-2. Calendar → `/calendar`
-3. Contacts → `/contacts`
-4. Settings → `/settings` (always last)
+1. Map â†’ `/maps`
+2. Calendar â†’ `/calendar`
+3. Contacts â†’ `/contacts`
+4. Settings â†’ `/settings` (always last)
 
 ---
 
-## 🎯 Gesture State Machine
+## ðŸŽ¯ Gesture State Machine
 
 ```
 IDLE
-  ↓ (tap + hold 250ms on tab icon)
+  â†“ (tap + hold 250ms on tab icon)
 HOLD_PENDING
-  ↓ (moved >10px → cancel)
-  ↓ (250ms elapsed)
+  â†“ (moved >10px â†’ cancel)
+  â†“ (250ms elapsed)
 HOLD_ACTIVE
-  ↓ (vertical flick detected)
-FLICK_ACTIVE
-  ↓ (finger lifted)
+  â†“ (vertical swipe detected)
+DRAGGING
+  â†“ (finger lifted)
 SNAPPING
-  ↓ (navigate to module)
+  â†“ (navigate to module)
 IDLE
 ```
 
 ---
 
-## 🔧 Feature Flags
+## ðŸ”§ Feature Flags
 
 ```typescript
 // constants.ts
 export const FEATURES = {
   PHASE_1_CORE: true,          // Always on
-  PHASE_2_MOMENTUM: true,      // ✅ Enabled
-  PHASE_2_BLUR: true,          // ✅ Enabled (device-gated)
-  PHASE_2_SPRINGS: true,       // ✅ Enabled (device-gated)
-  PHASE_3_DEEP_LINKING: false, // ⏸️ Not implemented
-  PHASE_3_HAPTICS: false,      // ⏸️ Not implemented
+  PHASE_2_MOMENTUM: true,      // âœ… Enabled
+  PHASE_2_BLUR: true,          // âœ… Enabled (device-gated)
+  PHASE_2_SPRINGS: true,       // âœ… Enabled (device-gated)
+  PHASE_3_DEEP_LINKING: false, // â¸ï¸ Not implemented
+  PHASE_3_HAPTICS: false,      // â¸ï¸ Not implemented
 };
 ```
 
 ---
 
-## 🛡️ Device Capability Gates
+## ðŸ›¡ï¸ Device Capability Gates
 
 ```typescript
 // Low-end device detection
@@ -114,21 +114,21 @@ hasHaptics = 'vibrate' in navigator
 
 ---
 
-## 🚫 Absolute Prohibitions
+## ðŸš« Absolute Prohibitions
 
 | Prohibited | Reason | Section |
 |------------|--------|---------|
-| Accidental edge activation | Too close to iOS back gesture | § 14.1 |
-| Mid-flick routing | Navigation only on release | § 14.2 |
-| Decorative motion | Every animation serves function | § 14.3 |
-| Ripple/wave animations | Calm over flashy | § 14.4 |
-| Cross-tab scroller | Modules belong to one tab | § 14.5 |
-| Navigation without hold | Quick tap ≠ gesture | § 14.6 |
-| Desktop changes | Mobile-first by law | § 14.7 |
+| Accidental edge activation | Too close to iOS back gesture | Â§ 14.1 |
+| Mid-swipe routing | Navigation only on release | Â§ 14.2 |
+| Decorative motion | Every animation serves function | Â§ 14.3 |
+| Ripple/wave animations | Calm over flashy | Â§ 14.4 |
+| Cross-tab scroller | Modules belong to one tab | Â§ 14.5 |
+| Navigation without hold | Quick tap â‰  gesture | Â§ 14.6 |
+| Desktop changes | Mobile-first by law | Â§ 14.7 |
 
 ---
 
-## 📁 File Locations
+## ðŸ“ File Locations
 
 | File | Purpose |
 |------|---------|
@@ -138,35 +138,32 @@ hasHaptics = 'vibrate' in navigator
 | `BottomTabBar.tsx` | 3-tab fixed bar |
 | `ModuleScroller.tsx` | Gesture-driven list |
 | `ScrollerOverlay.tsx` | Backdrop dim |
-| `useGestureRecognition.ts` | Hold + flick logic |
+| `useGestureRecognition.ts` | Hold + swipe logic |
 | `useDeviceCapabilities.ts` | Device detection |
 | `useScrollPhysics.ts` | Momentum (Phase 2) |
 | `usePerformanceMonitor.ts` | Telemetry (Phase 2) |
 
 ---
 
-## 🧪 Test Checklist (1-Minute)
+## ðŸ§ª Test Checklist (1-Minute)
 
 ```bash
 # Phase 1
-[ ] Desktop (≥768px) → Bottom bar hidden
-[ ] Mobile (<768px) → Bottom bar visible
-[ ] Quick tap → No scroller
-[ ] Hold 250ms → Scroller appears
-[ ] Flick up+right → Right scroller
-[ ] Release → Navigate to module
-[ ] Edge swipe → No activation
+[ ] Desktop (â‰¥768px) â†’ Bottom bar hidden
+[ ] Mobile (<768px) â†’ Bottom bar visible
+[ ] Quick tap â†’ No scroller
+[ ] Hold 250ms -> Scroller appears\n[ ] Hold + swipe up on Office -> Left scroller\n[ ] Hold + swipe up on Field -> Center scroller\n[ ] Hold + swipe up on Tools -> Right scroller\n[ ] Release -> Navigate to module\n[ ] Edge swipe -> No activation â†’ No activation
 
 # Phase 2
-[ ] High-end device → Blur visible
-[ ] Low-end device → No blur
-[ ] Console → [Device Capabilities] logged
-[ ] Console → [Performance] metrics logged
+[ ] High-end device â†’ Blur visible
+[ ] Low-end device â†’ No blur
+[ ] Console â†’ [Device Capabilities] logged
+[ ] Console â†’ [Performance] metrics logged
 ```
 
 ---
 
-## 🐛 Common Issues
+## ðŸ› Common Issues
 
 ### Scroller Won't Appear
 1. Check mobile breakpoint (`window.innerWidth < 768`)
@@ -190,7 +187,7 @@ hasHaptics = 'vibrate' in navigator
 
 ---
 
-## 💡 Performance Tips
+## ðŸ’¡ Performance Tips
 
 **Optimize:**
 - Use `React.memo` on `ModuleItem`
@@ -204,7 +201,7 @@ hasHaptics = 'vibrate' in navigator
 
 ---
 
-## 📝 Code Snippets
+## ðŸ“ Code Snippets
 
 ### Add New Module
 ```typescript
@@ -244,7 +241,7 @@ markNavigationComplete(); // After navigation
 
 ---
 
-## 🎓 Key Concepts
+## ðŸŽ“ Key Concepts
 
 **Guarantees (Phase 1):**
 Work everywhere, never fail
@@ -256,7 +253,7 @@ Device-gated, degrade gracefully
 250ms hold prevents accidents
 
 **Ergonomic Mapping:**
-Thumb arcs → flick direction
+Thumb arcs â†’ swipe direction
 
 **Finger Authority:**
 UI follows finger, never leads
@@ -268,3 +265,5 @@ Navigation only on release
 
 **Last Updated:** 2024-12-31
 **Quick Lookup Version:** 1.0
+
+

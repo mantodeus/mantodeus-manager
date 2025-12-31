@@ -8,7 +8,7 @@
  * Â§ 9: VISUAL HIERARCHY
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useMobileNav } from './MobileNavProvider';
@@ -72,7 +72,6 @@ function ModuleItem({
   isNeighbor,
   offset,
   blur,
-  onPointerMove,
 }: {
   module: Module;
   index: number;
@@ -80,7 +79,6 @@ function ModuleItem({
   isNeighbor: boolean;
   offset: number;
   blur: number;
-  onPointerMove: (index: number) => void;
 }) {
   const Icon = module.icon;
 
@@ -95,6 +93,7 @@ function ModuleItem({
 
   return (
     <div
+      data-module-item
       className={cn(
         'flex items-center gap-3 px-6 py-4',
         'gesture-surface',
@@ -111,7 +110,6 @@ function ModuleItem({
         opacity,
         filter: blur > 0 ? `blur(${blur}px)` : undefined,
       }}
-      onPointerMove={() => onPointerMove(index)}
     >
       <Icon
         className={cn('h-5 w-5', isActive && 'text-primary')}
@@ -136,28 +134,51 @@ export function ModuleScroller() {
     scrollerVisible,
     highlightedIndex,
     setHighlightedIndex,
-    flickDirection,
     gestureState,
     setGestureState,
+    pointerPosition,
   } = useMobileNav();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const capabilities = useDeviceCapabilities(); // Phase 2: Device capability detection
 
   // Â§ 6.1: Scope - only show modules for active tab
   const modules = MODULE_REGISTRY[activeTab];
+  useEffect(() => {
+    if (
+      !scrollerVisible ||
+      !pointerPosition ||
+      !listRef.current ||
+      (gestureState !== GestureState.HOLD_ACTIVE &&
+        gestureState !== GestureState.DRAGGING)
+    ) {
+      return;
+    }
 
-  // Â§ 7.2: Motion Rules - finger pause â†’ snap to nearest
-  const handlePointerMove = useCallback(
-    (index: number) => {
-      if (gestureState === GestureState.FLICK_ACTIVE) {
-        // Â§ 7.1: Finger Authority - update highlight based on finger position
-        setHighlightedIndex(index);
-      }
-    },
-    [gestureState, setHighlightedIndex]
-  );
+    const listRect = listRef.current.getBoundingClientRect();
+    const firstItem = listRef.current.querySelector<HTMLElement>(
+      '[data-module-item]'
+    );
 
+    if (!firstItem) return;
+
+    const itemHeight = firstItem.getBoundingClientRect().height;
+    const relativeY = pointerPosition.y - listRect.top;
+    const rawIndex = Math.floor(relativeY / itemHeight);
+    const clampedIndex = Math.max(0, Math.min(modules.length - 1, rawIndex));
+
+    if (clampedIndex !== highlightedIndex) {
+      setHighlightedIndex(clampedIndex);
+    }
+  }, [
+    scrollerVisible,
+    pointerPosition,
+    gestureState,
+    modules.length,
+    highlightedIndex,
+    setHighlightedIndex,
+  ]);
   // Â§ 6.2: State Safety - navigation occurs only on release
   useEffect(() => {
     if (gestureState === GestureState.SNAPPING && highlightedIndex !== null) {
@@ -188,11 +209,12 @@ export function ModuleScroller() {
     }
   }, [scrollerVisible, highlightedIndex, setHighlightedIndex]);
 
-  if (!scrollerVisible || !flickDirection) {
+  if (!scrollerVisible) {
     return null;
   }
 
-  const scrollerSide = flickDirection;
+  const scrollerSide =
+    activeTab === 'office' ? 'left' : activeTab === 'tools' ? 'right' : 'center';
 
   return (
     <div
@@ -207,10 +229,12 @@ export function ModuleScroller() {
         'module-scroller',
         'gesture-surface',
         'animate-scroller-slide-in',
-        // Position based on flick direction (Â§ 5: Ergonomic Law)
+        // Position based on active tab (Ergonomic Law)
         scrollerSide === 'right'
           ? 'right-0 border-l'
-          : 'left-0 border-r',
+          : scrollerSide === 'left'
+            ? 'left-0 border-r'
+            : 'left-1/2 -translate-x-1/2 border-x',
         // Safe area support
         'pb-[calc(56px+env(safe-area-inset-bottom))]' // Account for bottom tab bar
       )}
@@ -218,7 +242,7 @@ export function ModuleScroller() {
       role="menu"
     >
       {/* Â§ 10.2: Prohibition - Tab labels must never appear inside scroller */}
-      <div className="py-4">
+      <div className="py-4" data-module-list ref={listRef}>
         {modules.map((module, index) => {
           const isActive = index === highlightedIndex;
           const isNeighbor =
@@ -237,7 +261,6 @@ export function ModuleScroller() {
               isNeighbor={isNeighbor}
               offset={offset}
               blur={blur}
-              onPointerMove={handlePointerMove}
             />
           );
         })}
@@ -245,6 +268,8 @@ export function ModuleScroller() {
     </div>
   );
 }
+
+
 
 
 

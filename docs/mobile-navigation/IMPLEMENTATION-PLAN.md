@@ -1,9 +1,9 @@
-# 🔒 MANTODEUS MANAGER — MOBILE NAVIGATION CONSTITUTION
+﻿# ðŸ”’ MANTODEUS MANAGER â€” MOBILE NAVIGATION CONSTITUTION
 ## Implementation Plan & Technical Analysis
 
 ---
 
-## 📜 CONSTITUTIONAL AUTHORITY
+## ðŸ“œ CONSTITUTIONAL AUTHORITY
 
 This implementation plan is bound by the **Mobile Navigation Constitution** (final revision).
 
@@ -13,7 +13,7 @@ The constitution defines:
 - **Phase authority** (what ships when, what can be deferred)
 - **Change authority** (who can modify navigation behavior)
 
-**Key Principle from §16:**
+**Key Principle from Â§16:**
 > "Navigation is not animation. Navigation is trust."
 
 All implementation decisions must serve **deliberate, readable, predictable, calm** interaction.
@@ -35,31 +35,31 @@ This plan provides:
 
 ---
 
-## 🎨 AESTHETIC & PREMIUM ENHANCEMENTS
+## ðŸŽ¨ AESTHETIC & PREMIUM ENHANCEMENTS
 
 ### 1. VISUAL REFINEMENT: DEPTH-BASED RIPPLE OFFSET
 
 **Current Spec:**
 ```
-Active module:     → 24–32px offset
-Immediate neighbors: → 12–16px offset
-Secondary neighbors: → 6–8px offset
+Active module:     â†’ 24â€“32px offset
+Immediate neighbors: â†’ 12â€“16px offset
+Secondary neighbors: â†’ 6â€“8px offset
 ```
 
 **Premium Enhancement:**
 ```css
 /* Use fluid scaling with clamp() for responsive offset */
 Active module:     clamp(24px, 4vw, 32px) + blur(0px)
-Immediate ±1:      clamp(12px, 2vw, 16px) + blur(0.5px)
-Secondary ±2:      clamp(6px, 1vw, 8px)  + blur(1px)
-Distant (±3+):     0px offset             + blur(2px) + opacity(0.25)
+Immediate Â±1:      clamp(12px, 2vw, 16px) + blur(0.5px)
+Secondary Â±2:      clamp(6px, 1vw, 8px)  + blur(1px)
+Distant (Â±3+):     0px offset             + blur(2px) + opacity(0.25)
 ```
 
 **Why:** Adds **depth-of-field blur** mimicking camera lens bokeh. Active item is crisp; distant items feel physically receded.
 
 ### 2. MICRO-ANIMATION LANGUAGE
 
-**Current Spec:** "Snap duration: 80–120 ms, Easing: ease-out only"
+**Current Spec:** "Snap duration: 80â€“120 ms, Easing: ease-out only"
 
 **Premium Enhancement:**
 ```typescript
@@ -105,8 +105,8 @@ enum HapticPattern {
   TAB_SWITCH = 5             // Subtle tap (tab change)
 }
 
-// Progressive intensity during flick
-function flickHaptics(velocity: number) {
+// Progressive intensity during swipe
+function swipeHaptics(velocity: number) {
   const intensity = Math.min(Math.floor(velocity / 20), 25);
   if (navigator.vibrate) {
     navigator.vibrate(intensity);
@@ -178,11 +178,11 @@ const backgroundDim = {
 }
 ```
 
-**Why:** The overshoot + settle creates **anticipation → satisfaction** psychological loop. Tabular numerals prevent layout shift.
+**Why:** The overshoot + settle creates **anticipation â†’ satisfaction** psychological loop. Tabular numerals prevent layout shift.
 
 ---
 
-## ⚡ PERFORMANCE REFINEMENT
+## âš¡ PERFORMANCE REFINEMENT
 
 ### 6. PERFORMANCE BUDGET (Beyond 60fps)
 
@@ -195,7 +195,7 @@ const PERF_BUDGET = {
   gestureResponseTime: 16,      // < 1 frame delay (60fps)
   snapDuration: 100,             // Snap animation budget
   navigationTransition: 150,     // Module switch budget
-  totalInteractionTime: 300,     // Tap → new screen
+  totalInteractionTime: 300,     // Tap â†’ new screen
   maxJankFrames: 2               // Tolerate max 2 dropped frames
 };
 
@@ -239,7 +239,7 @@ const ModuleItem = React.memo(({ data, index, style }) => {
 
 ---
 
-## ♿ ACCESSIBILITY & PRODUCTION-READINESS
+## â™¿ ACCESSIBILITY & PRODUCTION-READINESS
 
 ### 8. ACCESSIBILITY COMPLIANCE
 
@@ -311,11 +311,11 @@ const useNavigationState = () => {
 
 ---
 
-## 🎯 GESTURE REFINEMENT
+## ðŸŽ¯ GESTURE REFINEMENT
 
 ### 10. EDGE CASE: ACCIDENTAL ACTIVATION PREVENTION
 
-**Current Spec:** "220–280 ms hold duration, no edge activation"
+**Current Spec:** "220â€“280 ms hold duration, no edge activation"
 
 **Premium Enhancement:**
 ```typescript
@@ -348,7 +348,7 @@ window.addEventListener('scroll', () => {
 
 ### 11. FLICK MOMENTUM PHYSICS
 
-**Current Spec:** "Fast flick → momentum scrolling"
+**Current Spec:** "Fast swipe â†’ momentum scrolling"
 
 **Premium Specification:**
 ```typescript
@@ -394,7 +394,7 @@ const velocityTracker = {
 
 ---
 
-## 📐 VISUAL SPECIFICATION REFINEMENTS
+## ðŸ“ VISUAL SPECIFICATION REFINEMENTS
 
 ### 12. BOTTOM TAB BAR ELEVATION
 
@@ -428,7 +428,7 @@ const velocityTracker = {
 
 ### 13. MODULE SCROLLER CONTAINER
 
-**Current Spec:** "App background dims 8–12%"
+**Current Spec:** "App background dims 8â€“12%"
 
 **Premium Enhancement:**
 ```css
@@ -465,7 +465,7 @@ const velocityTracker = {
 
 ---
 
-## 🛠️ IMPLEMENTATION ARCHITECTURE
+## ðŸ› ï¸ IMPLEMENTATION ARCHITECTURE
 
 ### 14. COMPONENT STRUCTURE (For Your Stack)
 
@@ -477,7 +477,7 @@ enum GestureState {
   IDLE = 'idle',
   HOLD_PENDING = 'hold_pending',
   HOLD_ACTIVE = 'hold_active',
-  FLICK_ACTIVE = 'flick_active',
+  DRAGGING = 'dragging',
   MOMENTUM = 'momentum',
   SNAPPING = 'snapping'
 }
@@ -506,7 +506,7 @@ components/
     BottomTabBar.tsx          # 3-tab fixed bar
     ModuleScroller.tsx        # Gesture-driven list
     ScrollerOverlay.tsx       # Backdrop + dim
-    useGestureRecognition.ts  # Hook for hold+flick
+    useGestureRecognition.ts  # Hook for hold+swipe up
     useScrollPhysics.ts       # Hook for momentum
     constants.ts              # All magic numbers
     types.ts                  # TypeScript interfaces
@@ -547,34 +547,34 @@ export function useGestureRecognition(config: GestureConfig) {
 
 ---
 
-## 🎭 NAMING & COPY REFINEMENT
+## ðŸŽ­ NAMING & COPY REFINEMENT
 
 ### 16. TERMINOLOGY POLISH
 
 **Current Spec Uses:**
-- "Module scroller" ✅ Good (clear, technical)
-- "Flick-through" ✅ Good (action-oriented)
-- "Depth-based ripple offset" ❌ Confusing (what's rippling?)
+- "Module scroller" âœ… Good (clear, technical)
+- "Swipe-through" âœ… Good (action-oriented)
+- "Depth-based ripple offset" âŒ Confusing (what's rippling?)
 
 **Premium Alternatives:**
-- "Depth-based ripple offset" → **"Parallax offset"** or **"Depth displacement"**
-- "Context anchoring" → **"Tab label reveal"** (more descriptive)
-- "Finger occlusion prevention" → **"Readability offset"** (benefit-focused)
+- "Depth-based ripple offset" â†’ **"Parallax offset"** or **"Depth displacement"**
+- "Context anchoring" â†’ **"Tab label reveal"** (more descriptive)
+- "Finger occlusion prevention" â†’ **"Readability offset"** (benefit-focused)
 
 **User-Facing Copy (if needed):**
-- Tutorial tooltip: "**Hold any tab, then flick up** to quickly jump between modules"
+- Tutorial tooltip: "**Hold any tab, then swipe up** to quickly jump between modules"
 - Accessibility label: "Quick navigation scroller for {tab name}"
 
 ---
 
-## 📊 QUALITY GATES
+## ðŸ“Š QUALITY GATES
 
 ### 17. PRE-LAUNCH CHECKLIST
 
 ```markdown
 ## Visual Quality
 - [ ] All animations run at 60fps on iPhone SE (2020) - slowest target device
-- [ ] Theme transitions are smooth (Green ↔ Orchid Mantis)
+- [ ] Theme transitions are smooth (Green â†” Orchid Mantis)
 - [ ] No layout shift during gesture activation
 - [ ] Backdrop blur works on Safari iOS (test -webkit prefix)
 
@@ -605,7 +605,7 @@ export function useGestureRecognition(config: GestureConfig) {
 
 ---
 
-## 🎨 FINAL AESTHETIC TOUCHES
+## ðŸŽ¨ FINAL AESTHETIC TOUCHES
 
 ### 18. EASTER EGG / DELIGHT MOMENTS
 
@@ -617,8 +617,8 @@ if (isFirstTimeUser && gestureSuccessful) {
   triggerConfetti({ origin: { x: tabX, y: tabY } });
 }
 
-// Subtle particle trail during fast flicks
-if (flickVelocity > 500) {
+// Subtle particle trail during fast swipes
+if (swipeVelocity > 500) {
   createParticleTrail(fingerPosition, accentColor);
 }
 
@@ -640,25 +640,25 @@ function onTabPress(tabElement: HTMLElement) {
 
 ---
 
-## 📝 REVISED MASTER PROMPT (CONDENSED)
+## ðŸ“ REVISED MASTER PROMPT (CONDENSED)
 
 Here's your spec distilled to **critical execution points** (1 page):
 
 ```markdown
-# MOBILE NAV SYSTEM — EXECUTION BRIEF
+# MOBILE NAV SYSTEM â€” EXECUTION BRIEF
 
 ## CORE GESTURE
-Tap + hold (250ms) bottom tab → Vertical flick → Module scroller
+Tap + hold (250ms) bottom tab â†’ Vertical swipe up â†’ Module scroller
 
 ## VISUAL HIERARCHY
 - Active module: scale(1.08), 100% opacity, accent glow, 28px offset
-- Neighbors (±1): 80% opacity, 14px offset, 0.5px blur
-- Distant (±2+): 35% opacity, 0px offset, 2px blur
+- Neighbors (Â±1): 80% opacity, 14px offset, 0.5px blur
+- Distant (Â±2+): 35% opacity, 0px offset, 2px blur
 
 ## PHYSICS
 - Snap: Spring(tension: 300, friction: 30, mass: 0.8)
-- Momentum: velocity × 0.95 per frame, snap when < 0.5px/frame
-- Ergonomic: Right flick = right scroller (thumb arc)
+- Momentum: velocity Ã— 0.95 per frame, snap when < 0.5px/frame
+- Ergonomic: Placement: Office left / Field center / Tools right (swipe direction ignored)
 
 ## THEME INTEGRATION
 - Green Mantis: #0CF57E glow, rgba(12,245,126,0.15) gradient
@@ -686,9 +686,9 @@ Unchanged. Sidebar remains authoritative.
 
 ---
 
-## 🚀 EXECUTION PRIORITY (REVISED - CRITICAL)
+## ðŸš€ EXECUTION PRIORITY (REVISED - CRITICAL)
 
-### ⚠️ SAFETY CONSTRAINTS
+### âš ï¸ SAFETY CONSTRAINTS
 
 **1. Performance Gating for Low-End Devices**
 ```typescript
@@ -761,24 +761,24 @@ const DEV_FEATURES = {
 
 ---
 
-### ✅ PHASE 1: CORE (SHIP THIS FIRST)
+### âœ… PHASE 1: CORE (SHIP THIS FIRST)
 
 **Goal:** Prove the gesture works. Ship something excellent but minimal.
 
 **Scope:**
-1. ✅ Bottom tab bar (fixed, 3 tabs, always visible)
-2. ✅ Hold gesture (250ms, with movement/edge cancellation)
-3. ✅ Vertical flick → basic scroller (no momentum, just direct scroll)
-4. ✅ **Offset only** (no blur, no spring physics)
-5. ✅ Instant snap to nearest on finger pause
-6. ✅ Instant navigation on release
-7. ✅ Desktop guard (hide on ≥768px, sidebar unchanged)
-8. ✅ Basic theme integration (accent colors only)
+1. âœ… Bottom tab bar (fixed, 3 tabs, always visible)
+2. âœ… Hold gesture (250ms, with movement/edge cancellation)
+3. âœ… Vertical swipe up â†’ basic scroller (no momentum, just direct scroll)
+4. âœ… **Offset only** (no blur, no spring physics)
+5. âœ… Instant snap to nearest on finger pause
+6. âœ… Instant navigation on release
+7. âœ… Desktop guard (hide on â‰¥768px, sidebar unchanged)
+8. âœ… Basic theme integration (accent colors only)
 
 **Visual Hierarchy (Simplified):**
 - Active: `scale(1.08)`, `opacity: 100%`, `offset: 28px`, accent border
-- Neighbors ±1: `opacity: 75%`, `offset: 14px`
-- Distant ±2+: `opacity: 35%`, `offset: 0px`
+- Neighbors Â±1: `opacity: 75%`, `offset: 14px`
+- Distant Â±2+: `opacity: 35%`, `offset: 0px`
 
 **Animations (CSS only):**
 ```css
@@ -802,17 +802,17 @@ const DEV_FEATURES = {
 
 ---
 
-### ✅ PHASE 2: PREMIUM FEEL
+### âœ… PHASE 2: PREMIUM FEEL
 
 **Goal:** Make it *wow* without breaking low-end devices.
 
 **Scope:**
-1. ✅ Momentum scrolling physics
-2. ✅ Smart snap easing (spring on capable devices, ease-out fallback)
-3. ✅ Refined parallax offsets (add depth-of-field blur **with capability gate**)
-4. ✅ Context label reveal animation
-5. ✅ Performance observer (track gesture lag in production)
-6. ✅ Theme integration (gradients, glows, backdrop with gate)
+1. âœ… Momentum scrolling physics
+2. âœ… Smart snap easing (spring on capable devices, ease-out fallback)
+3. âœ… Refined parallax offsets (add depth-of-field blur **with capability gate**)
+4. âœ… Context label reveal animation
+5. âœ… Performance observer (track gesture lag in production)
+6. âœ… Theme integration (gradients, glows, backdrop with gate)
 
 **Device-Gated Enhancements:**
 ```typescript
@@ -842,18 +842,18 @@ const snapAnimation = deviceCapabilities.hasSpringPhysics
 
 ---
 
-### ✅ PHASE 3: NATIVE-READY POLISH
+### âœ… PHASE 3: NATIVE-READY POLISH
 
 **Goal:** Production hardening + future-proofing for native app.
 
 **Scope:**
-1. ✅ Haptic semantic implementation (web: logging only, native: platform hooks)
-2. ✅ Accessibility final pass (WCAG 2.2 AA compliance)
-3. ✅ Deep linking (`/inspections?tab=field`)
-4. ✅ State restoration (tab + scroll position on back navigation)
-5. ✅ Foldable device adaptation (Surface Duo, Galaxy Fold)
-6. ✅ Landscape orientation refinement
-7. ✅ Edge case hardening (rapid gesture spam, orientation change mid-gesture)
+1. âœ… Haptic semantic implementation (web: logging only, native: platform hooks)
+2. âœ… Accessibility final pass (WCAG 2.2 AA compliance)
+3. âœ… Deep linking (`/inspections?tab=field`)
+4. âœ… State restoration (tab + scroll position on back navigation)
+5. âœ… Foldable device adaptation (Surface Duo, Galaxy Fold)
+6. âœ… Landscape orientation refinement
+7. âœ… Edge case hardening (rapid gesture spam, orientation change mid-gesture)
 
 **Accessibility Checklist:**
 - [ ] Keyboard navigation (Tab, Arrow, Enter, Esc)
@@ -870,7 +870,7 @@ const snapAnimation = deviceCapabilities.hasSpringPhysics
 
 ---
 
-### 🎯 CRITICAL SUCCESS METRICS (By Phase)
+### ðŸŽ¯ CRITICAL SUCCESS METRICS (By Phase)
 
 **Phase 1 Success:**
 - Zero accidental activations in user testing
@@ -889,16 +889,16 @@ const snapAnimation = deviceCapabilities.hasSpringPhysics
 
 ---
 
-## 💎 FINAL SYNTHESIS
+## ðŸ’Ž FINAL SYNTHESIS
 
 ### What You Got Right (The Hard Part)
 
 Your original specification is a **navigation constitution**, not just a design spec:
 
-✅ **Deterministic gesture rules** — No ambiguity in "what triggers what"
-✅ **Deterministic visual hierarchy** — Clear scale/opacity/offset math
-✅ **Deterministic performance targets** — 60fps, instant navigation
-✅ **Deterministic fallbacks** — Desktop unchanged, mobile-first by law
+âœ… **Deterministic gesture rules** â€” No ambiguity in "what triggers what"
+âœ… **Deterministic visual hierarchy** â€” Clear scale/opacity/offset math
+âœ… **Deterministic performance targets** â€” 60fps, instant navigation
+âœ… **Deterministic fallbacks** â€” Desktop unchanged, mobile-first by law
 
 This means future contributors cannot "vibe" their way into breaking it. **That's huge.**
 
@@ -907,10 +907,10 @@ This means future contributors cannot "vibe" their way into breaking it. **That'
 ### What This Analysis Added
 
 **Strategic Tightening:**
-1. **Device capability gating** — Blur/springs are additive, not essential
-2. **Haptic semantic contract** — Document intent, don't ship vibration yet
-3. **Easter egg quarantine** — Premium = calm, not playful
-4. **Phased rollout** — Ship core excellence first, add wow second
+1. **Device capability gating** â€” Blur/springs are additive, not essential
+2. **Haptic semantic contract** â€” Document intent, don't ship vibration yet
+3. **Easter egg quarantine** â€” Premium = calm, not playful
+4. **Phased rollout** â€” Ship core excellence first, add wow second
 
 **Technical Depth:**
 - Spring physics with graceful CSS fallback
@@ -941,7 +941,7 @@ It's about **obsessive refinement** of core interactions:
 
 **Phase 2** (Premium Feel):
 - Controlled risk (device-gated)
-- "Good" → "Apple-grade" leap
+- "Good" â†’ "Apple-grade" leap
 - Performance monitored in production
 
 **Phase 3** (Native-Ready):
@@ -977,24 +977,24 @@ client/src/components/mobile-nav/
   BottomTabBar.tsx          # 3-tab foundation
   ModuleScroller.tsx        # Gesture-driven list
   ScrollerOverlay.tsx       # Backdrop + dim
-  useGestureRecognition.ts  # Hold + flick hook
+  useGestureRecognition.ts  # Hold + swipe up hook
   useScrollPhysics.ts       # Momentum + snap
   constants.ts              # All timing/offset values
   types.ts                  # TypeScript interfaces
 ```
 
 **Modified Components:**
-- [client/src/components/DashboardLayout.tsx](client/src/components/DashboardLayout.tsx) — Integrate mobile nav provider
-- [client/src/App.tsx](client/src/App.tsx) — Route integration
-- [client/src/hooks/useMobile.tsx](client/src/hooks/useMobile.tsx) — Already perfect, no changes
+- [client/src/components/DashboardLayout.tsx](client/src/components/DashboardLayout.tsx) â€” Integrate mobile nav provider
+- [client/src/App.tsx](client/src/App.tsx) â€” Route integration
+- [client/src/hooks/useMobile.tsx](client/src/hooks/useMobile.tsx) â€” Already perfect, no changes
 
 **Theme Integration:**
-- [client/src/lib/theme.ts](client/src/lib/theme.ts) — Add nav-specific tokens
-- [client/src/index.css](client/src/index.css) — Animation keyframes
+- [client/src/lib/theme.ts](client/src/lib/theme.ts) â€” Add nav-specific tokens
+- [client/src/index.css](client/src/index.css) â€” Animation keyframes
 
 **No Changes Required:**
-- Desktop sidebar ([client/src/components/ui/sidebar.tsx](client/src/components/ui/sidebar.tsx)) — Protected by mobile guard
-- Existing routing (Wouter) — Deep linking is additive
+- Desktop sidebar ([client/src/components/ui/sidebar.tsx](client/src/components/ui/sidebar.tsx)) â€” Protected by mobile guard
+- Existing routing (Wouter) â€” Deep linking is additive
 
 ---
 
@@ -1007,7 +1007,7 @@ client/src/components/mobile-nav/
 
 **User Testing (Phase 2):**
 - "This feels like an iPhone" (even on Android)
-- Visible delight in gesture flick
+- Visible delight in gesture swipe
 - Users immediately teach it to others
 
 **Production Metrics (Phase 3):**
@@ -1021,7 +1021,7 @@ client/src/components/mobile-nav/
 
 **Ship Phase 1 within 2 weeks.**
 
-Not because it's minimal — because it's **complete**.
+Not because it's minimal â€” because it's **complete**.
 
 It proves:
 - The gesture works
@@ -1038,3 +1038,6 @@ Everything after that is **refinement**, not validation.
 From here on, execution is just discipline.
 
 Ready to build?
+
+
+
