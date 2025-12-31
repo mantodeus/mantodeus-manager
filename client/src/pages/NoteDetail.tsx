@@ -496,8 +496,10 @@ export default function NoteDetail() {
   const files = note.files || [];
 
   return (
-    <div className="w-full max-w-none space-y-6 pb-24">
+    <div className="w-full max-w-none space-y-6 pb-24 md:pb-24" style={{ paddingBottom: 'calc(var(--bottom-safe-area, 0px) + 6rem)' }}>
       <PageHeader />
+      
+      {/* Title Section */}
       <div className="flex items-center gap-4">
         <Link href="/notes">
           <Button variant="ghost" size="icon">
@@ -544,10 +546,41 @@ export default function NoteDetail() {
             )}
           </div>
         </div>
-        {isEditMode && (
-          <Button variant="ghost" onClick={handleCancel} size="sm">
-            <X className="h-4 w-4 mr-2" />
-            Cancel
+      </div>
+
+      {/* Top-of-Page Action Row */}
+      <div className="flex items-center justify-end gap-2 pb-2 border-b">
+        {isEditMode ? (
+          <>
+            <Button variant="outline" onClick={handleCancel} size="sm">
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={updateMutation.isPending}
+              size="sm"
+            >
+              {updateMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </>
+              )}
+            </Button>
+          </>
+        ) : (
+          <Button
+            onClick={() => setIsEditMode(true)}
+            size="sm"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
           </Button>
         )}
       </div>
@@ -649,7 +682,7 @@ export default function NoteDetail() {
 
       {/* Bottom Action Bar (Edit Mode Only) */}
       {isEditMode && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 flex items-center justify-center gap-4 md:justify-end md:pr-8 z-40">
+        <div className="fixed left-0 right-0 bg-background border-t p-4 flex items-center justify-center gap-4 md:justify-end md:pr-8 z-40 md:bottom-0" style={{ bottom: 'var(--bottom-safe-area, 0px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}>
           <input
             ref={fileInputRef}
             type="file"
@@ -705,32 +738,6 @@ export default function NoteDetail() {
           </Select>
         </div>
       )}
-
-      {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        {isEditMode ? (
-          <Button
-            onClick={handleSave}
-            disabled={updateMutation.isPending}
-            size="lg"
-            className="rounded-full shadow-lg h-14 w-14"
-          >
-            {updateMutation.isPending ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Save className="h-5 w-5" />
-            )}
-          </Button>
-        ) : (
-          <Button
-            onClick={() => setIsEditMode(true)}
-            size="lg"
-            className="rounded-full shadow-lg h-14 w-14"
-          >
-            <Edit className="h-5 w-5" />
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

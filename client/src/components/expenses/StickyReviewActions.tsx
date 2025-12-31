@@ -28,7 +28,7 @@ export function StickyReviewActions({
 }: StickyReviewActionsProps) {
   // Only show on mobile (hidden on desktop)
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t shadow-lg p-4 safe-area-inset-bottom">
+    <div className="md:hidden fixed left-0 right-0 z-50 bg-background border-t shadow-lg p-4" style={{ bottom: 'var(--bottom-safe-area, 0px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}>
       <div className="flex gap-2">
         {proposedCount >= 2 && (
           <Button

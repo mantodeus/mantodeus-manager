@@ -133,15 +133,19 @@ export default function InspectionsOverview() {
             ← Back to Projects
           </Button>
         }
-        primaryAction={
+      />
+
+      {/* Top-of-Page Action Row */}
+      {selectedProjectId && (
+        <div className="flex items-center justify-end gap-2 pb-2 border-b">
           <Link href={`/projects/${selectedProjectId}/inspections`}>
-            <Button size="lg" className="h-12 px-6">
-              <Plus className="h-5 w-5 mr-2" />
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
               New Abseil / Section
             </Button>
           </Link>
-        }
-      />
+        </div>
+      )}
 
       {/* Inspections List */}
       {allInspections.length === 0 && allUnits.length === 0 ? (

@@ -288,9 +288,19 @@
     height: calc(56px + env(safe-area-inset-bottom) + 12px);
     padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
   }
+  
+  /* Global bottom safe area for content (bottom tab bar + safe area) */
+  /* On desktop (md and up), bottom tab bar is hidden, so safe area is 0 */
+  :root {
+    --bottom-safe-area: 0px;
+  }
+  
   @media (max-width: 767px) {
+    :root {
+      --bottom-safe-area: calc(56px + env(safe-area-inset-bottom) + 12px);
+    }
     .app-content {
-      padding-bottom: calc(56px + env(safe-area-inset-bottom) + 12px);
+      padding-bottom: var(--bottom-safe-area);
     }
   }
 

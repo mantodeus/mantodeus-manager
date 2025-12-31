@@ -279,13 +279,15 @@ export default function Projects() {
       <PageHeader
         title="Projects"
         subtitle="Manage your client projects and work"
-        primaryAction={
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Project
-          </Button>
-        }
       />
+
+      {/* Top-of-Page Action Row */}
+      <div className="flex items-center justify-end gap-2 pb-2 border-b">
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Project
+        </Button>
+      </div>
 
       {/* Active Projects Grid */}
       <div className="space-y-4">
