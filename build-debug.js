@@ -373,7 +373,9 @@ if (!viteEnv.VITE_SUPABASE_URL || !viteEnv.VITE_SUPABASE_ANON_KEY) {
 
 // Build Vite command with explicit env vars and increased memory limit
 // Increase Node.js heap size to prevent OOM errors during Vite build
-const viteCmd = 'npx vite build';
+// Use node directly with vite binary to ensure NODE_OPTIONS is properly applied
+const viteBinPath = join(__dirname, 'node_modules', '.bin', 'vite');
+const viteBinExists = existsSync(viteBinPath);
 
 const defaultMaxOldSpace = 4096;
 let nodeOptions = process.env.NODE_OPTIONS || '';
@@ -386,12 +388,27 @@ if (!hasMaxOldSpace) {
   nodeOptions = `${nodeOptions} --max-old-space-size=${maxOldSpace}`.trim();
 }
 
+// Extract the max-old-space-size value for direct node command
+const maxOldSpaceMatch = nodeOptions.match(/--max-old-space-size=(\d+)/);
+const maxOldSpaceValue = maxOldSpaceMatch ? maxOldSpaceMatch[1] : defaultMaxOldSpace.toString();
+
+// Use node directly with vite binary if available, otherwise fall back to npx
+// This ensures NODE_OPTIONS is properly applied to the vite process
+// Direct node execution is more reliable than npx for memory settings
+const viteCmd = viteBinExists 
+  ? `node --max-old-space-size=${maxOldSpaceValue} "${viteBinPath}" build`
+  : `NODE_OPTIONS="${nodeOptions}" npx vite build`;
+
 const viteEnvWithMemory = {
   ...viteEnv,
   NODE_OPTIONS: nodeOptions,
 };
 
-console.log(`\nÐY"? Using NODE_OPTIONS for Vite: ${viteEnvWithMemory.NODE_OPTIONS || '(none)'}`);
+console.log(`\n🔧 Using NODE_OPTIONS for Vite: ${nodeOptions || '(none)'}`);
+console.log(`🔧 Vite command: ${viteCmd}`);
+if (viteBinExists) {
+  console.log(`🔧 Using direct node execution with ${maxOldSpaceValue}MB memory limit`);
+}
 
 const viteSuccess = runCommand(viteCmd, 'Frontend build (Vite)', viteEnvWithMemory);
 
