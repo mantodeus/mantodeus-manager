@@ -28,6 +28,12 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import {
+  MobileNavProvider,
+  BottomTabBar,
+  ModuleScroller,
+  ScrollerOverlay,
+} from "./mobile-nav";
 
 const menuItems = [
   { icon: FolderOpen, label: "Projects", path: "/projects" },
@@ -69,17 +75,19 @@ export default function DashboardLayout({
   }
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": `${sidebarWidth}px`,
-        } as CSSProperties
-      }
-    >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
-        {children}
-      </DashboardLayoutContent>
-    </SidebarProvider>
+    <MobileNavProvider>
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": `${sidebarWidth}px`,
+          } as CSSProperties
+        }
+      >
+        <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
+          {children}
+        </DashboardLayoutContent>
+      </SidebarProvider>
+    </MobileNavProvider>
   );
 }
 
@@ -272,8 +280,19 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 min-w-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">{children}</main>
+        <main className="flex-1 min-w-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-4">
+          {children}
+        </main>
       </SidebarInset>
+
+      {/* § 1.1: Mobile Navigation (Mobile only, Desktop unchanged) */}
+      {isMobile && (
+        <>
+          <ScrollerOverlay />
+          <ModuleScroller />
+          <BottomTabBar />
+        </>
+      )}
 
       <DataExportImportDialog
         open={dataDialogOpen}
