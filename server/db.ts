@@ -2026,7 +2026,7 @@ export async function getNotesByUser(userId: number) {
   if (!db) return [];
   
   try {
-    return await safeNoteQuery(async () => {
+    const results = await safeNoteQuery(async () => {
       return db
         .select()
         .from(notes)
@@ -2037,9 +2037,14 @@ export async function getNotesByUser(userId: number) {
         ))
         .orderBy(desc(notes.updatedAt));
     });
+    const fileCounts = await getNoteFileCountsByNoteIds(results.map((note) => note.id));
+    return results.map((note) => ({
+      ...note,
+      fileCount: fileCounts.get(note.id) ?? 0,
+    }));
   } catch (error: any) {
     if (error?.message === "RETRY_WITH_EXPLICIT_COLUMNS") {
-      return db
+      const results = await db
         .select(selectNoteColumns)
         .from(notes)
         .where(and(
@@ -2048,6 +2053,11 @@ export async function getNotesByUser(userId: number) {
           isNull(notes.trashedAt)
         ))
         .orderBy(desc(notes.updatedAt));
+      const fileCounts = await getNoteFileCountsByNoteIds(results.map((note) => note.id));
+      return results.map((note) => ({
+        ...note,
+        fileCount: fileCounts.get(note.id) ?? 0,
+      }));
     }
     throw error;
   }
@@ -2327,6 +2337,38 @@ export async function getNoteFilesByNoteId(noteId: number) {
     }
     throw error;
   }
+}
+
+export async function getNoteFileCountsByNoteIds(
+  noteIds: number[]
+): Promise<Map<number, number>> {
+  const counts = new Map<number, number>();
+  if (noteIds.length === 0) return counts;
+
+  const db = await getDb();
+  if (!db) return counts;
+
+  try {
+    const rows = await db
+      .select({
+        noteId: noteFiles.noteId,
+        count: sql<number>`count(*)`,
+      })
+      .from(noteFiles)
+      .where(inArray(noteFiles.noteId, noteIds))
+      .groupBy(noteFiles.noteId);
+
+    rows.forEach((row) => {
+      counts.set(Number(row.noteId), Number(row.count));
+    });
+  } catch (error: any) {
+    if (error?.message?.includes("doesn't exist") || error?.code === "ER_NO_SUCH_TABLE") {
+      return counts;
+    }
+    console.error("[Notes] Failed to load attachment counts:", error);
+  }
+
+  return counts;
 }
 
 export async function createNoteFile(data: InsertNoteFile) {

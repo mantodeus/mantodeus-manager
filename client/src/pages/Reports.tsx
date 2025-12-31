@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { trpc } from "@/lib/trpc";
 import { FileText, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function Reports() {
   const { user } = useAuth();
@@ -23,12 +24,10 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-regular">Reports</h1>
-          <p className="text-muted-foreground text-sm">Generate and download project reports</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Reports"
+        subtitle="Generate and download project reports"
+      />
 
       <div className="grid gap-4">
         <Card>

@@ -17,6 +17,7 @@ import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { PageHeader } from "@/components/PageHeader";
 
 type ProjectListItem = RouterOutputs["projects"]["listArchived"][number];
 
@@ -136,22 +137,17 @@ export default function ProjectsArchived() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
+      <PageHeader
+        title="Archived Projects"
+        subtitle="Projects you've archived. You can restore them anytime."
+        leading={
           <Link href="/projects">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-3xl font-regular flex items-center gap-3">
-              <Archive className="h-8 w-8 text-muted-foreground" />
-              Archived Projects
-            </h1>
-            <p className="text-muted-foreground text-sm">Projects you've archived. You can restore them anytime.</p>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Archived Projects Grid */}
       <div className="space-y-4">

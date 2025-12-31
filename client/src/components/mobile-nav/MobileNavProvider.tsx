@@ -31,6 +31,21 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
 
   const [pointerPosition, setPointerPosition] = useState<Point | null>(null);
 
+  const [lastUsedModuleByTab, setLastUsedModuleByTab] = useState<
+    Record<TabId, string | null>
+  >({
+    office: null,
+    field: null,
+    tools: null,
+  });
+
+  const setLastUsedModule = (tab: TabId, path: string) => {
+    setLastUsedModuleByTab(prev => ({
+      ...prev,
+      [tab]: path,
+    }));
+  };
+
   const scrollerVisible =
     gestureState === GestureStateEnum.HOLD_ACTIVE ||
     gestureState === GestureStateEnum.DRAGGING ||
@@ -47,6 +62,8 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
     setHighlightedIndex,
     pointerPosition,
     setPointerPosition,
+    lastUsedModuleByTab,
+    setLastUsedModule,
   };
 
   return (

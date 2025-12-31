@@ -14,6 +14,7 @@ import { Link } from "wouter";
 import { useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { PageHeader } from "@/components/PageHeader";
 
 type Note = {
   id: number;
@@ -113,22 +114,17 @@ export default function NotesRubbish() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
+      <PageHeader
+        title="Rubbish Bin"
+        subtitle="Deleted notes. Items here can be restored or permanently deleted."
+        leading={
           <Link href="/notes">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-3xl font-regular flex items-center gap-3">
-              <Trash2 className="h-8 w-8 text-muted-foreground" />
-              Rubbish Bin
-            </h1>
-            <p className="text-muted-foreground text-sm">Deleted notes. Items here can be restored or permanently deleted.</p>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Rubbish Items List */}
       <div className="space-y-3">

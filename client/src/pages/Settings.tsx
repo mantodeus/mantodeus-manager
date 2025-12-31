@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { trpc } from "@/lib/trpc";
 import { Loader2, Save, Building2, Receipt, CreditCard, Info, Palette, ImageIcon, User } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemeName } from "@/lib/theme";
 import { LogoUploadSection } from "@/components/LogoUploadSection";
@@ -168,12 +169,10 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-regular">Settings</h1>
-          <p className="text-muted-foreground text-sm">Configure your company information and invoice settings</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Settings"
+        subtitle="Configure your company information and invoice settings"
+      />
 
       {/* Theme Settings */}
       <Card>

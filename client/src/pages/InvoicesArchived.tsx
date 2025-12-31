@@ -7,6 +7,7 @@ import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { PageHeader } from "@/components/PageHeader";
 import { Link } from "wouter";
 
 interface InvoiceLineItem {
@@ -135,20 +136,17 @@ export default function InvoicesArchived() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/invoices">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-regular flex items-center gap-3">
-            <Archive className="h-8 w-8 text-muted-foreground" />
-            Archived Invoices
-          </h1>
-          <p className="text-muted-foreground text-sm">Invoices you've archived. You can restore them anytime.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Archived Invoices"
+        subtitle="Invoices you've archived. You can restore them anytime."
+        leading={
+          <Link href="/invoices">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+        }
+      />
 
       {archivedInvoices.length === 0 ? (
         <Card className="p-8 text-center">

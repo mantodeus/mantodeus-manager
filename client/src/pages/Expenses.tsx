@@ -20,6 +20,7 @@ import { ReviewExpenseCard } from "@/components/expenses/ReviewExpenseCard";
 import { StickyReviewActions } from "@/components/expenses/StickyReviewActions";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 import { formatCurrency } from "@/lib/currencyFormat";
 import { VoidExpenseDialog } from "@/components/expenses/VoidExpenseDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
@@ -384,19 +385,18 @@ export default function Expenses() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-regular">Expenses</h1>
-          <p className="text-muted-foreground text-sm">Track and manage your business expenses</p>
-        </div>
-        <Link href="/expenses/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Expense
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        title="Expenses"
+        subtitle="Track and manage your business expenses"
+        primaryAction={
+          <Link href="/expenses/new">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Expense
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Header Cards */}
       <div className="grid gap-4 md:grid-cols-2">

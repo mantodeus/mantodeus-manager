@@ -14,6 +14,7 @@ import { Plus, CheckCircle2, Circle, Clock, Loader2, ArrowRight } from "lucide-r
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { unitStorage, inspectionStorage } from "@/lib/offlineStorage";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function InspectionsOverview() {
   const [, setLocation] = useLocation();
@@ -69,12 +70,10 @@ export default function InspectionsOverview() {
   if (!selectedProjectId) {
     return (
       <div className="p-4 space-y-4 max-w-4xl mx-auto">
-        <div>
-          <h1 className="text-2xl font-bold">Inspections</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Select a project to view or create inspections
-          </p>
-        </div>
+        <PageHeader
+          title="Inspections"
+          subtitle="Select a project to view or create inspections"
+        />
 
         {projects.length === 0 ? (
           <Card>
@@ -118,29 +117,26 @@ export default function InspectionsOverview() {
   return (
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <PageHeader
+        title="Inspections"
+        subtitle={selectedProject?.name}
+        leading={
           <Button
             variant="ghost"
             onClick={() => setSelectedProjectId(null)}
-            className="mb-2"
           >
             ← Back to Projects
           </Button>
-          <h1 className="text-2xl font-bold">Inspections</h1>
-          {selectedProject && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {selectedProject.name}
-            </p>
-          )}
-        </div>
-        <Link href={`/projects/${selectedProjectId}/inspections`}>
-          <Button size="lg" className="h-12 px-6">
-            <Plus className="h-5 w-5 mr-2" />
-            New Abseil / Section
-          </Button>
-        </Link>
-      </div>
+        }
+        primaryAction={
+          <Link href={`/projects/${selectedProjectId}/inspections`}>
+            <Button size="lg" className="h-12 px-6">
+              <Plus className="h-5 w-5 mr-2" />
+              New Abseil / Section
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Inspections List */}
       {allInspections.length === 0 && allUnits.length === 0 ? (

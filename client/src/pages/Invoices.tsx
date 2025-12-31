@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { ItemActionsMenu } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
+import { PageHeader } from "@/components/PageHeader";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -200,75 +201,75 @@ export default function Invoices() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-regular">Invoices</h1>
-          <p className="text-muted-foreground text-sm">Create, edit, and manage invoices</p>
-        </div>
-        <div className="flex gap-2 sm:gap-3">
-          <input
-            type="file"
-            accept=".pdf,application/pdf"
-            id="invoice-upload-input"
-            className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
+      <PageHeader
+        title="Invoices"
+        subtitle="Create, edit, and manage invoices"
+        primaryAction={
+          <div className="flex gap-2 sm:gap-3">
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              id="invoice-upload-input"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
 
-              if (!file.type.includes("pdf")) {
-                toast.error("Please select a PDF file");
-                return;
-              }
+                if (!file.type.includes("pdf")) {
+                  toast.error("Please select a PDF file");
+                  return;
+                }
 
-              try {
-                // Convert to base64
-                const reader = new FileReader();
-                reader.onload = async () => {
-                  const result = reader.result as string;
-                  const base64Data = result.split(",")[1];
+                try {
+                  // Convert to base64
+                  const reader = new FileReader();
+                  reader.onload = async () => {
+                    const result = reader.result as string;
+                    const base64Data = result.split(",")[1];
 
-                  await uploadInvoiceMutation.mutateAsync({
-                    filename: file.name,
-                    base64Data,
-                    mimeType: file.type,
-                  });
-                };
-                reader.onerror = () => {
-                  toast.error("Failed to read file");
-                };
-                reader.readAsDataURL(file);
-              } catch (error) {
-                console.error(error);
-                toast.error("Failed to upload invoice");
-              }
+                    await uploadInvoiceMutation.mutateAsync({
+                      filename: file.name,
+                      base64Data,
+                      mimeType: file.type,
+                    });
+                  };
+                  reader.onerror = () => {
+                    toast.error("Failed to read file");
+                  };
+                  reader.readAsDataURL(file);
+                } catch (error) {
+                  console.error(error);
+                  toast.error("Failed to upload invoice");
+                }
 
-              // Reset input
-              e.target.value = "";
-            }}
-          />
-          <Button
-            variant="outline"
-            onClick={() => {
-              document.getElementById("invoice-upload-input")?.click();
-            }}
-            disabled={uploadInvoiceMutation.isPending}
-            className="h-10 whitespace-nowrap"
-          >
-            {uploadInvoiceMutation.isPending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4 mr-2" />
-            )}
-            Upload
-          </Button>
-          <Button asChild className="h-10 whitespace-nowrap">
-            <Link href="/invoices/new">
-              <Plus className="w-4 h-4 mr-2" />
-              Create
-            </Link>
-          </Button>
-      </div>
-      </div>
+                // Reset input
+                e.target.value = "";
+              }}
+            />
+            <Button
+              variant="outline"
+              onClick={() => {
+                document.getElementById("invoice-upload-input")?.click();
+              }}
+              disabled={uploadInvoiceMutation.isPending}
+              className="h-10 whitespace-nowrap"
+            >
+              {uploadInvoiceMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-2" />
+              )}
+              Upload
+            </Button>
+            <Button asChild className="h-10 whitespace-nowrap">
+              <Link href="/invoices/new">
+                <Plus className="w-4 h-4 mr-2" />
+                Create
+              </Link>
+            </Button>
+          </div>
+        }
+      />
 
       {invoices.length === 0 ? (
         <Card className="p-8 text-center">

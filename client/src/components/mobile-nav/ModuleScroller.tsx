@@ -139,6 +139,7 @@ export function ModuleScroller() {
     gestureState,
     setGestureState,
     pointerPosition,
+    setLastUsedModule,
   } = useMobileNav();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -189,6 +190,7 @@ export function ModuleScroller() {
 
       if (module) {
         // Navigate to selected module
+        setLastUsedModule(activeTab, module.path);
         setLocation(module.path);
       }
 
@@ -208,9 +210,9 @@ export function ModuleScroller() {
   // Initialize highlighted index to first item when scroller appears
   useEffect(() => {
     if (scrollerVisible && highlightedIndex === null) {
-      setHighlightedIndex(0);
+      setHighlightedIndex(modules.length - 1);
     }
-  }, [scrollerVisible, highlightedIndex, setHighlightedIndex]);
+  }, [scrollerVisible, highlightedIndex, modules.length, setHighlightedIndex]);
 
   if (!scrollerVisible) {
     return null;

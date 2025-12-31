@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 import { MapPin, Search, X, Users } from "lucide-react";
 import { MapView } from "@/components/Map";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
@@ -649,12 +650,10 @@ export default function Maps() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-regular">Maps</h1>
-          <p className="text-muted-foreground text-sm">View and manage job locations on the map</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Maps"
+        subtitle="View and manage job locations on the map"
+      />
 
       {/* Search Bar */}
       <div className="relative mb-6">
