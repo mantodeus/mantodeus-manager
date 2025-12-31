@@ -239,8 +239,13 @@
     text-shadow: 0 0 6px rgba(12, 245, 126, 0.25);
   }
 
+  .module-item span {
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+  }
+
   .module-item:not(.is-active) {
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--muted-foreground);
   }
 
   .scroller--left .module-item {
@@ -253,13 +258,7 @@
     align-items: center;
     text-align: center;
     justify-content: center;
-    gap: 6px;
-  }
-
-  .scroller--center .module-item span {
-    font-size: 0.95rem;
-    letter-spacing: 0.08em;
-    font-weight: 500;
+    gap: 4px;
   }
 
   .scroller--right .module-item {

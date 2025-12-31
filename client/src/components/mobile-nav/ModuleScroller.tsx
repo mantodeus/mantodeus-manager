@@ -113,7 +113,7 @@ function ModuleItem({
     >
       <Icon
         className={cn(
-          'h-5 w-5 drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)]',
+          'h-6 w-6 drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)]',
           isActive && 'text-primary'
         )}
         strokeWidth={isActive ? 2.5 : 2}

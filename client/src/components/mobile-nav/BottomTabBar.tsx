@@ -82,7 +82,7 @@ export function BottomTabBar() {
                     'whitespace-nowrap'
                   )}
                 >
-                  {tab.label}
+                  {tab.label.toUpperCase()}
                 </span>
               )}
 
