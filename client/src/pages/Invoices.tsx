@@ -648,11 +648,13 @@ function InvoiceForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  {contacts.map((contact) => (
-                    <SelectItem key={contact.id} value={String(contact.id)}>
-                      {contact.name}
-                    </SelectItem>
-                  ))}
+                  {contacts
+                    .filter((contact) => contact.id != null && contact.id !== undefined && String(contact.id).trim() !== "")
+                    .map((contact) => (
+                      <SelectItem key={contact.id} value={String(contact.id)}>
+                        {contact.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
