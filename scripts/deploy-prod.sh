@@ -23,13 +23,13 @@ if [[ -n "$EXPECTED_GREP" ]]; then
 fi
 
 echo "==> Install dependencies"
-npx pnpm install
+npm install
 
 echo "==> Run migrations"
 npx pnpm run db:migrate
 
 echo "==> Install (frozen lockfile)"
-npx pnpm install --frozen-lockfile
+npm install --frozen-lockfile
 
 echo "==> Build"
 # Increase Node.js memory limit to prevent OOM during Vite build
