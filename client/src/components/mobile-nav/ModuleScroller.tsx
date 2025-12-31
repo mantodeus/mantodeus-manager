@@ -86,7 +86,7 @@ function ModuleItem({
 }) {
   const Icon = module.icon;
 
-  // Â§ 9: Visual Hierarchy
+  // Section 9: Visual Hierarchy
   const opacity = isActive
     ? VISUAL_HIERARCHY.ACTIVE.opacity
     : isNeighbor
@@ -99,14 +99,11 @@ function ModuleItem({
     <div
       data-module-item
       className={cn(
-        'flex items-center gap-3 px-5 py-3',
+        'module-item flex items-center gap-2.5 px-5 py-3',
         'gesture-surface',
         'cursor-pointer select-none',
         'transition-all duration-150 ease-out',
-        // Â§ Phase 2: Theme integration
-        isActive && [
-          'bg-primary/5', // Subtle background highlight
-        ]
+        isActive && 'is-active'
       )}
       style={{
         transform: `translateX(${offset}px) scale(${scale})`,
@@ -115,13 +112,15 @@ function ModuleItem({
       }}
     >
       <Icon
-        className={cn('h-5 w-5 drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)]', isActive && 'text-primary')}
+        className={cn(
+          'h-5 w-5 drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)]',
+          isActive && 'text-primary'
+        )}
         strokeWidth={isActive ? 2.5 : 2}
       />
       <span
         className={cn(
-          'text-sm font-medium drop-shadow-[0_1px_6px_rgba(0,0,0,0.18)]',
-          isActive && 'text-foreground font-semibold'
+          'text-sm font-medium drop-shadow-[0_1px_6px_rgba(0,0,0,0.18)]'
         )}
       >
         {module.label}
@@ -230,6 +229,11 @@ export function ModuleScroller() {
         'module-scroller',
         'gesture-surface',
         'animate-scroller-slide-in',
+        scrollerSide === 'right'
+          ? 'scroller--right'
+          : scrollerSide === 'left'
+            ? 'scroller--left'
+            : 'scroller--center',
         // Position based on active tab (Ergonomic Law)
         scrollerSide === 'right'
           ? 'right-0'
@@ -272,6 +276,13 @@ export function ModuleScroller() {
     </div>
   );
 }
+
+
+
+
+
+
+
 
 
 
