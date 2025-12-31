@@ -42,7 +42,7 @@ export function InvoiceUploadReviewDialog({
   parsedData,
   onSuccess,
 }: InvoiceUploadReviewDialogProps) {
-  const [clientId, setClientId] = useState<string>("");
+  const [clientId, setClientId] = useState<string>("none");
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [issueDate, setIssueDate] = useState<string>("");
   const [totalAmount, setTotalAmount] = useState<string>("");
@@ -88,6 +88,7 @@ export function InvoiceUploadReviewDialog({
           : ""
       );
       setTotalAmount(parsedData.totalAmount || "");
+      setClientId("none");
     } else if (invoice) {
       setInvoiceNumber(invoice.invoiceNumber || "");
       setIssueDate(
@@ -96,13 +97,13 @@ export function InvoiceUploadReviewDialog({
           : ""
       );
       setTotalAmount(invoice.total || "");
-      setClientId(invoice.clientId?.toString() || "");
+      setClientId(invoice.clientId?.toString() || "none");
     }
   }, [parsedData, invoice]);
 
   // Try to match client by name if parsed
   useEffect(() => {
-    if (parsedData?.clientName && !clientId && contacts.length > 0) {
+    if (parsedData?.clientName && clientId === "none" && contacts.length > 0) {
       const matched = contacts.find(
         (c) => c.name.toLowerCase() === parsedData.clientName?.toLowerCase()
       );
@@ -136,7 +137,7 @@ export function InvoiceUploadReviewDialog({
 
     await confirmMutation.mutateAsync({
       id: invoiceId,
-      clientId: clientId ? parseInt(clientId, 10) : null,
+      clientId: clientId !== "none" ? parseInt(clientId, 10) : null,
       invoiceNumber: invoiceNumber || undefined,
       issueDate: new Date(issueDate),
       totalAmount,
@@ -174,7 +175,7 @@ export function InvoiceUploadReviewDialog({
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No client</SelectItem>
+                <SelectItem value="none">No client</SelectItem>
                 {contacts.map((contact) => (
                   <SelectItem key={contact.id} value={contact.id.toString()}>
                     {contact.name}
