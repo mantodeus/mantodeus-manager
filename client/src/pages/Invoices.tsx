@@ -312,12 +312,12 @@ export default function Invoices() {
                     <div className="flex items-start gap-3 min-w-0">
                       <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
                       <div className="min-w-0">
-                        <div className="font-medium text-base leading-tight break-words">{displayName}</div>
+                        <div className="font-light text-base leading-tight break-words">{displayName}</div>
                         <div className="text-xs text-muted-foreground">Uploaded {uploadDateLabel}</div>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
-                      <div className="text-sm font-semibold">{displayTotal}</div>
+                      <div className="text-sm font-light">{displayTotal}</div>
                       <Badge variant="outline" className="text-xs">NEEDS REVIEW</Badge>
                       <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
                       <ItemActionsMenu
@@ -382,7 +382,7 @@ export default function Invoices() {
                   <div className="flex items-start gap-3 min-w-0">
                     <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
                     <div className="min-w-0">
-                      <div className="font-medium text-base leading-tight break-words">{displayName}</div>
+                      <div className="font-light text-base leading-tight break-words">{displayName}</div>
                       {linkedContact && (
                         <div className="text-xs text-muted-foreground truncate">{linkedContact.name}</div>
                       )}
@@ -392,7 +392,7 @@ export default function Invoices() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <div className="text-sm font-semibold">{displayTotal}</div>
+                    <div className="text-sm font-light">{displayTotal}</div>
                     {getStatusBadge(invoice)}
                     {invoice.type === "cancellation" && (
                       <Badge variant="outline" className="text-xs">STORNO</Badge>
