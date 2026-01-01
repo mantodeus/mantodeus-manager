@@ -45,3 +45,5 @@ npx pnpm run db:migrate
 .\scripts\build-local.ps1 -SkipInstall
 
 bash scripts/deploy-from-archive.sh
+
+nohup npm install > npm-install.log 2>&1 &

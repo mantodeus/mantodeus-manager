@@ -23,7 +23,7 @@ import {
   FileSpreadsheet,
   PencilRuler,
   HardHat,
-  Wrench,
+  WrenchScrewdriver,
 } from '@/components/ui/Icon';
 
 /**
@@ -91,7 +91,7 @@ export const PERF_BUDGET = {
 export const TABS = [
   { id: 'office' as const, icon: PencilRuler, label: 'Office' },
   { id: 'field' as const, icon: HardHat, label: 'Field' },
-  { id: 'tools' as const, icon: Wrench, label: 'Tools' },
+  { id: 'tools' as const, icon: WrenchScrewdriver, label: 'Tools' },
 ] as const;
 
 // Compile-time assertion: exactly 3 tabs
@@ -199,4 +199,3 @@ export const DEV_FEATURES = {
   particleTrails: false, // Fun for morale, not for users
   bounceCascade: false, // Premium = calm, not playful
 } as const;
-
