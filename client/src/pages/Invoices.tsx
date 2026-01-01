@@ -296,19 +296,20 @@ export default function Invoices() {
                 "Untitled invoice";
               return (
                 <Card key={`needs-review-${invoice.id}`} className="p-4 flex flex-col gap-3">
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-regular text-lg">{displayName}</h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-regular text-lg break-words">{displayName}</h3>
                         <Badge variant="outline" className="text-xs">NEEDS REVIEW</Badge>
                         <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">Uploaded {uploadDateLabel}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                       <Button
                         variant="outline"
                         size="sm"
+                        className="w-full sm:w-auto"
                         onClick={() => {
                           setUploadedInvoiceId(invoice.id);
                           setUploadedParsedData(null);
@@ -320,6 +321,7 @@ export default function Invoices() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="w-full sm:w-auto"
                         onClick={() => setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName })}
                       >
                         Delete
