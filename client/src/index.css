@@ -161,9 +161,7 @@
   .font-bold, .font-semibold, .font-extrabold, .font-medium {
     font-weight: 200;
   }
-  .font-normal {
-    font-weight: 100;
-  }
+  .font-normal,
   .font-light {
     font-weight: 100;
   }
@@ -206,6 +204,21 @@
   /* Thin icon strokes for Heroicons outline */
   #root svg[stroke="currentColor"] {
     stroke-width: 1;
+  }
+}
+
+@layer utilities {
+  /* Override Tailwind font-weight utilities to keep typography thin everywhere. */
+  .font-bold,
+  .font-semibold,
+  .font-extrabold,
+  .font-black,
+  .font-medium {
+    font-weight: 200 !important;
+  }
+  .font-normal,
+  .font-light {
+    font-weight: 100 !important;
   }
 }
 
