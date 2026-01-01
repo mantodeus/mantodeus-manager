@@ -41,6 +41,30 @@ function deriveInvoiceNameFromFilename(filename: string) {
   return trimmed;
 }
 
+function normalizeNullableString(value?: string | null): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function buildContactAddress(fields: {
+  streetName?: string | null;
+  streetNumber?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+  country?: string | null;
+}): string | null {
+  const streetLine = [fields.streetName, fields.streetNumber].filter(Boolean).join(" ").trim();
+  const cityLine = [fields.postalCode, fields.city].filter(Boolean).join(" ").trim();
+  const parts = [streetLine, cityLine, fields.country].filter(Boolean);
+  if (parts.length === 0) return null;
+  return parts.join(", ");
+}
+
+function resolveContactName(input: { clientName?: string | null; name?: string | null; contactPerson?: string | null }) {
+  return input.clientName || input.name || input.contactPerson || "Contact";
+}
+
 async function hydrateImageRecord<T extends { imageMetadata: StoredImageMetadata | null }>(
   image: T
 ): Promise<T & { imageUrls: Record<ImageVariant, string> | null }> {
@@ -596,8 +620,21 @@ export const appRouter = router({
     
     create: protectedProcedure
       .input(z.object({
-        name: z.string().min(1),
-        email: z.string().email().optional(),
+        name: z.string().optional(),
+        clientName: z.string().min(1),
+        type: z.enum(["business", "private"]),
+        contactPerson: z.string().optional(),
+        streetName: z.string().min(1),
+        streetNumber: z.string().min(1),
+        postalCode: z.string().min(1),
+        city: z.string().min(1),
+        country: z.string().min(1),
+        vatStatus: z.enum(["subject_to_vat", "not_subject_to_vat"]),
+        vatNumber: z.string().optional(),
+        taxNumber: z.string().optional(),
+        leitwegId: z.string().optional(),
+        email: z.string().email(),
+        phoneNumber: z.string().optional(),
         phone: z.string().optional(),
         address: z.string().optional(),
         latitude: z.string().optional(),
@@ -606,12 +643,42 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         try {
+          const clientName = normalizeNullableString(input.clientName);
+          const contactPerson = normalizeNullableString(input.contactPerson);
+          const streetName = normalizeNullableString(input.streetName);
+          const streetNumber = normalizeNullableString(input.streetNumber);
+          const postalCode = normalizeNullableString(input.postalCode);
+          const city = normalizeNullableString(input.city);
+          const country = normalizeNullableString(input.country);
+          const vatNumber = normalizeNullableString(input.vatNumber);
+          const taxNumber = normalizeNullableString(input.taxNumber);
+          const leitwegId = normalizeNullableString(input.leitwegId);
+          const email = normalizeNullableString(input.email);
+          const phoneNumber = normalizeNullableString(input.phoneNumber ?? input.phone);
+          const phone = normalizeNullableString(input.phone ?? input.phoneNumber);
+          const notes = normalizeNullableString(input.notes);
+
+          const resolvedName = resolveContactName({
+            clientName,
+            name: normalizeNullableString(input.name),
+            contactPerson,
+          });
+
+          const addressFromFields = buildContactAddress({
+            streetName,
+            streetNumber,
+            postalCode,
+            city,
+            country,
+          });
+          const address = normalizeNullableString(input.address) ?? addressFromFields;
+
           // Geocode address if provided and no coordinates given
-          let latitude = input.latitude;
-          let longitude = input.longitude;
+          let latitude = normalizeNullableString(input.latitude);
+          let longitude = normalizeNullableString(input.longitude);
           
-          if (input.address && (!latitude || !longitude)) {
-            const geocodeResult = await geocodeAddress(input.address);
+          if (address && (!latitude || !longitude)) {
+            const geocodeResult = await geocodeAddress(address);
             if (geocodeResult) {
               latitude = geocodeResult.latitude;
               longitude = geocodeResult.longitude;
@@ -619,13 +686,26 @@ export const appRouter = router({
           }
 
           const result = await db.createContact({
-            name: input.name,
-            email: input.email || null,
-            phone: input.phone || null,
-            address: input.address || null,
+            name: resolvedName,
+            clientName: clientName,
+            type: input.type,
+            contactPerson: contactPerson,
+            email: email,
+            phone: phone,
+            phoneNumber: phoneNumber,
+            address: address,
+            streetName: streetName,
+            streetNumber: streetNumber,
+            postalCode: postalCode,
+            city: city,
+            country: country,
+            vatStatus: input.vatStatus,
+            vatNumber: vatNumber,
+            taxNumber: taxNumber,
+            leitwegId: leitwegId,
             latitude: latitude || null,
             longitude: longitude || null,
-            notes: input.notes || null,
+            notes: notes,
             createdBy: ctx.user.id,
           });
           
@@ -643,10 +723,10 @@ export const appRouter = router({
           if (latitude && longitude) {
             try {
               await db.createLocation({
-                name: input.name,
+                name: resolvedName,
                 latitude,
                 longitude,
-                address: input.address,
+                address: address,
                 type: "contact",
                 jobId: undefined,
                 contactId,
@@ -674,13 +754,26 @@ export const appRouter = router({
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
-        name: z.string().optional(),
-        email: z.string().email().optional(),
-        phone: z.string().optional(),
-        address: z.string().optional(),
-        latitude: z.string().optional(),
-        longitude: z.string().optional(),
-        notes: z.string().optional(),
+        name: z.string().nullable().optional(),
+        clientName: z.string().nullable().optional(),
+        type: z.enum(["business", "private"]).optional(),
+        contactPerson: z.string().nullable().optional(),
+        streetName: z.string().nullable().optional(),
+        streetNumber: z.string().nullable().optional(),
+        postalCode: z.string().nullable().optional(),
+        city: z.string().nullable().optional(),
+        country: z.string().nullable().optional(),
+        vatStatus: z.enum(["subject_to_vat", "not_subject_to_vat"]).optional(),
+        vatNumber: z.string().nullable().optional(),
+        taxNumber: z.string().nullable().optional(),
+        leitwegId: z.string().nullable().optional(),
+        email: z.string().email().nullable().optional(),
+        phoneNumber: z.string().nullable().optional(),
+        phone: z.string().nullable().optional(),
+        address: z.string().nullable().optional(),
+        latitude: z.string().nullable().optional(),
+        longitude: z.string().nullable().optional(),
+        notes: z.string().nullable().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const { id, ...data } = input;
@@ -692,32 +785,117 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to update this contact" });
         }
         
+        const hasField = (field: keyof typeof input) =>
+          Object.prototype.hasOwnProperty.call(input, field);
+
+        const nameUpdateRequested = hasField("clientName") || hasField("name");
+        const addressUpdateRequested =
+          hasField("streetName") ||
+          hasField("streetNumber") ||
+          hasField("postalCode") ||
+          hasField("city") ||
+          hasField("country") ||
+          hasField("address");
+        const phoneUpdateRequested = hasField("phoneNumber") || hasField("phone");
+        const emailUpdateRequested = hasField("email");
+        const notesUpdateRequested = hasField("notes");
+
+        const clientName = normalizeNullableString(data.clientName);
+        const contactPerson = normalizeNullableString(data.contactPerson);
+        const streetName = normalizeNullableString(data.streetName);
+        const streetNumber = normalizeNullableString(data.streetNumber);
+        const postalCode = normalizeNullableString(data.postalCode);
+        const city = normalizeNullableString(data.city);
+        const country = normalizeNullableString(data.country);
+        const vatNumber = normalizeNullableString(data.vatNumber);
+        const taxNumber = normalizeNullableString(data.taxNumber);
+        const leitwegId = normalizeNullableString(data.leitwegId);
+        const email = normalizeNullableString(data.email);
+        const phoneNumber = normalizeNullableString(data.phoneNumber ?? data.phone);
+        const phone = normalizeNullableString(data.phone ?? data.phoneNumber);
+        const notes = normalizeNullableString(data.notes);
+
+        const resolvedName = resolveContactName({
+          clientName,
+          name: normalizeNullableString(data.name),
+          contactPerson,
+        });
+
+        const normalizedUpdate: Record<string, unknown> = {
+          ...(data.type ? { type: data.type } : {}),
+          ...(data.vatStatus ? { vatStatus: data.vatStatus } : {}),
+        };
+
+        if (hasField("clientName") || hasField("name")) {
+          normalizedUpdate.name = resolvedName;
+          normalizedUpdate.clientName = clientName ?? resolvedName;
+        }
+
+        if (hasField("contactPerson")) {
+          normalizedUpdate.contactPerson = contactPerson;
+        }
+
+        if (emailUpdateRequested) {
+          normalizedUpdate.email = email;
+        }
+
+        if (phoneUpdateRequested) {
+          normalizedUpdate.phoneNumber = phoneNumber;
+          normalizedUpdate.phone = phone;
+        }
+
+        if (hasField("streetName")) normalizedUpdate.streetName = streetName;
+        if (hasField("streetNumber")) normalizedUpdate.streetNumber = streetNumber;
+        if (hasField("postalCode")) normalizedUpdate.postalCode = postalCode;
+        if (hasField("city")) normalizedUpdate.city = city;
+        if (hasField("country")) normalizedUpdate.country = country;
+        if (hasField("vatNumber")) normalizedUpdate.vatNumber = vatNumber;
+        if (hasField("taxNumber")) normalizedUpdate.taxNumber = taxNumber;
+        if (hasField("leitwegId")) normalizedUpdate.leitwegId = leitwegId;
+        if (notesUpdateRequested) normalizedUpdate.notes = notes;
+        if (hasField("latitude")) normalizedUpdate.latitude = normalizeNullableString(data.latitude);
+        if (hasField("longitude")) normalizedUpdate.longitude = normalizeNullableString(data.longitude);
+
+        const addressFromFields = buildContactAddress({
+          streetName,
+          streetNumber,
+          postalCode,
+          city,
+          country,
+        });
+        const address = normalizeNullableString(data.address) ?? addressFromFields;
+
+        if (addressUpdateRequested) {
+          normalizedUpdate.address = address;
+        }
+
         // Geocode address if being updated and no coordinates provided
-        if (data.address && (!data.latitude || !data.longitude)) {
-          const geocodeResult = await geocodeAddress(data.address);
+        if (addressUpdateRequested && address && (!data.latitude || !data.longitude)) {
+          const geocodeResult = await geocodeAddress(address);
           if (geocodeResult) {
-            (data as any).latitude = geocodeResult.latitude;
-            (data as any).longitude = geocodeResult.longitude;
+            normalizedUpdate.latitude = geocodeResult.latitude;
+            normalizedUpdate.longitude = geocodeResult.longitude;
             
             // Update or create map marker
             const existingLocations = await db.getLocationsByContact(id);
             const contact = await db.getContactById(id);
+            const locationName = nameUpdateRequested ? resolvedName : contact?.name;
             
             if (existingLocations.length > 0) {
               // Update existing marker
               await db.updateLocation(existingLocations[0].id, {
-                name: data.name || contact?.name,
+                name: locationName,
                 latitude: geocodeResult.latitude,
                 longitude: geocodeResult.longitude,
-                address: data.address,
+                address: address,
               });
             } else {
               // Create new marker
               await db.createLocation({
-                name: data.name || contact?.name || "Contact Location",
+                name: locationName || "Contact Location",
                 latitude: geocodeResult.latitude,
                 longitude: geocodeResult.longitude,
-                address: data.address,
+                address: address,
                 type: "contact",
                 jobId: undefined,
                 contactId: id,
@@ -727,7 +905,7 @@ export const appRouter = router({
           }
         }
         
-        await db.updateContact(id, data);
+        await db.updateContact(id, normalizedUpdate);
         return { success: true };
       }),
     

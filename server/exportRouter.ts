@@ -5,6 +5,52 @@ import { generateJobPDFHTML } from "./pdfExport";
 import type { Job, Task } from "../drizzle/schema";
 import { normalizeExportPayload } from "../shared/importNormalizer";
 
+const normalizeNullableString = (value?: string | null) => {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const buildContactAddress = (fields: {
+  streetName?: string | null;
+  streetNumber?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+  country?: string | null;
+}) => {
+  const streetLine = [fields.streetName, fields.streetNumber].filter(Boolean).join(" ").trim();
+  const cityLine = [fields.postalCode, fields.city].filter(Boolean).join(" ").trim();
+  const parts = [streetLine, cityLine, fields.country].filter(Boolean);
+  if (parts.length === 0) return null;
+  return parts.join(", ");
+};
+
+const contactImportSchema = z.object({
+  name: z.string().optional(),
+  clientName: z.string().optional(),
+  type: z.enum(["business", "private"]).optional(),
+  contactPerson: z.string().nullable().optional(),
+  streetName: z.string().nullable().optional(),
+  streetNumber: z.string().nullable().optional(),
+  postalCode: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  vatStatus: z.enum(["subject_to_vat", "not_subject_to_vat"]).optional(),
+  vatNumber: z.string().nullable().optional(),
+  taxNumber: z.string().nullable().optional(),
+  leitwegId: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  phoneNumber: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
+  latitude: z.string().nullable().optional(),
+  longitude: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+}).refine((contact) => contact.clientName || contact.name, {
+  message: "Contact name is required",
+  path: ["clientName"],
+});
+
 // Schema for imported data
 const importDataSchema = z.object({
   version: z.string(),
@@ -40,13 +86,10 @@ const importDataSchema = z.object({
     individualDates: z.array(z.string()).optional(),
   })).optional(),
   contacts: z.array(z.object({
-    name: z.string(),
-    email: z.string().nullable().optional(),
-    phone: z.string().nullable().optional(),
-    address: z.string().nullable().optional(),
-    latitude: z.string().nullable().optional(),
-    longitude: z.string().nullable().optional(),
-    notes: z.string().nullable().optional(),
+    ...contactImportSchema.shape,
+  }).refine((contact) => contact.clientName || contact.name, {
+    message: "Contact name is required",
+    path: ["clientName"],
   })).optional(),
   notes: z.array(z.object({
     title: z.string(),
@@ -162,8 +205,21 @@ export const exportRouter = router({
       // Export contacts (without relational IDs)
       const exportContacts = contacts.map(c => ({
         name: c.name,
+        clientName: c.clientName,
+        type: c.type,
+        contactPerson: c.contactPerson,
+        streetName: c.streetName,
+        streetNumber: c.streetNumber,
+        postalCode: c.postalCode,
+        city: c.city,
+        country: c.country,
+        vatStatus: c.vatStatus,
+        vatNumber: c.vatNumber,
+        taxNumber: c.taxNumber,
+        leitwegId: c.leitwegId,
         email: c.email,
         phone: c.phone,
+        phoneNumber: c.phoneNumber,
         address: c.address,
         latitude: c.latitude,
         longitude: c.longitude,
@@ -220,14 +276,50 @@ export const exportRouter = router({
       // 1. Import contacts first (jobs may reference them)
       if (parsedInput.contacts && parsedInput.contacts.length > 0) {
         for (const contact of parsedInput.contacts) {
+          const clientName = normalizeNullableString(contact.clientName ?? contact.name) || "Imported contact";
+          const contactPerson = normalizeNullableString(contact.contactPerson);
+          const streetName = normalizeNullableString(contact.streetName);
+          const streetNumber = normalizeNullableString(contact.streetNumber);
+          const postalCode = normalizeNullableString(contact.postalCode);
+          const city = normalizeNullableString(contact.city);
+          const country = normalizeNullableString(contact.country);
+          const vatNumber = normalizeNullableString(contact.vatNumber);
+          const taxNumber = normalizeNullableString(contact.taxNumber);
+          const leitwegId = normalizeNullableString(contact.leitwegId);
+          const email = normalizeNullableString(contact.email);
+          const phoneNumber = normalizeNullableString(contact.phoneNumber ?? contact.phone);
+          const phone = normalizeNullableString(contact.phone ?? contact.phoneNumber);
+          const notes = normalizeNullableString(contact.notes);
+          const addressFromFields = buildContactAddress({
+            streetName,
+            streetNumber,
+            postalCode,
+            city,
+            country,
+          });
+          const address = normalizeNullableString(contact.address) ?? addressFromFields;
+
           const result = await db.createContact({
-            name: contact.name,
-            email: contact.email || null,
-            phone: contact.phone || null,
-            address: contact.address || null,
-            latitude: contact.latitude || null,
-            longitude: contact.longitude || null,
-            notes: contact.notes || null,
+            name: clientName,
+            clientName,
+            type: contact.type ?? "business",
+            contactPerson,
+            streetName,
+            streetNumber,
+            postalCode,
+            city,
+            country,
+            vatStatus: contact.vatStatus ?? "not_subject_to_vat",
+            vatNumber,
+            taxNumber,
+            leitwegId,
+            email,
+            phone,
+            phoneNumber,
+            address,
+            latitude: normalizeNullableString(contact.latitude),
+            longitude: normalizeNullableString(contact.longitude),
+            notes,
             createdBy: userId,
           });
           results.contacts++;
@@ -235,10 +327,10 @@ export const exportRouter = router({
           // Auto-create location for contact if coordinates exist
           if (contact.latitude && contact.longitude) {
             await db.createLocation({
-              name: contact.name,
+              name: clientName,
               latitude: contact.latitude,
               longitude: contact.longitude,
-              address: contact.address || null,
+              address: address,
               type: "contact",
               jobId: null,
               contactId: result[0].id,

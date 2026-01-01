@@ -47,8 +47,21 @@ export interface NormalizedJob {
 
 export interface NormalizedContact {
   name: string;
+  clientName?: string | null;
+  type?: "business" | "private";
+  contactPerson?: string | null;
+  streetName?: string | null;
+  streetNumber?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+  country?: string | null;
+  vatStatus?: "subject_to_vat" | "not_subject_to_vat";
+  vatNumber?: string | null;
+  taxNumber?: string | null;
+  leitwegId?: string | null;
   email?: string | null;
   phone?: string | null;
+  phoneNumber?: string | null;
   address?: string | null;
   latitude?: string | null;
   longitude?: string | null;
@@ -237,15 +250,22 @@ const transformLegacyPayload = (payload: LegacyPayload): NormalizedExportPayload
     .filter(Boolean);
 
   const contacts = (legacy.contacts ?? [])
-    .map((contact): NormalizedContact => ({
-      name: sanitizeRequiredString(contact.name, "Imported contact"),
-      email: sanitizeNullableString(contact.email),
-      phone: sanitizeNullableString(contact.phone),
-      address: sanitizeNullableString(contact.address),
-      latitude: sanitizeNullableString(contact.latitude),
-      longitude: sanitizeNullableString(contact.longitude),
-      notes: sanitizeNullableString(contact.notes),
-    }))
+    .map((contact): NormalizedContact => {
+      const name = sanitizeRequiredString(contact.name, "Imported contact");
+      return {
+        name,
+        clientName: name,
+        type: "business",
+        vatStatus: "not_subject_to_vat",
+        email: sanitizeNullableString(contact.email),
+        phone: sanitizeNullableString(contact.phone),
+        phoneNumber: sanitizeNullableString(contact.phone),
+        address: sanitizeNullableString(contact.address),
+        latitude: sanitizeNullableString(contact.latitude),
+        longitude: sanitizeNullableString(contact.longitude),
+        notes: sanitizeNullableString(contact.notes),
+      };
+    })
     .filter(Boolean);
 
   const notes = (legacy.notes ?? [])
