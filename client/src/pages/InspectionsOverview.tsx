@@ -140,8 +140,8 @@ export default function InspectionsOverview() {
         <div className="flex items-center justify-end gap-2 pb-2 border-b">
           <Link href={`/projects/${selectedProjectId}/inspections`}>
             <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              New Abseil / Section
+              <Plus className="h-4 w-4 mr-1" />
+              New
             </Button>
           </Link>
         </div>

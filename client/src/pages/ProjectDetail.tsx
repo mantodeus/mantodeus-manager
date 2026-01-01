@@ -329,8 +329,8 @@ export default function ProjectDetail() {
           <div className="flex items-center justify-between">
             <h2 className="text-2xl">Jobs</h2>
             <Button onClick={() => setCreateJobDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Job
+              <Plus className="h-4 w-4 mr-1" />
+              New
             </Button>
           </div>
           {jobsLoading ? (

@@ -118,8 +118,8 @@ export default function Jobs() {
           <p className="text-muted-foreground text-sm">Manage your construction projects and job sites</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Job
+          <Plus className="h-4 w-4 mr-1" />
+          New
         </Button>
       </div>
 
@@ -128,8 +128,8 @@ export default function Jobs() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <p className="text-muted-foreground mb-4">No jobs yet. Create your first job to get started.</p>
             <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Job
+              <Plus className="h-4 w-4 mr-1" />
+              New
             </Button>
           </CardContent>
         </Card>

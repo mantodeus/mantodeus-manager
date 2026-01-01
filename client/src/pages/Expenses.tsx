@@ -393,8 +393,8 @@ export default function Expenses() {
       <div className="flex items-center justify-end gap-2 pb-2 border-b">
         <Link href="/expenses/new">
           <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Expense
+            <Plus className="h-4 w-4 mr-1" />
+            New
           </Button>
         </Link>
       </div>

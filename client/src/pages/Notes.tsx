@@ -806,8 +806,8 @@ export default function Notes() {
       {/* Top-of-Page Action Row */}
       <div className="flex items-center justify-end gap-2 pb-2 border-b">
         <Button onClick={() => navigate("/notes/new")}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Note
+          <Plus className="mr-1 h-4 w-4" />
+          New
         </Button>
       </div>
 
