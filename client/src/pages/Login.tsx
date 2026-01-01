@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 import { APP_TITLE, APP_LOGO } from "@/const";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/Icon";
 
 export default function Login() {
   const [email, setEmail] = useState("");

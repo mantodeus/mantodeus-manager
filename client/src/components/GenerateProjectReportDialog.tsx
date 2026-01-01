@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Share2, Copy, Check, ExternalLink } from "lucide-react";
+import { Loader2, FileText, Share2, Copy, Check, ExternalLink } from "@/components/ui/Icon";
 import { toast } from "sonner";
 
 interface GenerateProjectReportDialogProps {

@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash, Eye, DollarSign, CheckCircle2, XCircle, Send } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash, Eye, DollarSign, CheckCircle2, XCircle, Send } from "@/components/ui/Icon";
 
 export type ItemAction =
   | "view"

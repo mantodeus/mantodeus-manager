@@ -25,7 +25,7 @@ import { ReceiptPreviewList } from "./ReceiptPreviewList";
 import { SuggestionBadge } from "./SuggestionBadge";
 import { SuggestionControls } from "./SuggestionControls";
 import { formatCurrency } from "@/lib/currencyFormat";
-import { Sparkles } from "lucide-react";
+import { Sparkles } from "@/components/ui/Icon";
 
 interface ExpenseFormData {
   description: string | null;

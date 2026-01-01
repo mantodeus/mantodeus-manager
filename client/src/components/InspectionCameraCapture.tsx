@@ -8,7 +8,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { CardTitle } from "@/components/ui/card";
-import { Camera, X, Loader2, AlertCircle } from "lucide-react";
+import { Camera, X, Loader2, AlertCircle } from "@/components/ui/Icon";
 import { toast } from "sonner";
 
 interface InspectionCameraCaptureProps {

@@ -11,7 +11,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "@/components/ui/Icon";
 import { Link, useRoute, useLocation } from "wouter";
 import { ExpenseForm } from "@/components/expenses/ExpenseForm";
 import { VoidExpenseDialog } from "@/components/expenses/VoidExpenseDialog";

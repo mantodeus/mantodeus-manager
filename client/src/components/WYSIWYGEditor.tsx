@@ -16,7 +16,7 @@ import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { marked } from "marked";
 import { Button } from "@/components/ui/button";
-import { Bold, Italic, Heading1, Heading2, List, CheckSquare, Code, Link as LinkIcon } from "lucide-react";
+import { Bold, Italic, Heading1, Heading2, List, CheckSquare, Code, Link as LinkIcon } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 

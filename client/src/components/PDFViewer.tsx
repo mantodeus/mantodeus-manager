@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 
 interface PDFViewerProps {

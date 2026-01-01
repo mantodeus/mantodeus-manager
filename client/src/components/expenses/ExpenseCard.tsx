@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
-import { Receipt, FileText } from "lucide-react";
+import { Receipt, FileText } from "@/components/ui/Icon";
 import { Link } from "wouter";
 import { getCategoryLabel } from "./CategorySelect";
 import { formatCurrency } from "@/lib/currencyFormat";

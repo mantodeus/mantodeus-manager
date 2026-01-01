@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "@/components/ui/Icon";
 
 type VoidReason = "duplicate" | "personal" | "mistake" | "wrong_document" | "other";
 

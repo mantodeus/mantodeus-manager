@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2 } from "@/components/ui/Icon";
 import { compressImage } from "@/lib/imageCompression";
 
 interface ImageUploadProps {

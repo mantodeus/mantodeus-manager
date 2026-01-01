@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, MapPin, Calendar, Plus, Loader2, Image as ImageIcon, FileText, Trash2, User } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Plus, Loader2, Image as ImageIcon, FileText, Trash2, User } from "@/components/ui/Icon";
 import { Link, useRoute } from "wouter";
 import { useState } from "react";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";

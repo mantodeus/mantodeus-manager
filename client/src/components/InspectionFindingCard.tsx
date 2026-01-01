@@ -8,7 +8,7 @@ import { memo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit2, Trash2 } from "lucide-react";
+import { Edit2, Trash2 } from "@/components/ui/Icon";
 
 interface InspectionFindingCardProps {
   finding: any;

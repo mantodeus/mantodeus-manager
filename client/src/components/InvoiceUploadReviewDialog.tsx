@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText } from "lucide-react";
+import { Loader2, FileText } from "@/components/ui/Icon";
 import { toast } from "sonner";
 
 interface InvoiceUploadReviewDialogProps {

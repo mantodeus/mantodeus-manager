@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Calendar, Loader2, FileText, Trash2, Briefcase, Users, Edit } from "lucide-react";
+import { ArrowLeft, Calendar, Loader2, FileText, Trash2, Briefcase, Users, Edit } from "@/components/ui/Icon";
 import { Link, useRoute, useLocation } from "wouter";
 import { useState } from "react";
 import { EditProjectJobDialog } from "@/components/EditProjectJobDialog";

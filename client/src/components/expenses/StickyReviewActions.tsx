@@ -7,7 +7,7 @@
  */
 
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Sparkles } from "lucide-react";
+import { CheckCircle2, Sparkles } from "@/components/ui/Icon";
 
 interface StickyReviewActionsProps {
   proposedCount: number;

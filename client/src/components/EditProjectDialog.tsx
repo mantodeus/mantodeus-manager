@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/Icon";
 import { DatePicker } from "@/components/DatePicker";
 
 interface Project {

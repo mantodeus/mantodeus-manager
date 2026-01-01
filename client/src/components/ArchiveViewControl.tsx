@@ -9,7 +9,7 @@
  */
 
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "@/components/ui/Icon";
 
 interface ArchiveViewControlProps {
   /** Whether the section is currently visible */

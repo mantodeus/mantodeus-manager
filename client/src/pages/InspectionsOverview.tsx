@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Plus, CheckCircle2, Circle, Clock, Loader2, ArrowRight } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, Loader2, ArrowRight } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { unitStorage, inspectionStorage } from "@/lib/offlineStorage";

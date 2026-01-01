@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { X, ChevronLeft, ChevronRight, Download, Undo, Pencil, Circle, Eraser, Move, Save } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Download, Undo, Pencil, Circle, Eraser, Move, Save } from "@/components/ui/Icon";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 

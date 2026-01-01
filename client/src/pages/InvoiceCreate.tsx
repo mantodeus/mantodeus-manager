@@ -2,7 +2,7 @@ import { InvoiceForm } from "@/components/invoices/InvoiceForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";

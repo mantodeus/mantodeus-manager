@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { FileText, Download, Loader2 } from "lucide-react";
+import { FileText, Download, Loader2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 

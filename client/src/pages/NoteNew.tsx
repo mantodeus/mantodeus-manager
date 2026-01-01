@@ -11,7 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Save, Loader2, Paperclip, Trash2, FileText, Image as ImageIcon, User, Briefcase, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Paperclip, Trash2, FileText, Image as ImageIcon, User, Briefcase, CheckCircle2, AlertCircle } from "@/components/ui/Icon";
 import { WYSIWYGEditor } from "@/components/WYSIWYGEditor";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";

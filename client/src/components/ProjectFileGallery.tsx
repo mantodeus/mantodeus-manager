@@ -22,7 +22,7 @@ import {
   ExternalLink,
   Plus,
   Eye
-} from "lucide-react";
+} from "@/components/ui/Icon";
 import { toast } from "sonner";
 import ProjectFileLightbox from "./ProjectFileLightbox";
 import { compressImage } from "@/lib/imageCompression";

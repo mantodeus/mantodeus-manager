@@ -11,7 +11,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Camera, Loader2, AlertCircle, Check, RotateCcw } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, AlertCircle, Check, RotateCcw } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";

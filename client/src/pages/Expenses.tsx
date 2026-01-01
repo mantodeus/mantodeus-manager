@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Plus, Loader2, Receipt } from "lucide-react";
+import { Plus, Loader2, Receipt } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { ExpenseCard } from "@/components/expenses/ExpenseCard";
 import { ReviewExpenseCard } from "@/components/expenses/ReviewExpenseCard";

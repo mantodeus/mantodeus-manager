@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Upload, Loader2, Trash2, Image as ImageIcon } from "lucide-react";
+import { Upload, Loader2, Trash2, Image as ImageIcon } from "@/components/ui/Icon";
 import { compressImage } from "@/lib/imageCompression";
 
 // Convert file to base64

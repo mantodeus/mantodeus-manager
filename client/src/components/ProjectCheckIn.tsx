@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Clock, MapPin, LogOut, LogIn, Loader2, History } from "lucide-react";
+import { Clock, MapPin, LogOut, LogIn, Loader2, History } from "@/components/ui/Icon";
 import { toast } from "sonner";
 
 interface ProjectCheckInProps {

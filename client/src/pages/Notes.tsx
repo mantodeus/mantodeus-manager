@@ -36,7 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Tag, FileText, Loader2, SlidersHorizontal } from "lucide-react";
+import { Plus, Search, Tag, FileText, Loader2, SlidersHorizontal } from "@/components/ui/Icon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";

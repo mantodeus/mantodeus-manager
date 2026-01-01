@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText, CheckCircle2, AlertCircle } from "@/components/ui/Icon";
 import { Markdown } from "@/components/Markdown";
 import { WYSIWYGEditor } from "@/components/WYSIWYGEditor";
 import { toast } from "sonner";

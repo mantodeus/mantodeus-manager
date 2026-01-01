@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Plus, MapPin, Calendar, Loader2, User } from "lucide-react";
+import { Plus, MapPin, Calendar, Loader2, User } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { CreateJobDialog } from "@/components/CreateJobDialog";
