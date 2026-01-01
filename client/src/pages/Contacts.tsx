@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ChevronDown, Loader2, Mail, MapPin, Phone, Plus, Search, Users } from "lucide-react";
+import { ChevronDown, Loader2, Mail, MapPin, Phone, Plus, Search, Users } from "@/components/ui/Icon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";

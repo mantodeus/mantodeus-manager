@@ -12,7 +12,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Receipt, FileText, CheckCircle2, AlertCircle, XCircle, Trash2 } from "lucide-react";
+import { Receipt, FileText, CheckCircle2, AlertCircle, XCircle, Trash2 } from "@/components/ui/Icon";
 import { useLocation } from "wouter";
 import { getCategoryLabel } from "./CategorySelect";
 import { formatCurrency } from "@/lib/currencyFormat";

@@ -7,7 +7,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Briefcase, Calendar, Users } from "lucide-react";
+import { Briefcase, Calendar, Users } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";

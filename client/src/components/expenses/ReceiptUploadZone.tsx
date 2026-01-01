@@ -7,7 +7,7 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, Loader2, FileText } from "lucide-react";
+import { Upload, Loader2, FileText } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 
 interface ReceiptUploadZoneProps {

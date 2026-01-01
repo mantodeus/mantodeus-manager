@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Camera, Plus, CheckCircle2, Circle, Clock, Loader2, Edit2, Trash2, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Camera, Plus, CheckCircle2, Circle, Clock, Loader2, Edit2, Trash2, Image as ImageIcon } from "@/components/ui/Icon";
 import { Link, useRoute, useLocation } from "wouter";
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { unitStorage, findingStorage, mediaStorage } from "@/lib/offlineStorage";

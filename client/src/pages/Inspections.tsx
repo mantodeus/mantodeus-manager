@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Plus, CheckCircle2, Circle, Clock, AlertCircle, Loader2, FileDown } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, AlertCircle, Loader2, FileDown } from "@/components/ui/Icon";
 import { Link, useRoute, useLocation } from "wouter";
 import { useState, useEffect, useMemo } from "react";
 import { unitStorage, inspectionStorage } from "@/lib/offlineStorage";

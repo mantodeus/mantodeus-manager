@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Upload, X, FileText, Loader2 } from "lucide-react";
+import { AlertCircle, Upload, X, FileText, Loader2 } from "@/components/ui/Icon";
 import { ReceiptUploadZone } from "./ReceiptUploadZone";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

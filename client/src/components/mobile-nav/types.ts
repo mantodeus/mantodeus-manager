@@ -4,7 +4,7 @@
  * TypeScript interfaces and types for the mobile navigation system.
  */
 
-import type { LucideIcon } from 'lucide-react';
+import type { IconComponent } from '@/components/ui/Icon';
 
 /**
  * Tab ID type (Constitution: Bottom Tab Bar)
@@ -39,7 +39,7 @@ export interface Module {
   id: string;
   label: string;
   path: string;
-  icon: LucideIcon;
+  icon: IconComponent;
 }
 
 /**
@@ -48,7 +48,7 @@ export interface Module {
 export interface Tab {
   id: TabId;
   label: string;
-  icon: LucideIcon;
+  icon: IconComponent;
 }
 
 /**

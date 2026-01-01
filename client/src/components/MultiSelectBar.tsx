@@ -1,11 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Trash2, Archive, X } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Trash2, Archive, X } from "@/components/ui/Icon";
+import type { IconComponent } from "@/components/ui/Icon";
 
 export interface MultiSelectAction {
   label: string;
-  icon: LucideIcon;
+  icon: IconComponent;
   onClick: () => void;
   variant?: "default" | "destructive" | "outline" | "secondary";
   disabled?: boolean;
@@ -16,7 +16,7 @@ interface MultiSelectBarProps {
   onPrimaryAction?: () => void;
   onCancel: () => void;
   primaryLabel?: string;
-  primaryIcon?: LucideIcon;
+  primaryIcon?: IconComponent;
   /**
    * Defaults to destructive to preserve existing behavior.
    * (Projects use this for "Archive", etc.)

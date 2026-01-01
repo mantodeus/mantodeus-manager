@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen } from "lucide-react";
+import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";

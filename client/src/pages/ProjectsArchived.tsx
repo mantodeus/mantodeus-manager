@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import { ArrowLeft, MapPin, Calendar, Loader2, Building2, Archive, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Loader2, Building2, Archive, RotateCcw, Trash2 } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";

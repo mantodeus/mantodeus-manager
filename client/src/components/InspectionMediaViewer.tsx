@@ -7,7 +7,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { X, ZoomIn, ZoomOut, RotateCcw, Pencil } from "lucide-react";
+import { X, ZoomIn, ZoomOut, RotateCcw, Pencil } from "@/components/ui/Icon";
 import { getImageUrl } from "@/lib/imageStorage";
 
 interface InspectionMediaViewerProps {

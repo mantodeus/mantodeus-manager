@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Loader2, Upload } from "lucide-react";
+import { FileText, Plus, Loader2, Upload } from "@/components/ui/Icon";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ItemActionsMenu } from "@/components/ItemActionsMenu";

@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "@/components/ui/Icon";
 
 interface DeleteConfirmDialogProps {
   open: boolean;

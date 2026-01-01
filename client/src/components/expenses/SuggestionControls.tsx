@@ -5,7 +5,7 @@
  */
 
 import { Button } from "@/components/ui/button";
-import { Check, X } from "lucide-react";
+import { Check, X } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 
 interface SuggestionControlsProps {

@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Download, Upload, FileJson, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Download, Upload, FileJson, CheckCircle2, AlertCircle, Loader2 } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 import { normalizeExportPayload } from "@shared/importNormalizer";
 

@@ -24,7 +24,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
-import { MapPin, Search, X, Users } from "lucide-react";
+import { MapPin, Search, X, Users } from "@/components/ui/Icon";
 import { MapView } from "@/components/Map";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";

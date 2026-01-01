@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Search, Settings, SlidersHorizontal } from "lucide-react";
+import { Search, Settings, SlidersHorizontal } from "@/components/ui/Icon";
 
 type PageHeaderProps = {
   title?: React.ReactNode;

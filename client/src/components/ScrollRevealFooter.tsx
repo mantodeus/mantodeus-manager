@@ -10,7 +10,7 @@
 
 import { useRef, useEffect, useState } from "react";
 import { Link } from "wouter";
-import { Archive, Trash2 } from "lucide-react";
+import { Archive, Trash2 } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 
 interface ScrollRevealFooterProps {

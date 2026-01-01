@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import ImageLightbox from "./ImageLightbox";
 import { compressImage } from "@/lib/imageCompression";

@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, X, Eye, Loader2 } from "lucide-react";
+import { FileText, X, Eye, Loader2 } from "@/components/ui/Icon";
 import { Badge } from "@/components/ui/badge";
 
 interface ReceiptFile {

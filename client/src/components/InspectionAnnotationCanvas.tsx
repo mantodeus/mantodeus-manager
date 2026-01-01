@@ -7,7 +7,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Circle, ArrowRight, Pencil, Undo2, X, Check } from "lucide-react";
+import { Circle, ArrowRight, Pencil, Undo2, X, Check } from "@/components/ui/Icon";
 
 type AnnotationTool = "circle" | "arrow" | "draw" | null;
 

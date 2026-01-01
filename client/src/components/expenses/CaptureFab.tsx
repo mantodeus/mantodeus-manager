@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Camera, Upload, Plus, X } from "lucide-react";
+import { Camera, Upload, Plus, X } from "@/components/ui/Icon";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 

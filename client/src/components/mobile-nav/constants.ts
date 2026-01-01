@@ -24,7 +24,7 @@ import {
   PencilRuler,
   HardHat,
   Wrench,
-} from 'lucide-react';
+} from '@/components/ui/Icon';
 
 /**
  * Mobile breakpoint (matches existing useMobile.tsx)

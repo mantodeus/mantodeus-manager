@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Save, Building2, Receipt, CreditCard, Info, Palette, ImageIcon, User } from "lucide-react";
+import { Loader2, Save, Building2, Receipt, CreditCard, Info, Palette, ImageIcon, User } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { useTheme } from "@/hooks/useTheme";

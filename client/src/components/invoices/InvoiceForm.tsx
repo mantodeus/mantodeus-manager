@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Loader2, PencilLine, Plus, X } from "lucide-react";
+import { Loader2, PencilLine, Plus, X } from "@/components/ui/Icon";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 

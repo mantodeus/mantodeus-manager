@@ -9,7 +9,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, Trash2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, RotateCcw } from "@/components/ui/Icon";
 import { Link } from "wouter";
 import { useState } from "react";
 import { toast } from "sonner";
