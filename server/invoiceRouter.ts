@@ -61,6 +61,15 @@ function extractInvoiceCounter(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function deriveInvoiceNameFromFilename(filename: string) {
+  const trimmed = filename.trim();
+  const lastDotIndex = trimmed.lastIndexOf(".");
+  if (lastDotIndex > 0) {
+    return trimmed.slice(0, lastDotIndex);
+  }
+  return trimmed;
+}
+
 /**
  * Check if invoice needs review and block mutations
  * Uploaded invoices with needsReview=true must be confirmed before any other action
@@ -193,6 +202,11 @@ export const invoiceRouter = router({
   listTrashed: protectedProcedure.query(async ({ ctx }) => {
     const invoices = await db.getTrashedInvoicesByUserId(ctx.user.id);
     return withCancellationMetadata(invoices.map(mapInvoiceToPayload));
+  }),
+
+  listNeedsReview: protectedProcedure.query(async ({ ctx }) => {
+    const invoices = await db.getNeedsReviewInvoicesByUserId(ctx.user.id);
+    return invoices.map(mapInvoiceToPayload);
   }),
 
   get: protectedProcedure
@@ -768,38 +782,27 @@ export const invoiceRouter = router({
       const fileKey = generateFileKey("invoices", userId, input.filename);
       await storagePut(fileKey, pdfBuffer, mimeType);
       
-      // Get company settings for invoice number generation
-      const settings = await db.getCompanySettingsByUserId(userId);
-      if (!settings) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Company settings not found. Please configure your company settings first.",
-        });
-      }
-      
       // Use parsed date or current date
       const issueDate = parsedData.invoiceDate || new Date();
-      
-      // Generate invoice number (parsed invoice number is only a hint, not auto-saved)
-      // User must confirm in review dialog to avoid collisions
-      const { invoiceNumber: generatedNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
-        userId,
-        issueDate,
-        settings.invoiceNumberFormat ?? null,
-        settings.invoicePrefix ?? "RE"
-      );
-      
-      // Always use generated number - parsed number is only for pre-filling review dialog
-      const invoiceNumber = generatedNumber;
-      
-      // Create invoice and immediately mark it as issued (uploaded invoices are finalised)
+
+      const originalFileName = input.filename;
+      const invoiceName = deriveInvoiceNameFromFilename(originalFileName);
+      if (!invoiceName) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice name cannot be empty." });
+      }
+
+      try {
+        await db.ensureUniqueInvoiceName(userId, invoiceName);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Invoice name must be unique.";
+        throw new TRPCError({ code: "BAD_REQUEST", message });
+      }
+
+      // Create invoice with needsReview flag
       const uploadedAt = new Date();
       const created = await db.createInvoice({
         userId,
         clientId: null, // Can be updated later if needed
-        invoiceNumber,
-        invoiceCounter,
-        invoiceYear,
         status: "draft",
         issueDate,
         dueDate: null,
@@ -807,8 +810,10 @@ export const invoiceRouter = router({
         vatAmount: "0.00",
         total: parsedData.totalAmount || "0.00",
         source: "uploaded",
-        needsReview: false,
+        needsReview: parsedData.needsReview,
         originalPdfS3Key: fileKey,
+        originalFileName,
+        invoiceName,
         uploadedAt,
         pdfFileKey: fileKey,
         filename: input.filename,
@@ -820,14 +825,8 @@ export const invoiceRouter = router({
         items: [], // Empty items - user can add in review
       });
 
-      await db.issueInvoice(created.id);
-      const finalized = await db.getInvoiceById(created.id);
-      if (!finalized) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to load uploaded invoice" });
-      }
-
       return {
-        invoice: mapInvoiceToPayload(finalized),
+        invoice: mapInvoiceToPayload(created),
         parsedData: {
           clientName: parsedData.clientName,
           invoiceDate: parsedData.invoiceDate,

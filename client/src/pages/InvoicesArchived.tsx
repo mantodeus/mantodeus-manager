@@ -165,6 +165,7 @@ export default function InvoicesArchived() {
             );
             const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
             const items = (invoice.items as InvoiceLineItem[]) || [];
+            const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
             const actions: ItemAction[] =
               invoice.status === "draft" ? ["restore", "duplicate", "moveToTrash"] : ["restore", "duplicate"];
 
@@ -174,7 +175,7 @@ export default function InvoicesArchived() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <FileText className="w-5 h-5 text-accent" />
-                      <h3 className="font-regular text-lg">{invoice.invoiceNumber}</h3>
+                      <h3 className="font-regular text-lg">{displayName}</h3>
                       {getStatusBadge(invoice)}
                     </div>
                     <p className="text-muted-foreground text-xs">

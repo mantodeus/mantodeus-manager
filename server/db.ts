@@ -179,6 +179,8 @@ async function ensureInvoiceSchema(db: any) {
       ALTER TABLE invoices
         ADD COLUMN IF NOT EXISTS invoiceYear INT NOT NULL DEFAULT 0 AFTER invoiceNumber,
         ADD COLUMN IF NOT EXISTS invoiceCounter INT NOT NULL DEFAULT 0 AFTER invoiceYear,
+        ADD COLUMN IF NOT EXISTS originalFileName VARCHAR(255) NULL AFTER invoiceNumber,
+        ADD COLUMN IF NOT EXISTS invoiceName VARCHAR(255) NULL AFTER originalFileName,
         ADD COLUMN IF NOT EXISTS cancelledInvoiceId INT NULL AFTER type,
         ADD COLUMN IF NOT EXISTS issueDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER status,
         ADD COLUMN IF NOT EXISTS servicePeriodStart DATETIME NULL AFTER notes,
@@ -224,6 +226,10 @@ async function ensureInvoiceSchema(db: any) {
 
     await executeStatement(
       "CREATE UNIQUE INDEX `invoice_number_per_user` ON `invoices` (`userId`, `invoiceNumber`)",
+      isDuplicateIndexError
+    );
+    await executeStatement(
+      "CREATE UNIQUE INDEX `invoice_name_per_user` ON `invoices` (`userId`, `invoiceName`)",
       isDuplicateIndexError
     );
     await executeStatement(
@@ -1163,6 +1169,27 @@ export async function getTrashedInvoicesByUserId(userId: number) {
   return attachInvoiceItems(invoiceRows as any);
 }
 
+export async function getNeedsReviewInvoicesByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+  const invoiceRows = await db
+    .select()
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.userId, userId),
+        eq(invoices.source, "uploaded"),
+        eq(invoices.needsReview, true),
+        isNull(invoices.archivedAt),
+        isNull(invoices.trashedAt)
+      )
+    )
+    .orderBy(desc(invoices.createdAt));
+
+  return attachInvoiceItems(invoiceRows as any);
+}
+
 async function getHighestInvoiceCounter(userId: number, invoiceYear: number): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1203,6 +1230,24 @@ export async function ensureUniqueInvoiceNumber(userId: number, invoiceNumber: s
   const existing = await db.select({ id: invoices.id }).from(invoices).where(whereClause).limit(1);
   if (existing.length > 0) {
     throw new Error("This invoice number already exists. Invoice numbers must be unique.");
+  }
+}
+
+export async function ensureUniqueInvoiceName(userId: number, invoiceName: string, currentInvoiceId?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const normalizedName = invoiceName.trim();
+  if (!normalizedName) {
+    throw new Error("Invoice name cannot be empty.");
+  }
+  let whereClause = and(eq(invoices.userId, userId), eq(invoices.invoiceName, normalizedName));
+  if (currentInvoiceId) {
+    whereClause = and(whereClause, ne(invoices.id, currentInvoiceId));
+  }
+
+  const existing = await db.select({ id: invoices.id }).from(invoices).where(whereClause).limit(1);
+  if (existing.length > 0) {
+    throw new Error("This invoice name already exists. Invoice names must be unique.");
   }
 }
 
@@ -1341,6 +1386,8 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
   const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
   const invoiceType = data.type ?? "standard";
   const cancelledInvoiceId = data.cancelledInvoiceId ?? null;
+  const normalizedInvoiceNumber = typeof data.invoiceNumber === "string" ? data.invoiceNumber.trim() : null;
+  const isUploaded = data.source === "uploaded";
   
   // HARD ASSERTION: Invoice status must always be 'draft' on creation
   // Backend decides lifecycle state - no UI dependency, no silent corruption
@@ -1360,7 +1407,7 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     contactId: data.contactId ?? data.clientId ?? null,
     clientId: data.clientId ?? data.contactId ?? null,
     jobId: data.jobId ?? null,
-    invoiceNumber: data.invoiceNumber ?? "",
+    invoiceNumber: normalizedInvoiceNumber && normalizedInvoiceNumber.length > 0 ? normalizedInvoiceNumber : null,
     invoiceCounter: data.invoiceCounter ?? 0,
     invoiceYear: data.invoiceYear ?? issueDate.getFullYear(),
     status: "draft", // ALWAYS 'draft' - backend enforces this, never null/empty
@@ -1389,6 +1436,8 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     source: data.source ?? "created",
     needsReview: data.needsReview ?? false,
     originalPdfS3Key: data.originalPdfS3Key ?? null,
+    originalFileName: data.originalFileName ?? null,
+    invoiceName: typeof data.invoiceName === "string" ? data.invoiceName.trim() : null,
     userId: data.userId,
     // Explicitly set timestamp fields - allow passed values to override defaults
     sentAt: data.sentAt ?? null,
@@ -1397,7 +1446,7 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     trashedAt: data.trashedAt ?? null,
   };
 
-  if (!invoiceData.invoiceNumber || invoiceData.invoiceNumber.trim() === "" || !invoiceData.invoiceCounter || invoiceData.invoiceCounter === 0) {
+  if (!isUploaded && (!invoiceData.invoiceNumber || invoiceData.invoiceNumber.trim() === "" || !invoiceData.invoiceCounter || invoiceData.invoiceCounter === 0)) {
     const settings = await getCompanySettingsByUserId(invoiceData.userId);
     const { invoiceNumber, invoiceCounter, invoiceYear } = await generateInvoiceNumber(
       invoiceData.userId,
@@ -1408,6 +1457,9 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     invoiceData.invoiceNumber = invoiceData.invoiceNumber && invoiceData.invoiceNumber.trim() !== "" ? invoiceData.invoiceNumber : invoiceNumber;
     invoiceData.invoiceCounter = invoiceData.invoiceCounter && invoiceData.invoiceCounter > 0 ? invoiceData.invoiceCounter : invoiceCounter;
     invoiceData.invoiceYear = invoiceData.invoiceYear || invoiceYear;
+  }
+  if (invoiceData.invoiceName) {
+    await ensureUniqueInvoiceName(invoiceData.userId, invoiceData.invoiceName);
   }
 
   // FINAL ASSERTION: Status must be 'draft' before insert

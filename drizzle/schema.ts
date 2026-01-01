@@ -317,7 +317,11 @@ export const invoices = mysqlTable("invoices", {
   clientId: int("clientId").references(() => contacts.id),
   contactId: int("contactId").references(() => contacts.id),
   jobId: int("jobId").references(() => jobs.id),
-  invoiceNumber: varchar("invoiceNumber", { length: 50 }).notNull(),
+  invoiceNumber: varchar("invoiceNumber", { length: 50 }),
+  /** Original uploaded filename (with extension) */
+  originalFileName: varchar("originalFileName", { length: 255 }),
+  /** Display name for uploaded invoices (filename without extension) */
+  invoiceName: varchar("invoiceName", { length: 255 }),
   invoiceYear: int("invoiceYear").notNull(),
   invoiceCounter: int("invoiceCounter").notNull(),
   status: mysqlEnum("status", ["draft", "open", "paid"]).notNull().default("draft"),
@@ -361,6 +365,7 @@ export const invoices = mysqlTable("invoices", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [
   uniqueIndex("invoice_number_per_user").on(table.userId, table.invoiceNumber),
+  uniqueIndex("invoice_name_per_user").on(table.userId, table.invoiceName),
   index("invoices_archivedAt_idx").on(table.archivedAt),
   index("invoices_trashedAt_idx").on(table.trashedAt),
   index("invoices_sentAt_idx").on(table.sentAt),
