@@ -667,7 +667,7 @@ export default function Maps() {
           >
             <DialogTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Search maps">
-                <Search className="h-5 w-5" />
+                <Search className="size-6" />
               </Button>
             </DialogTrigger>
             <DialogContent>

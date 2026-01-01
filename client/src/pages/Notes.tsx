@@ -457,7 +457,7 @@ export default function Notes() {
     <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Search notes">
-          <Search className="h-5 w-5" />
+          <Search className="size-6" />
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -484,7 +484,7 @@ export default function Notes() {
     <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Filter notes">
-          <SlidersHorizontal className="h-5 w-5" />
+          <SlidersHorizontal className="size-6" />
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="p-0">
