@@ -332,7 +332,7 @@ export default function Maps() {
         infoWindowRef.current = new google.maps.InfoWindow({
           content: `
             <div style="padding: 8px; font-family: Kanit, sans-serif;">
-              <h3 style="font-weight: 600; margin-bottom: 4px; color: #0a0a0a;">${location.name}</h3>
+              <h3 style="font-weight: 200; margin-bottom: 4px; color: #0a0a0a;">${location.name}</h3>
               ${location.address ? `<p style="font-size: 12px; color: #666; margin-bottom: 4px;">${location.address}</p>` : ""}
               <p style="font-size: 11px; color: #00ff88; text-transform: uppercase;">${location.type}</p>
             </div>
@@ -360,7 +360,7 @@ export default function Maps() {
               <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="30" cy="30" r="26" fill="black" opacity="0.15"/>
                 <circle cx="30" cy="30" r="24" fill="#00ff88"/>
-                <text x="30" y="30" text-anchor="middle" dominant-baseline="central" font-family="Kanit, sans-serif" font-size="18" font-weight="700" fill="black">${count}</text>
+                <text x="30" y="30" text-anchor="middle" dominant-baseline="central" font-family="Kanit, sans-serif" font-size="18" font-weight="200" fill="black">${count}</text>
               </svg>
             `;
             const iconUrl = 'data:image/svg+xml;base64,' + btoa(svg);
@@ -481,7 +481,7 @@ export default function Maps() {
       
       infoWindowRef.current.setContent(`
         <div style="padding: 8px; font-family: Kanit, sans-serif;">
-          <h3 style="font-weight: 600; margin-bottom: 4px; color: #0a0a0a;">${location.name}</h3>
+          <h3 style="font-weight: 200; margin-bottom: 4px; color: #0a0a0a;">${location.name}</h3>
           ${location.address ? `<p style="font-size: 12px; color: #666; margin-bottom: 4px;">${location.address}</p>` : ""}
           <p style="font-size: 11px; color: #00ff88; text-transform: uppercase;">${location.type}</p>
         </div>
@@ -562,7 +562,7 @@ export default function Maps() {
             infoWindowRef.current = new google.maps.InfoWindow({
               content: `
                 <div style="padding: 8px; font-family: Kanit, sans-serif;">
-                  <h3 style="font-weight: 600; margin-bottom: 4px; color: #0a0a0a;">${targetLocation!.name}</h3>
+                  <h3 style="font-weight: 200; margin-bottom: 4px; color: #0a0a0a;">${targetLocation!.name}</h3>
                   ${targetLocation!.address ? `<p style="font-size: 12px; color: #666; margin-bottom: 4px;">${targetLocation!.address}</p>` : ""}
                   <p style="font-size: 11px; color: #00ff88; text-transform: uppercase;">${targetLocation!.type}</p>
                 </div>
