@@ -465,6 +465,97 @@ export async function ensureContactsSchema(): Promise<void> {
 
       const statements: Array<{ description: string; sql: string }> = [];
 
+      if (!columnNames.includes("clientName")) {
+        statements.push({
+          description: "Adding contacts.clientName column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `clientName` VARCHAR(255) NULL AFTER `name`",
+        });
+      }
+
+      if (!columnNames.includes("type")) {
+        statements.push({
+          description: "Adding contacts.type column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `type` ENUM('business','private') NOT NULL DEFAULT 'business' AFTER `clientName`",
+        });
+      }
+
+      if (!columnNames.includes("contactPerson")) {
+        statements.push({
+          description: "Adding contacts.contactPerson column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `contactPerson` VARCHAR(255) NULL AFTER `type`",
+        });
+      }
+
+      if (!columnNames.includes("phoneNumber")) {
+        statements.push({
+          description: "Adding contacts.phoneNumber column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `phoneNumber` VARCHAR(20) NULL AFTER `phone`",
+        });
+      }
+
+      if (!columnNames.includes("streetName")) {
+        statements.push({
+          description: "Adding contacts.streetName column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `streetName` VARCHAR(255) NULL AFTER `address`",
+        });
+      }
+
+      if (!columnNames.includes("streetNumber")) {
+        statements.push({
+          description: "Adding contacts.streetNumber column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `streetNumber` VARCHAR(50) NULL AFTER `streetName`",
+        });
+      }
+
+      if (!columnNames.includes("postalCode")) {
+        statements.push({
+          description: "Adding contacts.postalCode column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `postalCode` VARCHAR(20) NULL AFTER `streetNumber`",
+        });
+      }
+
+      if (!columnNames.includes("city")) {
+        statements.push({
+          description: "Adding contacts.city column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `city` VARCHAR(255) NULL AFTER `postalCode`",
+        });
+      }
+
+      if (!columnNames.includes("country")) {
+        statements.push({
+          description: "Adding contacts.country column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `country` VARCHAR(100) NULL AFTER `city`",
+        });
+      }
+
+      if (!columnNames.includes("vatStatus")) {
+        statements.push({
+          description: "Adding contacts.vatStatus column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `vatStatus` ENUM('subject_to_vat','not_subject_to_vat') NOT NULL DEFAULT 'not_subject_to_vat' AFTER `country`",
+        });
+      }
+
+      if (!columnNames.includes("vatNumber")) {
+        statements.push({
+          description: "Adding contacts.vatNumber column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `vatNumber` VARCHAR(50) NULL AFTER `vatStatus`",
+        });
+      }
+
+      if (!columnNames.includes("taxNumber")) {
+        statements.push({
+          description: "Adding contacts.taxNumber column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `taxNumber` VARCHAR(50) NULL AFTER `vatNumber`",
+        });
+      }
+
+      if (!columnNames.includes("leitwegId")) {
+        statements.push({
+          description: "Adding contacts.leitwegId column",
+          sql: "ALTER TABLE `contacts` ADD COLUMN `leitwegId` VARCHAR(50) NULL AFTER `taxNumber`",
+        });
+      }
+
       if (!columnNames.includes("archivedAt")) {
         statements.push({
           description: "Adding contacts.archivedAt column",

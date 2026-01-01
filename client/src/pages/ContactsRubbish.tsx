@@ -64,7 +64,7 @@ export default function ContactsRubbish() {
     <Card key={contact.id}>
       <div className="flex items-center justify-between p-4">
         <div className="min-w-0">
-          <div className="truncate">{contact.name}</div>
+          <div className="truncate">{contact.clientName || contact.name}</div>
           <div className="text-sm text-muted-foreground">
             Deleted{" "}
             {contact.trashedAt ? new Date(contact.trashedAt).toLocaleDateString() : "—"}

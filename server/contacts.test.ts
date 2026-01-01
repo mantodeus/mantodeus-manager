@@ -43,23 +43,36 @@ describe("contacts", () => {
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.contacts.create({
-      name: "John Doe",
+      clientName: "John Doe",
+      type: "private",
+      streetName: "Main St",
+      streetNumber: "123",
+      postalCode: "12345",
+      city: "Metropolis",
+      country: "Germany",
+      vatStatus: "not_subject_to_vat",
       email: "john@example.com",
-      phone: "+1234567890",
-      address: "123 Main St",
+      phoneNumber: "+1234567890",
     });
 
     expect(result.success).toBe(true);
     expect(result.id).toBeDefined();
   });
 
-  it("should fail to create contact without name", async () => {
+  it("should fail to create contact without client name", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
     try {
       await caller.contacts.create({
-        name: "",
+        clientName: "",
+        type: "business",
+        streetName: "Main St",
+        streetNumber: "123",
+        postalCode: "12345",
+        city: "Metropolis",
+        country: "Germany",
+        vatStatus: "not_subject_to_vat",
         email: "john@example.com",
       });
       expect.fail("Should have thrown error");

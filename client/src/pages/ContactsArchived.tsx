@@ -9,8 +9,8 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Mail, MapPin, Phone, Archive, Loader2 } from "lucide-react";
-import { Link } from "wouter";
+import { ArrowLeft, Archive, ChevronDown, Loader2, Mail, MapPin, Phone } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
@@ -18,8 +18,10 @@ import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 
 export default function ContactsArchived() {
+  const [, setLocation] = useLocation();
   const { data: archivedContacts = [], isLoading } = trpc.contacts.listArchived.useQuery();
   const utils = trpc.useUtils();
+  const [expandedContactId, setExpandedContactId] = useState<number | null>(null);
 
   // Delete confirmation dialog
   const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
@@ -74,48 +76,104 @@ export default function ContactsArchived() {
     );
   }
 
-  const renderContactCard = (contact: typeof archivedContacts[0]) => (
-    <Card
-      key={contact.id}
-      className="p-4 opacity-75"
-    >
-      <div className="flex items-start gap-3 mb-3">
-        <div className="flex-1">
-          <h3 className="font-regular text-lg">{contact.name}</h3>
-          {contact.address && (
-            <div className="text-gray-400 text-sm flex items-center gap-1 mt-1">
-              <MapPin className="w-3 h-3" />
-              {contact.address}
-            </div>
-          )}
+  const getDisplayName = (contact: typeof archivedContacts[0]) =>
+    contact.clientName || contact.name || "Contact";
+
+  const getPreviewAddress = (contact: typeof archivedContacts[0]) => {
+    const streetLine = [contact.streetName, contact.streetNumber].filter(Boolean).join(" ").trim();
+    const cityLine = [contact.postalCode, contact.city].filter(Boolean).join(" ").trim();
+    if (!streetLine && !cityLine) return null;
+    return [streetLine, cityLine].filter(Boolean).join(", ");
+  };
+
+  const getMapAddress = (contact: typeof archivedContacts[0]) => {
+    const streetLine = [contact.streetName, contact.streetNumber].filter(Boolean).join(" ").trim();
+    const cityLine = [contact.postalCode, contact.city].filter(Boolean).join(" ").trim();
+    const parts = [streetLine, cityLine, contact.country].filter(Boolean);
+    if (parts.length === 0) return contact.address;
+    return parts.join(", ");
+  };
+
+  const renderContactRow = (contact: typeof archivedContacts[0]) => {
+    const isExpanded = expandedContactId === contact.id;
+    const displayName = getDisplayName(contact);
+    const previewAddress = getPreviewAddress(contact);
+    const mapAddress = getMapAddress(contact);
+    const email = contact.email || "";
+    const phone = contact.phoneNumber || contact.phone || "";
+
+    return (
+      <div key={contact.id} className="rounded-lg border opacity-75">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="flex-1 min-w-0">
+            <div className="truncate text-base font-regular">{displayName}</div>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11"
+              aria-expanded={isExpanded}
+              onClick={() => setExpandedContactId(isExpanded ? null : contact.id)}
+            >
+              <ChevronDown
+                className={`h-5 w-5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+              />
+            </Button>
+            <ItemActionsMenu
+              onAction={(action) => handleItemAction(action, contact.id)}
+              actions={["restore", "duplicate", "moveToTrash"]}
+              triggerClassName="h-11 w-11 text-muted-foreground hover:text-foreground"
+              size="lg"
+            />
+          </div>
         </div>
-        <ItemActionsMenu
-          onAction={(action) => handleItemAction(action, contact.id)}
-          actions={["restore", "duplicate", "moveToTrash"]}
-          triggerClassName="text-muted-foreground hover:text-foreground"
-        />
-      </div>
 
-      <div className="space-y-2 text-sm text-gray-400">
-        {contact.email && (
-          <p className="flex items-center gap-2">
-            <Mail className="w-3 h-3" />
-            <span>{contact.email}</span>
-          </p>
-        )}
-        {contact.phone && (
-          <p className="flex items-center gap-2">
-            <Phone className="w-3 h-3" />
-            <span>{contact.phone}</span>
-          </p>
-        )}
+        <div
+          className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+            isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="flex flex-col gap-2 px-4 pb-3">
+              {previewAddress && (
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  onClick={() => {
+                    if (!mapAddress) return;
+                    setLocation(`/maps?address=${encodeURIComponent(mapAddress)}`);
+                  }}
+                >
+                  <MapPin className="h-4 w-4" />
+                  <span className="truncate">{previewAddress}</span>
+                </button>
+              )}
+              {email && (
+                <a
+                  href={`mailto:${email}`}
+                  className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Mail className="h-4 w-4" />
+                  <span className="truncate">{email}</span>
+                </a>
+              )}
+              {phone && (
+                <a
+                  href={`tel:${phone}`}
+                  className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Phone className="h-4 w-4" />
+                  <span className="truncate">{phone}</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-
-      {contact.notes && (
-        <p className="text-muted-foreground text-xs mt-3 pt-3 border-t border-border">{contact.notes}</p>
-      )}
-    </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -150,8 +208,8 @@ export default function ContactsArchived() {
             </Link>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {archivedContacts.map((contact) => renderContactCard(contact))}
+          <div className="space-y-3">
+            {archivedContacts.map((contact) => renderContactRow(contact))}
           </div>
         )}
       </div>

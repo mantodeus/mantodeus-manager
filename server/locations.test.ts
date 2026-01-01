@@ -143,9 +143,16 @@ describe("locations operations", () => {
 
     // Create a contact first
     const contactResult = await caller.contacts.create({
-      name: "Test Contact for Location",
+      clientName: "Test Contact for Location",
+      type: "business",
+      streetName: "Bahnhofstrasse",
+      streetNumber: "1",
+      postalCode: "8001",
+      city: "Zurich",
+      country: "Switzerland",
+      vatStatus: "subject_to_vat",
       email: "contact@example.com",
-      phone: "+41 44 123 4567",
+      phoneNumber: "+41 44 123 4567",
     });
 
     // Create a location linked to the contact
