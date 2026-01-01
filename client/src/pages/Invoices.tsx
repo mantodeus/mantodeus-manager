@@ -283,8 +283,8 @@ export default function Invoices() {
         </Button>
         <Button asChild className="h-10 whitespace-nowrap">
           <Link href="/invoices/new">
-            <Plus className="w-4 h-4 mr-2" />
-            Create
+            <Plus className="w-4 h-4 mr-1" />
+            New
           </Link>
         </Button>
       </div>

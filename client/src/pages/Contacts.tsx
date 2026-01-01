@@ -9,6 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -31,11 +39,14 @@ import { PageHeader } from "@/components/PageHeader";
 export default function Contacts() {
   const [location, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [returnTo, setReturnTo] = useState<string | null>(null);
   const [expandedContactId, setExpandedContactId] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -278,6 +289,15 @@ export default function Contacts() {
   };
 
   useEffect(() => {
+    if (!isSearchOpen) return;
+    setSearchDraft(searchTerm);
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [isSearchOpen, searchTerm]);
+
+  useEffect(() => {
     const url = new URL(window.location.href);
     const returnParam = url.searchParams.get("returnTo");
     if (returnParam) {
@@ -418,6 +438,17 @@ export default function Contacts() {
     );
   };
 
+  const applySearch = () => {
+    setSearchTerm(searchDraft.trim());
+    setIsSearchOpen(false);
+  };
+
+  const clearSearch = () => {
+    setSearchDraft("");
+    setSearchTerm("");
+    setIsSearchOpen(false);
+  };
+
   if (activeLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -426,37 +457,57 @@ export default function Contacts() {
     );
   }
 
+  const searchSlot = (
+    <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Search contacts">
+          <Search className="size-6" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Search contacts</DialogTitle>
+        </DialogHeader>
+        <Input
+          ref={searchInputRef}
+          placeholder="Search contacts..."
+          value={searchDraft}
+          onChange={(e) => setSearchDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              applySearch();
+            }
+          }}
+        />
+        <DialogFooter>
+          <Button variant="ghost" onClick={clearSearch}>
+            Clear
+          </Button>
+          <Button onClick={applySearch}>Search</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Contacts"
         subtitle="Manage your clients and contacts"
-        searchSlot={<div />}
-        filterSlot={<div />}
-        settingsSlot={<div />}
+        searchSlot={searchSlot}
       />
 
-      <div className="flex flex-col gap-3 border-b pb-3 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search contacts..."
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          {isFormOpen && (
-            <Button variant="ghost" onClick={handleCloseForm}>
-              Cancel
-            </Button>
-          )}
-          <Button onClick={handleNewContact}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Contact
+      <div className="flex items-center justify-end gap-2 pb-2 border-b">
+        {isFormOpen && (
+          <Button variant="ghost" onClick={handleCloseForm}>
+            Cancel
           </Button>
-        </div>
+        )}
+        <Button onClick={handleNewContact}>
+          <Plus className="h-4 w-4 mr-1" />
+          New
+        </Button>
       </div>
 
       {isFormOpen && (

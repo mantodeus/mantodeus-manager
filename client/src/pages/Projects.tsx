@@ -284,8 +284,8 @@ export default function Projects() {
       {/* Top-of-Page Action Row */}
       <div className="flex items-center justify-end gap-2 pb-2 border-b">
         <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Project
+          <Plus className="h-4 w-4 mr-1" />
+          New
         </Button>
       </div>
 
@@ -297,8 +297,8 @@ export default function Projects() {
               <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-4">No projects yet. Create your first project to get started.</p>
               <Button onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Project
+                <Plus className="h-4 w-4 mr-1" />
+                New
               </Button>
             </CardContent>
           </Card>
