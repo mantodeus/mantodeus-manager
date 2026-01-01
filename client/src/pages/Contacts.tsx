@@ -141,6 +141,12 @@ export default function Contacts() {
     return trimmed.length > 0 ? trimmed : undefined;
   };
 
+  const isValidEmail = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  };
+
   const openForm = () => {
     setIsFormOpen(true);
     setTimeout(() => {
@@ -155,6 +161,10 @@ export default function Contacts() {
     }
     if (!formData.email.trim()) {
       toast.error("Email is required");
+      return;
+    }
+    if (!isValidEmail(formData.email)) {
+      toast.error("Invalid email address");
       return;
     }
     if (!formData.streetName.trim() || !formData.streetNumber.trim()) {
