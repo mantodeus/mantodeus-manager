@@ -9,20 +9,21 @@
 
 import {
   FolderOpen,
-  FileCheck,
   Receipt,
   FileText,
   File,
   Users,
-  ClipboardCheck,
   Image,
   MapPin,
   Calendar as CalendarIcon,
   Settings as SettingsIcon,
   CloudSun,
+  ClipboardDocument,
+  ClipboardDocumentList,
+  DocumentCurrencyEuro,
   FileSpreadsheet,
   PencilRuler,
-  HardHat,
+  HomeModern,
   WrenchScrewdriver,
 } from '@/components/ui/Icon';
 
@@ -89,8 +90,8 @@ export const PERF_BUDGET = {
  * Exactly three tabs: Office, Field, Tools
  */
 export const TABS = [
-  { id: 'office' as const, icon: PencilRuler, label: 'Office' },
-  { id: 'field' as const, icon: HardHat, label: 'Field' },
+  { id: 'office' as const, icon: ClipboardDocument, label: 'Office' },
+  { id: 'field' as const, icon: HomeModern, label: 'Field' },
   { id: 'tools' as const, icon: WrenchScrewdriver, label: 'Tools' },
 ] as const;
 
@@ -109,7 +110,7 @@ export const MODULE_REGISTRY = {
       id: 'invoices',
       label: 'Invoices',
       path: '/invoices',
-      icon: FileCheck,
+      icon: DocumentCurrencyEuro,
     },
     {
       id: 'expenses',
@@ -136,7 +137,7 @@ export const MODULE_REGISTRY = {
       id: 'inspections',
       label: 'Inspections',
       path: '/inspections',
-      icon: ClipboardCheck,
+      icon: ClipboardDocumentList,
     },
     { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image },
     { id: 'notes', label: 'Notes', path: '/notes', icon: File },

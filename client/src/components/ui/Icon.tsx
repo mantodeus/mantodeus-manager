@@ -229,6 +229,10 @@ Heading2.displayName = 'Heading2';
 // Specialized icons that don't exist in Heroicons - using closest alternatives
 export { CloudIcon as CloudSun } from '@heroicons/react/24/outline';
 export { ClipboardDocumentCheckIcon as ClipboardCheck } from '@heroicons/react/24/outline';
+export { ClipboardDocumentIcon as ClipboardDocument } from '@heroicons/react/24/outline';
+export { ClipboardDocumentListIcon as ClipboardDocumentList } from '@heroicons/react/24/outline';
+export { DocumentCurrencyEuroIcon as DocumentCurrencyEuro } from '@heroicons/react/24/outline';
+export { HomeModernIcon as HomeModern } from '@heroicons/react/24/outline';
 export { WrenchScrewdriverIcon as Wrench } from '@heroicons/react/24/outline';
 export { WrenchScrewdriverIcon as WrenchScrewdriver } from '@heroicons/react/24/outline';
 export { PencilSquareIcon as PencilRuler } from '@heroicons/react/24/outline';
