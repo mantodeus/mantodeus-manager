@@ -7,9 +7,9 @@ rm -rf node_modules && npm install
 cd /srv/customer/sites/manager.mantodeus.com
 git fetch origin
 git pull origin main
-npm install
+npx pnpm install
 npx pnpm run db:migrate
-npm install --frozen-lockfile
+npc pnpm install --frozen-lockfile
 npm run build
 npx pm2 restart mantodeus-manager
 

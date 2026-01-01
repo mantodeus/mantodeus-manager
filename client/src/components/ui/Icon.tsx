@@ -171,7 +171,7 @@ export const Bold = React.forwardRef<SVGSVGElement, IconProps>((props, ref) => (
     {...props}
     fill="none"
     viewBox="0 0 24 24"
-    strokeWidth={1.5}
+    strokeWidth={1}
     stroke="currentColor"
     className={props.className || "h-5 w-5"}
   >
@@ -187,7 +187,7 @@ export const Italic = React.forwardRef<SVGSVGElement, IconProps>((props, ref) =>
     {...props}
     fill="none"
     viewBox="0 0 24 24"
-    strokeWidth={1.5}
+    strokeWidth={1}
     stroke="currentColor"
     className={props.className || "h-5 w-5"}
   >
@@ -202,7 +202,7 @@ export const Heading1 = React.forwardRef<SVGSVGElement, IconProps>((props, ref) 
     {...props}
     fill="none"
     viewBox="0 0 24 24"
-    strokeWidth={1.5}
+    strokeWidth={1}
     stroke="currentColor"
     className={props.className || "h-5 w-5"}
   >
@@ -217,7 +217,7 @@ export const Heading2 = React.forwardRef<SVGSVGElement, IconProps>((props, ref) 
     {...props}
     fill="none"
     viewBox="0 0 24 24"
-    strokeWidth={1.5}
+    strokeWidth={1}
     stroke="currentColor"
     className={props.className || "h-5 w-5"}
   >
@@ -243,7 +243,7 @@ export const Circle = React.forwardRef<SVGSVGElement, IconProps>((props, ref) =>
     {...props}
     fill="none"
     viewBox="0 0 24 24"
-    strokeWidth={1.5}
+    strokeWidth={1}
     stroke="currentColor"
     className={props.className || "h-5 w-5"}
   >
@@ -260,7 +260,7 @@ export const Eraser = React.forwardRef<SVGSVGElement, IconProps>((props, ref) =>
     {...props}
     fill="none"
     viewBox="0 0 24 24"
-    strokeWidth={1.5}
+    strokeWidth={1}
     stroke="currentColor"
     className={props.className || "h-5 w-5"}
   >
@@ -275,7 +275,7 @@ export const History = React.forwardRef<SVGSVGElement, IconProps>((props, ref) =
     {...props}
     fill="none"
     viewBox="0 0 24 24"
-    strokeWidth={1.5}
+    strokeWidth={1}
     stroke="currentColor"
     className={props.className || "h-5 w-5"}
   >
@@ -290,7 +290,7 @@ export const GripVertical = React.forwardRef<SVGSVGElement, IconProps>((props, r
     {...props}
     fill="none"
     viewBox="0 0 24 24"
-    strokeWidth={1.5}
+    strokeWidth={1}
     stroke="currentColor"
     className={props.className || "h-5 w-5"}
   >

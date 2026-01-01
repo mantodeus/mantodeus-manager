@@ -156,12 +156,15 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
   h1, h2, h3, h4, h5, h6 {
-    font-weight: 300;
+    font-weight: 200;
   }
-  .font-bold, .font-semibold, .font-extrabold {
-    font-weight: 300;
+  .font-bold, .font-semibold, .font-extrabold, .font-medium {
+    font-weight: 200;
   }
   .font-normal {
+    font-weight: 100;
+  }
+  .font-light {
     font-weight: 100;
   }
   button:not(:disabled),
@@ -199,6 +202,11 @@
   svg {
     max-width: 100%;
   }
+
+  /* Thin icon strokes for Heroicons outline */
+  #root svg[stroke="currentColor"] {
+    stroke-width: 1;
+  }
 }
 
 @layer components {
@@ -235,7 +243,7 @@
 
   .module-item.is-active {
     color: var(--accent);
-    font-weight: 600;
+    font-weight: 200;
     text-shadow: 0 0 6px rgba(12, 245, 126, 0.25);
   }
 
@@ -272,7 +280,7 @@
     text-transform: uppercase;
     font-size: 0.95rem;
     letter-spacing: 0.14em;
-    font-weight: 500;
+    font-weight: 200;
     opacity: 0.85;
   }
 
@@ -280,7 +288,7 @@
     text-transform: uppercase;
     font-size: 0.95rem;
     letter-spacing: 0.08em;
-    font-weight: 500;
+    font-weight: 200;
     opacity: 0.85;
   }
 
