@@ -2,16 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { trpc } from "@/lib/trpc";
 import { FileText, Plus, Eye, Send, Loader2, X, Upload } from "lucide-react";
 import { useState } from "react";
@@ -47,6 +37,7 @@ export default function Invoices() {
   const [revertTarget, setRevertTarget] = useState<{ id: number; targetStatus: "draft" | "open"; currentStatus: "open" | "paid" } | null>(null);
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [cancellationTarget, setCancellationTarget] = useState<{ id: number; invoiceNumber: string } | null>(null);
+  const [needsReviewDeleteTarget, setNeedsReviewDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [uploadReviewDialogOpen, setUploadReviewDialogOpen] = useState(false);
   const [uploadedInvoiceId, setUploadedInvoiceId] = useState<number | null>(null);
   const [uploadedParsedData, setUploadedParsedData] = useState<{
@@ -57,11 +48,13 @@ export default function Invoices() {
   } | null>(null);
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
+  const { data: needsReviewInvoices = [], refetch: refetchNeedsReview } = trpc.invoices.listNeedsReview.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const issueMutation = trpc.invoices.issue.useMutation({
     onSuccess: () => {
       toast.success("Invoice sent");
       refetch();
+      refetchNeedsReview();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -69,6 +62,7 @@ export default function Invoices() {
     onSuccess: () => {
       toast.success("Invoice marked as paid");
       refetch();
+      refetchNeedsReview();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -76,6 +70,7 @@ export default function Invoices() {
     onSuccess: (data) => {
       toast.success("Cancellation invoice created.");
       refetch();
+      refetchNeedsReview();
       setCancellationDialogOpen(false);
       setCancellationTarget(null);
       setEditingInvoice(data.cancellationInvoiceId);
@@ -87,6 +82,7 @@ export default function Invoices() {
     onSuccess: () => {
       toast.success("Invoice archived");
       refetch();
+      refetchNeedsReview();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -94,6 +90,7 @@ export default function Invoices() {
     onSuccess: () => {
       toast.success("Invoice deleted");
       refetch();
+      refetchNeedsReview();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -101,6 +98,7 @@ export default function Invoices() {
     onSuccess: () => {
       toast.success("Invoice status reverted");
       refetch();
+      refetchNeedsReview();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -113,6 +111,15 @@ export default function Invoices() {
     onError: (err) => {
       toast.error("Failed to upload invoice: " + err.message);
     },
+  });
+  const needsReviewDeleteMutation = trpc.invoices.cancelUploadedInvoice.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice deleted");
+      setNeedsReviewDeleteTarget(null);
+      refetch();
+      refetchNeedsReview();
+    },
+    onError: (err) => toast.error(err.message),
   });
 
   const handlePreviewPDF = async (invoiceId: number) => {
@@ -271,6 +278,61 @@ export default function Invoices() {
         </Button>
       </div>
 
+      {needsReviewInvoices.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Needs Review</h2>
+            <Badge variant="secondary" className="text-xs">
+              {needsReviewInvoices.length}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {needsReviewInvoices.map((invoice) => {
+              const uploadDate = invoice.uploadedAt || invoice.uploadDate || invoice.createdAt;
+              const uploadDateLabel = uploadDate ? new Date(uploadDate).toLocaleDateString("de-DE") : "Unknown date";
+              const displayName =
+                invoice.invoiceName ||
+                (invoice.filename ? invoice.filename.replace(/\.[^/.]+$/, "") : null) ||
+                "Untitled invoice";
+              return (
+                <Card key={`needs-review-${invoice.id}`} className="p-4 flex flex-col gap-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-regular text-lg">{displayName}</h3>
+                        <Badge variant="outline" className="text-xs">NEEDS REVIEW</Badge>
+                        <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Uploaded {uploadDateLabel}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setUploadedInvoiceId(invoice.id);
+                          setUploadedParsedData(null);
+                          setUploadReviewDialogOpen(true);
+                        }}
+                      >
+                        Review
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName })}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {invoices.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-muted-foreground">No invoices found. Create your first invoice to get started.</p>
@@ -287,7 +349,9 @@ export default function Invoices() {
             const isOpen = Boolean(invoice.sentAt) && !invoice.paidAt;
             const isDraft = !invoice.sentAt && !invoice.paidAt && invoice.status === "draft";
             const isStandard = invoice.type !== "cancellation";
-            const canCancel = isStandard && !invoice.hasCancellation && (isOpen || isPaid);
+            const hasInvoiceNumber = Boolean(invoice.invoiceNumber);
+            const canCancel = isStandard && hasInvoiceNumber && invoice.source !== "uploaded" && !invoice.hasCancellation && (isOpen || isPaid);
+            const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
             const availableActions = isDraft
               ? ["edit", "duplicate", "archive", "moveToTrash"]
               : isOpen
@@ -311,7 +375,7 @@ export default function Invoices() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <FileText className="w-5 h-5 text-accent" />
-                      <h3 className="font-regular text-lg">{invoice.invoiceNumber}</h3>
+                      <h3 className="font-regular text-lg">{displayName}</h3>
                       {getStatusBadge(invoice)}
                       {invoice.type === "cancellation" && (
                         <Badge variant="outline" className="text-xs">STORNO</Badge>
@@ -486,7 +550,25 @@ export default function Invoices() {
         parsedData={uploadedParsedData}
         onSuccess={() => {
           refetch();
+          refetchNeedsReview();
         }}
+      />
+
+      <DeleteConfirmDialog
+        open={Boolean(needsReviewDeleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setNeedsReviewDeleteTarget(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!needsReviewDeleteTarget) return;
+          needsReviewDeleteMutation.mutate({ id: needsReviewDeleteTarget.id });
+        }}
+        title="Delete uploaded invoice"
+        description={`Delete "${needsReviewDeleteTarget?.name ?? "this invoice"}"? This will remove the file and cannot be undone.`}
+        confirmLabel="Delete"
+        isDeleting={needsReviewDeleteMutation.isPending}
       />
 
       <DeleteConfirmDialog

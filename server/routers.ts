@@ -32,6 +32,15 @@ import {
 } from "./_core/imagePipeline";
 import type { StoredImageMetadata } from "../drizzle/schema";
 
+function deriveInvoiceNameFromFilename(filename: string) {
+  const trimmed = filename.trim();
+  const lastDotIndex = trimmed.lastIndexOf(".");
+  if (lastDotIndex > 0) {
+    return trimmed.slice(0, lastDotIndex);
+  }
+  return trimmed;
+}
+
 async function hydrateImageRecord<T extends { imageMetadata: StoredImageMetadata | null }>(
   image: T
 ): Promise<T & { imageUrls: Record<ImageVariant, string> | null }> {
@@ -862,15 +871,19 @@ export const appRouter = router({
         // Upload to S3 via server (no CORS needed)
         const { url } = await storagePut(fileKey, base64Data, contentType);
 
-        // Generate compliant invoice number for legacy upload
         const issueDate = new Date();
-        const settings = await db.getCompanySettingsByUserId(ctx.user.id);
-        const { invoiceNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
-          ctx.user.id,
-          issueDate,
-          settings?.invoiceNumberFormat ?? null,
-          settings?.invoicePrefix ?? "RE"
-        );
+        const originalFileName = filename;
+        const invoiceName = deriveInvoiceNameFromFilename(originalFileName);
+        if (!invoiceName) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice name cannot be empty." });
+        }
+
+        try {
+          await db.ensureUniqueInvoiceName(ctx.user.id, invoiceName);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Invoice name must be unique.";
+          throw new TRPCError({ code: "BAD_REQUEST", message });
+        }
 
         // Save metadata to database (as legacy file upload)
         const uploadDate = new Date();
@@ -882,9 +895,6 @@ export const appRouter = router({
           jobId: jobId || null,
           contactId: contactId || null,
           clientId: contactId || null,
-          invoiceNumber,
-          invoiceCounter,
-          invoiceYear,
           issueDate,
           uploadDate,
           uploadedBy: ctx.user.id,
@@ -892,15 +902,16 @@ export const appRouter = router({
           userId: ctx.user.id,
           type: "standard",
           source: "uploaded",
-          needsReview: false,
+          needsReview: true,
           originalPdfS3Key: fileKey,
+          originalFileName,
+          invoiceName,
           subtotal: "0.00",
           vatAmount: "0.00",
           total: "0.00",
           items: [],
         });
 
-        await db.issueInvoice(invoice.id);
         return { success: true, id: invoice.id, url, fileKey };
       }),
 
@@ -944,16 +955,21 @@ export const appRouter = router({
       )
       .mutation(async ({ input, ctx }) => {
         const issueDate = input.uploadDate || new Date();
-        const settings = await db.getCompanySettingsByUserId(ctx.user.id);
-        const { invoiceNumber, invoiceCounter, invoiceYear } = await db.generateInvoiceNumber(
-          ctx.user.id,
-          issueDate instanceof Date ? issueDate : new Date(issueDate),
-          settings?.invoiceNumberFormat ?? null,
-          settings?.invoicePrefix ?? "RE"
-        );
+        const originalFileName = input.filename;
+        const invoiceName = deriveInvoiceNameFromFilename(originalFileName);
+        if (!invoiceName) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice name cannot be empty." });
+        }
+
+        try {
+          await db.ensureUniqueInvoiceName(ctx.user.id, invoiceName);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Invoice name must be unique.";
+          throw new TRPCError({ code: "BAD_REQUEST", message });
+        }
 
         // Create invoice as 'draft' (constitution requirement)
-        // Then immediately issue it to maintain legacy behavior
+        // Uploaded invoices remain in needs-review until confirmed
         const invoice = await db.createInvoice({
           filename: input.filename,
           fileKey: input.fileKey,
@@ -962,9 +978,6 @@ export const appRouter = router({
           jobId: input.jobId || null,
           contactId: input.contactId || null,
           clientId: input.contactId || null,
-          invoiceNumber,
-          invoiceCounter,
-          invoiceYear,
           issueDate: issueDate instanceof Date ? issueDate : new Date(issueDate),
           uploadDate: input.uploadDate || new Date(),
           uploadedBy: ctx.user.id,
@@ -976,13 +989,12 @@ export const appRouter = router({
           vatAmount: "0.00",
           total: "0.00",
           source: "uploaded",
-          needsReview: false,
+          needsReview: true,
           originalPdfS3Key: input.fileKey,
+          originalFileName,
+          invoiceName,
         });
         
-        // Immediately issue the invoice to maintain legacy behavior
-        // (Legacy uploads are treated as already issued)
-        await db.issueInvoice(invoice.id);
         return { success: true, id: invoice.id };
       }),
   }),

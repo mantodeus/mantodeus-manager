@@ -60,6 +60,7 @@ export function InvoiceUploadReviewDialog({
       onOpenChange(false);
       // Invalidate and refetch invoice list
       utils.invoices.list.invalidate();
+      utils.invoices.listNeedsReview.invalidate();
       onSuccess?.();
     },
     onError: (error) => {
