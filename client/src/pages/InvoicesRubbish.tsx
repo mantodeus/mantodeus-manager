@@ -124,7 +124,7 @@ export default function InvoicesRubbish() {
                   <div className="flex items-start gap-3 min-w-0">
                     <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
                     <div className="min-w-0">
-                      <div className="font-medium text-base leading-tight break-words">{displayName}</div>
+                      <div className="font-light text-base leading-tight break-words">{displayName}</div>
                       {linkedContact && (
                         <div className="text-xs text-muted-foreground truncate">{linkedContact.name}</div>
                       )}
@@ -134,7 +134,7 @@ export default function InvoicesRubbish() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <div className="text-sm font-semibold">{displayTotal}</div>
+                    <div className="text-sm font-light">{displayTotal}</div>
                     {getStatusBadge(invoice)}
                     <ItemActionsMenu
                       actions={actions}

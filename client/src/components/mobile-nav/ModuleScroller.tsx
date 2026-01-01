@@ -120,7 +120,7 @@ function ModuleItem({
       />
       <span
         className={cn(
-          'text-sm font-medium drop-shadow-[0_1px_6px_rgba(0,0,0,0.18)]'
+          'text-sm font-light drop-shadow-[0_1px_6px_rgba(0,0,0,0.18)]'
         )}
       >
         {module.label}
