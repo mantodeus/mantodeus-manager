@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, FileCheck, StickyNote, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, ClipboardCheck, Receipt } from "lucide-react";
+import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, FileCheck, File, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, ClipboardCheck, Receipt } from "lucide-react";
 import { DataExportImportDialog } from "./DataExportImportDialog";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -41,7 +41,7 @@ const menuItems = [
   { icon: Users, label: "Contacts", path: "/contacts" },
   { icon: FileCheck, label: "Invoices", path: "/invoices" },
   { icon: Receipt, label: "Expenses", path: "/expenses" },
-  { icon: StickyNote, label: "Notes", path: "/notes" },
+  { icon: File, label: "Notes", path: "/notes" },
   { icon: MapPin, label: "Maps", path: "/maps" },
   { icon: FileText, label: "Reports", path: "/reports" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
