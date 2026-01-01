@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Plus, Loader2, Receipt } from "@/components/ui/Icon";
+import { Camera, Plus, Loader2, Receipt, Upload } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { ExpenseCard } from "@/components/expenses/ExpenseCard";
 import { ReviewExpenseCard } from "@/components/expenses/ReviewExpenseCard";
@@ -25,6 +25,12 @@ import { formatCurrency } from "@/lib/currencyFormat";
 import { VoidExpenseDialog } from "@/components/expenses/VoidExpenseDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { BulkUploadDialog } from "@/components/expenses/BulkUploadDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Expenses() {
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
@@ -391,6 +397,30 @@ export default function Expenses() {
 
       {/* Top-of-Page Action Row */}
       <div className="flex items-center justify-end gap-2 pb-2 border-b">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <Upload className="h-4 w-4 mr-1" />
+              Upload
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => navigate("/expenses/scan")}
+              className="cursor-pointer"
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              <span>Scan</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setBulkUploadOpen(true)}
+              className="cursor-pointer"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              <span>Upload files</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Link href="/expenses/new">
           <Button>
             <Plus className="h-4 w-4 mr-1" />
