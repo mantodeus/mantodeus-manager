@@ -29,7 +29,7 @@ export function PageHeader({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 page-header-actions [&_svg]:size-6">
           {searchSlot ?? (
             <Button variant="ghost" size="icon" aria-label="Search">
               <Search className="size-6" />
