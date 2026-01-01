@@ -22,6 +22,7 @@ import Invoices from "./pages/Invoices";
 import InvoicesArchived from "./pages/InvoicesArchived";
 import InvoicesRubbish from "./pages/InvoicesRubbish";
 import InvoiceCreate from "./pages/InvoiceCreate";
+import InvoiceDetail from "./pages/InvoiceDetail";
 import Notes from "./pages/Notes";
 import NoteNew from "./pages/NoteNew";
 import NotesArchived from "./pages/NotesArchived";
@@ -161,11 +162,6 @@ function Router() {
           <InvoiceCreate />
         </DashboardLayout>
       </Route>
-      <Route path="/invoices">
-        <DashboardLayout>
-          <Invoices />
-        </DashboardLayout>
-      </Route>
       <Route path="/invoices/archived">
         <DashboardLayout>
           <InvoicesArchived />
@@ -174,6 +170,16 @@ function Router() {
       <Route path="/invoices/rubbish">
         <DashboardLayout>
           <InvoicesRubbish />
+        </DashboardLayout>
+      </Route>
+      <Route path="/invoices/:id">
+        <DashboardLayout>
+          <InvoiceDetail />
+        </DashboardLayout>
+      </Route>
+      <Route path="/invoices">
+        <DashboardLayout>
+          <Invoices />
         </DashboardLayout>
       </Route>
       <Route path="/notes">

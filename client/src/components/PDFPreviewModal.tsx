@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, X } from "lucide-react";
 import { useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -18,6 +18,7 @@ interface PDFPreviewModalProps {
   fileUrl?: string;
   fileKey?: string;
   fileName: string;
+  fullScreen?: boolean;
 }
 
 export function PDFPreviewModal({
@@ -26,6 +27,7 @@ export function PDFPreviewModal({
   fileUrl,
   fileKey,
   fileName,
+  fullScreen = false,
 }: PDFPreviewModalProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -72,11 +74,21 @@ export function PDFPreviewModal({
     document.body.removeChild(link);
   };
 
+  const contentClassName = fullScreen
+    ? "w-[100vw] h-[100vh] max-w-none max-h-none rounded-none p-0 flex flex-col"
+    : "max-w-4xl max-h-[90vh] flex flex-col";
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="truncate">{fileName}</DialogTitle>
+      <DialogContent className={contentClassName}>
+        <DialogHeader className={fullScreen ? "px-4 py-3 border-b border-border" : ""}>
+          <div className="flex items-center justify-between gap-3">
+            <DialogTitle className="truncate">{fileName}</DialogTitle>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-4 h-4" />
+              <span className="sr-only">Close</span>
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -140,7 +152,10 @@ export function PDFPreviewModal({
           </div>
 
           {/* PDF Viewer */}
-          <div className="flex-1 overflow-auto bg-black flex items-center justify-center">
+          <div
+            className="flex-1 overflow-auto bg-black flex items-center justify-center"
+            style={{ touchAction: "pan-x pan-y" }}
+          >
             {isLoading && (
               <div className="text-gray-400">Loading PDF...</div>
             )}
