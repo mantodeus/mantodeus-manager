@@ -286,20 +286,30 @@
   .bottom-tab-bar {
     height: calc(56px + env(safe-area-inset-bottom) + 12px);
     padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
+    transform: translateY(calc(-1 * var(--bottom-tab-extra-offset)));
   }
   
   /* Global bottom safe area for content (bottom tab bar + safe area) */
   /* On desktop (md and up), bottom tab bar is hidden, so safe area is 0 */
   :root {
     --bottom-safe-area: 0px;
+    --bottom-tab-extra-offset: 0px;
   }
   
   @media (max-width: 767px) {
     :root {
-      --bottom-safe-area: calc(56px + env(safe-area-inset-bottom) + 12px);
+      --bottom-safe-area: calc(56px + env(safe-area-inset-bottom) + 12px + var(--bottom-tab-extra-offset));
     }
     .app-content {
       padding-bottom: var(--bottom-safe-area);
+    }
+  }
+
+  @supports (-webkit-touch-callout: none) {
+    @media (max-width: 767px) {
+      :root {
+        --bottom-tab-extra-offset: 12px;
+      }
     }
   }
 
