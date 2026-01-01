@@ -539,6 +539,16 @@ async function startServer() {
   app.use(
     "/api/trpc",
     (req, res, next) => {
+      // Normalize trailing slash so tRPC can resolve the procedure path.
+      // Express adapter uses the last path segment; a trailing slash yields an empty path.
+      if (req.url) {
+        const [pathPart, queryPart] = req.url.split("?");
+        if (pathPart.length > 1 && pathPart.endsWith("/")) {
+          const normalizedPath = pathPart.slice(0, -1);
+          req.url = queryPart ? `${normalizedPath}?${queryPart}` : normalizedPath;
+        }
+      }
+
       // Force immediate logging - this proves the code is deployed
       process.stderr.write('[TRACE] Express middleware - /api/trpc request received\n');
       process.stderr.write(`[TRACE] Express middleware - method: ${req.method}\n`);
