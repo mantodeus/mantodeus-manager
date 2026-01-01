@@ -12,8 +12,8 @@ import {
   FileCheck,
   Receipt,
   FileText,
+  File,
   Users,
-  StickyNote,
   ClipboardCheck,
   Image,
   MapPin,
@@ -21,9 +21,9 @@ import {
   Settings as SettingsIcon,
   CloudSun,
   FileSpreadsheet,
-  Briefcase,
-  Clipboard,
-  Wrench,
+  PencilRuler,
+  HardHat,
+  Toolbox,
 } from 'lucide-react';
 
 /**
@@ -89,9 +89,9 @@ export const PERF_BUDGET = {
  * Exactly three tabs: Office, Field, Tools
  */
 export const TABS = [
-  { id: 'office' as const, icon: Briefcase, label: 'Office' },
-  { id: 'field' as const, icon: Clipboard, label: 'Field' },
-  { id: 'tools' as const, icon: Wrench, label: 'Tools' },
+  { id: 'office' as const, icon: PencilRuler, label: 'Office' },
+  { id: 'field' as const, icon: HardHat, label: 'Field' },
+  { id: 'tools' as const, icon: Toolbox, label: 'Tools' },
 ] as const;
 
 // Compile-time assertion: exactly 3 tabs
@@ -139,7 +139,7 @@ export const MODULE_REGISTRY = {
       icon: ClipboardCheck,
     },
     { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image },
-    { id: 'notes', label: 'Notes', path: '/notes', icon: StickyNote },
+    { id: 'notes', label: 'Notes', path: '/notes', icon: File },
   ],
   tools: [
     { id: 'map', label: 'Map', path: '/maps', icon: MapPin },

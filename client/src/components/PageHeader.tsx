@@ -32,12 +32,12 @@ export function PageHeader({
         <div className="flex items-center gap-2">
           {searchSlot ?? (
             <Button variant="ghost" size="icon" aria-label="Search">
-              <Search className="h-5 w-5" />
+              <Search className="h-6 w-6" />
             </Button>
           )}
           {filterSlot ?? (
             <Button variant="ghost" size="icon" aria-label="Filter">
-              <SlidersHorizontal className="h-5 w-5" />
+              <SlidersHorizontal className="h-6 w-6" />
             </Button>
           )}
           {settingsSlot ?? (
@@ -47,7 +47,7 @@ export function PageHeader({
               aria-label="Page settings"
               onClick={() => toast.info("No settings available for this page yet.")}
             >
-              <Settings className="h-5 w-5" />
+              <Settings className="h-6 w-6" />
             </Button>
           )}
         </div>

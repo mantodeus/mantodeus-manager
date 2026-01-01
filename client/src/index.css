@@ -255,11 +255,10 @@
   }
 
   .scroller--center .module-item {
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     text-align: center;
     justify-content: center;
-    gap: 4px;
   }
 
   .scroller--right .module-item {
