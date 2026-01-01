@@ -10,16 +10,6 @@ import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { Link } from "wouter";
 
-interface InvoiceLineItem {
-  name: string;
-  description?: string | null;
-  category?: string | null;
-  quantity: number;
-  unitPrice: number;
-  currency: string;
-  lineTotal?: number;
-}
-
 function formatCurrency(amount: number | string) {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
   return new Intl.NumberFormat("de-DE", {
@@ -123,42 +113,33 @@ export default function InvoicesRubbish() {
               (contact: { id: number }) => contact.id === invoice.clientId || contact.id === invoice.contactId
             );
             const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
-            const items = (invoice.items as InvoiceLineItem[]) || [];
             const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
+            const displayTotal = formatCurrency(invoice.total);
             const actions: ItemAction[] =
               invoice.status === "draft" ? ["restore", "deletePermanently"] : ["restore"];
 
             return (
-              <Card key={invoice.id} className="p-4 flex flex-col gap-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-5 h-5 text-accent" />
-                      <h3 className="font-regular text-lg">{displayName}</h3>
-                      {getStatusBadge(invoice)}
+              <Card key={invoice.id} className="p-3 sm:p-4 hover:shadow-sm transition-all">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-medium text-base leading-tight break-words">{displayName}</div>
+                      {linkedContact && (
+                        <div className="text-xs text-muted-foreground truncate">{linkedContact.name}</div>
+                      )}
+                      <div className="text-xs text-muted-foreground">
+                        {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
+                      </div>
                     </div>
-                    <p className="text-muted-foreground text-xs">
-                      {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
-                      {invoice.dueDate ? ` • Due: ${new Date(invoice.dueDate).toLocaleDateString("de-DE")}` : ""}
-                    </p>
-                    {linkedContact && (
-                      <p className="text-xs text-muted-foreground mt-1">Client: {linkedContact.name}</p>
-                    )}
                   </div>
-                  <ItemActionsMenu
-                    actions={actions}
-                    onAction={(action) => handleItemAction(action, invoice.id, invoice.status)}
-                  />
-                </div>
-
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Items:</span>
-                    <span>{items.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total:</span>
-                    <span>{formatCurrency(invoice.total)}</span>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className="text-sm font-semibold">{displayTotal}</div>
+                    {getStatusBadge(invoice)}
+                    <ItemActionsMenu
+                      actions={actions}
+                      onAction={(action) => handleItemAction(action, invoice.id, invoice.status)}
+                    />
                   </div>
                 </div>
               </Card>

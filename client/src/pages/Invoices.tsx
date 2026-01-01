@@ -1,10 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Eye, Send, Loader2, X, Upload } from "lucide-react";
-import { useState } from "react";
+import { FileText, Plus, Loader2, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ItemActionsMenu } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
@@ -13,8 +12,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
 import { useIsMobile } from "@/hooks/useMobile";
-import { InvoiceForm, type InvoiceLineItem } from "@/components/invoices/InvoiceForm";
-import { Link } from "wouter";
+import { PDFPreviewModal } from "@/components/PDFPreviewModal";
+import { Link, useLocation } from "wouter";
 
 function formatCurrency(amount: number | string) {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -26,9 +25,10 @@ function formatCurrency(amount: number | string) {
 
 export default function Invoices() {
   const isMobile = useIsMobile();
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingInvoice, setEditingInvoice] = useState<number | null>(null);
-  const [previewingInvoice, setPreviewingInvoice] = useState<number | null>(null);
+  const [, navigate] = useLocation();
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [archiveTargetId, setArchiveTargetId] = useState<number | null>(null);
   const [moveToRubbishDialogOpen, setMoveToRubbishDialogOpen] = useState(false);
@@ -73,8 +73,7 @@ export default function Invoices() {
       refetchNeedsReview();
       setCancellationDialogOpen(false);
       setCancellationTarget(null);
-      setEditingInvoice(data.cancellationInvoiceId);
-      setEditDialogOpen(true);
+      navigate(`/invoices/${data.cancellationInvoiceId}`);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -122,8 +121,15 @@ export default function Invoices() {
     onError: (err) => toast.error(err.message),
   });
 
-  const handlePreviewPDF = async (invoiceId: number) => {
-    setPreviewingInvoice(invoiceId);
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const handlePreviewPDF = async (invoiceId: number, fileName: string) => {
     try {
       // Get the session token from Supabase
       const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
@@ -147,18 +153,23 @@ export default function Invoices() {
         return;
       }
 
-      // Create a blob URL and open it in a new tab
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
 
-      // Clean up the blob URL after a delay
-      setTimeout(() => URL.revokeObjectURL(url), 100);
+      if (isMobile) {
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+        }
+        setPreviewUrl(url);
+        setPreviewFileName(fileName);
+        setPreviewModalOpen(true);
+      } else {
+        window.open(url, "_blank");
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      }
     } catch (error) {
       console.error('Preview error:', error);
       toast.error('Failed to open preview');
-    } finally {
-      setPreviewingInvoice(null);
     }
   };
 
@@ -286,7 +297,7 @@ export default function Invoices() {
               {needsReviewInvoices.length}
             </Badge>
           </div>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3">
             {needsReviewInvoices.map((invoice) => {
               const uploadDate = invoice.uploadedAt || invoice.uploadDate || invoice.createdAt;
               const uploadDateLabel = uploadDate ? new Date(uploadDate).toLocaleDateString("de-DE") : "Unknown date";
@@ -294,38 +305,34 @@ export default function Invoices() {
                 invoice.invoiceName ||
                 (invoice.filename ? invoice.filename.replace(/\.[^/.]+$/, "") : null) ||
                 "Untitled invoice";
+              const displayTotal = formatCurrency(invoice.total);
               return (
-                <Card key={`needs-review-${invoice.id}`} className="p-4 flex flex-col gap-3">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-regular text-lg break-words">{displayName}</h3>
-                        <Badge variant="outline" className="text-xs">NEEDS REVIEW</Badge>
-                        <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
+                <Card key={`needs-review-${invoice.id}`} className="p-3 sm:p-4 hover:shadow-sm transition-all">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-medium text-base leading-tight break-words">{displayName}</div>
+                        <div className="text-xs text-muted-foreground">Uploaded {uploadDateLabel}</div>
                       </div>
-                      <p className="text-sm text-muted-foreground">Uploaded {uploadDateLabel}</p>
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={() => {
-                          setUploadedInvoiceId(invoice.id);
-                          setUploadedParsedData(null);
-                          setUploadReviewDialogOpen(true);
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <div className="text-sm font-semibold">{displayTotal}</div>
+                      <Badge variant="outline" className="text-xs">NEEDS REVIEW</Badge>
+                      <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
+                      <ItemActionsMenu
+                        actions={["review", "delete"]}
+                        onAction={(action) => {
+                          if (action === "review") {
+                            setUploadedInvoiceId(invoice.id);
+                            setUploadedParsedData(null);
+                            setUploadReviewDialogOpen(true);
+                          }
+                          if (action === "delete") {
+                            setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName });
+                          }
                         }}
-                      >
-                        Review
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={() => setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName })}
-                      >
-                        Delete
-                      </Button>
+                      />
                     </div>
                   </div>
                 </Card>
@@ -346,7 +353,6 @@ export default function Invoices() {
               (contact: { id: number }) => contact.id === invoice.clientId || contact.id === invoice.contactId
             );
             const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
-            const items = (invoice.items as InvoiceLineItem[]) || [];
             const isPaid = Boolean(invoice.paidAt);
             const isOpen = Boolean(invoice.sentAt) && !invoice.paidAt;
             const isDraft = !invoice.sentAt && !invoice.paidAt && invoice.status === "draft";
@@ -354,187 +360,79 @@ export default function Invoices() {
             const hasInvoiceNumber = Boolean(invoice.invoiceNumber);
             const canCancel = isStandard && hasInvoiceNumber && invoice.source !== "uploaded" && !invoice.hasCancellation && (isOpen || isPaid);
             const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
+            const displayTotal = formatCurrency(invoice.total);
             const availableActions = isDraft
-              ? ["edit", "duplicate", "archive", "moveToTrash"]
+              ? ["view", "edit", "send", "archive", "moveToTrash"]
               : isOpen
-              ? ["view", "markAsPaid", "archive", "revertToDraft", "duplicate"]
+              ? ["view", "markAsPaid", "archive", "revertToDraft"]
               : isPaid
-              ? ["view", "archive", "revertToSent", "duplicate"]
-              : ["view", "archive", "duplicate"];
+              ? ["view", "archive", "revertToSent"]
+              : ["view", "archive"];
             if (canCancel) {
               availableActions.push("createCancellation");
             }
-            const originalInvoice = invoice.cancelledInvoiceId
-              ? invoices.find((entry) => entry.id === invoice.cancelledInvoiceId)
-              : null;
-            const cancellationInvoice = invoice.cancellationInvoiceId
-              ? invoices.find((entry) => entry.id === invoice.cancellationInvoiceId)
-              : null;
 
             return (
-              <Card key={invoice.id} className="p-4 flex flex-col gap-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-5 h-5 text-accent" />
-                      <h3 className="font-regular text-lg">{displayName}</h3>
-                      {getStatusBadge(invoice)}
-                      {invoice.type === "cancellation" && (
-                        <Badge variant="outline" className="text-xs">STORNO</Badge>
+              <Card
+                key={invoice.id}
+                className="p-3 sm:p-4 hover:shadow-sm transition-all cursor-pointer"
+                onClick={() => navigate(`/invoices/${invoice.id}`)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-medium text-base leading-tight break-words">{displayName}</div>
+                      {linkedContact && (
+                        <div className="text-xs text-muted-foreground truncate">{linkedContact.name}</div>
                       )}
+                      <div className="text-xs text-muted-foreground">
+                        {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
+                      </div>
                     </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className="text-sm font-semibold">{displayTotal}</div>
+                    {getStatusBadge(invoice)}
                     {invoice.type === "cancellation" && (
-                      <p className="text-xs text-muted-foreground">
-                        Cancellation of invoice {invoice.cancellationOfInvoiceNumber ?? "(unknown)"}
-                      </p>
+                      <Badge variant="outline" className="text-xs">STORNO</Badge>
                     )}
-                    {invoice.type === "standard" && invoice.hasCancellation && invoice.cancellationInvoiceId && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="px-0 text-xs"
-                        onClick={() => {
-                          if (cancellationInvoice) {
-                            setEditingInvoice(cancellationInvoice.id);
-                            setEditDialogOpen(true);
-                          }
-                        }}
-                        disabled={!cancellationInvoice}
-                      >
-                        View cancellation invoice
-                      </Button>
-                    )}
-                    <p className="text-muted-foreground text-xs">
-                      {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
-                      {invoice.dueDate ? ` • Due: ${new Date(invoice.dueDate).toLocaleDateString("de-DE")}` : ""}
-                    </p>
-                    {linkedContact && (
-                      <p className="text-xs text-muted-foreground mt-1">Client: {linkedContact.name}</p>
-                    )}
+                    <ItemActionsMenu
+                      actions={availableActions}
+                      onAction={(action) => {
+                        if (action === "view") handlePreviewPDF(invoice.id, `${displayName}.pdf`);
+                        if (action === "send" && isDraft) {
+                          handleIssueInvoice(invoice.id);
+                        }
+                        if (action === "archive") {
+                          handleArchiveInvoice(invoice.id);
+                        }
+                        if (action === "moveToTrash") {
+                          handleMoveToRubbish(invoice.id);
+                        }
+                        if (action === "markAsPaid" && isOpen) {
+                          markAsPaidMutation.mutate({ id: invoice.id });
+                        }
+                        if (action === "revertToDraft" && isOpen) {
+                          handleRevertStatus(invoice.id, "open");
+                        }
+                        if (action === "revertToSent" && isPaid) {
+                          handleRevertStatus(invoice.id, "paid");
+                        }
+                        if (action === "createCancellation" && canCancel) {
+                          handleCreateCancellation(invoice);
+                        }
+                        if (action === "edit") {
+                          navigate(`/invoices/${invoice.id}`);
+                        }
+                      }}
+                    />
                   </div>
-                  <ItemActionsMenu
-                    actions={availableActions}
-                    onAction={(action) => {
-                      if (action === "view") handlePreviewPDF(invoice.id);
-                      if (action === "duplicate") {
-                        toast.info("Duplicate is coming soon.");
-                      }
-                      if (action === "archive") {
-                        handleArchiveInvoice(invoice.id);
-                      }
-                      if (action === "moveToTrash") {
-                        handleMoveToRubbish(invoice.id);
-                      }
-                      if (action === "markAsPaid" && isOpen) {
-                        markAsPaidMutation.mutate({ id: invoice.id });
-                      }
-                      if (action === "revertToDraft" && isOpen) {
-                        handleRevertStatus(invoice.id, "open");
-                      }
-                      if (action === "revertToSent" && isPaid) {
-                        handleRevertStatus(invoice.id, "paid");
-                      }
-                      if (action === "createCancellation" && canCancel) {
-                        handleCreateCancellation(invoice);
-                      }
-                      if (action === "edit" && isDraft) {
-                        setEditingInvoice(invoice.id);
-                        setEditDialogOpen(true);
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Items:</span>
-                    <span>{items.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total:</span>
-                    <span>{formatCurrency(invoice.total)}</span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 mt-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handlePreviewPDF(invoice.id)}
-                    disabled={previewingInvoice === invoice.id}
-                  >
-                    {previewingInvoice === invoice.id ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Eye className="w-4 h-4 mr-2" />
-                    )}
-                    Preview
-                  </Button>
-                  {invoice.status === "draft" && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleIssueInvoice(invoice.id)}
-                      disabled={issueMutation.isPending}
-                    >
-                      {issueMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4 mr-2" />
-                      )}
-                      Send
-                    </Button>
-                  )}
                 </div>
               </Card>
             );
           })}
         </div>
-      )}
-
-      {editingInvoice && (
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent 
-            className="!fixed !inset-y-0 !right-0 !left-0 lg:!left-[var(--sidebar-width)] !m-0 !p-0 !w-auto !max-w-none !h-auto !translate-x-0 !translate-y-0 !top-0 !rounded-none border-l border-border bg-background shadow-xl flex flex-col data-[state=open]:!zoom-in-100"
-            style={{ left: isMobile ? 0 : 'var(--sidebar-width)' }}
-            showCloseButton={false}
-          >
-            <div className="flex h-full flex-col">
-              <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-4">
-                <DialogTitle className="text-lg font-semibold">Edit Invoice</DialogTitle>
-                <DialogClose className="ring-offset-background focus:ring-ring rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Close</span>
-                </DialogClose>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                <div className="mx-auto w-full max-w-5xl p-6">
-                  <InvoiceForm
-                    mode="edit"
-                    invoiceId={editingInvoice}
-                    contacts={contacts}
-                    onClose={() => {
-                      setEditDialogOpen(false);
-                      setEditingInvoice(null);
-                    }}
-                    onSuccess={() => {
-                      toast.success("Invoice updated");
-                      setEditDialogOpen(false);
-                      setEditingInvoice(null);
-                      refetch();
-                    }}
-                    onOpenInvoice={(invoiceId) => {
-                      setEditingInvoice(invoiceId);
-                      setEditDialogOpen(true);
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       )}
 
       <ScrollRevealFooter basePath="/invoices" />
@@ -554,6 +452,20 @@ export default function Invoices() {
           refetch();
           refetchNeedsReview();
         }}
+      />
+
+      <PDFPreviewModal
+        isOpen={previewModalOpen}
+        onClose={() => {
+          setPreviewModalOpen(false);
+          if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+          }
+          setPreviewUrl(null);
+        }}
+        fileUrl={previewUrl ?? undefined}
+        fileName={previewFileName}
+        fullScreen={isMobile}
       />
 
       <DeleteConfirmDialog
