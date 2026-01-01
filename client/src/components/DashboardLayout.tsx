@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, File, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, Receipt, ClipboardDocumentList, DocumentCurrencyEuro } from "@/components/ui/Icon";
+import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, File, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, Receipt, ClipboardCheck, DocumentCurrencyEuro } from "@/components/ui/Icon";
 import { DataExportImportDialog } from "./DataExportImportDialog";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -36,7 +36,7 @@ import {
 
 const menuItems = [
   { icon: FolderOpen, label: "Projects", path: "/projects" },
-  { icon: ClipboardDocumentList, label: "Inspections", path: "/inspections" },
+  { icon: ClipboardCheck, label: "Inspections", path: "/inspections" },
   { icon: CalendarIcon, label: "Calendar", path: "/calendar" },
   { icon: Users, label: "Contacts", path: "/contacts" },
   { icon: DocumentCurrencyEuro, label: "Invoices", path: "/invoices" },

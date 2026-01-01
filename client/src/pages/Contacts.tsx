@@ -138,7 +138,7 @@ export default function Contacts() {
 
   const normalizeOptional = (value: string) => {
     const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
+    return trimmed.length > 0 ? trimmed : undefined;
   };
 
   const openForm = () => {
