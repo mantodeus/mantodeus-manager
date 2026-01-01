@@ -320,6 +320,12 @@
     height: var(--bottom-tab-extra-offset);
     background-color: var(--background);
   }
+
+  .toaster,
+  .toaster [data-sonner-toast],
+  .toaster .sonner-toast {
+    font-weight: 200;
+  }
   
   /* Global bottom safe area for content (bottom tab bar + safe area) */
   /* On desktop (md and up), bottom tab bar is hidden, so safe area is 0 */
