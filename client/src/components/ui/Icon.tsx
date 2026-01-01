@@ -94,7 +94,6 @@ export {
   // Calendar & Time
   CalendarIcon,
   CalendarDaysIcon,
-  ClockIcon as History,
   
   // Location
   MapPinIcon as MapPin,
@@ -140,13 +139,9 @@ export {
   
   // Chevron icons
   ChevronDownIcon,
-  ChevronDownIcon as ChevronDownIcon,
   ChevronUpIcon,
-  ChevronUpIcon as ChevronUpIcon,
   ChevronLeftIcon,
-  ChevronLeftIcon as ChevronLeftIcon,
   ChevronRightIcon,
-  ChevronRightIcon as ChevronRightIcon,
   
   // More
   EllipsisHorizontalIcon as MoreHorizontal,
@@ -235,6 +230,7 @@ Heading2.displayName = 'Heading2';
 export { CloudIcon as CloudSun } from '@heroicons/react/24/outline';
 export { ClipboardDocumentCheckIcon as ClipboardCheck } from '@heroicons/react/24/outline';
 export { WrenchScrewdriverIcon as Wrench } from '@heroicons/react/24/outline';
+export { WrenchScrewdriverIcon as WrenchScrewdriver } from '@heroicons/react/24/outline';
 export { PencilSquareIcon as PencilRuler } from '@heroicons/react/24/outline';
 export { DocumentChartBarIcon as FileSpreadsheet } from '@heroicons/react/24/outline';
 export { DocumentTextIcon as FileJson } from '@heroicons/react/24/outline';
