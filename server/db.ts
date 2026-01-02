@@ -2653,7 +2653,8 @@ export async function getNoteFileById(id: number) {
 export async function getLocationsByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(locations).where(eq(locations.createdBy, userId));
+  const results = await db.select().from(locations).where(eq(locations.createdBy, userId));
+  return Array.isArray(results) ? results : [];
 }
 
 export async function getLocationsByType(type: "job" | "contact" | "custom") {

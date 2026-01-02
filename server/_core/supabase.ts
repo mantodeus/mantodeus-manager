@@ -6,6 +6,7 @@ import { ForbiddenError } from "@shared/_core/errors";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import crypto from "crypto";
 
 // Validate Supabase configuration
 if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
@@ -59,16 +60,10 @@ setInterval(() => {
   keysToDelete.forEach(key => sessionCache.delete(key));
 }, 60 * 1000); // Clean every minute
 
-// Simple hash for cache key (avoid storing raw tokens)
+// Cryptographically secure hash for cache key (avoid storing raw tokens)
+// Uses SHA-256 to ensure security and deterministic hashing
 function hashToken(token: string): string {
-  let hash = 0;
-  for (let i = 0; i < token.length; i++) {
-    const char = token.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  // Include token length and last chars for uniqueness
-  return `${hash}_${token.length}_${token.slice(-8)}`;
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 // Create Supabase client for client-side operations (public)

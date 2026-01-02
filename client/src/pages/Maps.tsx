@@ -96,10 +96,16 @@ export default function Maps() {
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
 
   // Queries
-  const { data: locations = [], refetch: refetchLocations } = trpc.locations.list.useQuery();
-  const { data: projects = [] } = trpc.projects.list.useQuery();
-  const { data: contacts = [] } = trpc.contacts.list.useQuery();
-  const { data: jobs = [] } = trpc.jobs.list.useQuery();
+  const { data: locationsData, refetch: refetchLocations } = trpc.locations.list.useQuery();
+  const { data: projectsData } = trpc.projects.list.useQuery();
+  const { data: contactsData } = trpc.contacts.list.useQuery();
+  const { data: jobsData } = trpc.jobs.list.useQuery();
+  
+  // Ensure data is always an array
+  const locations = Array.isArray(locationsData) ? locationsData : [];
+  const projects = Array.isArray(projectsData) ? projectsData : [];
+  const contacts = Array.isArray(contactsData) ? contactsData : [];
+  const jobs = Array.isArray(jobsData) ? jobsData : [];
   
   // Stabilize arrays for useEffect dependencies
   const locationsIds = useMemo(() => locations.map(l => l.id).join(','), [locations]);

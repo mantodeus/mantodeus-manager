@@ -82,7 +82,8 @@ export default function Contacts() {
   });
 
   const utils = trpc.useUtils();
-  const { data: activeContacts = [], isLoading: activeLoading } = trpc.contacts.list.useQuery();
+  const { data: activeContactsData, isLoading: activeLoading } = trpc.contacts.list.useQuery();
+  const activeContacts = Array.isArray(activeContactsData) ? activeContactsData : [];
   const createMutation = trpc.contacts.create.useMutation();
   const updateMutation = trpc.contacts.update.useMutation();
   const archiveMutation = trpc.contacts.archive.useMutation({
@@ -258,10 +259,12 @@ export default function Contacts() {
 
   const handleEdit = (contact: typeof activeContacts[0]) => {
     // Migrate old single email/phone to new array format if arrays don't exist
-    const emails = (contact.emails as Array<{ label: string; value: string }> | null) || 
-      (contact.email ? [{ label: "Email", value: contact.email }] : [{ label: "", value: "" }]);
-    const phoneNumbers = (contact.phoneNumbers as Array<{ label: string; value: string }> | null) || 
-      (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
+    const emails = Array.isArray(contact.emails)
+      ? contact.emails
+      : (contact.email ? [{ label: "Email", value: contact.email }] : [{ label: "", value: "" }]);
+    const phoneNumbers = Array.isArray(contact.phoneNumbers)
+      ? contact.phoneNumbers
+      : (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
     
     setFormData({
       clientName: contact.clientName || contact.name || "",
@@ -403,10 +406,12 @@ export default function Contacts() {
     const mapAddress = getMapAddress(contact);
     
     // Get emails and phone numbers from new array format or fallback to single values
-    const emails = (contact.emails as Array<{ label: string; value: string }> | null) || 
-      (contact.email ? [{ label: "Email", value: contact.email }] : []);
-    const phoneNumbers = (contact.phoneNumbers as Array<{ label: string; value: string }> | null) || 
-      (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
+    const emails = Array.isArray(contact.emails) 
+      ? contact.emails 
+      : (contact.email ? [{ label: "Email", value: contact.email }] : []);
+    const phoneNumbers = Array.isArray(contact.phoneNumbers)
+      ? contact.phoneNumbers
+      : (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
     
     const ContactIcon = contact.type === "business" ? Building2 : User;
 
@@ -909,10 +914,12 @@ export default function Contacts() {
         
         const previewAddress = getPreviewAddress(contact);
         const mapAddress = getMapAddress(contact);
-        const emails = (contact.emails as Array<{ label: string; value: string }> | null) || 
-          (contact.email ? [{ label: "Email", value: contact.email }] : []);
-        const phoneNumbers = (contact.phoneNumbers as Array<{ label: string; value: string }> | null) || 
-          (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
+        const emails = Array.isArray(contact.emails) 
+          ? contact.emails 
+          : (contact.email ? [{ label: "Email", value: contact.email }] : []);
+        const phoneNumbers = Array.isArray(contact.phoneNumbers)
+          ? contact.phoneNumbers
+          : (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
         const ContactIcon = contact.type === "business" ? Building2 : User;
         const displayName = getDisplayName(contact);
         
