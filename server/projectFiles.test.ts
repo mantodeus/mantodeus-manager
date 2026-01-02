@@ -433,7 +433,19 @@ describe("projects.files.delete", () => {
 
     expect(deleteResult.success).toBe(true);
 
-    // Verify deletion
+    // Verify deletion - delete moves to trash, so getPresignedUrl should still work
+    // But the file should be in trash. Let's verify by checking it's trashed
+    const trashedFiles = await caller.projects.files.listTrashedByProject({
+      projectId: project.id,
+    });
+    expect(trashedFiles.some(f => f.id === registerResult.file!.id)).toBe(true);
+    
+    // Permanently delete it
+    await caller.projects.files.deletePermanently({
+      fileId: registerResult.file!.id,
+    });
+    
+    // Now it should be gone
     await expect(
       caller.projects.files.getPresignedUrl({
         fileId: registerResult.file!.id,
