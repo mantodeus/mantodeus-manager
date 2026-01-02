@@ -55,8 +55,106 @@ CREATE TABLE IF NOT EXISTS `note_files` (
 -- Note: Foreign key constraints are added inline in table creation above or handled by migration 0018
 -- Skipping ALTER TABLE ADD CONSTRAINT statements to avoid conflicts with existing constraints
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `expense_files_expenseId_idx` ON `expense_files` (`expenseId`);--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `expenses_createdBy_status_expenseDate_idx` ON `expenses` (`createdBy`,`status`,`expenseDate`);--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `expenses_createdBy_expenseDate_idx` ON `expenses` (`createdBy`,`expenseDate`);--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `expenses_updatedByUserId_idx` ON `expenses` (`updatedByUserId`);--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `note_files_noteId_idx` ON `note_files` (`noteId`);
+SET @has_expense_files_expenseId_idx := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'expense_files'
+    AND INDEX_NAME = 'expense_files_expenseId_idx'
+);
+--> statement-breakpoint
+SET @add_expense_files_expenseId_idx_sql := IF(
+  @has_expense_files_expenseId_idx = 0,
+  'CREATE INDEX `expense_files_expenseId_idx` ON `expense_files` (`expenseId`)',
+  'SELECT 1'
+);
+--> statement-breakpoint
+PREPARE add_expense_files_expenseId_idx_stmt FROM @add_expense_files_expenseId_idx_sql;
+--> statement-breakpoint
+EXECUTE add_expense_files_expenseId_idx_stmt;
+--> statement-breakpoint
+DEALLOCATE PREPARE add_expense_files_expenseId_idx_stmt;
+--> statement-breakpoint
+
+SET @has_expenses_createdBy_status_expenseDate_idx := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'expenses'
+    AND INDEX_NAME = 'expenses_createdBy_status_expenseDate_idx'
+);
+--> statement-breakpoint
+SET @add_expenses_createdBy_status_expenseDate_idx_sql := IF(
+  @has_expenses_createdBy_status_expenseDate_idx = 0,
+  'CREATE INDEX `expenses_createdBy_status_expenseDate_idx` ON `expenses` (`createdBy`,`status`,`expenseDate`)',
+  'SELECT 1'
+);
+--> statement-breakpoint
+PREPARE add_expenses_createdBy_status_expenseDate_idx_stmt FROM @add_expenses_createdBy_status_expenseDate_idx_sql;
+--> statement-breakpoint
+EXECUTE add_expenses_createdBy_status_expenseDate_idx_stmt;
+--> statement-breakpoint
+DEALLOCATE PREPARE add_expenses_createdBy_status_expenseDate_idx_stmt;
+--> statement-breakpoint
+
+SET @has_expenses_createdBy_expenseDate_idx := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'expenses'
+    AND INDEX_NAME = 'expenses_createdBy_expenseDate_idx'
+);
+--> statement-breakpoint
+SET @add_expenses_createdBy_expenseDate_idx_sql := IF(
+  @has_expenses_createdBy_expenseDate_idx = 0,
+  'CREATE INDEX `expenses_createdBy_expenseDate_idx` ON `expenses` (`createdBy`,`expenseDate`)',
+  'SELECT 1'
+);
+--> statement-breakpoint
+PREPARE add_expenses_createdBy_expenseDate_idx_stmt FROM @add_expenses_createdBy_expenseDate_idx_sql;
+--> statement-breakpoint
+EXECUTE add_expenses_createdBy_expenseDate_idx_stmt;
+--> statement-breakpoint
+DEALLOCATE PREPARE add_expenses_createdBy_expenseDate_idx_stmt;
+--> statement-breakpoint
+
+SET @has_expenses_updatedByUserId_idx := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'expenses'
+    AND INDEX_NAME = 'expenses_updatedByUserId_idx'
+);
+--> statement-breakpoint
+SET @add_expenses_updatedByUserId_idx_sql := IF(
+  @has_expenses_updatedByUserId_idx = 0,
+  'CREATE INDEX `expenses_updatedByUserId_idx` ON `expenses` (`updatedByUserId`)',
+  'SELECT 1'
+);
+--> statement-breakpoint
+PREPARE add_expenses_updatedByUserId_idx_stmt FROM @add_expenses_updatedByUserId_idx_sql;
+--> statement-breakpoint
+EXECUTE add_expenses_updatedByUserId_idx_stmt;
+--> statement-breakpoint
+DEALLOCATE PREPARE add_expenses_updatedByUserId_idx_stmt;
+--> statement-breakpoint
+
+SET @has_note_files_noteId_idx := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'note_files'
+    AND INDEX_NAME = 'note_files_noteId_idx'
+);
+--> statement-breakpoint
+SET @add_note_files_noteId_idx_sql := IF(
+  @has_note_files_noteId_idx = 0,
+  'CREATE INDEX `note_files_noteId_idx` ON `note_files` (`noteId`)',
+  'SELECT 1'
+);
+--> statement-breakpoint
+PREPARE add_note_files_noteId_idx_stmt FROM @add_note_files_noteId_idx_sql;
+--> statement-breakpoint
+EXECUTE add_note_files_noteId_idx_stmt;
+--> statement-breakpoint
+DEALLOCATE PREPARE add_note_files_noteId_idx_stmt;
