@@ -58,7 +58,7 @@ export function BottomTabBar() {
                   key={tab.id}
                   className={cn(
                     'tab-label whitespace-nowrap',
-                    isActive ? 'opacity-100' : 'opacity-0'
+                    isActive ? 'opacity-100 is-active' : 'opacity-0'
                   )}
                 >
                   {tab.label.toUpperCase()}
@@ -101,7 +101,7 @@ export function BottomTabBar() {
                     'h-6 w-6',
                     isActive && 'text-primary'
                   )}
-                  strokeWidth={isActive ? 2.5 : 2}
+                  strokeWidth={isActive ? 1.75 : 1.5}
                 />
               </button>
             );
