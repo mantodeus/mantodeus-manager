@@ -2287,12 +2287,56 @@ export async function getExpenseFilesByExpenseIds(
 }
 
 /**
+ * Normalize supplier name for matching (same logic as suggestionEngine)
+ * - Lowercase
+ * - Remove punctuation
+ * - Strip common suffixes (gmbh, ug, kg, ag, ltd, inc, llc)
+ * - Trim whitespace
+ */
+function normalizeSupplierName(name: string): string {
+  let normalized = name.trim().toLowerCase();
+  
+  // Remove punctuation (keep spaces)
+  normalized = normalized.replace(/[^\w\s]/g, "");
+  
+  // Strip common suffixes
+  const suffixes = [
+    /\bgmbh\b/gi,
+    /\bug\b/gi,
+    /\bkg\b/gi,
+    /\bag\b/gi,
+    /\bltd\b/gi,
+    /\binc\b/gi,
+    /\bllc\b/gi,
+    /\bco\b/gi,
+    /\bcorp\b/gi,
+    /\bcorporation\b/gi,
+    /\bcompany\b/gi,
+  ];
+  
+  for (const suffix of suffixes) {
+    normalized = normalized.replace(suffix, "");
+  }
+  
+  // Clean up multiple spaces
+  normalized = normalized.replace(/\s+/g, " ").trim();
+  
+  return normalized;
+}
+
+/**
  * Get recent expenses for a specific supplier (for suggestion engine)
- * Uses database filtering instead of in-memory filtering for performance
- * Performance optimization: replaces fetching all user expenses + in-memory filter
+ * Performance optimization: Uses index on (createdBy, expenseDate) and filters in memory
+ * This prevents N+1 query explosion by avoiding loading ALL user expenses
+ *
+ * Strategy:
+ * 1. Query last 100 expenses for user (uses index, small result set)
+ * 2. Normalize supplier names in memory (fast, can't be done efficiently in SQL)
+ * 3. Filter to exact normalized match
+ * 4. Return first N results
  *
  * @param userId - User ID
- * @param supplierName - Supplier name to match (case-insensitive, partial match)
+ * @param supplierName - Supplier name to match (will be normalized)
  * @param limit - Maximum number of results (default: 5)
  * @returns Recent expenses sorted by date descending
  */
@@ -2304,29 +2348,40 @@ export async function listSupplierHistory(
   const db = await getDb();
   if (!db) return [];
 
-  // Normalize supplier name for matching
-  const normalizedSearch = supplierName.trim().toLowerCase();
-
+  // Normalize the search term
+  const normalizedSearch = normalizeSupplierName(supplierName);
   if (!normalizedSearch) {
     return [];
   }
 
-  // Query with database-level filtering
-  // Use LOWER() for case-insensitive matching
-  const results = await db
+  // Query last 100 expenses for user (uses index on createdBy + expenseDate)
+  // This is much better than loading ALL expenses, and 100 is enough for supplier history
+  const recentExpenses = await db
     .select()
     .from(expenses)
     .where(
       and(
         eq(expenses.createdBy, userId),
-        ne(expenses.status, 'void'), // Exclude voided expenses
-        sql`LOWER(${expenses.supplierName}) LIKE ${`%${normalizedSearch}%`}`
+        ne(expenses.status, 'void') // Exclude voided expenses
       )
     )
-    .orderBy(desc(expenses.expenseDate))
-    .limit(limit);
+    .orderBy(desc(expenses.expenseDate), desc(expenses.createdAt))
+    .limit(100); // Reasonable limit for supplier history lookup
 
-  return results;
+  // Filter in memory using normalized matching
+  // This is fast for 100 items and handles complex normalization that SQL can't do
+  const matching: Array<typeof expenses.$inferSelect> = [];
+  for (const expense of recentExpenses) {
+    const normalizedExpense = normalizeSupplierName(expense.supplierName);
+    if (normalizedExpense === normalizedSearch) {
+      matching.push(expense);
+      if (matching.length >= limit) {
+        break;
+      }
+    }
+  }
+
+  return matching;
 }
 
 // ===== NOTES QUERIES =====

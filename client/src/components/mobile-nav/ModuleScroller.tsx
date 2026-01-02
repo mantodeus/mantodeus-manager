@@ -116,7 +116,7 @@ function ModuleItem({
           'h-6 w-6 drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)]',
           isActive && 'text-primary'
         )}
-        strokeWidth={2}
+        strokeWidth={1.5}
       />
       <span
         className={cn(
