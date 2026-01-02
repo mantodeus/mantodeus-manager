@@ -716,23 +716,140 @@ export async function getUserById(id: number) {
 export async function getContactsByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db
-    .select()
-    .from(contacts)
-    .where(and(
-      eq(contacts.createdBy, userId),
-      isNull(contacts.archivedAt),
-      isNull(contacts.trashedAt)
-    ))
-    .orderBy(desc(contacts.updatedAt));
+  try {
+    const results = await db
+      .select()
+      .from(contacts)
+      .where(and(
+        eq(contacts.createdBy, userId),
+        isNull(contacts.archivedAt),
+        isNull(contacts.trashedAt)
+      ))
+      .orderBy(desc(contacts.updatedAt));
+    
+    // Ensure emails and phoneNumbers are properly typed, defaulting to null if not present
+    return results.map(contact => ({
+      ...contact,
+      emails: contact.emails ?? null,
+      phoneNumbers: contact.phoneNumbers ?? null,
+    }));
+  } catch (error) {
+    console.error("[Database] Error fetching contacts:", error);
+    // If error is due to missing columns, try without the new columns
+    try {
+      const results = await db
+        .select({
+          id: contacts.id,
+          name: contacts.name,
+          clientName: contacts.clientName,
+          type: contacts.type,
+          contactPerson: contacts.contactPerson,
+          email: contacts.email,
+          phone: contacts.phone,
+          phoneNumber: contacts.phoneNumber,
+          address: contacts.address,
+          streetName: contacts.streetName,
+          streetNumber: contacts.streetNumber,
+          postalCode: contacts.postalCode,
+          city: contacts.city,
+          country: contacts.country,
+          vatStatus: contacts.vatStatus,
+          vatNumber: contacts.vatNumber,
+          taxNumber: contacts.taxNumber,
+          leitwegId: contacts.leitwegId,
+          latitude: contacts.latitude,
+          longitude: contacts.longitude,
+          notes: contacts.notes,
+          archivedAt: contacts.archivedAt,
+          trashedAt: contacts.trashedAt,
+          createdBy: contacts.createdBy,
+          createdAt: contacts.createdAt,
+          updatedAt: contacts.updatedAt,
+        })
+        .from(contacts)
+        .where(and(
+          eq(contacts.createdBy, userId),
+          isNull(contacts.archivedAt),
+          isNull(contacts.trashedAt)
+        ))
+        .orderBy(desc(contacts.updatedAt));
+      
+      return results.map(contact => ({
+        ...contact,
+        emails: null,
+        phoneNumbers: null,
+      }));
+    } catch (fallbackError) {
+      console.error("[Database] Fallback query also failed:", fallbackError);
+      throw error;
+    }
+  }
 }
 
 export async function getContactById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
   
-  const result = await db.select().from(contacts).where(eq(contacts.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  try {
+    const result = await db.select().from(contacts).where(eq(contacts.id, id)).limit(1);
+    if (result.length > 0) {
+      return {
+        ...result[0],
+        emails: result[0].emails ?? null,
+        phoneNumbers: result[0].phoneNumbers ?? null,
+      };
+    }
+    return undefined;
+  } catch (error) {
+    console.error("[Database] Error fetching contact by ID:", error);
+    // Fallback to explicit column selection if new columns don't exist
+    try {
+      const result = await db
+        .select({
+          id: contacts.id,
+          name: contacts.name,
+          clientName: contacts.clientName,
+          type: contacts.type,
+          contactPerson: contacts.contactPerson,
+          email: contacts.email,
+          phone: contacts.phone,
+          phoneNumber: contacts.phoneNumber,
+          address: contacts.address,
+          streetName: contacts.streetName,
+          streetNumber: contacts.streetNumber,
+          postalCode: contacts.postalCode,
+          city: contacts.city,
+          country: contacts.country,
+          vatStatus: contacts.vatStatus,
+          vatNumber: contacts.vatNumber,
+          taxNumber: contacts.taxNumber,
+          leitwegId: contacts.leitwegId,
+          latitude: contacts.latitude,
+          longitude: contacts.longitude,
+          notes: contacts.notes,
+          archivedAt: contacts.archivedAt,
+          trashedAt: contacts.trashedAt,
+          createdBy: contacts.createdBy,
+          createdAt: contacts.createdAt,
+          updatedAt: contacts.updatedAt,
+        })
+        .from(contacts)
+        .where(eq(contacts.id, id))
+        .limit(1);
+      
+      if (result.length > 0) {
+        return {
+          ...result[0],
+          emails: null,
+          phoneNumbers: null,
+        };
+      }
+      return undefined;
+    } catch (fallbackError) {
+      console.error("[Database] Fallback query also failed:", fallbackError);
+      throw error;
+    }
+  }
 }
 
 export async function createContact(data: InsertContact) {
@@ -797,29 +914,144 @@ export async function getArchivedContactsByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return db
-    .select()
-    .from(contacts)
-    .where(and(
-      eq(contacts.createdBy, userId),
-      isNotNull(contacts.archivedAt),
-      isNull(contacts.trashedAt)
-    ))
-    .orderBy(desc(contacts.archivedAt), desc(contacts.updatedAt));
+  try {
+    const results = await db
+      .select()
+      .from(contacts)
+      .where(and(
+        eq(contacts.createdBy, userId),
+        isNotNull(contacts.archivedAt),
+        isNull(contacts.trashedAt)
+      ))
+      .orderBy(desc(contacts.archivedAt), desc(contacts.updatedAt));
+    
+    return results.map(contact => ({
+      ...contact,
+      emails: contact.emails ?? null,
+      phoneNumbers: contact.phoneNumbers ?? null,
+    }));
+  } catch (error) {
+    console.error("[Database] Error fetching archived contacts:", error);
+    // Fallback if new columns don't exist
+    try {
+      const results = await db
+        .select({
+          id: contacts.id,
+          name: contacts.name,
+          clientName: contacts.clientName,
+          type: contacts.type,
+          contactPerson: contacts.contactPerson,
+          email: contacts.email,
+          phone: contacts.phone,
+          phoneNumber: contacts.phoneNumber,
+          address: contacts.address,
+          streetName: contacts.streetName,
+          streetNumber: contacts.streetNumber,
+          postalCode: contacts.postalCode,
+          city: contacts.city,
+          country: contacts.country,
+          vatStatus: contacts.vatStatus,
+          vatNumber: contacts.vatNumber,
+          taxNumber: contacts.taxNumber,
+          leitwegId: contacts.leitwegId,
+          latitude: contacts.latitude,
+          longitude: contacts.longitude,
+          notes: contacts.notes,
+          archivedAt: contacts.archivedAt,
+          trashedAt: contacts.trashedAt,
+          createdBy: contacts.createdBy,
+          createdAt: contacts.createdAt,
+          updatedAt: contacts.updatedAt,
+        })
+        .from(contacts)
+        .where(and(
+          eq(contacts.createdBy, userId),
+          isNotNull(contacts.archivedAt),
+          isNull(contacts.trashedAt)
+        ))
+        .orderBy(desc(contacts.archivedAt), desc(contacts.updatedAt));
+      
+      return results.map(contact => ({
+        ...contact,
+        emails: null,
+        phoneNumbers: null,
+      }));
+    } catch (fallbackError) {
+      console.error("[Database] Fallback query also failed:", fallbackError);
+      throw error;
+    }
+  }
 }
 
 export async function getTrashedContactsByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return db
-    .select()
-    .from(contacts)
-    .where(and(
-      eq(contacts.createdBy, userId),
-      isNotNull(contacts.trashedAt)
-    ))
-    .orderBy(desc(contacts.trashedAt), desc(contacts.updatedAt));
+  try {
+    const results = await db
+      .select()
+      .from(contacts)
+      .where(and(
+        eq(contacts.createdBy, userId),
+        isNotNull(contacts.trashedAt)
+      ))
+      .orderBy(desc(contacts.trashedAt), desc(contacts.updatedAt));
+    
+    return results.map(contact => ({
+      ...contact,
+      emails: contact.emails ?? null,
+      phoneNumbers: contact.phoneNumbers ?? null,
+    }));
+  } catch (error) {
+    console.error("[Database] Error fetching trashed contacts:", error);
+    // Fallback if new columns don't exist
+    try {
+      const results = await db
+        .select({
+          id: contacts.id,
+          name: contacts.name,
+          clientName: contacts.clientName,
+          type: contacts.type,
+          contactPerson: contacts.contactPerson,
+          email: contacts.email,
+          phone: contacts.phone,
+          phoneNumber: contacts.phoneNumber,
+          address: contacts.address,
+          streetName: contacts.streetName,
+          streetNumber: contacts.streetNumber,
+          postalCode: contacts.postalCode,
+          city: contacts.city,
+          country: contacts.country,
+          vatStatus: contacts.vatStatus,
+          vatNumber: contacts.vatNumber,
+          taxNumber: contacts.taxNumber,
+          leitwegId: contacts.leitwegId,
+          latitude: contacts.latitude,
+          longitude: contacts.longitude,
+          notes: contacts.notes,
+          archivedAt: contacts.archivedAt,
+          trashedAt: contacts.trashedAt,
+          createdBy: contacts.createdBy,
+          createdAt: contacts.createdAt,
+          updatedAt: contacts.updatedAt,
+        })
+        .from(contacts)
+        .where(and(
+          eq(contacts.createdBy, userId),
+          isNotNull(contacts.trashedAt)
+        ))
+        .orderBy(desc(contacts.trashedAt), desc(contacts.updatedAt));
+      
+      return results.map(contact => ({
+        ...contact,
+        emails: null,
+        phoneNumbers: null,
+      }));
+    } catch (fallbackError) {
+      console.error("[Database] Fallback query also failed:", fallbackError);
+      throw error;
+    }
+  }
 }
 
 export async function archiveContact(id: number) {
