@@ -76,7 +76,7 @@ export function ExpenseCard({ expense, onAction, showVoid = false, isMultiSelect
   return (
     <div
       onClick={handleCardClick}
-      className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${isSelected ? "ring-2 ring-accent rounded-lg" : ""}`}
+      className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${isSelected ? "item-selected rounded-lg" : ""}`}
     >
       <Link href={isMultiSelectMode ? "#" : `/expenses/${expense.id}`} onClick={(e) => isMultiSelectMode && e.preventDefault()}>
         <Card className="hover:shadow-lg transition-all h-full">

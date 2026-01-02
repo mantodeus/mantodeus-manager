@@ -37,6 +37,24 @@ export function BottomTabBar() {
     }
   };
 
+  // Immediately prevent text selection when interacting with tab buttons
+  const handleTabPointerDown = (e: React.PointerEvent) => {
+    // Clear any existing text selection immediately
+    if (window.getSelection) {
+      window.getSelection()?.removeAllRanges();
+    }
+    if (document.getSelection) {
+      document.getSelection()?.removeAllRanges();
+    }
+    
+    // Prevent default to stop any text selection behavior
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Then call the gesture handler
+    gesture.handlePointerDown(e);
+  };
+
   return (
     <div
       className={cn(
@@ -44,8 +62,18 @@ export function BottomTabBar() {
         'bg-background/95 backdrop-blur-md',
         'border-t border-border',
         'md:hidden', // Mobile only
-        'bottom-tab-bar'
+        'bottom-tab-bar',
+        'select-none' // Prevent text selection on entire tab bar
       )}
+      onPointerDown={(e) => {
+        // If clicking anywhere on the tab bar, clear text selection
+        if (window.getSelection) {
+          window.getSelection()?.removeAllRanges();
+        }
+        if (document.getSelection) {
+          document.getSelection()?.removeAllRanges();
+        }
+      }}
     >
       <div className="relative">
         {scrollerVisible && (
@@ -84,15 +112,30 @@ export function BottomTabBar() {
                   'transition-all duration-150',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   'active:scale-95',
+                  'select-none', // Explicitly prevent text selection
                   isActive
                     ? 'text-foreground'
                     : 'text-muted-foreground'
                 )}
                 onClick={() => handleTabClick(tab.id)}
-                onPointerDown={gesture.handlePointerDown}
+                onPointerDown={handleTabPointerDown}
                 onPointerMove={gesture.handlePointerMove}
                 onPointerUp={gesture.handlePointerUp}
                 onPointerCancel={gesture.handlePointerCancel}
+                onMouseDown={(e) => {
+                  // Also prevent text selection on mouse down (for desktop testing)
+                  e.preventDefault();
+                  if (window.getSelection) {
+                    window.getSelection()?.removeAllRanges();
+                  }
+                }}
+                onTouchStart={(e) => {
+                  // Prevent text selection on touch start
+                  e.preventDefault();
+                  if (window.getSelection) {
+                    window.getSelection()?.removeAllRanges();
+                  }
+                }}
                 aria-label={`${tab.label} tab`}
                 aria-current={isActive ? 'page' : undefined}
               >

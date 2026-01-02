@@ -426,7 +426,7 @@ export default function Contacts() {
     return (
       <div
         key={contact.id}
-        className={`rounded-lg border ${selectedIds.has(contact.id) ? "ring-2 ring-accent" : ""}`}
+        className={`rounded-lg border ${selectedIds.has(contact.id) ? "item-selected" : ""}`}
       >
         <div className="flex items-center gap-3 px-4 py-3">
           {isMultiSelectMode && (

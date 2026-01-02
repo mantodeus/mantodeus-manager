@@ -13,10 +13,9 @@
  * Mobile-first, full-width, properly aligned, no clipping.
  */
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Trash2, Archive, X, Copy, CheckSquare } from "@/components/ui/Icon";
 import type { IconComponent } from "@/components/ui/Icon";
+import { cn } from "@/lib/utils";
 
 export interface MultiSelectAction {
   label: string;
@@ -116,12 +115,15 @@ export function MultiSelectBar({
   }
 
   return (
-    <Card className="fixed left-0 right-0 mx-auto z-50 w-full max-w-7xl px-4 sm:px-6 py-3 sm:py-4 shadow-2xl border-2 border-accent bg-background/95 backdrop-blur" style={{ bottom: 'var(--bottom-safe-area, 0px)', marginBottom: '1rem' }}>
+    <div 
+      className="multi-select-bar fixed left-0 right-0 mx-auto z-50 w-full max-w-7xl"
+      style={{ bottom: 'var(--bottom-safe-area, 0px)', marginBottom: '1rem' }}
+    >
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
         <div className="flex items-center justify-center sm:justify-start min-h-[44px]">
           <span
             className="text-sm sm:text-base font-medium text-center sm:text-left"
-            style={{ fontFamily: "Kanit, sans-serif" }}
+            style={{ fontFamily: "Kanit, sans-serif", color: "rgba(255, 255, 255, 0.9)" }}
           >
             {selectedCount} selected
           </span>
@@ -129,32 +131,33 @@ export function MultiSelectBar({
         <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 flex-1">
           {standardActions.map((action, index) => {
             const Icon = action.icon;
+            const isDelete = action.variant === "destructive";
             return (
-              <Button
+              <button
                 key={index}
-                variant={action.variant || "default"}
-                size="sm"
                 onClick={action.onClick}
                 disabled={action.disabled}
-                className="gap-2 min-h-[44px] px-4"
+                className={cn(
+                  "select-action",
+                  isDelete && "delete",
+                  action.disabled && "opacity-50 cursor-not-allowed"
+                )}
               >
                 <Icon className="h-4 w-4" />
                 <span className="whitespace-nowrap">{action.label}</span>
-              </Button>
+              </button>
             );
           })}
-          <Button
-            variant="outline"
-            size="sm"
+          <button
             onClick={onCancel}
-            className="gap-2 min-h-[44px] px-4"
+            className="select-action"
           >
             <X className="h-4 w-4" />
             <span className="whitespace-nowrap">Cancel</span>
-          </Button>
+          </button>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

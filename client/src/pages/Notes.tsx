@@ -328,7 +328,7 @@ export default function Notes() {
       <Card
         key={note.id}
         className={`p-6 hover:shadow-lg transition-all ${
-          selectedIds.has(note.id) ? "ring-2 ring-accent" : ""
+          selectedIds.has(note.id) ? "item-selected" : ""
         } ${!isMultiSelectMode ? "cursor-pointer" : ""}`}
         onClick={handleCardClick}
       >

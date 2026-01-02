@@ -98,8 +98,12 @@ export function useGestureRecognition() {
 
         setPointerPosition(currentPos);
 
-        if (distance > 5) {
-          window.getSelection?.()?.removeAllRanges?.();
+        // Always clear text selection during gesture
+        if (window.getSelection) {
+          window.getSelection()?.removeAllRanges();
+        }
+        if (document.getSelection) {
+          document.getSelection()?.removeAllRanges();
         }
 
         if (distance > GESTURE_CONFIG.MOVEMENT_CANCEL_THRESHOLD) {
@@ -181,6 +185,14 @@ export function useGestureRecognition() {
 
       if (!tabTrigger) {
         return;
+      }
+
+      // Immediately clear any text selection when touching tab buttons
+      if (window.getSelection) {
+        window.getSelection()?.removeAllRanges();
+      }
+      if (document.getSelection) {
+        document.getSelection()?.removeAllRanges();
       }
 
       const tabId = tabTrigger.getAttribute('data-tab-trigger') as TabId | null;

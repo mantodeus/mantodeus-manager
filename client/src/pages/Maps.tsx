@@ -863,7 +863,7 @@ export default function Maps() {
                   <Card
                     key={location.id}
                     className={`p-4 transition-all ${
-                      selectedIds.has(location.id) ? "ring-2 ring-[#00ff88]" : ""
+                      selectedIds.has(location.id) ? "item-selected" : ""
                     }`}
                   >
                     <div className="flex items-start gap-3">

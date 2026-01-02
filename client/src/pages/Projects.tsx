@@ -243,7 +243,7 @@ export default function Projects() {
     return (
       <div
         onClick={handleCardClick}
-        className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(project.id) ? "ring-2 ring-accent" : ""}`}
+        className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(project.id) ? "item-selected" : ""}`}
       >
         <Link href={isMultiSelectMode ? "#" : `/projects/${project.id}`} onClick={(e) => isMultiSelectMode && e.preventDefault()}>
           <Card className="hover:shadow-lg transition-all h-full">

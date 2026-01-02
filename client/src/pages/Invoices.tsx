@@ -422,7 +422,7 @@ export default function Invoices() {
               <div
                 key={invoice.id}
                 onClick={handleCardClick}
-                className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "ring-2 ring-accent rounded-lg" : ""}`}
+                className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected rounded-lg" : ""}`}
               >
                 <Card className="p-3 sm:p-4 hover:shadow-sm transition-all">
                   <div className="flex items-start justify-between gap-3">
