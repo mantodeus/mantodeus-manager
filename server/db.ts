@@ -1,6 +1,7 @@
 import { eq, desc, and, or, sql, isNull, isNotNull, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
+import { parseMoneyToCents, negateCents, centsToDecimalString } from "./_core/money";
 import { 
   // User types
   InsertUser, users, 
@@ -1779,9 +1780,9 @@ export async function createCancellationInvoice(userId: number, invoiceId: numbe
 
     const items = await tx.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
     const negateMoney = (value: unknown) => {
-      const num = Number(value ?? 0);
-      const negated = Number.isFinite(num) ? -1 * num : 0;
-      return negated.toFixed(2);
+      const cents = parseMoneyToCents(value as string | number);
+      const negatedCents = negateCents(cents);
+      return centsToDecimalString(negatedCents);
     };
 
     const insertResult = await tx.insert(invoices).values({

@@ -4,6 +4,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { parseInvoicePdf } from "./_core/pdfParser";
 import { storagePut, generateFileKey, deleteFromStorage } from "./storage";
+import { parseMoneyToCents, mulCents, sumCents, percentOfCents, centsToDecimalString } from "./_core/money";
 
 const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required"),
@@ -29,28 +30,37 @@ const invoiceMetadataSchema = z.object({
 function normalizeLineItems(items: Array<z.infer<typeof lineItemSchema>>) {
   return items.map((item) => {
     const quantity = Number(item.quantity);
-    const unitPrice = Number(item.unitPrice);
-    const lineTotal = Number((quantity * unitPrice).toFixed(2));
+    const unitPriceCents = parseMoneyToCents(item.unitPrice);
+    const lineTotalCents = mulCents(unitPriceCents, quantity);
+    const lineTotal = Number(centsToDecimalString(lineTotalCents));
     return {
       name: item.name,
       description: item.description ?? null,
       category: item.category ?? null,
       quantity,
-      unitPrice,
+      unitPrice: Number(centsToDecimalString(unitPriceCents)),
       currency: item.currency || "EUR",
       lineTotal,
     };
   });
 }
 
-function calculateTotals(items: ReturnType<typeof normalizeLineItems>) {
-  const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
-  const vatAmount = 0; // VAT handling will be added later
-  const total = subtotal + vatAmount;
+function calculateTotals(items: ReturnType<typeof normalizeLineItems>, vatRate: number = 0) {
+  // Sum line totals in cents
+  const lineTotalsCents = items.map(item => parseMoneyToCents(item.lineTotal));
+  const subtotalCents = sumCents(lineTotalsCents);
+  
+  // Calculate VAT in cents
+  const vatAmountCents = vatRate > 0 ? percentOfCents(subtotalCents, vatRate) : 0;
+  
+  // Total in cents
+  const totalCents = sumCents([subtotalCents, vatAmountCents]);
+  
+  // Convert back to decimals for storage (backward compatible)
   return {
-    subtotal: Number(subtotal.toFixed(2)),
-    vatAmount: Number(vatAmount.toFixed(2)),
-    total: Number(total.toFixed(2)),
+    subtotal: Number(centsToDecimalString(subtotalCents)),
+    vatAmount: Number(centsToDecimalString(vatAmountCents)),
+    total: Number(centsToDecimalString(totalCents)),
   };
 }
 

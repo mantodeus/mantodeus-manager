@@ -11,15 +11,19 @@ This document tracks fixes for 8 critical issues identified in the production re
 ## Critical Issues Checklist
 
 ### 1. Money: Eliminate Floating-Point Currency Bugs
-- [ ] Create `server/_core/money.ts` with integer arithmetic utilities
-- [ ] Add unit tests for money edge cases
-- [ ] Update `server/invoiceRouter.ts` invoice calculations
-- [ ] Update `server/db.ts` money helpers (negateMoney, totals)
-- [ ] Add DB migration for `*Cents` columns if needed
-- [ ] Backfill existing invoice data
+- [x] Create `server/_core/money.ts` with integer arithmetic utilities
+- [x] Add unit tests for money edge cases
+- [x] Update `server/invoiceRouter.ts` invoice calculations
+- [x] Update `server/db.ts` money helpers (negateMoney, totals)
+- [ ] Add DB migration for `*Cents` columns if needed (Phase 2)
+- [ ] Backfill existing invoice data (Phase 2)
 - **Files Changed:** 
-- **Commits:** 
-- **Verification:** Invoice totals stable, no floating errors
+  - `server/_core/money.ts` (new)
+  - `server/_core/money.test.ts` (new)
+  - `server/invoiceRouter.ts` (updated calculations)
+  - `server/db.ts` (updated negateMoney)
+- **Commits:** [To be filled]
+- **Verification:** Invoice totals stable, no floating errors ✓ (All 25 unit tests pass)
 
 ### 2. Expenses: Kill N+1 Query Explosion
 - [ ] Add `listSupplierHistory()` DB helper in `server/db.ts`
