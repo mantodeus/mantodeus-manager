@@ -304,7 +304,7 @@ export default function NoteNew() {
   };
 
   return (
-    <div className="w-full max-w-none space-y-6 pb-24 md:pb-24" style={{ paddingBottom: 'calc(var(--bottom-safe-area, 0px) + 6rem)' }}>
+    <div className="w-full max-w-none space-y-6 pb-24 md:pb-24 [--notes-action-bar-height:0px] md:[--notes-action-bar-height:72px]" style={{ paddingBottom: 'calc(var(--bottom-safe-area, 0px) + 6rem)' }}>
       <PageHeader />
       
       {/* Title Section */}

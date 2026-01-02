@@ -10,7 +10,7 @@
  * - Empty list item exits list
  */
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Bold, Italic, List, Check as CheckIcon, Code } from "@/components/ui/Icon";
@@ -126,14 +126,13 @@ export function SimpleMarkdownEditor({
     const updateKeyboardHeight = () => {
       // Use visual viewport API if available (modern mobile browsers)
       if (window.visualViewport) {
-        const viewportHeight = window.visualViewport.height;
+        const viewport = window.visualViewport;
         const windowHeight = window.innerHeight;
-        const heightDiff = windowHeight - viewportHeight;
+        const keyboardOffset = Math.max(0, windowHeight - (viewport.height + viewport.offsetTop));
         // Only update if difference is significant (keyboard is open)
-        // Store the visual viewport height as the position for the toolbar
-        if (heightDiff > 50) {
+        if (keyboardOffset > 50) {
           // Keyboard is open - position toolbar at bottom of visual viewport
-          setKeyboardHeight(windowHeight - viewportHeight);
+          setKeyboardHeight(keyboardOffset);
         } else {
           // Keyboard is closed - position at bottom of screen
           setKeyboardHeight(0);
@@ -519,17 +518,15 @@ export function SimpleMarkdownEditor({
     }
   };
 
-  // Calculate toolbar position for mobile - truly fixed, independent of scroll
-  const toolbarStyle: React.CSSProperties = isMobile && isFocused
-    ? {
-        position: 'fixed',
-        bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-        left: '0',
-        right: '0',
-        zIndex: 100,
-        paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)`,
-      }
-    : {};
+  const handleToolbarPointerDown = (event: ReactPointerEvent) => {
+    event.preventDefault();
+    textareaRef.current?.focus();
+  };
+
+  const showToolbar = isMobile ? isFocused : true;
+  const toolbarBottom = isMobile
+    ? (keyboardHeight > 0 ? `${keyboardHeight}px` : "0px")
+    : "var(--notes-action-bar-height, 0px)";
 
   return (
     <div className={cn("relative", className)}>
@@ -546,12 +543,11 @@ export function SimpleMarkdownEditor({
             style={{
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
-              fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
               lineHeight: '1.5',
             }}
           >
             {content ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none [&_strong]:font-semibold [&_em]:italic [&_del]:line-through [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-4 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:list-inside [&_ol]:ml-4 [&_ol]:my-2 [&_li]:ml-2 [&_p]:my-2">
+              <div className="prose prose-sm dark:prose-invert max-w-none [&_strong]:font-semibold [&_em]:italic [&_del]:line-through [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-0 [&_ul]:my-0 [&_ol]:list-decimal [&_ol]:list-inside [&_ol]:ml-0 [&_ol]:my-0 [&_li]:ml-0 [&_p]:my-0">
                 <SimpleMarkdown>{content}</SimpleMarkdown>
               </div>
             ) : (
@@ -578,7 +574,8 @@ export function SimpleMarkdownEditor({
               whiteSpace: "pre-wrap",
               color: 'transparent',
               textShadow: '0 0 0 transparent',
-              fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+              WebkitTextFillColor: 'transparent',
+              lineHeight: '1.5',
             }}
           />
         </div>
@@ -586,14 +583,17 @@ export function SimpleMarkdownEditor({
 
       {/* Formatting Toolbar - Fixed outside scrollable container, truly independent */}
       {/* On mobile when focused, use portal-like positioning to escape all scroll contexts */}
-      {isMobile && isFocused ? (
+      {showToolbar && (
         <div
-          className="fixed left-0 right-0 border-t bg-background/95 backdrop-blur-sm shadow-lg"
+          className={cn(
+            "fixed left-0 right-0 border-t bg-background/95 backdrop-blur-sm shadow-lg",
+            !isMobile && "mx-auto max-w-screen-2xl"
+          )}
           style={{
-            bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+            bottom: toolbarBottom,
             zIndex: 9999,
             paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)`,
-            transform: 'translateZ(0)', // Force hardware acceleration
+            transform: 'translateZ(0)',
             willChange: 'transform',
           }}
         >
@@ -601,6 +601,7 @@ export function SimpleMarkdownEditor({
             <Button
               variant="ghost"
               size="default"
+              onPointerDown={handleToolbarPointerDown}
               onClick={(e) => {
                 e.preventDefault();
                 handleBold();
@@ -613,6 +614,7 @@ export function SimpleMarkdownEditor({
             <Button
               variant="ghost"
               size="default"
+              onPointerDown={handleToolbarPointerDown}
               onClick={(e) => {
                 e.preventDefault();
                 handleItalic();
@@ -625,6 +627,7 @@ export function SimpleMarkdownEditor({
             <Button
               variant="ghost"
               size="default"
+              onPointerDown={handleToolbarPointerDown}
               onClick={(e) => {
                 e.preventDefault();
                 handleStrikethrough();
@@ -638,6 +641,7 @@ export function SimpleMarkdownEditor({
             <Button
               variant="ghost"
               size="default"
+              onPointerDown={handleToolbarPointerDown}
               onClick={(e) => {
                 e.preventDefault();
                 handleBulletList();
@@ -650,6 +654,7 @@ export function SimpleMarkdownEditor({
             <Button
               variant="ghost"
               size="default"
+              onPointerDown={handleToolbarPointerDown}
               onClick={(e) => {
                 e.preventDefault();
                 handleNumberedList();
@@ -662,6 +667,7 @@ export function SimpleMarkdownEditor({
             <Button
               variant="ghost"
               size="default"
+              onPointerDown={handleToolbarPointerDown}
               onClick={(e) => {
                 e.preventDefault();
                 handleCheckbox();
@@ -675,6 +681,7 @@ export function SimpleMarkdownEditor({
             <Button
               variant="ghost"
               size="default"
+              onPointerDown={handleToolbarPointerDown}
               onClick={(e) => {
                 e.preventDefault();
                 handleCode();
@@ -683,99 +690,6 @@ export function SimpleMarkdownEditor({
               type="button"
             >
               <Code className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="sticky bottom-0 rounded-md bg-muted/50 mt-2 z-10 flex items-center gap-1 p-2 border"
-        >
-          <div className="flex items-center gap-1 overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                handleBold();
-              }}
-              className="h-8 min-w-[32px] flex-shrink-0"
-              type="button"
-            >
-              <Bold className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                handleItalic();
-              }}
-              className="h-8 min-w-[32px] flex-shrink-0"
-              type="button"
-            >
-              <Italic className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                handleStrikethrough();
-              }}
-              className="h-8 min-w-[32px] flex-shrink-0"
-              type="button"
-            >
-              <StrikethroughIcon className="h-4 w-4" />
-            </Button>
-            <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                handleBulletList();
-              }}
-              className="h-8 min-w-[32px] flex-shrink-0"
-              type="button"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                handleNumberedList();
-              }}
-              className="h-8 min-w-[32px] flex-shrink-0"
-              type="button"
-            >
-              <ListOrderedIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                handleCheckbox();
-              }}
-              className="h-8 min-w-[32px] flex-shrink-0"
-              type="button"
-            >
-              <CheckIcon className="h-4 w-4" />
-            </Button>
-            <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                handleCode();
-              }}
-              className="h-8 min-w-[32px] flex-shrink-0"
-              type="button"
-            >
-              <Code className="h-4 w-4" />
             </Button>
           </div>
         </div>
