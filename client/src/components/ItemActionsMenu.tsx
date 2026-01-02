@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash, Eye, DollarSign, CheckCircle2, XCircle } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Copy, Check, Archive, RotateCcw, Trash, Eye, DollarSign, CheckCircle2, XCircle } from "lucide-react";
 
 export type ItemAction =
   | "view"
@@ -60,7 +60,7 @@ export function ItemActionsMenu({
     edit: { icon: Edit, label: "Edit", variant: "default" as const },
     delete: { icon: Trash2, label: "Delete", variant: "destructive" as const },
     duplicate: { icon: Copy, label: "Duplicate", variant: "default" as const },
-    select: { icon: CheckSquare, label: "Select", variant: "default" as const },
+    select: { icon: Check, label: "Select", variant: "default" as const },
     archive: { icon: Archive, label: "Archive", variant: "default" as const },
     restore: { icon: RotateCcw, label: "Restore", variant: "default" as const },
     moveToTrash: { icon: Trash, label: "Delete", variant: "destructive" as const },

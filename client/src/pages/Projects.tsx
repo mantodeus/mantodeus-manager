@@ -25,6 +25,8 @@ import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
 
 type ProjectListItem = RouterOutputs["projects"]["list"][number];
 
@@ -43,6 +45,10 @@ export default function Projects() {
   // Archive confirmation dialog
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [archiveTargetId, setArchiveTargetId] = useState<number | null>(null);
+
+  // Multi-select state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -137,7 +143,41 @@ export default function Projects() {
         setDeleteToRubbishTargetId(projectId);
         setDeleteToRubbishDialogOpen(true);
         break;
+      case "select":
+        setIsMultiSelectMode(true);
+        setSelectedIds(new Set([projectId]));
+        break;
     }
+  };
+
+  const toggleSelection = (projectId: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(projectId)) {
+      newSelected.delete(projectId);
+    } else {
+      newSelected.add(projectId);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBatchArchive = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      archiveProjectMutation.mutate({ projectId: id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      moveProjectToTrashMutation.mutate({ projectId: id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
   };
 
   const handleDeleteToRubbish = (projectId: number) => {
@@ -193,24 +233,44 @@ export default function Projects() {
     const { contact, label: clientLabel } = resolveClientDisplay(project);
     const schedule = getScheduleInfo(project);
 
+    const handleCardClick = () => {
+      if (isMultiSelectMode) {
+        toggleSelection(project.id);
+      }
+    };
+
     return (
-      <Link href={`/projects/${project.id}`}>
-        <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-xl">{project.name}</CardTitle>
+      <div
+        onClick={handleCardClick}
+        className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(project.id) ? "ring-2 ring-accent" : ""}`}
+      >
+        <Link href={isMultiSelectMode ? "#" : `/projects/${project.id}`} onClick={(e) => isMultiSelectMode && e.preventDefault()}>
+          <Card className="hover:shadow-lg transition-all h-full">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  {isMultiSelectMode && (
+                    <Checkbox
+                      checked={selectedIds.has(project.id)}
+                      onCheckedChange={() => toggleSelection(project.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mr-2"
+                    />
+                  )}
+                  <Building2 className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle className="text-xl">{project.name}</CardTitle>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
+                  {!isMultiSelectMode && (
+                    <ItemActionsMenu
+                      onAction={(action) => handleItemAction(action, project.id)}
+                      actions={["edit", "select", "duplicate", "archive", "moveToTrash"]}
+                      triggerClassName="text-muted-foreground hover:text-foreground"
+                    />
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
-                <ItemActionsMenu
-                  onAction={(action) => handleItemAction(action, project.id)}
-                  actions={["edit", "duplicate", "archive", "moveToTrash"]}
-                  triggerClassName="text-muted-foreground hover:text-foreground"
-                />
-              </div>
-            </div>
             {clientLabel && (
               <CardDescription>
                 Client:{" "}
@@ -270,6 +330,7 @@ export default function Projects() {
           </CardContent>
         </Card>
       </Link>
+      </div>
     );
   };
 
@@ -310,6 +371,21 @@ export default function Projects() {
 
       {/* Scroll-reveal footer for Archived/Rubbish navigation */}
       <ScrollRevealFooter basePath="/projects" />
+
+      {/* Multi-select bar */}
+      {isMultiSelectMode && (
+        <MultiSelectBar
+          selectedCount={selectedIds.size}
+          onCancel={() => {
+            setIsMultiSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+          actions={[
+            createArchiveAction(handleBatchArchive, archiveProjectMutation.isPending),
+            createDeleteAction(handleBatchDelete, moveProjectToTrashMutation.isPending),
+          ]}
+        />
+      )}
 
       <CreateProjectDialog
         open={createDialogOpen}

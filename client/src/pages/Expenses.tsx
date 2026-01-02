@@ -23,6 +23,9 @@ import { VoidExpenseDialog } from "@/components/expenses/VoidExpenseDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { CaptureFab } from "@/components/expenses/CaptureFab";
 import { BulkUploadDialog } from "@/components/expenses/BulkUploadDialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelectBar, createDeleteAction } from "@/components/MultiSelectBar";
+import { CheckCircle2 } from "lucide-react";
 
 type ExpenseListItem = RouterOutputs["expenses"]["list"][number];
 
@@ -35,6 +38,10 @@ export default function Expenses() {
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // Multi-select state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const [, navigate] = useLocation();
 
@@ -182,6 +189,11 @@ export default function Expenses() {
       navigate(`/expenses/${expenseId}`);
       return;
     }
+    if (action === "select") {
+      setIsMultiSelectMode(true);
+      setSelectedIds(new Set([expenseId]));
+      return;
+    }
     if (action === "markAsInOrder") {
       markInOrderMutation.mutate({ id: expenseId });
       return;
@@ -191,6 +203,36 @@ export default function Expenses() {
       setVoidDialogOpen(true);
       return;
     }
+  };
+
+  const toggleSelection = (expenseId: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(expenseId)) {
+      newSelected.delete(expenseId);
+    } else {
+      newSelected.add(expenseId);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBatchMarkInOrder = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      markInOrderMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      deleteMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
   };
 
   // Keyboard navigation
@@ -311,6 +353,9 @@ export default function Expenses() {
                 expense={expense}
                 onAction={handleAction}
                 showVoid={false}
+                isMultiSelectMode={isMultiSelectMode}
+                isSelected={selectedIds.has(expense.id)}
+                onToggleSelection={() => toggleSelection(expense.id)}
               />
             ))}
           </div>
@@ -338,6 +383,9 @@ export default function Expenses() {
                 expense={expense}
                 onAction={handleAction}
                 showVoid={true}
+                isMultiSelectMode={isMultiSelectMode}
+                isSelected={selectedIds.has(expense.id)}
+                onToggleSelection={() => toggleSelection(expense.id)}
               />
             ))}
           </div>
@@ -386,6 +434,27 @@ export default function Expenses() {
         onUpload={handleBulkUpload}
         isUploading={bulkUploadMutation.isPending}
       />
+
+      {/* Multi-select bar */}
+      {isMultiSelectMode && (
+        <MultiSelectBar
+          selectedCount={selectedIds.size}
+          onCancel={() => {
+            setIsMultiSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+          actions={[
+            {
+              label: "Mark as In Order",
+              icon: CheckCircle2,
+              onClick: handleBatchMarkInOrder,
+              variant: "default",
+              disabled: markInOrderMutation.isPending,
+            },
+            createDeleteAction(handleBatchDelete, deleteMutation.isPending),
+          ]}
+        />
+      )}
     </div>
   );
 }

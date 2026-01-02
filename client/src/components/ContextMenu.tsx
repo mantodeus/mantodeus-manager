@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
-import { Edit, Trash2, CheckSquare, X } from "lucide-react";
+import { Edit, Trash2, Check, X } from "lucide-react";
 
 export type ContextMenuAction = "edit" | "delete" | "select" | "cancel";
 
@@ -40,7 +40,7 @@ export function ContextMenu({ x, y, onAction, onClose, actions = ["edit", "delet
   const actionConfig = {
     edit: { icon: Edit, label: "Edit", color: "text-foreground" },
     delete: { icon: Trash2, label: "Delete", color: "text-destructive" },
-    select: { icon: CheckSquare, label: "Select", color: "text-accent" },
+    select: { icon: Check, label: "Select", color: "text-accent" },
     cancel: { icon: X, label: "Cancel", color: "text-muted-foreground" },
   };
 

@@ -20,11 +20,12 @@ import { trpc } from "@/lib/trpc";
 import { FileText, Plus, Eye, Send, Loader2, PencilLine, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ItemActionsMenu } from "@/components/ItemActionsMenu";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { Switch } from "@/components/ui/switch";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
 
 interface InvoiceLineItem {
   name: string;
@@ -77,6 +78,10 @@ export default function Invoices() {
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [revertTarget, setRevertTarget] = useState<{ id: number; targetStatus: "draft" | "sent"; currentStatus: "sent" | "paid" } | null>(null);
   const [revertAcknowledged, setRevertAcknowledged] = useState(false);
+
+  // Multi-select state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -178,6 +183,36 @@ export default function Invoices() {
     setRevertDialogOpen(true);
   };
 
+  const toggleSelection = (invoiceId: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(invoiceId)) {
+      newSelected.delete(invoiceId);
+    } else {
+      newSelected.add(invoiceId);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBatchArchive = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      archiveMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      moveToTrashMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       draft: "outline",
@@ -240,58 +275,85 @@ export default function Invoices() {
             const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
             const items = (invoice.items as InvoiceLineItem[]) || [];
 
+            const handleCardClick = () => {
+              if (isMultiSelectMode) {
+                toggleSelection(invoice.id);
+              }
+            };
+
             return (
-              <Card key={invoice.id} className="p-4 flex flex-col gap-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-5 h-5 text-accent" />
-                      <h3 className="font-regular text-lg">{invoice.invoiceNumber}</h3>
-                      {getStatusBadge(invoice.status)}
+              <div
+                key={invoice.id}
+                onClick={handleCardClick}
+                className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "ring-2 ring-accent rounded-lg" : ""}`}
+              >
+                <Card className="p-4 flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                      {isMultiSelectMode && (
+                        <Checkbox
+                          checked={selectedIds.has(invoice.id)}
+                          onCheckedChange={() => toggleSelection(invoice.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mr-2"
+                        />
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="w-5 h-5 text-accent" />
+                          <h3 className="font-regular text-lg">{invoice.invoiceNumber}</h3>
+                          {getStatusBadge(invoice.status)}
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                          {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
+                          {invoice.dueDate ? ` • Due: ${new Date(invoice.dueDate).toLocaleDateString("de-DE")}` : ""}
+                        </p>
+                        {linkedContact && (
+                          <p className="text-xs text-muted-foreground mt-1">Client: {linkedContact.name}</p>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-muted-foreground text-xs">
-                      {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
-                      {invoice.dueDate ? ` • Due: ${new Date(invoice.dueDate).toLocaleDateString("de-DE")}` : ""}
-                    </p>
-                    {linkedContact && (
-                      <p className="text-xs text-muted-foreground mt-1">Client: {linkedContact.name}</p>
+                    {!isMultiSelectMode && (
+                      <ItemActionsMenu
+                        actions={
+                          invoice.status === "draft"
+                            ? ["edit", "select", "duplicate", "archive", "moveToTrash"]
+                            : invoice.status === "sent"
+                            ? ["view", "select", "markAsPaid", "archive", "revertToDraft", "duplicate"]
+                            : ["view", "select", "archive", "revertToSent", "duplicate"]
+                        }
+                        onAction={(action: ItemAction) => {
+                          if (action === "view") handlePreviewPDF(invoice.id);
+                          if (action === "select") {
+                            setIsMultiSelectMode(true);
+                            setSelectedIds(new Set([invoice.id]));
+                          }
+                          if (action === "duplicate") {
+                            toast.info("Duplicate is coming soon.");
+                          }
+                          if (action === "archive") {
+                            handleArchiveInvoice(invoice.id);
+                          }
+                          if (action === "moveToTrash") {
+                            handleMoveToRubbish(invoice.id);
+                          }
+                          if (action === "markAsPaid" && invoice.status === "sent") {
+                            markAsPaidMutation.mutate({ id: invoice.id });
+                          }
+                          if (action === "revertToDraft" && invoice.status === "sent") {
+                            handleRevertStatus(invoice.id, "sent");
+                          }
+                          if (action === "revertToSent" && invoice.status === "paid") {
+                            handleRevertStatus(invoice.id, "paid");
+                          }
+                          if (action === "edit" && invoice.status === "draft") {
+                            setEditingInvoice(invoice.id);
+                            setEditDialogOpen(true);
+                          }
+                        }}
+                      />
                     )}
                   </div>
-                  <ItemActionsMenu
-                    actions={
-                      invoice.status === "draft"
-                        ? ["edit", "duplicate", "archive", "moveToTrash"]
-                        : invoice.status === "sent"
-                        ? ["view", "markAsPaid", "archive", "revertToDraft", "duplicate"]
-                        : ["view", "archive", "revertToSent", "duplicate"]
-                    }
-                    onAction={(action) => {
-                      if (action === "view") handlePreviewPDF(invoice.id);
-                      if (action === "duplicate") {
-                        toast.info("Duplicate is coming soon.");
-                      }
-                      if (action === "archive") {
-                        handleArchiveInvoice(invoice.id);
-                      }
-                      if (action === "moveToTrash") {
-                        handleMoveToRubbish(invoice.id);
-                      }
-                      if (action === "markAsPaid" && invoice.status === "sent") {
-                        markAsPaidMutation.mutate({ id: invoice.id });
-                      }
-                      if (action === "revertToDraft" && invoice.status === "sent") {
-                        handleRevertStatus(invoice.id, "sent");
-                      }
-                      if (action === "revertToSent" && invoice.status === "paid") {
-                        handleRevertStatus(invoice.id, "paid");
-                      }
-                      if (action === "edit" && invoice.status === "draft") {
-                        setEditingInvoice(invoice.id);
-                        setEditDialogOpen(true);
-                      }
-                    }}
-                  />
-                </div>
 
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
@@ -337,9 +399,25 @@ export default function Invoices() {
                   )}
                 </div>
               </Card>
+              </div>
             );
           })}
         </div>
+      )}
+
+      {/* Multi-select bar */}
+      {isMultiSelectMode && (
+        <MultiSelectBar
+          selectedCount={selectedIds.size}
+          onCancel={() => {
+            setIsMultiSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+          actions={[
+            createArchiveAction(handleBatchArchive, archiveMutation.isPending),
+            createDeleteAction(handleBatchDelete, moveToTrashMutation.isPending),
+          ]}
+        />
       )}
 
       {editingInvoice && (
