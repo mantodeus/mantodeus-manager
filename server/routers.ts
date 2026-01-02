@@ -898,16 +898,15 @@ export const appRouter = router({
               }));
             emails = validEmails.length > 0 ? validEmails : null;
           } else {
-            // If it's an empty array or null/undefined, set to null
+            // If it's an empty array or null/undefined, set to null (explicitly clearing)
             emails = null;
           }
         } else if (emailUpdateRequested && data.email) {
           const emailValue = data.email.trim();
           if (emailValue) {
             emails = [{ label: "Email", value: emailValue }];
-          } else {
-            emails = null;
           }
+          // If emailValue is empty, leave emails as undefined (don't update it)
         }
         
         // Handle phone numbers: prefer new array format, fallback to single phone
@@ -930,9 +929,8 @@ export const appRouter = router({
           const phoneValue = (data.phoneNumber || data.phone || "").trim();
           if (phoneValue) {
             phoneNumbers = [{ label: "Phone", value: phoneValue }];
-          } else {
-            phoneNumbers = null;
           }
+          // If phoneValue is empty, leave phoneNumbers as undefined (don't update it)
         }
         
         // Keep single email/phone for backward compatibility
@@ -963,8 +961,8 @@ export const appRouter = router({
 
         if (emailUpdateRequested) {
           normalizedUpdate.email = email;
-          // Only update emails if it was explicitly provided in the input
-          if (hasField("emails") && emails !== undefined) {
+          // Only update emails if it was explicitly provided in the input OR if we're migrating from old format
+          if (emails !== undefined) {
             normalizedUpdate.emails = emails;
           }
         }
@@ -972,8 +970,8 @@ export const appRouter = router({
         if (phoneUpdateRequested) {
           normalizedUpdate.phoneNumber = phoneNumber;
           normalizedUpdate.phone = phone;
-          // Only update phoneNumbers if it was explicitly provided in the input
-          if (hasField("phoneNumbers") && phoneNumbers !== undefined) {
+          // Only update phoneNumbers if it was explicitly provided in the input OR if we're migrating from old format
+          if (phoneNumbers !== undefined) {
             normalizedUpdate.phoneNumbers = phoneNumbers;
           }
         }
@@ -1043,9 +1041,25 @@ export const appRouter = router({
         const cleanedUpdate: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(normalizedUpdate)) {
           if (value !== undefined) {
-            // Convert empty arrays to null for JSON columns
-            if ((key === 'emails' || key === 'phoneNumbers') && Array.isArray(value) && value.length === 0) {
-              cleanedUpdate[key] = null;
+            // For JSON columns (emails, phoneNumbers), only include if:
+            // 1. It's an array with items, OR
+            // 2. It's explicitly null AND the field was provided in the input (to clear it)
+            if (key === 'emails' || key === 'phoneNumbers') {
+              // Skip null values unless the field was explicitly provided in the input
+              if (value === null && !hasField(key)) {
+                // Skip - this was set to null during migration but field wasn't explicitly provided
+                continue;
+              }
+              // Convert empty arrays to null for JSON columns
+              if (Array.isArray(value) && value.length === 0) {
+                // Only set to null if the field was explicitly provided
+                if (hasField(key)) {
+                  cleanedUpdate[key] = null;
+                }
+                // Otherwise skip it
+              } else {
+                cleanedUpdate[key] = value;
+              }
             } else {
               cleanedUpdate[key] = value;
             }
