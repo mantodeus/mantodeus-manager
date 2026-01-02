@@ -888,7 +888,7 @@ export const appRouter = router({
         // Handle emails: prefer new array format, fallback to single email
         let emails: Array<{ label: string; value: string }> | null | undefined = undefined;
         if (hasField("emails")) {
-          if (data.emails && data.emails.length > 0) {
+          if (data.emails && Array.isArray(data.emails) && data.emails.length > 0) {
             // Filter out entries with empty values and normalize labels
             const validEmails = data.emails
               .filter((e: { label?: string; value: string }) => e.value && e.value.trim().length > 0)
@@ -898,16 +898,22 @@ export const appRouter = router({
               }));
             emails = validEmails.length > 0 ? validEmails : null;
           } else {
-            emails = data.emails ?? null;
+            // If it's an empty array or null/undefined, set to null
+            emails = null;
           }
         } else if (emailUpdateRequested && data.email) {
-          emails = [{ label: "Email", value: data.email.trim() }];
+          const emailValue = data.email.trim();
+          if (emailValue) {
+            emails = [{ label: "Email", value: emailValue }];
+          } else {
+            emails = null;
+          }
         }
         
         // Handle phone numbers: prefer new array format, fallback to single phone
         let phoneNumbers: Array<{ label: string; value: string }> | null | undefined = undefined;
         if (hasField("phoneNumbers")) {
-          if (data.phoneNumbers && data.phoneNumbers.length > 0) {
+          if (data.phoneNumbers && Array.isArray(data.phoneNumbers) && data.phoneNumbers.length > 0) {
             // Filter out entries with empty values and normalize labels
             const validPhones = data.phoneNumbers
               .filter((p: { label?: string; value: string }) => p.value && p.value.trim().length > 0)
@@ -917,12 +923,15 @@ export const appRouter = router({
               }));
             phoneNumbers = validPhones.length > 0 ? validPhones : null;
           } else {
-            phoneNumbers = data.phoneNumbers ?? null;
+            // If it's an empty array or null/undefined, set to null
+            phoneNumbers = null;
           }
         } else if (phoneUpdateRequested && (data.phoneNumber || data.phone)) {
           const phoneValue = (data.phoneNumber || data.phone || "").trim();
           if (phoneValue) {
             phoneNumbers = [{ label: "Phone", value: phoneValue }];
+          } else {
+            phoneNumbers = null;
           }
         }
         
@@ -955,6 +964,7 @@ export const appRouter = router({
         if (emailUpdateRequested) {
           normalizedUpdate.email = email;
           if (emails !== undefined) {
+            // Only set emails if it's not null (null means clear the field, undefined means don't update)
             normalizedUpdate.emails = emails;
           }
         }
@@ -963,6 +973,7 @@ export const appRouter = router({
           normalizedUpdate.phoneNumber = phoneNumber;
           normalizedUpdate.phone = phone;
           if (phoneNumbers !== undefined) {
+            // Only set phoneNumbers if it's not null (null means clear the field, undefined means don't update)
             normalizedUpdate.phoneNumbers = phoneNumbers;
           }
         }
@@ -1028,7 +1039,20 @@ export const appRouter = router({
           }
         }
         
-        await db.updateContact(id, normalizedUpdate);
+        // Clean up the update object - remove undefined values and ensure arrays are null if empty
+        const cleanedUpdate: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(normalizedUpdate)) {
+          if (value !== undefined) {
+            // Convert empty arrays to null for JSON columns
+            if ((key === 'emails' || key === 'phoneNumbers') && Array.isArray(value) && value.length === 0) {
+              cleanedUpdate[key] = null;
+            } else {
+              cleanedUpdate[key] = value;
+            }
+          }
+        }
+        
+        await db.updateContact(id, cleanedUpdate);
         return { success: true };
       }),
     
