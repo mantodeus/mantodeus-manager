@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Save, Loader2, Paperclip, Trash2, FileText, Image as ImageIcon, User, Briefcase, CheckCircle2, AlertCircle } from "@/components/ui/Icon";
-import { WYSIWYGEditor } from "@/components/WYSIWYGEditor";
+import { SimpleMarkdownEditor } from "@/components/SimpleMarkdownEditor";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -374,7 +374,7 @@ export default function NoteNew() {
 
       {/* Editor */}
       <div className="w-full">
-        <WYSIWYGEditor
+        <SimpleMarkdownEditor
           content={content}
           onChange={setContent}
           placeholder="Start writing..."

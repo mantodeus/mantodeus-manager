@@ -14,8 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText, CheckCircle2, AlertCircle } from "@/components/ui/Icon";
-import { Markdown } from "@/components/Markdown";
-import { WYSIWYGEditor } from "@/components/WYSIWYGEditor";
+import { SimpleMarkdown } from "@/components/SimpleMarkdown";
+import { SimpleMarkdownEditor } from "@/components/SimpleMarkdownEditor";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -589,8 +589,8 @@ export default function NoteDetail() {
       <div className="w-full">
         {isEditMode ? (
           <div className="space-y-4">
-            {/* WYSIWYG Editor */}
-            <WYSIWYGEditor
+            {/* Simple Markdown Editor */}
+            <SimpleMarkdownEditor
               content={body}
               onChange={setBody}
               placeholder="Start writing..."
@@ -636,9 +636,7 @@ export default function NoteDetail() {
             {/* Markdown Preview */}
             {note.content ? (
               <Card className="p-6">
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <Markdown>{note.content}</Markdown>
-                </div>
+                <SimpleMarkdown>{note.content}</SimpleMarkdown>
               </Card>
             ) : (
               <Card className="p-12 text-center">
