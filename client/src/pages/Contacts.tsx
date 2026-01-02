@@ -327,19 +327,27 @@ export default function Contacts() {
       case "duplicate":
         toast.info("Duplicate is coming soon.");
         break;
-      case "archive":
-        setArchiveTargetId(contactId);
-        setArchiveDialogOpen(true);
-        break;
-      case "moveToTrash":
-        setDeleteToRubbishTargetId(contactId);
-        setDeleteToRubbishDialogOpen(true);
-        break;
       case "select":
         setIsMultiSelectMode(true);
         setSelectedIds(new Set([contactId]));
         break;
+      case "archive":
+        setArchiveTargetId(contactId);
+        setArchiveDialogOpen(true);
+        break;
+      case "delete":
+        setDeleteToRubbishTargetId(contactId);
+        setDeleteToRubbishDialogOpen(true);
+        break;
     }
+  };
+
+  const handleSelectAll = () => {
+    setSelectedIds(new Set(activeContacts.map(c => c.id)));
+  };
+
+  const handleBatchDuplicate = () => {
+    toast.info("Batch duplicate is coming soon.");
   };
 
   useEffect(() => {
@@ -455,7 +463,7 @@ export default function Contacts() {
             </Button>
             <ItemActionsMenu
               onAction={(action) => handleItemAction(action, contact.id)}
-              actions={["edit", "duplicate", "archive", "moveToTrash", "select"]}
+              actions={["edit", "duplicate", "select", "archive", "delete"]}
               triggerClassName="h-11 w-11 text-muted-foreground hover:text-foreground"
               size="lg"
             />
@@ -899,7 +907,11 @@ export default function Contacts() {
       {isMultiSelectMode && (
         <MultiSelectBar
           selectedCount={selectedIds.size}
-          onPrimaryAction={handleBatchDelete}
+          totalCount={activeContacts.length}
+          onSelectAll={handleSelectAll}
+          onDuplicate={handleBatchDuplicate}
+          onArchive={handleBatchArchive}
+          onDelete={handleBatchDelete}
           onCancel={() => {
             setIsMultiSelectMode(false);
             setSelectedIds(new Set());

@@ -63,14 +63,30 @@ export default function Jobs() {
       case "duplicate":
         toast.info("Duplicate is coming soon.");
         break;
-      case "delete":
-        handleDeleteJob(jobId);
-        break;
       case "select":
         setIsMultiSelectMode(true);
         setSelectedIds(new Set([jobId]));
         break;
+      case "archive":
+        toast.info("Archive is coming soon.");
+        break;
+      case "delete":
+        handleDeleteJob(jobId);
+        break;
     }
+  };
+
+  const handleSelectAll = () => {
+    if (!jobs) return;
+    setSelectedIds(new Set(jobs.map(j => j.id)));
+  };
+
+  const handleBatchDuplicate = () => {
+    toast.info("Batch duplicate is coming soon.");
+  };
+
+  const handleBatchArchive = () => {
+    toast.info("Batch archive is coming soon.");
   };
 
   const handleDeleteJob = (jobId: number) => {
@@ -175,7 +191,7 @@ export default function Jobs() {
                           {!isMultiSelectMode && (
                             <ItemActionsMenu
                               onAction={(action) => handleItemAction(action, job.id)}
-                              actions={["edit", "duplicate", "delete", "select"]}
+                              actions={["edit", "duplicate", "select", "archive", "delete"]}
                               triggerClassName="text-muted-foreground hover:text-foreground"
                             />
                           )}
@@ -214,11 +230,15 @@ export default function Jobs() {
       {isMultiSelectMode && (
         <MultiSelectBar
           selectedCount={selectedIds.size}
+          totalCount={jobs?.length}
+          onSelectAll={handleSelectAll}
+          onDuplicate={handleBatchDuplicate}
+          onArchive={handleBatchArchive}
+          onDelete={handleBatchDelete}
           onCancel={() => {
             setIsMultiSelectMode(false);
             setSelectedIds(new Set());
           }}
-          onPrimaryAction={handleBatchDelete}
         />
       )}
 

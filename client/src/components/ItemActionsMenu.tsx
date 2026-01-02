@@ -1,8 +1,16 @@
 /**
  * ItemActionsMenu Component
  * 
- * A reusable three-dot (kebab) menu for item actions (edit, delete, duplicate, etc.)
- * Supports both click trigger and right-click/long-press shortcuts.
+ * A reusable three-dot (kebab) menu for item actions.
+ * 
+ * STRICT ORDER (non-negotiable):
+ * 1. Edit
+ * 2. Duplicate
+ * 3. Select
+ * 4. Archive
+ * 5. Delete
+ * 
+ * Only visibility may change based on permissions/state — order never changes.
  */
 
 import { useState, useCallback } from "react";
@@ -13,33 +21,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive, RotateCcw, Trash, Eye, DollarSign, CheckCircle2, XCircle, Send } from "@/components/ui/Icon";
+import { MoreVertical, Edit, Trash2, Copy, CheckSquare, Archive } from "@/components/ui/Icon";
 
 export type ItemAction =
-  | "view"
   | "edit"
-  | "send"
-  | "review"
-  | "delete"
   | "duplicate"
   | "select"
-  // Project lifecycle actions (Projects only)
   | "archive"
-  | "restore"
-  | "moveToTrash"
-  | "deletePermanently"
-  | "revertToDraft"
-  | "revertToSent"
-  | "markAsPaid"
-  | "createCancellation"
-  // Expense actions
-  | "markAsInOrder"
-  | "void";
+  | "delete";
 
 interface ItemActionsMenuProps {
   /** Callback when an action is selected */
   onAction: (action: ItemAction) => void;
-  /** Available actions to show in the menu */
+  /** Available actions to show in the menu (order is enforced) */
   actions?: ItemAction[];
   /** Additional className for the trigger button */
   triggerClassName?: string;
@@ -49,6 +43,17 @@ interface ItemActionsMenuProps {
   disabled?: boolean;
 }
 
+// STRICT ORDER - This order must never change
+const STANDARD_ACTION_ORDER: ItemAction[] = ["edit", "duplicate", "select", "archive", "delete"];
+
+const actionConfig = {
+  edit: { icon: Edit, label: "Edit", variant: "default" as const },
+  duplicate: { icon: Copy, label: "Duplicate", variant: "default" as const },
+  select: { icon: CheckSquare, label: "Select", variant: "default" as const },
+  archive: { icon: Archive, label: "Archive", variant: "default" as const },
+  delete: { icon: Trash2, label: "Delete", variant: "destructive" as const },
+};
+
 export function ItemActionsMenu({
   onAction,
   actions = ["edit", "delete"],
@@ -57,26 +62,6 @@ export function ItemActionsMenu({
   disabled = false,
 }: ItemActionsMenuProps) {
   const [open, setOpen] = useState(false);
-
-  const actionConfig = {
-    view: { icon: Eye, label: "View", variant: "default" as const },
-    edit: { icon: Edit, label: "Edit", variant: "default" as const },
-    send: { icon: Send, label: "Send", variant: "default" as const },
-    review: { icon: Eye, label: "Review", variant: "default" as const },
-    delete: { icon: Trash2, label: "Delete", variant: "destructive" as const },
-    duplicate: { icon: Copy, label: "Duplicate", variant: "default" as const },
-    select: { icon: CheckSquare, label: "Select", variant: "default" as const },
-    archive: { icon: Archive, label: "Archive", variant: "default" as const },
-    restore: { icon: RotateCcw, label: "Restore", variant: "default" as const },
-    moveToTrash: { icon: Trash, label: "Delete", variant: "destructive" as const },
-    deletePermanently: { icon: Trash2, label: "Delete permanently", variant: "destructive" as const },
-    revertToDraft: { icon: RotateCcw, label: "Mark as not sent", variant: "destructive" as const },
-    revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" as const },
-    markAsPaid: { icon: DollarSign, label: "Mark as paid", variant: "default" as const },
-    createCancellation: { icon: RotateCcw, label: "Create cancellation invoice", variant: "destructive" as const },
-    markAsInOrder: { icon: CheckCircle2, label: "Mark as In Order", variant: "default" as const },
-    void: { icon: XCircle, label: "Void", variant: "destructive" as const },
-  };
 
   const handleAction = useCallback(
     (action: ItemAction) => {
@@ -91,8 +76,10 @@ export function ItemActionsMenu({
     [onAction]
   );
 
-  // Filter and validate actions
-  const validActions = (actions || []).filter((action) => actionConfig[action]);
+  // Enforce strict order: filter to only standard actions, then sort by STANDARD_ACTION_ORDER
+  const validActions = STANDARD_ACTION_ORDER.filter((action) => 
+    (actions || []).includes(action)
+  );
 
   const sizeClasses = {
     sm: "h-7 w-7",

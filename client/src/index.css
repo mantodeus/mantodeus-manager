@@ -203,7 +203,7 @@
 
   /* Icon strokes for Heroicons outline */
   #root svg[stroke="currentColor"] {
-    stroke-width: 2;
+    stroke-width: 1.2;
   }
 }
 

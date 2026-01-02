@@ -1,6 +1,21 @@
+/**
+ * MultiSelectBar Component
+ * 
+ * Selection mode UI bar that appears when items are selected.
+ * 
+ * REQUIRED ACTIONS (in order):
+ * - Select all
+ * - Duplicate
+ * - Archive
+ * - Delete
+ * - Cancel
+ * 
+ * Mobile-first, full-width, properly aligned, no clipping.
+ */
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Trash2, Archive, X } from "@/components/ui/Icon";
+import { Trash2, Archive, X, Copy, CheckSquare } from "@/components/ui/Icon";
 import type { IconComponent } from "@/components/ui/Icon";
 
 export interface MultiSelectAction {
@@ -13,25 +28,34 @@ export interface MultiSelectAction {
 
 interface MultiSelectBarProps {
   selectedCount: number;
-  onPrimaryAction?: () => void;
+  totalCount?: number;
+  onSelectAll?: () => void;
+  onDuplicate?: () => void;
+  onArchive?: () => void;
+  onDelete?: () => void;
   onCancel: () => void;
+  /** Whether all items are currently selected */
+  allSelected?: boolean;
+  /** Legacy support: if provided, shows only this action + cancel */
+  onPrimaryAction?: () => void;
   primaryLabel?: string;
   primaryIcon?: IconComponent;
-  /**
-   * Defaults to destructive to preserve existing behavior.
-   * (Projects use this for "Archive", etc.)
-   */
   primaryVariant?: "default" | "destructive" | "outline" | "secondary";
-  /**
-   * Array of actions to display. If provided, this takes precedence over onPrimaryAction.
-   */
+  /** Legacy support: custom actions array (deprecated, use individual handlers) */
   actions?: MultiSelectAction[];
 }
 
 export function MultiSelectBar({
   selectedCount,
-  onPrimaryAction,
+  totalCount,
+  onSelectAll,
+  onDuplicate,
+  onArchive,
+  onDelete,
   onCancel,
+  allSelected = false,
+  // Legacy props
+  onPrimaryAction,
   primaryLabel = "Delete",
   primaryIcon: PrimaryIcon = Trash2,
   primaryVariant = "destructive",
@@ -39,52 +63,94 @@ export function MultiSelectBar({
 }: MultiSelectBarProps) {
   if (selectedCount === 0) return null;
 
+  // Use new API if handlers are provided, otherwise fall back to legacy API
+  const useNewAPI = onSelectAll || onDuplicate || onArchive || onDelete;
+  
+  // Build actions array in required order
+  const standardActions: MultiSelectAction[] = [];
+  
+  if (useNewAPI) {
+    if (onSelectAll && totalCount && selectedCount < totalCount) {
+      standardActions.push({
+        label: "Select all",
+        icon: CheckSquare,
+        onClick: onSelectAll,
+        variant: "outline",
+      });
+    }
+    if (onDuplicate) {
+      standardActions.push({
+        label: "Duplicate",
+        icon: Copy,
+        onClick: onDuplicate,
+        variant: "default",
+      });
+    }
+    if (onArchive) {
+      standardActions.push({
+        label: "Archive",
+        icon: Archive,
+        onClick: onArchive,
+        variant: "default",
+      });
+    }
+    if (onDelete) {
+      standardActions.push({
+        label: "Delete",
+        icon: Trash2,
+        onClick: onDelete,
+        variant: "destructive",
+      });
+    }
+  } else if (actions) {
+    // Legacy: use provided actions array
+    standardActions.push(...actions);
+  } else if (onPrimaryAction) {
+    // Legacy: use single primary action
+    standardActions.push({
+      label: primaryLabel,
+      icon: PrimaryIcon,
+      onClick: onPrimaryAction,
+      variant: primaryVariant,
+    });
+  }
+
   return (
-    <Card className="fixed left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 shadow-2xl border-2 border-accent bg-background/95 backdrop-blur" style={{ bottom: 'var(--bottom-safe-area, 0px)', marginBottom: '1rem' }}>
-      <div className="flex items-center gap-6">
-        <span
-          className="text-sm font-medium"
-          style={{ fontFamily: "Kanit, sans-serif" }}
-        >
-          {selectedCount} selected
-        </span>
-        <div className="flex items-center gap-2">
-          {actions ? (
-            actions.map((action, index) => {
-              const Icon = action.icon;
-              return (
-                <Button
-                  key={index}
-                  variant={action.variant || "default"}
-                  size="sm"
-                  onClick={action.onClick}
-                  disabled={action.disabled}
-                  className="gap-2"
-                >
-                  <Icon className="h-4 w-4" />
-                  {action.label}
-                </Button>
-              );
-            })
-          ) : (
-            <Button
-              variant={primaryVariant}
-              size="sm"
-              onClick={onPrimaryAction}
-              className="gap-2"
-            >
-              <PrimaryIcon className="h-4 w-4" />
-              {primaryLabel}
-            </Button>
-          )}
+    <Card className="fixed left-0 right-0 mx-auto z-50 w-full max-w-7xl px-4 sm:px-6 py-3 sm:py-4 shadow-2xl border-2 border-accent bg-background/95 backdrop-blur" style={{ bottom: 'var(--bottom-safe-area, 0px)', marginBottom: '1rem' }}>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+        <div className="flex items-center justify-center sm:justify-start min-h-[44px]">
+          <span
+            className="text-sm sm:text-base font-medium text-center sm:text-left"
+            style={{ fontFamily: "Kanit, sans-serif" }}
+          >
+            {selectedCount} selected
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 flex-1">
+          {standardActions.map((action, index) => {
+            const Icon = action.icon;
+            return (
+              <Button
+                key={index}
+                variant={action.variant || "default"}
+                size="sm"
+                onClick={action.onClick}
+                disabled={action.disabled}
+                className="gap-2 min-h-[44px] px-4"
+              >
+                <Icon className="h-4 w-4" />
+                <span className="whitespace-nowrap">{action.label}</span>
+              </Button>
+            );
+          })}
           <Button
             variant="outline"
             size="sm"
             onClick={onCancel}
-            className="gap-2"
+            className="gap-2 min-h-[44px] px-4"
           >
             <X className="h-4 w-4" />
-            Cancel
+            <span className="whitespace-nowrap">Cancel</span>
           </Button>
         </div>
       </div>

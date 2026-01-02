@@ -188,19 +188,27 @@ export default function Notes() {
       case "duplicate":
         toast.info("Duplicate is coming soon.");
         break;
-      case "archive":
-        setArchiveTargetId(noteId);
-        setArchiveDialogOpen(true);
-        break;
-      case "moveToTrash":
-        setDeleteToRubbishTargetId(noteId);
-        setDeleteToRubbishDialogOpen(true);
-        break;
       case "select":
         setIsMultiSelectMode(true);
         setSelectedIds(new Set([noteId]));
         break;
+      case "archive":
+        setArchiveTargetId(noteId);
+        setArchiveDialogOpen(true);
+        break;
+      case "delete":
+        setDeleteToRubbishTargetId(noteId);
+        setDeleteToRubbishDialogOpen(true);
+        break;
     }
+  };
+
+  const handleSelectAll = () => {
+    setSelectedIds(new Set(activeNotes.map(n => n.id)));
+  };
+
+  const handleBatchDuplicate = () => {
+    toast.info("Batch duplicate is coming soon.");
   };
 
   const toggleSelection = (noteId: number) => {
@@ -382,7 +390,7 @@ export default function Notes() {
           {!isMultiSelectMode && (
             <ItemActionsMenu
               onAction={(action) => handleItemAction(action, note.id)}
-              actions={["edit", "duplicate", "archive", "moveToTrash", "select"]}
+              actions={["edit", "duplicate", "select", "archive", "delete"]}
               triggerClassName="text-muted-foreground hover:text-foreground"
             />
           )}
@@ -845,7 +853,11 @@ export default function Notes() {
       {isMultiSelectMode && (
         <MultiSelectBar
           selectedCount={selectedIds.size}
-          onPrimaryAction={handleBatchDelete}
+          totalCount={activeNotes.length}
+          onSelectAll={handleSelectAll}
+          onDuplicate={handleBatchDuplicate}
+          onArchive={handleBatchArchive}
+          onDelete={handleBatchDelete}
           onCancel={() => {
             setIsMultiSelectMode(false);
             setSelectedIds(new Set());
