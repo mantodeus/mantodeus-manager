@@ -13,7 +13,7 @@
  * Only visibility may change based on permissions/state — order never changes.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -90,6 +90,35 @@ export function ItemActionsMenu({
     (actions || []).includes(action)
   );
 
+  // Group actions logically: Primary, Mode, Lifecycle, Destructive
+  const groupedActions = useMemo(() => {
+    const groups: {
+      primary: ItemAction[];
+      mode: ItemAction[];
+      lifecycle: ItemAction[];
+      destructive: ItemAction[];
+    } = {
+      primary: [],
+      mode: [],
+      lifecycle: [],
+      destructive: [],
+    };
+
+    validActions.forEach((action) => {
+      if (action === "edit" || action === "duplicate") {
+        groups.primary.push(action);
+      } else if (action === "select") {
+        groups.mode.push(action);
+      } else if (action === "archive") {
+        groups.lifecycle.push(action);
+      } else if (action === "delete") {
+        groups.destructive.push(action);
+      }
+    });
+
+    return groups;
+  }, [validActions]);
+
   const sizeClasses = {
     sm: "h-7 w-7",
     md: "h-8 w-8",
@@ -106,6 +135,31 @@ export function ItemActionsMenu({
     console.error('ItemActionsMenu: onAction prop is required and must be a function');
     return null;
   }
+
+  const renderActionItem = (action: ItemAction) => {
+    const config = actionConfig[action];
+    if (!config) return null;
+    const Icon = config.icon;
+    const isDestructive = config.variant === "destructive";
+    
+    return (
+      <DropdownMenuItem
+        key={action}
+        variant={config.variant}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleAction(action);
+        }}
+        className={cn(
+          "cursor-pointer",
+          isDestructive && "delete"
+        )}
+      >
+        <Icon className="h-4 w-4" />
+        <span>{config.label}</span>
+      </DropdownMenuItem>
+    );
+  };
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -130,31 +184,42 @@ export function ItemActionsMenu({
         side="right"
         align="start"
         sideOffset={8}
-        className="min-w-[160px]"
         onClick={(e) => e.stopPropagation()}
       >
         {validActions.length === 0 ? (
-          <DropdownMenuItem disabled>No actions available</DropdownMenuItem>
+          <DropdownMenuItem disabled className="text-xs uppercase">
+            No actions available
+          </DropdownMenuItem>
         ) : (
-          validActions.map((action) => {
-            const config = actionConfig[action];
-            if (!config) return null;
-            const Icon = config.icon;
-            return (
-              <DropdownMenuItem
-                key={action}
-                variant={config.variant}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAction(action);
-                }}
-                className="cursor-pointer"
-              >
-                <Icon className="h-4 w-4 mr-2" />
-                <span>{config.label}</span>
-              </DropdownMenuItem>
-            );
-          })
+          <>
+            {/* Primary: Edit, Duplicate */}
+            {groupedActions.primary.length > 0 && (
+              <div className="menu-group">
+                {groupedActions.primary.map(renderActionItem)}
+              </div>
+            )}
+
+            {/* Mode: Select */}
+            {groupedActions.mode.length > 0 && (
+              <div className="menu-group">
+                {groupedActions.mode.map(renderActionItem)}
+              </div>
+            )}
+
+            {/* Lifecycle: Archive */}
+            {groupedActions.lifecycle.length > 0 && (
+              <div className="menu-group">
+                {groupedActions.lifecycle.map(renderActionItem)}
+              </div>
+            )}
+
+            {/* Destructive: Delete (isolated with extra spacing) */}
+            {groupedActions.destructive.length > 0 && (
+              <div className="menu-group destructive">
+                {groupedActions.destructive.map(renderActionItem)}
+              </div>
+            )}
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
