@@ -26,6 +26,7 @@ export type AutofillContext = {
   filename?: string; // Receipt filename (if available)
   userId: number; // User performing the operation
   isFirstReceipt?: boolean; // True if this is the first receipt attached
+  pdfTotalCents?: number | null; // Total extracted from text-based PDF
 };
 
 /**
@@ -103,9 +104,13 @@ export async function applyExpenseAutofill(
     }
   }
 
-  // 4. Gross amount: ONLY if parsed with absolute certainty (and current is 0)
-  if (parsedFilename.grossAmountCents && expense.grossAmountCents === 0) {
-    updates.grossAmountCents = parsedFilename.grossAmountCents;
+  // 4. Gross amount: prefer text-PDF extraction, fallback to filename parsing (current must be 0)
+  if (expense.grossAmountCents === 0) {
+    if (context.pdfTotalCents && context.pdfTotalCents > 0) {
+      updates.grossAmountCents = context.pdfTotalCents;
+    } else if (parsedFilename.grossAmountCents) {
+      updates.grossAmountCents = parsedFilename.grossAmountCents;
+    }
   }
 
   // 5. Currency: from filename (if EUR) or keep existing

@@ -23,6 +23,7 @@ import {
   DocumentCurrencyEuro,
   FileSpreadsheet,
   PencilRuler,
+  PencilSquareIcon,
   HomeModern,
   WrenchScrewdriver,
 } from '@/components/ui/Icon';
@@ -90,7 +91,7 @@ export const PERF_BUDGET = {
  * Exactly three tabs: Office, Field, Tools
  */
 export const TABS = [
-  { id: 'office' as const, icon: ClipboardDocument, label: 'Office' },
+  { id: 'office' as const, icon: PencilSquareIcon, label: 'Office' },
   { id: 'field' as const, icon: HomeModern, label: 'Field' },
   { id: 'tools' as const, icon: WrenchScrewdriver, label: 'Tools' },
 ] as const;
