@@ -961,8 +961,10 @@ export const appRouter = router({
 
         if (emailUpdateRequested) {
           normalizedUpdate.email = email;
-          // Only update emails if it was explicitly provided in the input OR if we're migrating from old format
-          if (emails !== undefined) {
+          // Only update emails if:
+          // 1. It was explicitly provided in the input (hasField("emails")), OR
+          // 2. We're migrating from old format and have a valid value (emails is an array, not null)
+          if (hasField("emails") || (emails !== undefined && emails !== null && Array.isArray(emails))) {
             normalizedUpdate.emails = emails;
           }
         }
@@ -970,8 +972,10 @@ export const appRouter = router({
         if (phoneUpdateRequested) {
           normalizedUpdate.phoneNumber = phoneNumber;
           normalizedUpdate.phone = phone;
-          // Only update phoneNumbers if it was explicitly provided in the input OR if we're migrating from old format
-          if (phoneNumbers !== undefined) {
+          // Only update phoneNumbers if:
+          // 1. It was explicitly provided in the input (hasField("phoneNumbers")), OR
+          // 2. We're migrating from old format and have a valid value (phoneNumbers is an array, not null)
+          if (hasField("phoneNumbers") || (phoneNumbers !== undefined && phoneNumbers !== null && Array.isArray(phoneNumbers))) {
             normalizedUpdate.phoneNumbers = phoneNumbers;
           }
         }
@@ -1041,33 +1045,58 @@ export const appRouter = router({
         const cleanedUpdate: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(normalizedUpdate)) {
           if (value !== undefined) {
-            // For JSON columns (emails, phoneNumbers), only include if:
-            // 1. It's an array with items, OR
-            // 2. It's explicitly null AND the field was provided in the input (to clear it)
+            // For JSON columns (emails, phoneNumbers), handle carefully
             if (key === 'emails' || key === 'phoneNumbers') {
-              // Skip null values unless the field was explicitly provided in the input
-              if (value === null && !hasField(key)) {
-                // Skip - this was set to null during migration but field wasn't explicitly provided
-                continue;
-              }
-              // Convert empty arrays to null for JSON columns
-              if (Array.isArray(value) && value.length === 0) {
-                // Only set to null if the field was explicitly provided
+              // Only include if:
+              // 1. It's an array with items (valid data), OR
+              // 2. It's explicitly null AND the field was provided in the input (to clear it)
+              if (value === null) {
+                // Only include null if the field was explicitly provided (user wants to clear it)
                 if (hasField(key)) {
                   cleanedUpdate[key] = null;
                 }
-                // Otherwise skip it
+                // Otherwise skip - don't update this field
+                continue;
+              }
+              // Convert empty arrays to null for JSON columns (only if field was provided)
+              if (Array.isArray(value)) {
+                if (value.length === 0) {
+                  // Empty array - only set to null if field was explicitly provided
+                  if (hasField(key)) {
+                    cleanedUpdate[key] = null;
+                  }
+                  // Otherwise skip it
+                } else {
+                  // Array with items - include it
+                  cleanedUpdate[key] = value;
+                }
               } else {
+                // Not an array and not null - include it (shouldn't happen, but be safe)
                 cleanedUpdate[key] = value;
               }
             } else {
+              // Non-JSON columns - include as-is
               cleanedUpdate[key] = value;
             }
           }
         }
         
-        await db.updateContact(id, cleanedUpdate);
-        return { success: true };
+        try {
+          console.log("[Contacts] updateContact - cleanedUpdate keys:", Object.keys(cleanedUpdate));
+          console.log("[Contacts] updateContact - cleanedUpdate:", JSON.stringify(cleanedUpdate, null, 2));
+          await db.updateContact(id, cleanedUpdate);
+          return { success: true };
+        } catch (error) {
+          console.error("[Contacts] updateContact error:", error);
+          if (error instanceof Error) {
+            console.error("[Contacts] updateContact error message:", error.message);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: `Failed to update contact: ${error.message}`,
+            });
+          }
+          throw error;
+        }
       }),
     
     archive: protectedProcedure

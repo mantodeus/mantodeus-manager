@@ -900,7 +900,27 @@ export async function updateContact(id: number, data: Partial<InsertContact>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return db.update(contacts).set(data).where(eq(contacts.id, id));
+  try {
+    // Log what we're trying to update (for debugging)
+    console.log("[Database] updateContact - ID:", id);
+    console.log("[Database] updateContact - Data keys:", Object.keys(data));
+    if ('emails' in data) {
+      console.log("[Database] updateContact - emails:", JSON.stringify(data.emails));
+    }
+    if ('phoneNumbers' in data) {
+      console.log("[Database] updateContact - phoneNumbers:", JSON.stringify(data.phoneNumbers));
+    }
+    
+    const result = await db.update(contacts).set(data).where(eq(contacts.id, id));
+    return result;
+  } catch (error) {
+    console.error("[Database] updateContact error:", error);
+    if (error instanceof Error) {
+      console.error("[Database] updateContact error message:", error.message);
+      console.error("[Database] updateContact error stack:", error.stack);
+    }
+    throw error;
+  }
 }
 
 export async function deleteContact(id: number) {
