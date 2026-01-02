@@ -31,16 +31,21 @@ This document tracks fixes for 8 critical issues identified in the production re
 - [x] Refactor `server/expenses/suggestionEngine.ts` to use targeted queries
 - [x] Batch compute reviewMeta in `server/expenseRouter.ts`
 - [x] Verify O(1) query count with performance test
+- [x] Fix migration tracking issue (migrations 0014-0020 not in _journal.json)
+- [ ] Apply database migration on server
 - **Files Changed:**
   - `server/db.ts` (added listSupplierHistory and getExpenseFilesByExpenseIds)
   - `server/expenses/suggestionEngine.ts` (simplified getSupplierHistory - now uses DB filtering)
   - `server/expenses/proposedFields.ts` (added preloadedFiles parameter)
   - `server/expenseRouter.ts` (batch file fetching before reviewMeta loop)
   - `drizzle/schema.ts` (added index on expenses table)
-- **Commits:** 7a8ad09
+  - `drizzle/meta/_journal.json` (updated to include migrations 0014-0020)
+  - `drizzle/0021_add_supplier_name_index.sql` (clean migration with only the index)
+- **Commits:** 7a8ad09, 5e2fccb, 3e23201
 - **Verification:** Expense list fast with 100+ expenses ✓
   - Before: O(n) queries (100 expenses = 100+ DB queries, 30s load time)
   - After: O(1) queries (100 expenses = ~3 DB queries, <2s load time)
+- **Migration Note:** Initial migration generation failed due to schema drift. Fixed by updating _journal.json to track existing migrations 0014-0020, then created clean migration 0021.
 
 ### 3. Logging: Remove Production TRACE Spam
 - [ ] Create `server/_core/logger.ts` with proper log levels
