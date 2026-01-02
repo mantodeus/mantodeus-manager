@@ -312,9 +312,8 @@
     z-index: -1;
   }
 
-  /* Glass menu item - uppercase with letter-spacing matching module labels */
+  /* Glass menu item - standard text with letter-spacing matching module labels */
   .glass-menu-item {
-    text-transform: uppercase;
     font-size: 0.95rem;
     letter-spacing: 0.08em;
     font-weight: 300;

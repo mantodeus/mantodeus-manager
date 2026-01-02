@@ -114,13 +114,6 @@ export function ItemActionsMenu({
           variant="ghost"
           size="icon"
           className={cn(
-            "rounded-full",
-            "bg-background/95 backdrop-blur-md",
-            "border border-border/50",
-            "shadow-sm",
-            "hover:bg-background/90",
-            "active:scale-95",
-            "transition-all duration-150",
             sizeClasses[size],
             triggerClassName
           )}
