@@ -211,9 +211,17 @@ export default function Contacts() {
         leitwegId: normalizeOptional(formData.leitwegId),
         email: formData.email.trim() || undefined,
         phoneNumber: normalizeOptional(formData.phoneNumber),
-        emails: validEmails.length > 0 ? validEmails.map(e => ({ label: e.label.trim() || "Email", value: e.value.trim() })) : undefined,
-        phoneNumbers: formData.phoneNumbers.filter(p => p.value.trim()).length > 0 
-          ? formData.phoneNumbers.filter(p => p.value.trim()).map(p => ({ label: p.label.trim() || "Phone", value: p.value.trim() }))
+        emails: validEmails.length > 0 ? validEmails.map(e => ({ 
+          label: e.label.trim() || "Email", 
+          value: e.value.trim() 
+        })) : undefined,
+        phoneNumbers: formData.phoneNumbers.filter(p => p.value && p.value.trim()).length > 0 
+          ? formData.phoneNumbers
+              .filter(p => p.value && p.value.trim())
+              .map(p => ({ 
+                label: p.label.trim() || "Phone", 
+                value: p.value.trim() 
+              }))
           : undefined,
         notes: normalizeOptional(formData.notes),
       };
