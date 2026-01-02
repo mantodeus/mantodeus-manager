@@ -1691,13 +1691,15 @@ export async function createCancellationInvoice(userId: number, invoiceId: numbe
       throw new Error("Only open or paid invoices can be cancelled.");
     }
 
+    // Check if cancellation invoice already exists (idempotency)
     const existing = await tx
       .select({ id: invoices.id })
       .from(invoices)
       .where(eq(invoices.cancelledInvoiceId, invoiceId))
       .limit(1);
     if (existing.length > 0) {
-      throw new Error("A cancellation invoice already exists for this invoice.");
+      // Return existing cancellation invoice ID (idempotent behavior)
+      return existing[0].id;
     }
 
     const items = await tx.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
@@ -1707,39 +1709,63 @@ export async function createCancellationInvoice(userId: number, invoiceId: numbe
       return negated.toFixed(2);
     };
 
-    const insertResult = await tx.insert(invoices).values({
-      userId: original.userId,
-      clientId: original.clientId ?? null,
-      contactId: original.contactId ?? null,
-      jobId: original.jobId ?? null,
-      invoiceNumber,
-      invoiceCounter,
-      invoiceYear,
-      status: "draft",
-      type: "cancellation",
-      cancelledInvoiceId: original.id,
-      issueDate,
-      dueDate: issueDate,
-      notes: original.notes ?? null,
-      servicePeriodStart: original.servicePeriodStart ?? null,
-      servicePeriodEnd: original.servicePeriodEnd ?? null,
-      referenceNumber: original.referenceNumber ?? null,
-      partialInvoice: original.partialInvoice ?? false,
-      subtotal: negateMoney(original.subtotal),
-      vatAmount: negateMoney(original.vatAmount),
-      total: negateMoney(original.total),
-      pdfFileKey: null,
-      filename: null,
-      fileKey: null,
-      fileSize: null,
-      mimeType: null,
-      uploadDate: null,
-      uploadedBy: null,
-      sentAt: null,
-      paidAt: null,
-      archivedAt: null,
-      trashedAt: null,
-    });
+    let insertResult;
+    try {
+      insertResult = await tx.insert(invoices).values({
+        userId: original.userId,
+        clientId: original.clientId ?? null,
+        contactId: original.contactId ?? null,
+        jobId: original.jobId ?? null,
+        invoiceNumber,
+        invoiceCounter,
+        invoiceYear,
+        status: "draft",
+        type: "cancellation",
+        cancelledInvoiceId: original.id,
+        issueDate,
+        dueDate: issueDate,
+        notes: original.notes ?? null,
+        servicePeriodStart: original.servicePeriodStart ?? null,
+        servicePeriodEnd: original.servicePeriodEnd ?? null,
+        referenceNumber: original.referenceNumber ?? null,
+        partialInvoice: original.partialInvoice ?? false,
+        subtotal: negateMoney(original.subtotal),
+        vatAmount: negateMoney(original.vatAmount),
+        total: negateMoney(original.total),
+        pdfFileKey: null,
+        filename: null,
+        fileKey: null,
+        fileSize: null,
+        mimeType: null,
+        uploadDate: null,
+        uploadedBy: null,
+        sentAt: null,
+        paidAt: null,
+        archivedAt: null,
+        trashedAt: null,
+      });
+    } catch (insertError: any) {
+      // Handle race condition: if another request created the cancellation between our check and insert
+      // MySQL duplicate key error codes: ER_DUP_ENTRY = 1062, ER_DUP_KEY = 1022
+      if (insertError?.code === 'ER_DUP_ENTRY' || 
+          insertError?.code === 'ER_DUP_KEY' ||
+          insertError?.errno === 1062 ||
+          insertError?.errno === 1022 ||
+          insertError?.message?.includes('Duplicate entry') ||
+          insertError?.message?.includes('duplicate key')) {
+        // Fetch and return the existing cancellation invoice (idempotent behavior)
+        const existingCancellation = await tx
+          .select({ id: invoices.id })
+          .from(invoices)
+          .where(eq(invoices.cancelledInvoiceId, invoiceId))
+          .limit(1);
+        if (existingCancellation.length > 0) {
+          return existingCancellation[0].id;
+        }
+      }
+      // Re-throw if it's not a duplicate key error
+      throw insertError;
+    }
 
     const insertId = Array.isArray(insertResult) ? insertResult[0]?.insertId : (insertResult as any).insertId;
     if (!insertId) {
