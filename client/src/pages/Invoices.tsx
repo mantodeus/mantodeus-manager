@@ -413,12 +413,6 @@ export default function Invoices() {
             const handleCardClick = () => {
               if (isMultiSelectMode) {
                 toggleSelection(invoice.id);
-              }
-            };
-
-            const handleCardClick = () => {
-              if (isMultiSelectMode) {
-                toggleSelection(invoice.id);
               } else {
                 navigate(`/invoices/${invoice.id}`);
               }
