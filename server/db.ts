@@ -2512,8 +2512,13 @@ export async function createNote(data: InsertNote) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  // Remove clientCreationKey if it's null/undefined to avoid issues if column doesn't exist
+  // This prevents Drizzle from trying to insert NULL into a non-existent column
+  const { clientCreationKey, ...dataWithoutKey } = data;
+  const insertData = clientCreationKey != null ? data : dataWithoutKey;
+  
   try {
-    return db.insert(notes).values(data);
+    return db.insert(notes).values(insertData);
   } catch (error: any) {
     // Handle case where clientCreationKey column doesn't exist yet
     // Remove clientCreationKey from data and retry
@@ -2521,7 +2526,6 @@ export async function createNote(data: InsertNote) {
         error?.message?.includes("Unknown column") ||
         error?.code === "ER_BAD_FIELD_ERROR") {
       console.log("[Database] clientCreationKey column not found, creating note without it (migration not run yet)");
-      const { clientCreationKey, ...dataWithoutKey } = data;
       return db.insert(notes).values(dataWithoutKey);
     }
     // Re-throw other errors

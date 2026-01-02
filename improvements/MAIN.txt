@@ -9,7 +9,6 @@ git fetch origin
 git pull origin main
 npx pnpm install
 npx pnpm run db:migrate
-npx pnpm install --frozen-lockfile
 npm run build
 npx pm2 restart mantodeus-manager
 
