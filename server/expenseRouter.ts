@@ -278,10 +278,28 @@ export const expenseRouter = router({
       const needsReviewExpenses = expenses.filter((e) => e.status === "needs_review");
       const reviewMetaMap = new Map<number, any>();
 
+      // Performance optimization: Batch fetch files for all needs_review expenses
+      // This prevents N+1 queries (one per expense)
+      const needsReviewIds = needsReviewExpenses.map(e => e.id);
+      const allFiles = needsReviewIds.length > 0
+        ? await db.getExpenseFilesByExpenseIds(needsReviewIds)
+        : [];
+
+      // Group files by expense ID for quick lookup
+      const filesByExpenseId = new Map<number, any[]>();
+      for (const file of allFiles) {
+        if (!filesByExpenseId.has(file.expenseId)) {
+          filesByExpenseId.set(file.expenseId, []);
+        }
+        filesByExpenseId.get(file.expenseId)!.push(file);
+      }
+
       await Promise.all(
         needsReviewExpenses.map(async (expense) => {
           try {
-            const proposed = await getProposedFields(expense, ctx.user.id);
+            // Pass pre-fetched files to avoid per-expense DB query
+            const expenseFiles = filesByExpenseId.get(expense.id) || [];
+            const proposed = await getProposedFields(expense, ctx.user.id, expenseFiles);
             const overallScore = calculateOverallScore(expense, proposed);
             const missingRequired = getMissingRequiredFields(expense);
 

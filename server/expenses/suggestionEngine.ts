@@ -127,20 +127,15 @@ function extractKeywords(text: string): string[] {
 
 /**
  * Get supplier history (last 5 expenses with same supplier)
+ * Performance: Uses database-level filtering instead of fetching all expenses
  */
 async function getSupplierHistory(
   userId: number,
   supplierName: string
 ): Promise<Expense[]> {
+  // Use database-level filtering for performance (prevents N+1 query issue)
   const normalized = normalizeSupplierName(supplierName);
-  const allExpenses = await db.listExpensesByUser(userId);
-  
-  // Filter by normalized supplier name and get last 5
-  const matching = allExpenses
-    .filter((exp) => normalizeSupplierName(exp.supplierName) === normalized)
-    .slice(0, 5);
-  
-  return matching;
+  return await db.listSupplierHistory(userId, normalized, 5);
 }
 
 /**

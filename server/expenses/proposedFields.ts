@@ -13,21 +13,27 @@ import type { ProposedFields, ProposedField } from "./confidence";
 
 /**
  * Get proposed fields for an expense (preview-only)
- * 
+ *
  * This function:
  * 1. Parses filename (if receipts exist)
  * 2. Gets suggestions from suggestion engine
  * 3. Combines all sources with confidence scores
  * 4. Returns proposed values WITHOUT writing to DB
+ *
+ * @param expense - The expense to get proposed fields for
+ * @param userId - User ID for suggestion context
+ * @param preloadedFiles - Optional pre-fetched files (for batch performance)
  */
 export async function getProposedFields(
   expense: Expense,
-  userId: number
+  userId: number,
+  preloadedFiles?: Array<any>
 ): Promise<ProposedFields> {
   const proposed: ProposedFields = {};
 
   // Get expense files for filename parsing
-  const files = await db.getExpenseFilesByExpenseId(expense.id);
+  // Use preloaded files if provided (batch performance optimization)
+  const files = preloadedFiles ?? await db.getExpenseFilesByExpenseId(expense.id);
   const latestFile = files.length > 0 ? files[0] : null;
 
   // Parse filename if available

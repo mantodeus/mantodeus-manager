@@ -2305,12 +2305,79 @@ export async function getExpenseFileById(id: number) {
 export async function getExpenseFilesByExpenseId(expenseId: number) {
   const db = await getDb();
   if (!db) return [];
-  
+
   return await db
     .select()
     .from(expenseFiles)
     .where(eq(expenseFiles.expenseId, expenseId))
     .orderBy(desc(expenseFiles.createdAt));
+}
+
+/**
+ * Get expense files for multiple expenses in a single query (batch operation)
+ * Performance optimization: prevents N+1 queries when loading multiple expenses
+ *
+ * @param expenseIds - Array of expense IDs
+ * @returns Array of expense files grouped by expenseId
+ */
+export async function getExpenseFilesByExpenseIds(
+  expenseIds: number[]
+): Promise<Array<typeof expenseFiles.$inferSelect>> {
+  if (expenseIds.length === 0) {
+    return [];
+  }
+
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(expenseFiles)
+    .where(inArray(expenseFiles.expenseId, expenseIds))
+    .orderBy(expenseFiles.createdAt);
+}
+
+/**
+ * Get recent expenses for a specific supplier (for suggestion engine)
+ * Uses database filtering instead of in-memory filtering for performance
+ * Performance optimization: replaces fetching all user expenses + in-memory filter
+ *
+ * @param userId - User ID
+ * @param supplierName - Supplier name to match (case-insensitive, partial match)
+ * @param limit - Maximum number of results (default: 5)
+ * @returns Recent expenses sorted by date descending
+ */
+export async function listSupplierHistory(
+  userId: number,
+  supplierName: string,
+  limit: number = 5
+): Promise<Array<typeof expenses.$inferSelect>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Normalize supplier name for matching
+  const normalizedSearch = supplierName.trim().toLowerCase();
+
+  if (!normalizedSearch) {
+    return [];
+  }
+
+  // Query with database-level filtering
+  // Use LOWER() for case-insensitive matching
+  const results = await db
+    .select()
+    .from(expenses)
+    .where(
+      and(
+        eq(expenses.createdBy, userId),
+        ne(expenses.status, 'void'), // Exclude voided expenses
+        sql`LOWER(${expenses.supplierName}) LIKE ${`%${normalizedSearch}%`}`
+      )
+    )
+    .orderBy(desc(expenses.expenseDate))
+    .limit(limit);
+
+  return results;
 }
 
 // ===== NOTES QUERIES =====

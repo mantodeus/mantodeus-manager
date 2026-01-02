@@ -767,6 +767,7 @@ export const expenses = mysqlTable("expenses", {
   index("expenses_createdBy_status_expenseDate_idx").on(table.createdBy, table.status, table.expenseDate),
   index("expenses_createdBy_expenseDate_idx").on(table.createdBy, table.expenseDate),
   index("expenses_updatedByUserId_idx").on(table.updatedByUserId),
+  index("expenses_createdBy_supplierName_idx").on(table.createdBy, table.supplierName),
 ]);
 
 export type Expense = typeof expenses.$inferSelect;
