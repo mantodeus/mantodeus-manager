@@ -2,9 +2,37 @@
 -- This column was supposed to be added in migration 0015 but failed due to MySQL syntax issue
 -- (MySQL doesn't support "IF NOT EXISTS" for ADD COLUMN)
 
-ALTER TABLE `invoices` 
-  ADD COLUMN `sentAt` timestamp NULL AFTER `dueDate`;
+SET @has_sentAt := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'invoices'
+    AND COLUMN_NAME = 'sentAt'
+);
 
--- Create index (will fail if index already exists, but that's fine)
-CREATE INDEX `invoices_sentAt_idx` ON `invoices` (`sentAt`);
+SET @add_sentAt_sql := IF(
+  @has_sentAt = 0,
+  'ALTER TABLE `invoices` ADD COLUMN `sentAt` timestamp NULL AFTER `dueDate`',
+  'SELECT 1'
+);
+PREPARE add_sentAt_stmt FROM @add_sentAt_sql;
+EXECUTE add_sentAt_stmt;
+DEALLOCATE PREPARE add_sentAt_stmt;
+
+SET @has_sentAt_idx := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'invoices'
+    AND INDEX_NAME = 'invoices_sentAt_idx'
+);
+
+SET @add_sentAt_idx_sql := IF(
+  @has_sentAt_idx = 0,
+  'CREATE INDEX `invoices_sentAt_idx` ON `invoices` (`sentAt`)',
+  'SELECT 1'
+);
+PREPARE add_sentAt_idx_stmt FROM @add_sentAt_idx_sql;
+EXECUTE add_sentAt_idx_stmt;
+DEALLOCATE PREPARE add_sentAt_idx_stmt;
 

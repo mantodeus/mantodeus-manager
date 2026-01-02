@@ -13,6 +13,10 @@ npx pnpm install --frozen-lockfile
 npm run build
 npx pm2 restart mantodeus-manager
 
+git pull origin claude/audit-mantodeus-manager-yVsbh
+npx pnpm db:generate
+npx pnpm db:migrate
+
 npx pm2 start dist/index.js --name mantodeus-manager
 npx pm2 save
 
