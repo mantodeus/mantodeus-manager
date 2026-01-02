@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { MoreVertical, Edit, Trash2, Copy, CheckCircle2, Archive, RotateCcw, Trash, Eye, DollarSign, XCircle } from "@/components/ui/Icon";
+import { cn } from "@/lib/utils";
 
 export type ItemAction =
   | "edit"
@@ -112,7 +113,17 @@ export function ItemActionsMenu({
         <Button
           variant="ghost"
           size="icon"
-          className={`${sizeClasses[size]} ${triggerClassName || ""}`}
+          className={cn(
+            "rounded-full",
+            "bg-background/95 backdrop-blur-md",
+            "border border-border/50",
+            "shadow-sm",
+            "hover:bg-background/90",
+            "active:scale-95",
+            "transition-all duration-150",
+            sizeClasses[size],
+            triggerClassName
+          )}
           disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
@@ -123,7 +134,9 @@ export function ItemActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
+        side="right"
+        align="start"
+        sideOffset={8}
         className="min-w-[160px]"
         onClick={(e) => e.stopPropagation()}
       >
