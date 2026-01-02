@@ -6,7 +6,7 @@
 UPDATE `user_preferences`
 SET `dateFormat` = 'DD/MM/YYYY'
 WHERE `dateFormat` = 'MM/DD/YYYY';
-
+--> statement-breakpoint
 -- Update schema defaults (for new users)
 ALTER TABLE `user_preferences`
   MODIFY COLUMN `dateFormat` VARCHAR(20) NOT NULL DEFAULT 'DD.MM.YYYY',
