@@ -20,7 +20,7 @@ export function ContextMenu({ x, y, onAction, onClose, actions = ["edit", "delet
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   useAutoScrollOnOpen({
     isOpen: true, // ContextMenu only renders when open
-    menuRef,
+    menuRef: menuRef as React.RefObject<HTMLElement>,
     enabled: isMobile,
     scrollBuffer: 12,
   });
@@ -70,7 +70,7 @@ export function ContextMenu({ x, y, onAction, onClose, actions = ["edit", "delet
               onAction(action);
               onClose();
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded hover:bg-accent transition-colors ${config.color}`}
+            className={`w-full flex items-center gap-3 px-3 py-2 text-xs rounded hover:bg-accent transition-colors ${config.color}`}
             style={{ fontFamily: "Kanit, sans-serif", fontWeight: 200 }}
           >
             <Icon className="h-4 w-4" />

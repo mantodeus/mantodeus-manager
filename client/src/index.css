@@ -314,7 +314,7 @@
 
   /* Glass menu item - standard text with letter-spacing matching module labels */
   .glass-menu-item {
-    font-size: 0.95rem;
+    font-size: 0.875rem; /* Reduced from 0.95rem (15.2px -> 14px) */
     letter-spacing: 0.08em;
     font-weight: 300;
   }

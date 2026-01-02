@@ -6,6 +6,7 @@ cd /srv/customer/sites/manager.mantodeus.com
 git fetch origin
 git pull origin main
 npx pnpm install
+npx pnpm run db:generate
 npx pnpm run db:migrate
 npm run build
 npx pm2 restart mantodeus-manager
