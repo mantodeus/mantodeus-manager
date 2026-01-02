@@ -13,7 +13,8 @@
 import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Bold, Italic, List, CheckSquare, Code } from "@/components/ui/Icon";
+import { Bold, Italic, List, Check as CheckIcon, Code } from "@/components/ui/Icon";
+import { SimpleMarkdown } from "@/components/SimpleMarkdown";
 import { cn } from "@/lib/utils";
 
 interface SimpleMarkdownEditorProps {
@@ -78,10 +79,18 @@ export function SimpleMarkdownEditor({
   autoFocus = false,
 }: SimpleMarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
+  
+  // Sync scroll between textarea and preview
+  const handleScroll = () => {
+    if (textareaRef.current && previewRef.current) {
+      previewRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  };
 
   // Detect mobile for toolbar positioning
   useEffect(() => {
@@ -493,47 +502,78 @@ export function SimpleMarkdownEditor({
     }
   };
 
-  // Calculate toolbar position for mobile
-  // On mobile when focused, position toolbar above keyboard (at bottom of visual viewport)
+  // Calculate toolbar position for mobile - truly fixed, independent of scroll
   const toolbarStyle: React.CSSProperties = isMobile && isFocused
     ? {
         position: 'fixed',
         bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
         left: '0',
         right: '0',
-        zIndex: 50,
+        zIndex: 100,
         paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)`,
       }
     : {};
 
   return (
-    <div className={cn("relative", className)}>
-      {/* Editor */}
-      <div className="border rounded-md bg-background">
-        <Textarea
-          ref={textareaRef}
-          value={content}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          placeholder={placeholder}
-          className={cn(
-            "resize-none border-none shadow-none focus-visible:ring-0 px-4 py-3 font-mono text-sm",
-            isMobile ? "min-h-[300px] pb-24" : "min-h-[400px]"
-          )}
-          style={{ whiteSpace: "pre-wrap" }}
-        />
+    <>
+      <div ref={containerRef} className={cn("relative", className)}>
+        {/* Editor Container with Live Preview */}
+        <div className="border rounded-md bg-background relative overflow-hidden">
+          {/* Live Preview Layer (rendered markdown) */}
+          <div
+            ref={previewRef}
+            className={cn(
+              "absolute inset-0 px-4 py-3 text-sm pointer-events-none overflow-auto",
+              isMobile ? "min-h-[300px]" : "min-h-[400px]"
+            )}
+            style={{
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+              lineHeight: '1.5',
+            }}
+          >
+            {content ? (
+              <div className="prose prose-sm dark:prose-invert max-w-none [&_strong]:font-semibold [&_em]:italic [&_del]:line-through [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-4 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:list-inside [&_ol]:ml-4 [&_ol]:my-2 [&_li]:ml-2 [&_p]:my-2">
+                <SimpleMarkdown>{content}</SimpleMarkdown>
+              </div>
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </div>
+          
+          {/* Textarea Layer (transparent text, visible caret) */}
+          <Textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onScroll={handleScroll}
+            placeholder=""
+            className={cn(
+              "relative resize-none border-none shadow-none focus-visible:ring-0 px-4 py-3 text-sm",
+              "bg-transparent caret-foreground",
+              isMobile ? "min-h-[300px]" : "min-h-[400px]"
+            )}
+            style={{ 
+              whiteSpace: "pre-wrap",
+              color: 'transparent',
+              textShadow: '0 0 0 transparent',
+              fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+            }}
+          />
+        </div>
       </div>
 
-      {/* Formatting Toolbar */}
+      {/* Formatting Toolbar - Fixed outside scrollable container */}
       <div
-        ref={toolbarRef}
         className={cn(
           "flex items-center gap-1 p-2 border bg-background/95 backdrop-blur-sm",
           isMobile && isFocused
             ? "fixed left-0 right-0 border-t rounded-t-md rounded-b-none shadow-lg"
-            : "sticky bottom-0 rounded-md bg-muted/50 mt-2"
+            : "sticky bottom-0 rounded-md bg-muted/50 mt-2 z-10"
         )}
         style={toolbarStyle}
       >
@@ -627,7 +667,7 @@ export function SimpleMarkdownEditor({
             )}
             type="button"
           >
-            <CheckSquare className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
+            <CheckIcon className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
           </Button>
           <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
           <Button
@@ -647,7 +687,7 @@ export function SimpleMarkdownEditor({
           </Button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
