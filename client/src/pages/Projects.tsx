@@ -137,7 +137,8 @@ export default function Projects() {
         toast.info("Duplicate is coming soon.");
         break;
       case "select":
-        toast.info("Selection mode is coming soon.");
+        setIsMultiSelectMode(true);
+        toggleSelection(projectId); // Pre-select the current item
         break;
       case "archive":
         setArchiveTargetId(projectId);
