@@ -9,7 +9,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, Trash2, RotateCcw } from "@/components/ui/Icon";
+import { ArrowLeft, Building2, Loader2, RotateCcw, Trash2, User } from "@/components/ui/Icon";
 import { Link } from "wouter";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -60,16 +60,21 @@ export default function ContactsRubbish() {
     );
   }
 
-  const renderRubbishItem = (contact: typeof trashedContacts[0]) => (
-    <Card key={contact.id}>
-      <div className="flex items-center justify-between p-4">
-        <div className="min-w-0">
-          <div className="truncate">{contact.clientName || contact.name}</div>
-          <div className="text-sm text-muted-foreground">
-            Deleted{" "}
-            {contact.trashedAt ? new Date(contact.trashedAt).toLocaleDateString() : "—"}
+  const renderRubbishItem = (contact: typeof trashedContacts[0]) => {
+    const ContactIcon = contact.type === "business" ? Building2 : User;
+    return (
+      <Card key={contact.id}>
+        <div className="flex items-center justify-between p-4">
+          <div className="min-w-0 flex items-center gap-2">
+            <ContactIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+            <div>
+              <div className="truncate">{contact.clientName || contact.name}</div>
+              <div className="text-sm text-muted-foreground">
+                Deleted{" "}
+                {contact.trashedAt ? new Date(contact.trashedAt).toLocaleDateString() : "—"}
+              </div>
+            </div>
           </div>
-        </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -96,7 +101,8 @@ export default function ContactsRubbish() {
         </div>
       </div>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">

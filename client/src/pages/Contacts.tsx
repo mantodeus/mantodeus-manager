@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ChevronDown, Loader2, Mail, MapPin, Phone, Plus, Search, Users } from "@/components/ui/Icon";
+import { Building2, ChevronDown, Loader2, Mail, MapPin, Phone, Plus, Search, User, Users, X } from "@/components/ui/Icon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
@@ -45,6 +45,7 @@ export default function Contacts() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [returnTo, setReturnTo] = useState<string | null>(null);
   const [expandedContactId, setExpandedContactId] = useState<number | null>(null);
+  const [previewContactId, setPreviewContactId] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   
@@ -74,6 +75,8 @@ export default function Contacts() {
     leitwegId: "",
     email: "",
     phoneNumber: "",
+    emails: [] as Array<{ label: string; value: string }>,
+    phoneNumbers: [] as Array<{ label: string; value: string }>,
     notes: "",
   });
 
@@ -132,6 +135,8 @@ export default function Contacts() {
       leitwegId: "",
       email: "",
       phoneNumber: "",
+      emails: [],
+      phoneNumbers: [],
       notes: "",
     });
   };
@@ -159,14 +164,23 @@ export default function Contacts() {
       toast.error("Client name is required");
       return;
     }
-    if (!formData.email.trim()) {
-      toast.error("Email is required");
-      return;
+    
+    // Validate emails - at least one valid email is required
+    const validEmails = formData.emails.filter(e => e.value.trim() && isValidEmail(e.value.trim()));
+    if (validEmails.length === 0) {
+      // Check if single email field is provided as fallback
+      if (!formData.email.trim() || !isValidEmail(formData.email.trim())) {
+        toast.error("At least one valid email is required");
+        return;
+      }
     }
-    if (!isValidEmail(formData.email)) {
+    
+    // Validate email format if single email provided
+    if (formData.email.trim() && !isValidEmail(formData.email.trim())) {
       toast.error("Invalid email address");
       return;
     }
+    
     if (!formData.streetName.trim() || !formData.streetNumber.trim()) {
       toast.error("Street name and number are required");
       return;
@@ -195,8 +209,12 @@ export default function Contacts() {
         vatNumber: normalizeOptional(formData.vatNumber),
         taxNumber: normalizeOptional(formData.taxNumber),
         leitwegId: normalizeOptional(formData.leitwegId),
-        email: formData.email.trim(),
+        email: formData.email.trim() || undefined,
         phoneNumber: normalizeOptional(formData.phoneNumber),
+        emails: validEmails.length > 0 ? validEmails.map(e => ({ label: e.label.trim() || "Email", value: e.value.trim() })) : undefined,
+        phoneNumbers: formData.phoneNumbers.filter(p => p.value.trim()).length > 0 
+          ? formData.phoneNumbers.filter(p => p.value.trim()).map(p => ({ label: p.label.trim() || "Phone", value: p.value.trim() }))
+          : undefined,
         notes: normalizeOptional(formData.notes),
       };
 
@@ -229,6 +247,12 @@ export default function Contacts() {
   };
 
   const handleEdit = (contact: typeof activeContacts[0]) => {
+    // Migrate old single email/phone to new array format if arrays don't exist
+    const emails = (contact.emails as Array<{ label: string; value: string }> | null) || 
+      (contact.email ? [{ label: "Email", value: contact.email }] : [{ label: "", value: "" }]);
+    const phoneNumbers = (contact.phoneNumbers as Array<{ label: string; value: string }> | null) || 
+      (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
+    
     setFormData({
       clientName: contact.clientName || contact.name || "",
       type: contact.type || "business",
@@ -244,6 +268,8 @@ export default function Contacts() {
       leitwegId: contact.leitwegId || "",
       email: contact.email || "",
       phoneNumber: contact.phoneNumber || contact.phone || "",
+      emails: emails,
+      phoneNumbers: phoneNumbers,
       notes: contact.notes || "",
     });
     setEditingId(contact.id);
@@ -258,6 +284,11 @@ export default function Contacts() {
 
   const handleNewContact = () => {
     resetForm();
+    // Initialize with at least one email field
+    setFormData(prev => ({
+      ...prev,
+      emails: [{ label: "", value: "" }],
+    }));
     setEditingId(null);
     openForm();
   };
@@ -360,8 +391,14 @@ export default function Contacts() {
     const displayName = getDisplayName(contact);
     const previewAddress = getPreviewAddress(contact);
     const mapAddress = getMapAddress(contact);
-    const email = contact.email || "";
-    const phone = contact.phoneNumber || contact.phone || "";
+    
+    // Get emails and phone numbers from new array format or fallback to single values
+    const emails = (contact.emails as Array<{ label: string; value: string }> | null) || 
+      (contact.email ? [{ label: "Email", value: contact.email }] : []);
+    const phoneNumbers = (contact.phoneNumbers as Array<{ label: string; value: string }> | null) || 
+      (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
+    
+    const ContactIcon = contact.type === "business" ? Building2 : User;
 
     return (
       <div
@@ -376,8 +413,15 @@ export default function Contacts() {
               onClick={(e) => e.stopPropagation()}
             />
           )}
-          <div className="flex-1 min-w-0">
-            <div className="truncate text-base font-regular">{displayName}</div>
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <ContactIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+            <button
+              type="button"
+              onClick={() => setPreviewContactId(contact.id)}
+              className="truncate text-base font-regular hover:text-primary transition-colors text-left"
+            >
+              {displayName}
+            </button>
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -423,24 +467,36 @@ export default function Contacts() {
                   <span className="truncate">{previewAddress}</span>
                 </button>
               )}
-              {email && (
+              {emails.map((emailItem, idx) => (
                 <a
-                  href={`mailto:${email}`}
+                  key={idx}
+                  href={`mailto:${emailItem.value}`}
                   className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Mail className="h-4 w-4" />
-                  <span className="truncate">{email}</span>
+                  <div className="flex-1 min-w-0">
+                    {emailItem.label !== "Email" && (
+                      <div className="text-xs text-muted-foreground/70">{emailItem.label}</div>
+                    )}
+                    <span className="truncate">{emailItem.value}</span>
+                  </div>
                 </a>
-              )}
-              {phone && (
+              ))}
+              {phoneNumbers.map((phoneItem, idx) => (
                 <a
-                  href={`tel:${phone}`}
+                  key={idx}
+                  href={`tel:${phoneItem.value}`}
                   className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Phone className="h-4 w-4" />
-                  <span className="truncate">{phone}</span>
+                  <div className="flex-1 min-w-0">
+                    {phoneItem.label !== "Phone" && (
+                      <div className="text-xs text-muted-foreground/70">{phoneItem.label}</div>
+                    )}
+                    <span className="truncate">{phoneItem.value}</span>
+                  </div>
                 </a>
-              )}
+              ))}
             </div>
           </div>
         </div>
@@ -665,26 +721,114 @@ export default function Contacts() {
 
             <div className="space-y-3">
               <div className="text-sm font-medium text-muted-foreground">Communication</div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm mb-2">Email *</label>
-                  <Input
-                    type="email"
-                    placeholder="email@example.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-2">Phone Number</label>
-                  <Input
-                    placeholder="+49 123 456 789"
-                    value={formData.phoneNumber}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phoneNumber: e.target.value })
-                    }
-                  />
-                </div>
+              
+              {/* Multiple Emails */}
+              <div className="space-y-2">
+                <label className="block text-sm mb-2">Email Addresses *</label>
+                {formData.emails.map((email, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <Input
+                      placeholder="Label (e.g., Work, Personal)"
+                      value={email.label}
+                      onChange={(e) => {
+                        const newEmails = [...formData.emails];
+                        newEmails[idx].label = e.target.value;
+                        setFormData({ ...formData, emails: newEmails });
+                      }}
+                      className="w-32"
+                    />
+                    <Input
+                      type="email"
+                      placeholder="email@example.com"
+                      value={email.value}
+                      onChange={(e) => {
+                        const newEmails = [...formData.emails];
+                        newEmails[idx].value = e.target.value;
+                        setFormData({ ...formData, emails: newEmails });
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        const newEmails = formData.emails.filter((_, i) => i !== idx);
+                        setFormData({ ...formData, emails: newEmails });
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFormData({
+                      ...formData,
+                      emails: [...formData.emails, { label: "", value: "" }],
+                    });
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Email
+                </Button>
+              </div>
+
+              {/* Multiple Phone Numbers */}
+              <div className="space-y-2">
+                <label className="block text-sm mb-2">Phone Numbers</label>
+                {formData.phoneNumbers.map((phone, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <Input
+                      placeholder="Label (e.g., Mobile, Office)"
+                      value={phone.label}
+                      onChange={(e) => {
+                        const newPhones = [...formData.phoneNumbers];
+                        newPhones[idx].label = e.target.value;
+                        setFormData({ ...formData, phoneNumbers: newPhones });
+                      }}
+                      className="w-32"
+                    />
+                    <Input
+                      placeholder="+49 123 456 789"
+                      value={phone.value}
+                      onChange={(e) => {
+                        const newPhones = [...formData.phoneNumbers];
+                        newPhones[idx].value = e.target.value;
+                        setFormData({ ...formData, phoneNumbers: newPhones });
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        const newPhones = formData.phoneNumbers.filter((_, i) => i !== idx);
+                        setFormData({ ...formData, phoneNumbers: newPhones });
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFormData({
+                      ...formData,
+                      phoneNumbers: [...formData.phoneNumbers, { label: "", value: "" }],
+                    });
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Phone
+                </Button>
               </div>
             </div>
 
@@ -745,6 +889,162 @@ export default function Contacts() {
           }}
         />
       )}
+
+      {/* Contact Preview Dialog */}
+      {previewContactId && (() => {
+        const contact = activeContacts.find((c) => c.id === previewContactId);
+        if (!contact) return null;
+        
+        const previewAddress = getPreviewAddress(contact);
+        const mapAddress = getMapAddress(contact);
+        const emails = (contact.emails as Array<{ label: string; value: string }> | null) || 
+          (contact.email ? [{ label: "Email", value: contact.email }] : []);
+        const phoneNumbers = (contact.phoneNumbers as Array<{ label: string; value: string }> | null) || 
+          (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
+        const ContactIcon = contact.type === "business" ? Building2 : User;
+        const displayName = getDisplayName(contact);
+        
+        return (
+          <Dialog open={!!previewContactId} onOpenChange={(open) => !open && setPreviewContactId(null)}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <ContactIcon className="h-6 w-6 text-primary" />
+                  <DialogTitle className="text-2xl">{displayName}</DialogTitle>
+                </div>
+                {contact.contactPerson && (
+                  <p className="text-sm text-muted-foreground mt-1">Contact: {contact.contactPerson}</p>
+                )}
+              </DialogHeader>
+              
+              <div className="space-y-6 mt-6">
+                {/* Address Section */}
+                {previewAddress && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Address</h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (mapAddress) {
+                          setLocation(`/maps?address=${encodeURIComponent(mapAddress)}`);
+                          setPreviewContactId(null);
+                        }
+                      }}
+                      className="flex items-start gap-3 p-3 rounded-lg border hover:bg-accent transition-colors text-left w-full group"
+                    >
+                      <MapPin className="h-5 w-5 text-muted-foreground group-hover:text-primary mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium">{previewAddress}</div>
+                        {contact.country && (
+                          <div className="text-sm text-muted-foreground mt-1">{contact.country}</div>
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                {/* Emails Section */}
+                {emails.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Email</h3>
+                    <div className="space-y-2">
+                      {emails.map((emailItem, idx) => (
+                        <a
+                          key={idx}
+                          href={`mailto:${emailItem.value}`}
+                          className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors group"
+                        >
+                          <Mail className="h-5 w-5 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            {emailItem.label !== "Email" && (
+                              <div className="text-xs text-muted-foreground mb-1">{emailItem.label}</div>
+                            )}
+                            <div className="text-sm font-medium break-all">{emailItem.value}</div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Phone Numbers Section */}
+                {phoneNumbers.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Phone</h3>
+                    <div className="space-y-2">
+                      {phoneNumbers.map((phoneItem, idx) => (
+                        <a
+                          key={idx}
+                          href={`tel:${phoneItem.value}`}
+                          className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors group"
+                        >
+                          <Phone className="h-5 w-5 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            {phoneItem.label !== "Phone" && (
+                              <div className="text-xs text-muted-foreground mb-1">{phoneItem.label}</div>
+                            )}
+                            <div className="text-sm font-medium">{phoneItem.value}</div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tax Information */}
+                {(contact.vatNumber || contact.taxNumber || contact.leitwegId) && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Tax Information</h3>
+                    <div className="space-y-2 p-3 rounded-lg border bg-muted/30">
+                      {contact.vatStatus && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">VAT Status:</span>
+                          <span className="font-medium">{contact.vatStatus === "subject_to_vat" ? "Subject to VAT" : "Not subject to VAT"}</span>
+                        </div>
+                      )}
+                      {contact.vatNumber && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">VAT Number:</span>
+                          <span className="font-medium">{contact.vatNumber}</span>
+                        </div>
+                      )}
+                      {contact.taxNumber && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Tax Number:</span>
+                          <span className="font-medium">{contact.taxNumber}</span>
+                        </div>
+                      )}
+                      {contact.leitwegId && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Leitweg ID:</span>
+                          <span className="font-medium">{contact.leitwegId}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {contact.notes && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Notes</h3>
+                    <div className="p-3 rounded-lg border bg-muted/30">
+                      <p className="text-sm whitespace-pre-wrap">{contact.notes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => handleEdit(contact)}>
+                  Edit Contact
+                </Button>
+                <Button onClick={() => setPreviewContactId(null)}>Close</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* Archive Confirmation Dialog */}
       <DeleteConfirmDialog

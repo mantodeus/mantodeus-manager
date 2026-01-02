@@ -163,6 +163,10 @@ export const contacts = mysqlTable("contacts", {
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 20 }),
   phoneNumber: varchar("phoneNumber", { length: 20 }),
+  /** Array of email objects: [{ label: string, value: string }] */
+  emails: json("emails").$type<Array<{ label: string; value: string }> | null>(),
+  /** Array of phone objects: [{ label: string, value: string }] */
+  phoneNumbers: json("phoneNumbers").$type<Array<{ label: string; value: string }> | null>(),
   address: text("address"),
   streetName: varchar("streetName", { length: 255 }),
   streetNumber: varchar("streetNumber", { length: 50 }),
