@@ -1258,48 +1258,14 @@ export async function getCancellationInvoiceMapByOriginalIds(originalIds: number
 }
 
 export async function getInvoicesByUserId(userId: number) {
-  console.error('[TRACE] getInvoicesByUserId START - userId:', userId, 'type:', typeof userId);
-  
-  console.error('[TRACE] getInvoicesByUserId - calling getDb()');
   const db = await getDb();
-  console.error('[TRACE] getInvoicesByUserId - getDb() returned:', !!db);
   
   if (!db) {
-    console.error('[TRACE] getInvoicesByUserId - ERROR: Database not available');
     throw new Error("Database not available");
   }
   
-  console.error('[TRACE] getInvoicesByUserId - calling ensureInvoiceSchema');
   await ensureInvoiceSchema(db);
-  console.error('[TRACE] getInvoicesByUserId - ensureInvoiceSchema completed');
   
-  // FORENSIC LOGGING: Verify runtime database identity
-  try {
-    const dbInfoResult = await db.execute(sql`
-      SELECT 
-        DATABASE()      AS databaseName,
-        @@hostname      AS host,
-        @@port          AS port,
-        USER()          AS dbUser
-    `);
-    // Drizzle execute returns [rows, fields] format from mysql2
-    const dbInfo = Array.isArray(dbInfoResult) && dbInfoResult[0] ? dbInfoResult[0] : dbInfoResult;
-    const dbInfoRow = Array.isArray(dbInfo) ? dbInfo[0] : dbInfo;
-    console.error('[DB RUNTIME INFO]', JSON.stringify(dbInfoRow, null, 2));
-  } catch (dbInfoError) {
-    console.error('[DB RUNTIME INFO] Failed to query database info:', dbInfoError);
-  }
-  
-  // Log sanitized DATABASE_URL
-  console.error(
-    '[DB ENV]',
-    process.env.DATABASE_URL?.replace(/:\/\/.*@/, '://***@') || 'DATABASE_URL not set'
-  );
-  
-  // Diagnostic logging to help identify visibility issues
-  console.log(`[Invoices] getInvoicesByUserId called with userId: ${userId} (type: ${typeof userId})`);
-  
-  console.error('[TRACE] getInvoicesByUserId - about to execute SELECT query');
   let invoiceRows;
   try {
     invoiceRows = await db
@@ -1313,51 +1279,8 @@ export async function getInvoicesByUserId(userId: number) {
         or(isNull(invoices.needsReview), eq(invoices.needsReview, false))
       ))
       .orderBy(desc(invoices.issueDate), desc(invoices.createdAt));
-    console.error('[TRACE] getInvoicesByUserId - SELECT query completed successfully, rows:', invoiceRows.length);
   } catch (queryError: any) {
-    console.error('[TRACE] getInvoicesByUserId - SELECT query FAILED');
-    console.error('[TRACE] getInvoicesByUserId - error type:', queryError?.constructor?.name || typeof queryError);
-    console.error('[TRACE] getInvoicesByUserId - error message:', queryError?.message);
-    console.error('[TRACE] getInvoicesByUserId - error code:', queryError?.code);
-    console.error('[TRACE] getInvoicesByUserId - error errno:', queryError?.errno);
-    console.error('[TRACE] getInvoicesByUserId - error sqlState:', queryError?.sqlState);
-    console.error('[TRACE] getInvoicesByUserId - error sqlMessage:', queryError?.sqlMessage);
-    console.error('[TRACE] getInvoicesByUserId - error sql:', queryError?.sql);
-    
-    // Extract underlying MySQL error from cause property
-    if (queryError?.cause) {
-      console.error('[TRACE] getInvoicesByUserId - error.cause exists:', typeof queryError.cause);
-      console.error('[TRACE] getInvoicesByUserId - error.cause type:', queryError.cause?.constructor?.name);
-      console.error('[TRACE] getInvoicesByUserId - error.cause message:', queryError.cause?.message);
-      console.error('[TRACE] getInvoicesByUserId - error.cause code:', queryError.cause?.code);
-      console.error('[TRACE] getInvoicesByUserId - error.cause errno:', queryError.cause?.errno);
-      console.error('[TRACE] getInvoicesByUserId - error.cause sqlState:', queryError.cause?.sqlState);
-      console.error('[TRACE] getInvoicesByUserId - error.cause sqlMessage:', queryError.cause?.sqlMessage);
-    }
-    
-    // Try to extract all error properties recursively
-    const errorProps: any = {};
-    const extractErrorProps = (err: any, depth = 0): any => {
-      if (!err || depth > 3) return {};
-      const props: any = {};
-      for (const key of Object.getOwnPropertyNames(err)) {
-        try {
-          const value = err[key];
-          if (typeof value !== 'function' && typeof value !== 'object') {
-            props[key] = value;
-          } else if (key === 'cause' && value) {
-            props.cause = extractErrorProps(value, depth + 1);
-          }
-        } catch (e) {
-          // Ignore property access errors
-        }
-      }
-      return props;
-    };
-    
-    const allErrorProps = extractErrorProps(queryError);
-    console.error('[TRACE] getInvoicesByUserId - all error properties:', JSON.stringify(allErrorProps, null, 2));
-    console.error('[TRACE] getInvoicesByUserId - error stack:', queryError?.stack);
+    // Log error using proper logger if available, otherwise re-throw
     throw queryError;
   }
 

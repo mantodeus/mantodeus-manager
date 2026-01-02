@@ -549,33 +549,24 @@ async function startServer() {
         }
       }
 
-      // Force immediate logging - this proves the code is deployed
-      process.stderr.write('[TRACE] Express middleware - /api/trpc request received\n');
-      process.stderr.write(`[TRACE] Express middleware - method: ${req.method}\n`);
-      process.stderr.write(`[TRACE] Express middleware - url: ${req.url}\n`);
-      process.stderr.write(`[TRACE] Express middleware - path: ${req.path}\n`);
-      console.error('[TRACE] Express middleware - /api/trpc request received');
-      console.error('[TRACE] Express middleware - method:', req.method);
-      console.error('[TRACE] Express middleware - url:', req.url);
-      console.error('[TRACE] Express middleware - path:', req.path);
       next();
     },
     createExpressMiddleware({
       router: appRouter,
       createContext,
-      onError: ({ error, path, type, ctx, input }) => {
-        // Log detailed error information before tRPC's default handling
-        process.stderr.write('[TRACE] tRPC onError handler triggered\n');
-        console.error('[TRACE] tRPC onError handler triggered');
-        console.error('[TRACE] tRPC error path:', path);
-        console.error('[TRACE] tRPC error type:', type);
-        console.error('[TRACE] tRPC error code:', error.code);
-        console.error('[TRACE] tRPC error message:', error.message);
-        console.error('[TRACE] tRPC error stack:', error.stack);
-        console.error('[TRACE] tRPC error cause:', error.cause);
-        console.error('[TRACE] tRPC ctx.user exists:', !!ctx?.user);
-        console.error('[TRACE] tRPC ctx.user.id:', ctx?.user?.id);
-        console.error('[TRACE] tRPC input:', JSON.stringify(input, null, 2));
+      onError: ({ error, path, type, ctx }) => {
+        // Log errors using proper logger
+        logger.error(
+          {
+            path,
+            type,
+            code: error.code,
+            message: error.message,
+            stack: error.stack,
+            userId: ctx?.user?.id,
+          },
+          'tRPC error'
+        );
       },
     })
   );
