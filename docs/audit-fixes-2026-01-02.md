@@ -22,7 +22,7 @@ This document tracks fixes for 8 critical issues identified in the production re
   - `server/_core/money.test.ts` (new)
   - `server/invoiceRouter.ts` (updated calculations)
   - `server/db.ts` (updated negateMoney)
-- **Commits:** [To be filled]
+- **Commits:** `5304c0d` - fix(money): replace floating-point arithmetic with integer cents
 - **Verification:** Invoice totals stable, no floating errors ✓ (All 25 unit tests pass)
 
 ### 2. Expenses: Kill N+1 Query Explosion
