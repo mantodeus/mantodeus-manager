@@ -481,14 +481,12 @@ export default function Contacts() {
                 <a
                   key={idx}
                   href={`mailto:${emailItem.value}`}
-                  className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  className="flex min-h-11 w-full gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  <Mail className="h-4 w-4" />
+                  <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    {emailItem.label !== "Email" && (
-                      <div className="text-xs text-muted-foreground/70">{emailItem.label}</div>
-                    )}
-                    <span className="truncate">{emailItem.value}</span>
+                    <div className="text-xs text-muted-foreground/70 mb-1 font-medium">{emailItem.label}</div>
+                    <span className="break-all">{emailItem.value}</span>
                   </div>
                 </a>
               ))}
@@ -496,14 +494,12 @@ export default function Contacts() {
                 <a
                   key={idx}
                   href={`tel:${phoneItem.value}`}
-                  className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  className="flex min-h-11 w-full gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  <Phone className="h-4 w-4" />
+                  <Phone className="h-4 w-4 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    {phoneItem.label !== "Phone" && (
-                      <div className="text-xs text-muted-foreground/70">{phoneItem.label}</div>
-                    )}
-                    <span className="truncate">{phoneItem.value}</span>
+                    <div className="text-xs text-muted-foreground/70 mb-1 font-medium">{phoneItem.label}</div>
+                    <span className="break-all">{phoneItem.value}</span>
                   </div>
                 </a>
               ))}
@@ -736,7 +732,22 @@ export default function Contacts() {
               <div className="space-y-2">
                 <label className="block text-sm mb-2">Email Addresses *</label>
                 {formData.emails.map((email, idx) => (
-                  <div key={idx} className="flex gap-2">
+                  <div key={idx} className="space-y-1.5 p-3 border rounded-lg">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs text-muted-foreground font-medium">Label</label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          const newEmails = formData.emails.filter((_, i) => i !== idx);
+                          setFormData({ ...formData, emails: newEmails });
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
                     <Input
                       placeholder="Label (e.g., Work, Personal)"
                       value={email.label}
@@ -745,8 +756,8 @@ export default function Contacts() {
                         newEmails[idx].label = e.target.value;
                         setFormData({ ...formData, emails: newEmails });
                       }}
-                      className="w-32"
                     />
+                    <label className="text-xs text-muted-foreground font-medium">Email Address</label>
                     <Input
                       type="email"
                       placeholder="email@example.com"
@@ -756,19 +767,7 @@ export default function Contacts() {
                         newEmails[idx].value = e.target.value;
                         setFormData({ ...formData, emails: newEmails });
                       }}
-                      className="flex-1"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        const newEmails = formData.emails.filter((_, i) => i !== idx);
-                        setFormData({ ...formData, emails: newEmails });
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
                   </div>
                 ))}
                 <Button
@@ -791,7 +790,22 @@ export default function Contacts() {
               <div className="space-y-2">
                 <label className="block text-sm mb-2">Phone Numbers</label>
                 {formData.phoneNumbers.map((phone, idx) => (
-                  <div key={idx} className="flex gap-2">
+                  <div key={idx} className="space-y-1.5 p-3 border rounded-lg">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs text-muted-foreground font-medium">Label</label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          const newPhones = formData.phoneNumbers.filter((_, i) => i !== idx);
+                          setFormData({ ...formData, phoneNumbers: newPhones });
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
                     <Input
                       placeholder="Label (e.g., Mobile, Office)"
                       value={phone.label}
@@ -800,8 +814,8 @@ export default function Contacts() {
                         newPhones[idx].label = e.target.value;
                         setFormData({ ...formData, phoneNumbers: newPhones });
                       }}
-                      className="w-32"
                     />
+                    <label className="text-xs text-muted-foreground font-medium">Phone Number</label>
                     <Input
                       placeholder="+49 123 456 789"
                       value={phone.value}
@@ -810,19 +824,7 @@ export default function Contacts() {
                         newPhones[idx].value = e.target.value;
                         setFormData({ ...formData, phoneNumbers: newPhones });
                       }}
-                      className="flex-1"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        const newPhones = formData.phoneNumbers.filter((_, i) => i !== idx);
-                        setFormData({ ...formData, phoneNumbers: newPhones });
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
                   </div>
                 ))}
                 <Button
