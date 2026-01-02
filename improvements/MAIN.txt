@@ -1,5 +1,3 @@
-!lm4KuaadW
-
 bash scripts/deploy-prod.sh
 
 rm -rf node_modules && npm install
