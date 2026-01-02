@@ -117,7 +117,7 @@ export default function NoteDetail() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [selectedJobId, setSelectedJobId] = useState<string>("none");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("none");
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -139,7 +139,7 @@ export default function NoteDetail() {
   // Debounce title and body for autosave (increased to 2000ms for mobile typing latency)
   const debouncedTitle = useDebounce(title, 2000);
   const debouncedBody = useDebounce(body, 2000);
-  const debouncedJobId = useDebounce(selectedJobId, 2000);
+  const debouncedProjectId = useDebounce(selectedProjectId, 2000);
   const debouncedContactId = useDebounce(selectedContactId, 2000);
 
   const utils = trpc.useUtils();
@@ -148,7 +148,7 @@ export default function NoteDetail() {
     { enabled: isValidNoteId }
   );
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
-  const { data: jobs = [] } = trpc.jobs.list.useQuery();
+  const { data: projects = [] } = trpc.projects.list.useQuery();
 
   const updateMutation = trpc.notes.update.useMutation({
     onSuccess: () => {
@@ -162,7 +162,7 @@ export default function NoteDetail() {
       lastSavedContentRef.current = {
         title: debouncedTitle.trim(),
         body: debouncedBody.trim() || "",
-        jobId: debouncedJobId,
+        jobId: debouncedProjectId,
         contactId: debouncedContactId,
       };
       
@@ -212,7 +212,7 @@ export default function NoteDetail() {
     const currentContent = {
       title: debouncedTitle.trim(),
       body: debouncedBody.trim() || "",
-      jobId: debouncedJobId,
+      jobId: debouncedProjectId,
       contactId: debouncedContactId,
     };
     
@@ -287,7 +287,7 @@ export default function NoteDetail() {
     if (note && !isEditMode) {
       setTitle(note.title);
       setBody(note.content || "");
-      setSelectedJobId(note.jobId?.toString() || "none");
+      setSelectedProjectId(note.jobId?.toString() || "none");
       setSelectedContactId(note.contactId?.toString() || "none");
       
       // Initialize last saved content
@@ -325,7 +325,7 @@ export default function NoteDetail() {
       id: noteId,
       title: title.trim(),
       body: body.trim() || undefined,
-      jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
+      jobId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
       contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
     });
   };
@@ -335,7 +335,7 @@ export default function NoteDetail() {
       // Restore original values from note (editor is source of truth until cancelled)
       setTitle(note.title);
       setBody(note.content || "");
-      setSelectedJobId(note.jobId?.toString() || "none");
+      setSelectedProjectId(note.jobId?.toString() || "none");
       setSelectedContactId(note.contactId?.toString() || "none");
       
       // Reset last saved content to original
@@ -706,11 +706,11 @@ export default function NoteDetail() {
             <Paperclip className="h-4 w-4 mr-2" />
             {uploadFileMutation.isPending || registerFileMutation.isPending
               ? "Uploading..."
-              : "Add Attachment"}
+              : "Attachment"}
           </Button>
           <Select value={selectedContactId} onValueChange={setSelectedContactId}>
-            <SelectTrigger className="flex-1 md:flex-initial md:w-[180px]">
-              <SelectValue placeholder="Link Contact" />
+            <SelectTrigger className="flex-1 md:flex-initial md:w-[140px]">
+              <SelectValue placeholder="Contact" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">No Contact</SelectItem>
@@ -721,15 +721,15 @@ export default function NoteDetail() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-            <SelectTrigger className="flex-1 md:flex-initial md:w-[180px]">
-              <SelectValue placeholder="Link Job" />
+          <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+            <SelectTrigger className="flex-1 md:flex-initial md:w-[140px]">
+              <SelectValue placeholder="Project" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">No Job</SelectItem>
-              {jobs.map((job) => (
-                <SelectItem key={job.id} value={job.id.toString()}>
-                  {job.title}
+              <SelectItem value="none">No Project</SelectItem>
+              {projects.map((project) => (
+                <SelectItem key={project.id} value={project.id.toString()}>
+                  {project.name}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -88,9 +88,26 @@ export function SimpleMarkdownEditor({
   // Sync scroll between textarea and preview
   const handleScroll = () => {
     if (textareaRef.current && previewRef.current) {
-      previewRef.current.scrollTop = textareaRef.current.scrollTop;
+      requestAnimationFrame(() => {
+        if (textareaRef.current && previewRef.current) {
+          previewRef.current.scrollTop = textareaRef.current.scrollTop;
+          previewRef.current.scrollLeft = textareaRef.current.scrollLeft;
+        }
+      });
     }
   };
+  
+  // Also sync on content changes
+  useEffect(() => {
+    if (textareaRef.current && previewRef.current) {
+      requestAnimationFrame(() => {
+        if (textareaRef.current && previewRef.current) {
+          previewRef.current.scrollTop = textareaRef.current.scrollTop;
+          previewRef.current.scrollLeft = textareaRef.current.scrollLeft;
+        }
+      });
+    }
+  }, [content]);
 
   // Detect mobile for toolbar positioning
   useEffect(() => {
@@ -515,8 +532,8 @@ export function SimpleMarkdownEditor({
     : {};
 
   return (
-    <>
-      <div ref={containerRef} className={cn("relative", className)}>
+    <div className={cn("relative", className)}>
+      <div ref={containerRef}>
         {/* Editor Container with Live Preview */}
         <div className="border rounded-md bg-background relative overflow-hidden">
           {/* Live Preview Layer (rendered markdown) */}
@@ -567,127 +584,203 @@ export function SimpleMarkdownEditor({
         </div>
       </div>
 
-      {/* Formatting Toolbar - Fixed outside scrollable container */}
-      <div
-        className={cn(
-          "flex items-center gap-1 p-2 border bg-background/95 backdrop-blur-sm",
-          isMobile && isFocused
-            ? "fixed left-0 right-0 border-t rounded-t-md rounded-b-none shadow-lg"
-            : "sticky bottom-0 rounded-md bg-muted/50 mt-2 z-10"
-        )}
-        style={toolbarStyle}
-      >
-        <div className="flex items-center gap-1 overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <Button
-            variant="ghost"
-            size={isMobile ? "default" : "sm"}
-            onClick={(e) => {
-              e.preventDefault();
-              handleBold();
-            }}
-            className={cn(
-              "min-w-[44px] h-[44px] flex-shrink-0",
-              !isMobile && "h-8 min-w-[32px]"
-            )}
-            type="button"
-          >
-            <Bold className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
-          </Button>
-          <Button
-            variant="ghost"
-            size={isMobile ? "default" : "sm"}
-            onClick={(e) => {
-              e.preventDefault();
-              handleItalic();
-            }}
-            className={cn(
-              "min-w-[44px] h-[44px] flex-shrink-0",
-              !isMobile && "h-8 min-w-[32px]"
-            )}
-            type="button"
-          >
-            <Italic className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
-          </Button>
-          <Button
-            variant="ghost"
-            size={isMobile ? "default" : "sm"}
-            onClick={(e) => {
-              e.preventDefault();
-              handleStrikethrough();
-            }}
-            className={cn(
-              "min-w-[44px] h-[44px] flex-shrink-0",
-              !isMobile && "h-8 min-w-[32px]"
-            )}
-            type="button"
-          >
-            <StrikethroughIcon className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
-          </Button>
-          <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
-          <Button
-            variant="ghost"
-            size={isMobile ? "default" : "sm"}
-            onClick={(e) => {
-              e.preventDefault();
-              handleBulletList();
-            }}
-            className={cn(
-              "min-w-[44px] h-[44px] flex-shrink-0",
-              !isMobile && "h-8 min-w-[32px]"
-            )}
-            type="button"
-          >
-            <List className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
-          </Button>
-          <Button
-            variant="ghost"
-            size={isMobile ? "default" : "sm"}
-            onClick={(e) => {
-              e.preventDefault();
-              handleNumberedList();
-            }}
-            className={cn(
-              "min-w-[44px] h-[44px] flex-shrink-0",
-              !isMobile && "h-8 min-w-[32px]"
-            )}
-            type="button"
-          >
-            <ListOrderedIcon className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
-          </Button>
-          <Button
-            variant="ghost"
-            size={isMobile ? "default" : "sm"}
-            onClick={(e) => {
-              e.preventDefault();
-              handleCheckbox();
-            }}
-            className={cn(
-              "min-w-[44px] h-[44px] flex-shrink-0",
-              !isMobile && "h-8 min-w-[32px]"
-            )}
-            type="button"
-          >
-            <CheckIcon className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
-          </Button>
-          <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
-          <Button
-            variant="ghost"
-            size={isMobile ? "default" : "sm"}
-            onClick={(e) => {
-              e.preventDefault();
-              handleCode();
-            }}
-            className={cn(
-              "min-w-[44px] h-[44px] flex-shrink-0",
-              !isMobile && "h-8 min-w-[32px]"
-            )}
-            type="button"
-          >
-            <Code className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
-          </Button>
+      {/* Formatting Toolbar - Fixed outside scrollable container, truly independent */}
+      {/* On mobile when focused, use portal-like positioning to escape all scroll contexts */}
+      {isMobile && isFocused ? (
+        <div
+          className="fixed left-0 right-0 border-t bg-background/95 backdrop-blur-sm shadow-lg"
+          style={{
+            bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+            zIndex: 9999,
+            paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)`,
+            transform: 'translateZ(0)', // Force hardware acceleration
+            willChange: 'transform',
+          }}
+        >
+          <div className="flex items-center gap-1 p-2 overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <Button
+              variant="ghost"
+              size="default"
+              onClick={(e) => {
+                e.preventDefault();
+                handleBold();
+              }}
+              className="min-w-[44px] h-[44px] flex-shrink-0"
+              type="button"
+            >
+              <Bold className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="default"
+              onClick={(e) => {
+                e.preventDefault();
+                handleItalic();
+              }}
+              className="min-w-[44px] h-[44px] flex-shrink-0"
+              type="button"
+            >
+              <Italic className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="default"
+              onClick={(e) => {
+                e.preventDefault();
+                handleStrikethrough();
+              }}
+              className="min-w-[44px] h-[44px] flex-shrink-0"
+              type="button"
+            >
+              <StrikethroughIcon className="h-5 w-5" />
+            </Button>
+            <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
+            <Button
+              variant="ghost"
+              size="default"
+              onClick={(e) => {
+                e.preventDefault();
+                handleBulletList();
+              }}
+              className="min-w-[44px] h-[44px] flex-shrink-0"
+              type="button"
+            >
+              <List className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="default"
+              onClick={(e) => {
+                e.preventDefault();
+                handleNumberedList();
+              }}
+              className="min-w-[44px] h-[44px] flex-shrink-0"
+              type="button"
+            >
+              <ListOrderedIcon className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="default"
+              onClick={(e) => {
+                e.preventDefault();
+                handleCheckbox();
+              }}
+              className="min-w-[44px] h-[44px] flex-shrink-0"
+              type="button"
+            >
+              <CheckIcon className="h-5 w-5" />
+            </Button>
+            <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
+            <Button
+              variant="ghost"
+              size="default"
+              onClick={(e) => {
+                e.preventDefault();
+                handleCode();
+              }}
+              className="min-w-[44px] h-[44px] flex-shrink-0"
+              type="button"
+            >
+              <Code className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
-      </div>
-    </>
+      ) : (
+        <div
+          className="sticky bottom-0 rounded-md bg-muted/50 mt-2 z-10 flex items-center gap-1 p-2 border"
+        >
+          <div className="flex items-center gap-1 overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleBold();
+              }}
+              className="h-8 min-w-[32px] flex-shrink-0"
+              type="button"
+            >
+              <Bold className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleItalic();
+              }}
+              className="h-8 min-w-[32px] flex-shrink-0"
+              type="button"
+            >
+              <Italic className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleStrikethrough();
+              }}
+              className="h-8 min-w-[32px] flex-shrink-0"
+              type="button"
+            >
+              <StrikethroughIcon className="h-4 w-4" />
+            </Button>
+            <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleBulletList();
+              }}
+              className="h-8 min-w-[32px] flex-shrink-0"
+              type="button"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleNumberedList();
+              }}
+              className="h-8 min-w-[32px] flex-shrink-0"
+              type="button"
+            >
+              <ListOrderedIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleCheckbox();
+              }}
+              className="h-8 min-w-[32px] flex-shrink-0"
+              type="button"
+            >
+              <CheckIcon className="h-4 w-4" />
+            </Button>
+            <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleCode();
+              }}
+              className="h-8 min-w-[32px] flex-shrink-0"
+              type="button"
+            >
+              <Code className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
