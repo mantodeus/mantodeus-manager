@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Edit, Trash2, CheckCircle2, X } from "@/components/ui/Icon";
+import { useAutoScrollOnOpen } from "@/hooks/useAutoScrollOnOpen";
 
 export type ContextMenuAction = "edit" | "delete" | "select" | "cancel";
 
@@ -14,6 +15,15 @@ interface ContextMenuProps {
 
 export function ContextMenu({ x, y, onAction, onClose, actions = ["edit", "delete", "select"] }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Enable auto-scroll on mobile only
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  useAutoScrollOnOpen({
+    isOpen: true, // ContextMenu only renders when open
+    menuRef,
+    enabled: isMobile,
+    scrollBuffer: 12,
+  });
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

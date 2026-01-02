@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/Icon";
+import { useAutoScrollOnOpen } from "@/hooks/useAutoScrollOnOpen";
 
 import { cn } from "@/lib/utils";
 
@@ -34,9 +35,48 @@ function DropdownMenuContent({
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  // Watch for open state changes via data-state attribute
+  React.useEffect(() => {
+    if (!menuRef.current) return;
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-state') {
+          const element = mutation.target as HTMLElement;
+          setIsOpen(element.getAttribute('data-state') === 'open');
+        }
+      });
+    });
+
+    observer.observe(menuRef.current, {
+      attributes: true,
+      attributeFilter: ['data-state'],
+    });
+
+    // Initial check
+    setIsOpen(menuRef.current.getAttribute('data-state') === 'open');
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  // Enable auto-scroll on mobile only
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  useAutoScrollOnOpen({
+    isOpen,
+    menuRef,
+    enabled: isMobile,
+    scrollBuffer: 12,
+  });
+
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
+        ref={menuRef}
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
