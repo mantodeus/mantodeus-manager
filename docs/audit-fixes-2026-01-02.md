@@ -37,7 +37,7 @@ This document tracks fixes for 8 critical issues identified in the production re
   - `server/expenses/proposedFields.ts` (added preloadedFiles parameter)
   - `server/expenseRouter.ts` (batch file fetching before reviewMeta loop)
   - `drizzle/schema.ts` (added index on expenses table)
-- **Commits:** [To be filled]
+- **Commits:** 7a8ad09
 - **Verification:** Expense list fast with 100+ expenses ✓
   - Before: O(n) queries (100 expenses = 100+ DB queries, 30s load time)
   - After: O(1) queries (100 expenses = ~3 DB queries, <2s load time)
