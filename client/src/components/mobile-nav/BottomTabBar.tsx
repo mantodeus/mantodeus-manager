@@ -101,7 +101,7 @@ export function BottomTabBar() {
                     'h-6 w-6',
                     isActive && 'text-primary'
                   )}
-                  strokeWidth={isActive ? 1.5 : 1.2}
+                  strokeWidth={isActive ? 2.5 : 2}
                 />
               </button>
             );

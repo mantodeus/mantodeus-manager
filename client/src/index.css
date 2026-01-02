@@ -201,9 +201,9 @@
     max-width: 100%;
   }
 
-  /* Thin icon strokes for Heroicons outline */
+  /* Icon strokes for Heroicons outline */
   #root svg[stroke="currentColor"] {
-    stroke-width: 1;
+    stroke-width: 2;
   }
 }
 
@@ -264,6 +264,7 @@
     font-size: 0.95rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    font-weight: 200;
   }
 
   .module-item:not(.is-active) {
