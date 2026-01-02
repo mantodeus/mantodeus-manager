@@ -215,14 +215,15 @@ export default function Contacts() {
           label: e.label.trim() || "Email", 
           value: e.value.trim() 
         })) : undefined,
-        phoneNumbers: formData.phoneNumbers.filter(p => p.value && p.value.trim()).length > 0 
-          ? formData.phoneNumbers
-              .filter(p => p.value && p.value.trim())
-              .map(p => ({ 
+        phoneNumbers: (() => {
+          const validPhones = formData.phoneNumbers.filter(p => p.value && p.value.trim());
+          return validPhones.length > 0 
+            ? validPhones.map(p => ({ 
                 label: p.label.trim() || "Phone", 
                 value: p.value.trim() 
               }))
-          : undefined,
+            : undefined;
+        })(),
         notes: normalizeOptional(formData.notes),
       };
 
@@ -1044,7 +1045,10 @@ export default function Contacts() {
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => handleEdit(contact)}>
+                <Button variant="outline" onClick={() => {
+                  handleEdit(contact);
+                  setPreviewContactId(null);
+                }}>
                   Edit Contact
                 </Button>
                 <Button onClick={() => setPreviewContactId(null)}>Close</Button>
