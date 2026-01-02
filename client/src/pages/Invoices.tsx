@@ -5,7 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { FileText, Plus, Loader2, Upload } from "@/components/ui/Icon";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ItemActionsMenu } from "@/components/ItemActionsMenu";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { PageHeader } from "@/components/PageHeader";
@@ -14,6 +14,8 @@ import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialo
 import { useIsMobile } from "@/hooks/useMobile";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { Link, useLocation } from "wouter";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
 
 function formatCurrency(amount: number | string) {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -46,6 +48,10 @@ export default function Invoices() {
     totalAmount: string | null;
     invoiceNumber: string | null;
   } | null>(null);
+
+  // Multi-select state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: needsReviewInvoices = [], refetch: refetchNeedsReview } = trpc.invoices.listNeedsReview.useQuery();
@@ -197,6 +203,36 @@ export default function Invoices() {
   const handleCreateCancellation = (invoice: { id: number; invoiceNumber: string }) => {
     setCancellationTarget({ id: invoice.id, invoiceNumber: invoice.invoiceNumber });
     setCancellationDialogOpen(true);
+  };
+
+  const toggleSelection = (invoiceId: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(invoiceId)) {
+      newSelected.delete(invoiceId);
+    } else {
+      newSelected.add(invoiceId);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBatchArchive = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      archiveMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      moveToTrashMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
   };
 
   const getStatusBadge = (invoice: any) => {
@@ -374,63 +410,105 @@ export default function Invoices() {
             // Use standard menu actions - map invoice-specific actions to standard ones
             const availableActions: ItemAction[] = ["edit", "duplicate", "select", "archive", "delete"];
 
+            const handleCardClick = () => {
+              if (isMultiSelectMode) {
+                toggleSelection(invoice.id);
+              }
+            };
+
+            const handleCardClick = () => {
+              if (isMultiSelectMode) {
+                toggleSelection(invoice.id);
+              } else {
+                navigate(`/invoices/${invoice.id}`);
+              }
+            };
+
             return (
-              <Card
+              <div
                 key={invoice.id}
-                className="p-3 sm:p-4 hover:shadow-sm transition-all cursor-pointer"
-                onClick={() => navigate(`/invoices/${invoice.id}`)}
+                onClick={handleCardClick}
+                className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "ring-2 ring-accent rounded-lg" : ""}`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-light text-base leading-tight break-words">{displayName}</div>
-                      {linkedContact && (
-                        <div className="text-xs text-muted-foreground truncate">{linkedContact.name}</div>
+                <Card className="p-3 sm:p-4 hover:shadow-sm transition-all">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      {isMultiSelectMode && (
+                        <Checkbox
+                          checked={selectedIds.has(invoice.id)}
+                          onCheckedChange={() => toggleSelection(invoice.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-0.5"
+                        />
                       )}
-                      <div className="text-xs text-muted-foreground">
-                        {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
+                      <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-light text-base leading-tight break-words">{displayName}</div>
+                        {linkedContact && (
+                          <div className="text-xs text-muted-foreground truncate">{linkedContact.name}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
+                        </div>
                       </div>
                     </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <div className="text-sm font-light">{displayTotal}</div>
+                      {getStatusBadge(invoice)}
+                      {invoice.type === "cancellation" && (
+                        <Badge variant="outline" className="text-xs">STORNO</Badge>
+                      )}
+                      {!isMultiSelectMode && (
+                        <ItemActionsMenu
+                          actions={availableActions}
+                          onAction={(action) => {
+                            if (action === "edit") {
+                              // "Edit" navigates to invoice detail page
+                              navigate(`/invoices/${invoice.id}`);
+                            }
+                            if (action === "duplicate") {
+                              toast.info("Duplicate is coming soon.");
+                            }
+                            if (action === "select") {
+                              setIsMultiSelectMode(true);
+                              setSelectedIds(new Set([invoice.id]));
+                            }
+                            if (action === "archive") {
+                              handleArchiveInvoice(invoice.id);
+                            }
+                            if (action === "delete") {
+                              // "Delete" maps to "moveToTrash" for invoices
+                              if (isDraft) {
+                                handleMoveToRubbish(invoice.id);
+                              } else {
+                                toast.info("Only draft invoices can be deleted. Use Archive for sent invoices.");
+                              }
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <div className="text-sm font-light">{displayTotal}</div>
-                    {getStatusBadge(invoice)}
-                    {invoice.type === "cancellation" && (
-                      <Badge variant="outline" className="text-xs">STORNO</Badge>
-                    )}
-                    <ItemActionsMenu
-                      actions={availableActions}
-                      onAction={(action) => {
-                        if (action === "edit") {
-                          // "Edit" navigates to invoice detail page
-                          navigate(`/invoices/${invoice.id}`);
-                        }
-                        if (action === "duplicate") {
-                          toast.info("Duplicate is coming soon.");
-                        }
-                        if (action === "select") {
-                          toast.info("Selection mode is coming soon.");
-                        }
-                        if (action === "archive") {
-                          handleArchiveInvoice(invoice.id);
-                        }
-                        if (action === "delete") {
-                          // "Delete" maps to "moveToTrash" for invoices
-                          if (isDraft) {
-                            handleMoveToRubbish(invoice.id);
-                          } else {
-                            toast.info("Only draft invoices can be deleted. Use Archive for sent invoices.");
-                          }
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              </Card>
+                </Card>
+              </div>
             );
           })}
         </div>
+      )}
+
+      {/* Multi-select bar */}
+      {isMultiSelectMode && (
+        <MultiSelectBar
+          selectedCount={selectedIds.size}
+          onCancel={() => {
+            setIsMultiSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+          actions={[
+            createArchiveAction(handleBatchArchive, archiveMutation.isPending),
+            createDeleteAction(handleBatchDelete, moveToTrashMutation.isPending),
+          ]}
+        />
       )}
 
       <ScrollRevealFooter basePath="/invoices" />

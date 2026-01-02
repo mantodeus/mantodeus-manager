@@ -12,7 +12,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { Camera, Plus, Loader2, Receipt, Upload } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { ExpenseCard } from "@/components/expenses/ExpenseCard";
@@ -31,6 +31,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelectBar, createDeleteAction } from "@/components/MultiSelectBar";
+import { CheckCircle2 } from "lucide-react";
+
+type ExpenseListItem = RouterOutputs["expenses"]["list"][number];
 
 export default function Expenses() {
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
@@ -42,6 +47,10 @@ export default function Expenses() {
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [expandedExpenseId, setExpandedExpenseId] = useState<number | null>(null);
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // Multi-select state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const [, navigate] = useLocation();
 
@@ -224,6 +233,11 @@ export default function Expenses() {
       navigate(`/expenses/${expenseId}`);
       return;
     }
+    if (action === "select") {
+      setIsMultiSelectMode(true);
+      setSelectedIds(new Set([expenseId]));
+      return;
+    }
     if (action === "markAsInOrder") {
       markInOrderMutation.mutate({ id: expenseId, status: "in_order" });
       return;
@@ -275,6 +289,36 @@ export default function Expenses() {
 
   const handleExpandChange = (expenseId: number, expanded: boolean) => {
     setExpandedExpenseId(expanded ? expenseId : null);
+  };
+
+  const toggleSelection = (expenseId: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(expenseId)) {
+      newSelected.delete(expenseId);
+    } else {
+      newSelected.add(expenseId);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBatchMarkInOrder = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      markInOrderMutation.mutate({ id, status: "in_order" });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      deleteMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
   };
 
   // Keyboard shortcuts (desktop only)
@@ -545,6 +589,9 @@ export default function Expenses() {
                 expense={expense}
                 onAction={handleAction}
                 showVoid={true}
+                isMultiSelectMode={isMultiSelectMode}
+                isSelected={selectedIds.has(expense.id)}
+                onToggleSelection={() => toggleSelection(expense.id)}
               />
             ))}
           </div>
@@ -588,6 +635,27 @@ export default function Expenses() {
         onUpload={handleBulkUpload}
         isUploading={bulkUploadMutation.isPending}
       />
+
+      {/* Multi-select bar */}
+      {isMultiSelectMode && (
+        <MultiSelectBar
+          selectedCount={selectedIds.size}
+          onCancel={() => {
+            setIsMultiSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+          actions={[
+            {
+              label: "Mark as In Order",
+              icon: CheckCircle2,
+              onClick: handleBatchMarkInOrder,
+              variant: "default",
+              disabled: markInOrderMutation.isPending,
+            },
+            createDeleteAction(handleBatchDelete, deleteMutation.isPending),
+          ]}
+        />
+      )}
     </div>
   );
 }

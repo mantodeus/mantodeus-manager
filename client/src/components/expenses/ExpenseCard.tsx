@@ -12,6 +12,7 @@ import { Receipt, FileText } from "@/components/ui/Icon";
 import { Link } from "wouter";
 import { getCategoryLabel } from "./CategorySelect";
 import { formatCurrency } from "@/lib/currencyFormat";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ExpenseCardProps {
   expense: {
@@ -28,9 +29,12 @@ interface ExpenseCardProps {
   };
   onAction: (action: ItemAction, expenseId: number) => void;
   showVoid?: boolean;
+  isMultiSelectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: () => void;
 }
 
-export function ExpenseCard({ expense, onAction, showVoid = false }: ExpenseCardProps) {
+export function ExpenseCard({ expense, onAction, showVoid = false, isMultiSelectMode = false, isSelected = false, onToggleSelection }: ExpenseCardProps) {
   const deductibleCents = Math.round(
     (expense.grossAmountCents * expense.businessUsePct) / 100
   );
@@ -49,7 +53,7 @@ export function ExpenseCard({ expense, onAction, showVoid = false }: ExpenseCard
   };
 
   const getActions = (): ItemAction[] => {
-    const actions: ItemAction[] = ["edit"];
+    const actions: ItemAction[] = ["edit", "select"];
     if (expense.status === "needs_review") {
       actions.push("markAsInOrder");
     }
@@ -63,29 +67,51 @@ export function ExpenseCard({ expense, onAction, showVoid = false }: ExpenseCard
     onAction(action, expense.id);
   };
 
+  const handleCardClick = () => {
+    if (isMultiSelectMode && onToggleSelection) {
+      onToggleSelection();
+    }
+  };
+
   return (
-    <Link href={`/expenses/${expense.id}`}>
-      <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg line-clamp-2">
-                {expense.description || "Untitled Expense"}
-              </CardTitle>
-              <CardDescription className="mt-1">
-                {getCategoryLabel(expense.category as any)}
-              </CardDescription>
+    <div
+      onClick={handleCardClick}
+      className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${isSelected ? "ring-2 ring-accent rounded-lg" : ""}`}
+    >
+      <Link href={isMultiSelectMode ? "#" : `/expenses/${expense.id}`} onClick={(e) => isMultiSelectMode && e.preventDefault()}>
+        <Card className="hover:shadow-lg transition-all h-full">
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {isMultiSelectMode && (
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={onToggleSelection}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mr-2"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-lg line-clamp-2">
+                    {expense.description || "Untitled Expense"}
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {getCategoryLabel(expense.category as any)}
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 ml-2">
+                {statusBadge()}
+                {!isMultiSelectMode && (
+                  <ItemActionsMenu
+                    onAction={handleAction}
+                    actions={getActions()}
+                    triggerClassName="text-muted-foreground hover:text-foreground"
+                  />
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2 ml-2">
-              {statusBadge()}
-              <ItemActionsMenu
-                onAction={handleAction}
-                actions={getActions()}
-                triggerClassName="text-muted-foreground hover:text-foreground"
-              />
-            </div>
-          </div>
-        </CardHeader>
+          </CardHeader>
         <CardContent className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Gross Amount</span>
@@ -124,7 +150,8 @@ export function ExpenseCard({ expense, onAction, showVoid = false }: ExpenseCard
           </div>
         </CardContent>
       </Card>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
