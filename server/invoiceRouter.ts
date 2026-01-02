@@ -94,39 +94,24 @@ function checkInvoiceNeedsReview(invoice: Awaited<ReturnType<typeof db.getInvoic
 }
 
 function mapInvoiceToPayload(invoice: Awaited<ReturnType<typeof db.getInvoiceById>>) {
-  try {
-    console.error('[TRACE] mapInvoiceToPayload START - invoice.id:', invoice?.id);
-    if (!invoice) {
-      console.error('[TRACE] mapInvoiceToPayload - invoice is null/undefined, returning early');
-      return invoice;
-    }
-    
-    console.error('[TRACE] mapInvoiceToPayload - processing items, count:', invoice.items?.length || 0);
-    const items = (invoice.items || []).map((item) => ({
-      ...item,
-      quantity: Number(item.quantity),
-      unitPrice: Number(item.unitPrice),
-      lineTotal: Number(item.lineTotal),
-    }));
-    console.error('[TRACE] mapInvoiceToPayload - items mapped, count:', items.length);
-    
-    console.error('[TRACE] mapInvoiceToPayload - creating return object');
-    const result = {
-      ...invoice,
-      items,
-      subtotal: Number(invoice.subtotal),
-      vatAmount: Number(invoice.vatAmount),
-      total: Number(invoice.total),
-    };
-    console.error('[TRACE] mapInvoiceToPayload - return object created, invoice.id:', result.id);
-    return result;
-  } catch (err) {
-    console.error('[TRACE] mapInvoiceToPayload ERROR');
-    console.error('[TRACE] mapInvoiceToPayload error type:', err instanceof Error ? err.constructor.name : typeof err);
-    console.error('[TRACE] mapInvoiceToPayload error message:', err instanceof Error ? err.message : String(err));
-    console.error('[TRACE] mapInvoiceToPayload error stack:', err instanceof Error ? err.stack : 'No stack trace');
-    throw err;
+  if (!invoice) {
+    return invoice;
   }
+
+  const items = (invoice.items || []).map((item) => ({
+    ...item,
+    quantity: Number(item.quantity),
+    unitPrice: Number(item.unitPrice),
+    lineTotal: Number(item.lineTotal),
+  }));
+
+  return {
+    ...invoice,
+    items,
+    subtotal: Number(invoice.subtotal),
+    vatAmount: Number(invoice.vatAmount),
+    total: Number(invoice.total),
+  };
 }
 
 async function withCancellationMetadata<T extends { id: number; type?: string; cancelledInvoiceId?: number | null }>(
@@ -167,41 +152,15 @@ async function withCancellationMetadata<T extends { id: number; type?: string; c
 
 export const invoiceRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    console.error('[TRACE] invoices.list start');
-    
-    try {
-      console.error('[TRACE] invoices.list - ctx received');
-      console.error('[TRACE] invoices.list - ctx.user exists:', !!ctx.user);
-      console.error('[TRACE] invoices.list - ctx.user.id:', ctx.user?.id, 'type:', typeof ctx.user?.id);
-      
-      // ctx.user.id is already the correct INT from the database User object
-      // No need for conversion - use it directly
-      const userId = ctx.user.id;
-      console.error('[TRACE] invoices.list - userId extracted:', userId);
-      console.error(`[Invoices Router] list query - userId: ${userId} (type: ${typeof userId})`);
-      
-      console.error('[TRACE] invoices.list - before getInvoicesByUserId call');
-      const invoices = await db.getInvoicesByUserId(userId);
-      console.error('[TRACE] invoices.list - after getInvoicesByUserId call, invoices.length:', invoices.length);
-      console.error(`[Invoices Router] Returning ${invoices.length} invoices`);
-      
-      console.error('[TRACE] invoices.list - before mapInvoiceToPayload');
-      const mapped = invoices.map(mapInvoiceToPayload);
-      console.error('[TRACE] invoices.list - after mapInvoiceToPayload, mapped.length:', mapped.length);
-      const withMeta = await withCancellationMetadata(mapped);
-      const visible = withMeta.filter(
-        (invoice) => !(invoice.hasCancellation && invoice.type !== "cancellation")
-      );
-      console.error('[TRACE] invoices.list - returning result');
-      return visible;
-    } catch (err) {
-      console.error('[TRACE] invoices.list ERROR caught');
-      console.error('[TRACE] invoices.list error type:', err instanceof Error ? err.constructor.name : typeof err);
-      console.error('[TRACE] invoices.list error message:', err instanceof Error ? err.message : String(err));
-      console.error('[TRACE] invoices.list error stack:', err instanceof Error ? err.stack : 'No stack trace');
-      console.error('[TRACE] invoices.list full error object:', err);
-      throw err;
-    }
+    // ctx.user.id is already the correct INT from the database User object
+    // No need for conversion - use it directly
+    const userId = ctx.user.id;
+    const invoices = await db.getInvoicesByUserId(userId);
+    const mapped = invoices.map(mapInvoiceToPayload);
+    const withMeta = await withCancellationMetadata(mapped);
+    return withMeta.filter(
+      (invoice) => !(invoice.hasCancellation && invoice.type !== "cancellation")
+    );
   }),
 
   listArchived: protectedProcedure.query(async ({ ctx }) => {

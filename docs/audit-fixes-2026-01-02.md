@@ -48,12 +48,21 @@ This document tracks fixes for 8 critical issues identified in the production re
 - **Migration Note:** Initial migration generation failed due to schema drift. Fixed by updating _journal.json to track existing migrations 0014-0020, then created clean migration 0021.
 
 ### 3. Logging: Remove Production TRACE Spam
-- [ ] Create `server/_core/logger.ts` with proper log levels
-- [ ] Replace TRACE logging in `server/invoiceRouter.ts`
-- [ ] Replace TRACE logging in `server/trpc.ts`
-- [ ] Replace TRACE logging in `server/_core/context.ts`
-- [ ] Remove temporary debug logging in `server/storage.ts`
+- [x] Create `server/_core/logger.ts` with proper log levels
+- [x] Replace TRACE logging in `server/invoiceRouter.ts`
+- [x] Replace TRACE logging in `server/trpc.ts`
+- [x] Replace TRACE logging in `server/_core/context.ts`
+- [x] Remove temporary debug logging in `server/storage.ts`
+- [x] Remove TRACE logging in `server/db.ts` (getInvoicesByUserId)
+- [x] Remove TRACE logging in `server/_core/index.ts` (Express middleware + tRPC onError)
 - **Files Changed:** 
+  - `server/db.ts` (removed TRACE spam in getInvoicesByUserId)
+  - `server/invoiceRouter.ts` (simplified mapInvoiceToPayload and list handler)
+  - `server/_core/trpc.ts` (cleaned requireUser middleware)
+  - `server/_core/context.ts` (cleaned createContext)
+  - `server/_core/index.ts` (removed TRACE middleware logs, replaced onError with logger)
+  - `server/storage.ts` (removed temporary S3 debug logging)
+  - `docs/audit-fixes-2026-01-02.md` (update checklist)
 - **Commits:** 
 - **Verification:** No TRACE spam in production logs
 

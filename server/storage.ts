@@ -289,14 +289,6 @@ export async function createPresignedReadUrl(
   const client = getS3Client();
   const config = getS3Config();
 
-  // Temporary debug logging for production verification
-  console.log('[S3 LOGO READ]', {
-    bucket: config.bucket,
-    key,
-    endpoint: config.endpoint,
-    region: 'us-east-1',
-  });
-
   try {
     const command = new GetObjectCommand({
       Bucket: config.bucket,
