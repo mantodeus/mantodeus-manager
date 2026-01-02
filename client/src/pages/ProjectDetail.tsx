@@ -163,9 +163,8 @@ export default function ProjectDetail() {
       <div className="space-y-6">
         {actionHeader}
         <Link href="/projects">
-          <Button variant="ghost">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Projects
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <Card>
@@ -182,19 +181,18 @@ export default function ProjectDetail() {
       <PageHeader />
       <div className="flex items-center justify-between">
         <Link href="/projects">
-          <Button variant="ghost">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Projects
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setReportDialogOpen(true)}>
             <FileText className="h-4 w-4 mr-2" />
-            Generate Report
+            <span className="hidden sm:inline">Report</span>
           </Button>
           <Button variant="outline" onClick={() => setEditProjectDialogOpen(true)}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
+            <Edit className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Edit</span>
           </Button>
         </div>
       </div>
