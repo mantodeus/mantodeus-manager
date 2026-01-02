@@ -256,7 +256,7 @@
 
   .module-item.is-active {
     color: var(--accent);
-    font-weight: 275;
+    font-weight: 300;
     text-shadow: 0 0 6px rgba(12, 245, 126, 0.25);
   }
 
@@ -264,11 +264,11 @@
     font-size: 0.95rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    font-weight: 250;
+    font-weight: 300;
   }
 
   .module-item.is-active span {
-    font-weight: 275;
+    font-weight: 300;
   }
 
   .module-item:not(.is-active) {
@@ -306,12 +306,12 @@
     text-transform: uppercase;
     font-size: 0.95rem;
     letter-spacing: 0.08em;
-    font-weight: 250;
+    font-weight: 300;
     opacity: 0.85;
   }
 
   .tab-label.is-active {
-    font-weight: 275;
+    font-weight: 300;
   }
 
   .bottom-tab-bar {

@@ -263,7 +263,7 @@ export default function NoteDetail() {
       contactId: currentContent.contactId && currentContent.contactId !== "none" ? parseInt(currentContent.contactId) : undefined,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedTitle, debouncedBody, debouncedJobId, debouncedContactId, isEditMode, noteId]);
+  }, [debouncedTitle, debouncedBody, debouncedProjectId, debouncedContactId, isEditMode, noteId]);
 
   const uploadFileMutation = trpc.notes.uploadNoteFile.useMutation();
   const registerFileMutation = trpc.notes.registerNoteFile.useMutation();
@@ -496,7 +496,7 @@ export default function NoteDetail() {
   const files = note.files || [];
 
   return (
-    <div className="w-full max-w-none space-y-6 pb-24 md:pb-24" style={{ paddingBottom: 'calc(var(--bottom-safe-area, 0px) + 6rem)' }}>
+    <div className="w-full max-w-none space-y-6 pb-24 md:pb-24 [--notes-action-bar-height:0px] md:[--notes-action-bar-height:72px]" style={{ paddingBottom: 'calc(var(--bottom-safe-area, 0px) + 6rem)' }}>
       <PageHeader />
       
       {/* Title Section */}
