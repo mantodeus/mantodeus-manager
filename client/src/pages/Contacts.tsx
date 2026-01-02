@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -921,9 +922,13 @@ export default function Contacts() {
                   <ContactIcon className="h-6 w-6 text-primary" />
                   <DialogTitle className="text-2xl">{displayName}</DialogTitle>
                 </div>
-                {contact.contactPerson && (
-                  <p className="text-sm text-muted-foreground mt-1">Contact: {contact.contactPerson}</p>
-                )}
+                <DialogDescription>
+                  {contact.contactPerson 
+                    ? `Contact person: ${contact.contactPerson}` 
+                    : contact.type === "business" 
+                      ? "Business contact" 
+                      : "Personal contact"}
+                </DialogDescription>
               </DialogHeader>
               
               <div className="space-y-6 mt-6">
@@ -961,13 +966,11 @@ export default function Contacts() {
                         <a
                           key={idx}
                           href={`mailto:${emailItem.value}`}
-                          className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors group"
+                          className="flex gap-3 p-3 rounded-lg border hover:bg-accent transition-colors group"
                         >
-                          <Mail className="h-5 w-5 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                          <Mail className="h-5 w-5 text-muted-foreground group-hover:text-primary flex-shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
-                            {emailItem.label !== "Email" && (
-                              <div className="text-xs text-muted-foreground mb-1">{emailItem.label}</div>
-                            )}
+                            <div className="text-xs text-muted-foreground mb-1.5 font-medium">{emailItem.label}</div>
                             <div className="text-sm font-medium break-all">{emailItem.value}</div>
                           </div>
                         </a>
@@ -985,14 +988,12 @@ export default function Contacts() {
                         <a
                           key={idx}
                           href={`tel:${phoneItem.value}`}
-                          className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors group"
+                          className="flex gap-3 p-3 rounded-lg border hover:bg-accent transition-colors group"
                         >
-                          <Phone className="h-5 w-5 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                          <Phone className="h-5 w-5 text-muted-foreground group-hover:text-primary flex-shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
-                            {phoneItem.label !== "Phone" && (
-                              <div className="text-xs text-muted-foreground mb-1">{phoneItem.label}</div>
-                            )}
-                            <div className="text-sm font-medium">{phoneItem.value}</div>
+                            <div className="text-xs text-muted-foreground mb-1.5 font-medium">{phoneItem.label}</div>
+                            <div className="text-sm font-medium break-all">{phoneItem.value}</div>
                           </div>
                         </a>
                       ))}

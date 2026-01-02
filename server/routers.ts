@@ -963,8 +963,8 @@ export const appRouter = router({
 
         if (emailUpdateRequested) {
           normalizedUpdate.email = email;
-          if (emails !== undefined) {
-            // Only set emails if it's not null (null means clear the field, undefined means don't update)
+          // Only update emails if it was explicitly provided in the input
+          if (hasField("emails") && emails !== undefined) {
             normalizedUpdate.emails = emails;
           }
         }
@@ -972,8 +972,8 @@ export const appRouter = router({
         if (phoneUpdateRequested) {
           normalizedUpdate.phoneNumber = phoneNumber;
           normalizedUpdate.phone = phone;
-          if (phoneNumbers !== undefined) {
-            // Only set phoneNumbers if it's not null (null means clear the field, undefined means don't update)
+          // Only update phoneNumbers if it was explicitly provided in the input
+          if (hasField("phoneNumbers") && phoneNumbers !== undefined) {
             normalizedUpdate.phoneNumbers = phoneNumbers;
           }
         }
