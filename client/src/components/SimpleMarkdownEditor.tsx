@@ -78,7 +78,10 @@ export function SimpleMarkdownEditor({
   autoFocus = false,
 }: SimpleMarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
 
   // Detect mobile for toolbar positioning
   useEffect(() => {
@@ -90,14 +93,89 @@ export function SimpleMarkdownEditor({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Detect keyboard and position toolbar above it on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const updateKeyboardHeight = () => {
+      // Use visual viewport API if available (modern mobile browsers)
+      if (window.visualViewport) {
+        const viewportHeight = window.visualViewport.height;
+        const windowHeight = window.innerHeight;
+        const heightDiff = windowHeight - viewportHeight;
+        // Only update if difference is significant (keyboard is open)
+        // Store the visual viewport height as the position for the toolbar
+        if (heightDiff > 50) {
+          // Keyboard is open - position toolbar at bottom of visual viewport
+          setKeyboardHeight(windowHeight - viewportHeight);
+        } else {
+          // Keyboard is closed - position at bottom of screen
+          setKeyboardHeight(0);
+        }
+      } else {
+        // Fallback: detect based on window height changes
+        const currentHeight = window.innerHeight;
+        const storedHeight = sessionStorage.getItem('viewport-height');
+        if (storedHeight) {
+          const heightDiff = parseInt(storedHeight) - currentHeight;
+          if (heightDiff > 50) {
+            setKeyboardHeight(heightDiff);
+          } else {
+            setKeyboardHeight(0);
+            // Update stored height when keyboard closes
+            sessionStorage.setItem('viewport-height', currentHeight.toString());
+          }
+        } else {
+          sessionStorage.setItem('viewport-height', currentHeight.toString());
+          setKeyboardHeight(0);
+        }
+      }
+    };
+
+    // Initial check
+    updateKeyboardHeight();
+
+    // Listen to visual viewport changes
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateKeyboardHeight);
+      window.visualViewport.addEventListener('scroll', updateKeyboardHeight);
+    } else {
+      window.addEventListener('resize', updateKeyboardHeight);
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateKeyboardHeight);
+        window.visualViewport.removeEventListener('scroll', updateKeyboardHeight);
+      } else {
+        window.removeEventListener('resize', updateKeyboardHeight);
+      }
+    };
+  }, [isMobile]);
+
   // Auto-focus
   useEffect(() => {
     if (autoFocus && textareaRef.current) {
       setTimeout(() => {
         textareaRef.current?.focus();
+        setIsFocused(true);
       }, 100);
     }
   }, [autoFocus]);
+
+  // Track focus state
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    // Delay blur to allow toolbar button clicks
+    setTimeout(() => {
+      if (document.activeElement !== textareaRef.current) {
+        setIsFocused(false);
+      }
+    }, 200);
+  };
 
   // Get selection range
   const getSelection = () => {
@@ -147,21 +225,24 @@ export function SimpleMarkdownEditor({
       const newValue = beforeText + before + text + after + afterText;
       onChange(newValue);
       
-      setTimeout(() => {
+      // Use requestAnimationFrame for better cursor placement
+      requestAnimationFrame(() => {
         const newCursorPos = start + before.length + text.length + after.length;
         textarea.setSelectionRange(newCursorPos, newCursorPos);
         textarea.focus();
-      }, 0);
+        setIsFocused(true);
+      });
     } else {
       // If no text is selected, insert syntax and place cursor in middle
       const newValue = beforeText + before + after + afterText;
       onChange(newValue);
       
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         const newCursorPos = start + before.length;
         textarea.setSelectionRange(newCursorPos, newCursorPos);
         textarea.focus();
-      }, 0);
+        setIsFocused(true);
+      });
     }
   };
 
@@ -181,32 +262,49 @@ export function SimpleMarkdownEditor({
     let currentLine = 0;
     let charCount = 0;
     
+    // Find the line containing the cursor
     for (let i = 0; i < lines.length; i++) {
-      if (charCount + lines[i].length >= start) {
+      const lineLength = lines[i].length;
+      const lineStart = charCount;
+      const lineEnd = charCount + lineLength;
+      
+      // Cursor is in this line if it's between lineStart and lineEnd (inclusive at end for newline)
+      if (start >= lineStart && start <= lineEnd) {
         currentLine = i;
         break;
       }
-      charCount += lines[i].length + 1; // +1 for newline
+      charCount += lineLength + 1; // +1 for newline
     }
     
     const line = lines[currentLine];
-    if (line.trim().startsWith("- ")) {
+    const wasBullet = line.trim().startsWith("- ");
+    const indent = line.match(/^(\s*)/)?.[1] || "";
+    
+    if (wasBullet) {
       // Remove bullet
       lines[currentLine] = line.replace(/^(\s*)- /, "$1");
     } else {
       // Add bullet
-      const indent = line.match(/^(\s*)/)?.[1] || "";
       lines[currentLine] = indent + "- " + line.trimStart();
     }
     
     const newValue = lines.join("\n");
     onChange(newValue);
     
-    setTimeout(() => {
-      const newCursorPos = start + (line.trim().startsWith("- ") ? -2 : 2);
+    // Calculate accurate cursor position
+    requestAnimationFrame(() => {
+      let newCursorPos = start;
+      if (wasBullet) {
+        // Removed bullet: move cursor back
+        newCursorPos = Math.max(0, start - 2);
+      } else {
+        // Added bullet: move cursor forward
+        newCursorPos = start + 2;
+      }
       textarea.setSelectionRange(newCursorPos, newCursorPos);
       textarea.focus();
-    }, 0);
+      setIsFocused(true);
+    });
   };
   
   const handleNumberedList = () => {
@@ -219,32 +317,53 @@ export function SimpleMarkdownEditor({
     let currentLine = 0;
     let charCount = 0;
     
+    // Find the line containing the cursor
     for (let i = 0; i < lines.length; i++) {
-      if (charCount + lines[i].length >= start) {
+      const lineLength = lines[i].length;
+      const lineStart = charCount;
+      const lineEnd = charCount + lineLength;
+      
+      // Cursor is in this line if it's between lineStart and lineEnd (inclusive at end for newline)
+      if (start >= lineStart && start <= lineEnd) {
         currentLine = i;
         break;
       }
-      charCount += lines[i].length + 1;
+      charCount += lineLength + 1;
     }
     
     const line = lines[currentLine];
-    if (/^\s*\d+\.\s/.test(line)) {
+    const wasNumbered = /^\s*\d+\.\s/.test(line);
+    const indent = line.match(/^(\s*)/)?.[1] || "";
+    
+    if (wasNumbered) {
       // Remove numbering
       lines[currentLine] = line.replace(/^(\s*)\d+\.\s/, "$1");
     } else {
       // Add numbering
-      const indent = line.match(/^(\s*)/)?.[1] || "";
       lines[currentLine] = indent + "1. " + line.trimStart();
     }
     
     const newValue = lines.join("\n");
     onChange(newValue);
     
-    setTimeout(() => {
-      const newCursorPos = start + (line.match(/^\s*\d+\.\s/) ? -3 : 3);
+    // Calculate accurate cursor position
+    requestAnimationFrame(() => {
+      let newCursorPos = start;
+      if (wasNumbered) {
+        // Find how many chars were removed
+        const match = line.match(/^(\s*)(\d+)\.\s/);
+        if (match) {
+          const removedLength = match[0].length;
+          newCursorPos = Math.max(0, start - removedLength);
+        }
+      } else {
+        // Added "1. ": move cursor forward
+        newCursorPos = start + 3;
+      }
       textarea.setSelectionRange(newCursorPos, newCursorPos);
       textarea.focus();
-    }, 0);
+      setIsFocused(true);
+    });
   };
   
   const handleCheckbox = () => {
@@ -257,33 +376,43 @@ export function SimpleMarkdownEditor({
     let currentLine = 0;
     let charCount = 0;
     
+    // Find the line containing the cursor
     for (let i = 0; i < lines.length; i++) {
-      if (charCount + lines[i].length >= start) {
+      const lineLength = lines[i].length;
+      const lineStart = charCount;
+      const lineEnd = charCount + lineLength;
+      
+      // Cursor is in this line if it's between lineStart and lineEnd (inclusive at end for newline)
+      if (start >= lineStart && start <= lineEnd) {
         currentLine = i;
         break;
       }
-      charCount += lines[i].length + 1;
+      charCount += lineLength + 1;
     }
     
     const line = lines[currentLine];
-    if (line.trim().startsWith("- [ ] ")) {
-      // Remove checkbox
+    const hasCheckbox = line.trim().startsWith("- [ ] ");
+    const hasBullet = line.trim().startsWith("- ");
+    const indent = line.match(/^(\s*)/)?.[1] || "";
+    
+    if (hasCheckbox) {
+      // Remove checkbox, keep bullet
       lines[currentLine] = line.replace(/^(\s*)- \[ \] /, "$1- ");
-    } else if (line.trim().startsWith("- ")) {
-      // Add checkbox
+    } else if (hasBullet) {
+      // Add checkbox to existing bullet
       lines[currentLine] = line.replace(/^(\s*)- /, "$1- [ ] ");
     } else {
       // Add bullet with checkbox
-      const indent = line.match(/^(\s*)/)?.[1] || "";
       lines[currentLine] = indent + "- [ ] " + line.trimStart();
     }
     
     const newValue = lines.join("\n");
     onChange(newValue);
     
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       textarea.focus();
-    }, 0);
+      setIsFocused(true);
+    });
   };
 
   // Handle Enter key for list continuation
@@ -298,12 +427,18 @@ export function SimpleMarkdownEditor({
       let currentLine = 0;
       let charCount = 0;
       
+      // Find the line containing the cursor
       for (let i = 0; i < lines.length; i++) {
-        if (charCount + lines[i].length >= start) {
+        const lineLength = lines[i].length;
+        const lineStart = charCount;
+        const lineEnd = charCount + lineLength;
+        
+        // Cursor is in this line if it's between lineStart and lineEnd (inclusive at end for newline)
+        if (start >= lineStart && start <= lineEnd) {
           currentLine = i;
           break;
         }
-        charCount += lines[i].length + 1;
+        charCount += lineLength + 1;
       }
       
       const line = lines[currentLine];
@@ -323,10 +458,11 @@ export function SimpleMarkdownEditor({
         const newValue = currentValue.substring(0, start) + "\n" + newLine + currentValue.substring(start);
         onChange(newValue);
         
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           const newCursorPos = start + 1 + newLine.length;
           textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }, 0);
+          textarea.focus();
+        });
         return;
       }
       
@@ -345,10 +481,11 @@ export function SimpleMarkdownEditor({
         const newValue = currentValue.substring(0, start) + "\n" + newLine + currentValue.substring(start);
         onChange(newValue);
         
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           const newCursorPos = start + 1 + newLine.length;
           textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }, 0);
+          textarea.focus();
+        });
         return;
       }
       
@@ -356,8 +493,21 @@ export function SimpleMarkdownEditor({
     }
   };
 
+  // Calculate toolbar position for mobile
+  // On mobile when focused, position toolbar above keyboard (at bottom of visual viewport)
+  const toolbarStyle: React.CSSProperties = isMobile && isFocused
+    ? {
+        position: 'fixed',
+        bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+        left: '0',
+        right: '0',
+        zIndex: 50,
+        paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)`,
+      }
+    : {};
+
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("relative", className)}>
       {/* Editor */}
       <div className="border rounded-md bg-background">
         <Textarea
@@ -365,84 +515,137 @@ export function SimpleMarkdownEditor({
           value={content}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           placeholder={placeholder}
-          className="min-h-[400px] resize-none border-none shadow-none focus-visible:ring-0 px-4 py-3 font-mono text-sm"
+          className={cn(
+            "resize-none border-none shadow-none focus-visible:ring-0 px-4 py-3 font-mono text-sm",
+            isMobile ? "min-h-[300px] pb-24" : "min-h-[400px]"
+          )}
           style={{ whiteSpace: "pre-wrap" }}
         />
       </div>
 
       {/* Formatting Toolbar */}
       <div
+        ref={toolbarRef}
         className={cn(
-          "flex flex-wrap items-center gap-2 p-2 border rounded-md bg-muted/50",
-          isMobile
-            ? "sticky bottom-0 z-10 border-t rounded-t-md rounded-b-none"
-            : "sticky bottom-0"
+          "flex items-center gap-1 p-2 border bg-background/95 backdrop-blur-sm",
+          isMobile && isFocused
+            ? "fixed left-0 right-0 border-t rounded-t-md rounded-b-none shadow-lg"
+            : "sticky bottom-0 rounded-md bg-muted/50 mt-2"
         )}
+        style={toolbarStyle}
       >
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleBold}
-          title="Bold"
-          type="button"
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleItalic}
-          title="Italic"
-          type="button"
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleStrikethrough}
-          title="Strikethrough"
-          type="button"
-        >
-          <StrikethroughIcon className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleBulletList}
-          title="Bullet List"
-          type="button"
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleNumberedList}
-          title="Numbered List"
-          type="button"
-        >
-          <ListOrderedIcon className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCheckbox}
-          title="Checkbox"
-          type="button"
-        >
-          <CheckSquare className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCode}
-          title="Code"
-          type="button"
-        >
-          <Code className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1 overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <Button
+            variant="ghost"
+            size={isMobile ? "default" : "sm"}
+            onClick={(e) => {
+              e.preventDefault();
+              handleBold();
+            }}
+            className={cn(
+              "min-w-[44px] h-[44px] flex-shrink-0",
+              !isMobile && "h-8 min-w-[32px]"
+            )}
+            type="button"
+          >
+            <Bold className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
+          </Button>
+          <Button
+            variant="ghost"
+            size={isMobile ? "default" : "sm"}
+            onClick={(e) => {
+              e.preventDefault();
+              handleItalic();
+            }}
+            className={cn(
+              "min-w-[44px] h-[44px] flex-shrink-0",
+              !isMobile && "h-8 min-w-[32px]"
+            )}
+            type="button"
+          >
+            <Italic className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
+          </Button>
+          <Button
+            variant="ghost"
+            size={isMobile ? "default" : "sm"}
+            onClick={(e) => {
+              e.preventDefault();
+              handleStrikethrough();
+            }}
+            className={cn(
+              "min-w-[44px] h-[44px] flex-shrink-0",
+              !isMobile && "h-8 min-w-[32px]"
+            )}
+            type="button"
+          >
+            <StrikethroughIcon className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
+          </Button>
+          <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
+          <Button
+            variant="ghost"
+            size={isMobile ? "default" : "sm"}
+            onClick={(e) => {
+              e.preventDefault();
+              handleBulletList();
+            }}
+            className={cn(
+              "min-w-[44px] h-[44px] flex-shrink-0",
+              !isMobile && "h-8 min-w-[32px]"
+            )}
+            type="button"
+          >
+            <List className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
+          </Button>
+          <Button
+            variant="ghost"
+            size={isMobile ? "default" : "sm"}
+            onClick={(e) => {
+              e.preventDefault();
+              handleNumberedList();
+            }}
+            className={cn(
+              "min-w-[44px] h-[44px] flex-shrink-0",
+              !isMobile && "h-8 min-w-[32px]"
+            )}
+            type="button"
+          >
+            <ListOrderedIcon className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
+          </Button>
+          <Button
+            variant="ghost"
+            size={isMobile ? "default" : "sm"}
+            onClick={(e) => {
+              e.preventDefault();
+              handleCheckbox();
+            }}
+            className={cn(
+              "min-w-[44px] h-[44px] flex-shrink-0",
+              !isMobile && "h-8 min-w-[32px]"
+            )}
+            type="button"
+          >
+            <CheckSquare className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
+          </Button>
+          <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
+          <Button
+            variant="ghost"
+            size={isMobile ? "default" : "sm"}
+            onClick={(e) => {
+              e.preventDefault();
+              handleCode();
+            }}
+            className={cn(
+              "min-w-[44px] h-[44px] flex-shrink-0",
+              !isMobile && "h-8 min-w-[32px]"
+            )}
+            type="button"
+          >
+            <Code className={cn("h-5 w-5", !isMobile && "h-4 w-4")} />
+          </Button>
+        </div>
       </div>
     </div>
   );
