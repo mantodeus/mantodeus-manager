@@ -121,16 +121,22 @@ export default function InvoicesArchived() {
 
   const handleItemAction = (action: ItemAction, invoiceId: number, status: string, fileName: string) => {
     switch (action) {
-      case "view":
+      case "edit":
+        // "Edit" maps to "view" for archived invoices - preview PDF
         handlePreviewPDF(invoiceId, fileName);
-        break;
-      case "restore":
-        restoreMutation.mutate({ id: invoiceId });
         break;
       case "duplicate":
         toast.info("Duplicate is coming soon.");
         break;
-      case "moveToTrash":
+      case "select":
+        toast.info("Selection mode is coming soon.");
+        break;
+      case "archive":
+        // "Archive" maps to "restore" for archived invoices
+        restoreMutation.mutate({ id: invoiceId });
+        break;
+      case "delete":
+        // "Delete" maps to "moveToTrash" for archived invoices
         if (status !== "draft") return;
         setMoveToRubbishTargetId(invoiceId);
         setMoveToRubbishDialogOpen(true);
@@ -178,8 +184,9 @@ export default function InvoicesArchived() {
             const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
             const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
             const displayTotal = formatCurrency(invoice.total);
+            // Use standard menu - map invoice-specific actions
             const actions: ItemAction[] =
-              invoice.status === "draft" ? ["view", "restore", "moveToTrash"] : ["view", "restore"];
+              invoice.status === "draft" ? ["edit", "duplicate", "select", "archive", "delete"] : ["edit", "duplicate", "select", "archive"];
 
             return (
               <Card key={invoice.id} className="p-3 sm:p-4 hover:shadow-sm transition-all">

@@ -188,11 +188,11 @@ export default function ProjectDetail() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setReportDialogOpen(true)}>
             <FileText className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Report</span>
+            Report
           </Button>
           <Button variant="outline" onClick={() => setEditProjectDialogOpen(true)}>
-            <Edit className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Edit</span>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
           </Button>
         </div>
       </div>

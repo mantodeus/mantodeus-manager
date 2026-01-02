@@ -321,12 +321,22 @@ export default function Invoices() {
                       <Badge variant="outline" className="text-xs">NEEDS REVIEW</Badge>
                       <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
                       <ItemActionsMenu
-                        actions={["review", "delete"]}
+                        actions={["edit", "duplicate", "select", "archive", "delete"]}
                         onAction={(action) => {
-                          if (action === "review") {
+                          if (action === "edit") {
+                            // "Edit" maps to "review" for needs-review invoices
                             setUploadedInvoiceId(invoice.id);
                             setUploadedParsedData(null);
                             setUploadReviewDialogOpen(true);
+                          }
+                          if (action === "duplicate") {
+                            toast.info("Duplicate is coming soon.");
+                          }
+                          if (action === "select") {
+                            toast.info("Selection mode is coming soon.");
+                          }
+                          if (action === "archive") {
+                            toast.info("Archive is coming soon.");
                           }
                           if (action === "delete") {
                             setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName });
@@ -361,16 +371,8 @@ export default function Invoices() {
             const canCancel = isStandard && hasInvoiceNumber && invoice.source !== "uploaded" && !invoice.hasCancellation && (isOpen || isPaid);
             const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
             const displayTotal = formatCurrency(invoice.total);
-            const availableActions = isDraft
-              ? ["view", "edit", "send", "archive", "moveToTrash"]
-              : isOpen
-              ? ["view", "markAsPaid", "archive", "revertToDraft"]
-              : isPaid
-              ? ["view", "archive", "revertToSent"]
-              : ["view", "archive"];
-            if (canCancel) {
-              availableActions.push("createCancellation");
-            }
+            // Use standard menu actions - map invoice-specific actions to standard ones
+            const availableActions: ItemAction[] = ["edit", "duplicate", "select", "archive", "delete"];
 
             return (
               <Card
@@ -400,30 +402,26 @@ export default function Invoices() {
                     <ItemActionsMenu
                       actions={availableActions}
                       onAction={(action) => {
-                        if (action === "view") handlePreviewPDF(invoice.id, `${displayName}.pdf`);
-                        if (action === "send" && isDraft) {
-                          handleIssueInvoice(invoice.id);
+                        if (action === "edit") {
+                          // "Edit" navigates to invoice detail page
+                          navigate(`/invoices/${invoice.id}`);
+                        }
+                        if (action === "duplicate") {
+                          toast.info("Duplicate is coming soon.");
+                        }
+                        if (action === "select") {
+                          toast.info("Selection mode is coming soon.");
                         }
                         if (action === "archive") {
                           handleArchiveInvoice(invoice.id);
                         }
-                        if (action === "moveToTrash") {
-                          handleMoveToRubbish(invoice.id);
-                        }
-                        if (action === "markAsPaid" && isOpen) {
-                          markAsPaidMutation.mutate({ id: invoice.id });
-                        }
-                        if (action === "revertToDraft" && isOpen) {
-                          handleRevertStatus(invoice.id, "open");
-                        }
-                        if (action === "revertToSent" && isPaid) {
-                          handleRevertStatus(invoice.id, "paid");
-                        }
-                        if (action === "createCancellation" && canCancel) {
-                          handleCreateCancellation(invoice);
-                        }
-                        if (action === "edit") {
-                          navigate(`/invoices/${invoice.id}`);
+                        if (action === "delete") {
+                          // "Delete" maps to "moveToTrash" for invoices
+                          if (isDraft) {
+                            handleMoveToRubbish(invoice.id);
+                          } else {
+                            toast.info("Only draft invoices can be deleted. Use Archive for sent invoices.");
+                          }
                         }
                       }}
                     />

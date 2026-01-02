@@ -130,11 +130,14 @@ export default function Projects() {
       case "duplicate":
         toast.info("Duplicate is coming soon.");
         break;
+      case "select":
+        toast.info("Selection mode is coming soon.");
+        break;
       case "archive":
         setArchiveTargetId(projectId);
         setArchiveDialogOpen(true);
         break;
-      case "moveToTrash":
+      case "delete":
         setDeleteToRubbishTargetId(projectId);
         setDeleteToRubbishDialogOpen(true);
         break;
@@ -207,7 +210,7 @@ export default function Projects() {
                 <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
                 <ItemActionsMenu
                   onAction={(action) => handleItemAction(action, project.id)}
-                  actions={["edit", "duplicate", "archive", "moveToTrash"]}
+                  actions={["edit", "duplicate", "select", "archive", "delete"]}
                   triggerClassName="text-muted-foreground hover:text-foreground"
                 />
               </div>

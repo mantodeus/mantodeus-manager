@@ -55,13 +55,21 @@ export default function ContactsArchived() {
 
   const handleItemAction = (action: ItemAction, contactId: number) => {
     switch (action) {
-      case "restore":
+      case "edit":
+        // "Edit" maps to "restore" for archived contacts
         restoreArchivedMutation.mutate({ id: contactId });
         break;
       case "duplicate":
         toast.info("Duplicate is coming soon.");
         break;
-      case "moveToTrash":
+      case "select":
+        toast.info("Selection mode is coming soon.");
+        break;
+      case "archive":
+        // Archive not available for already-archived items
+        break;
+      case "delete":
+        // "Delete" maps to "moveToTrash" for archived contacts
         setDeleteToRubbishTargetId(contactId);
         setDeleteToRubbishDialogOpen(true);
         break;
@@ -130,7 +138,7 @@ export default function ContactsArchived() {
             </Button>
             <ItemActionsMenu
               onAction={(action) => handleItemAction(action, contact.id)}
-              actions={["restore", "duplicate", "moveToTrash"]}
+              actions={["edit", "duplicate", "select", "delete"]}
               triggerClassName="h-11 w-11 text-muted-foreground hover:text-foreground"
               size="lg"
             />

@@ -517,14 +517,29 @@ export default function Maps() {
       case "duplicate":
         toast.info("Duplicate is coming soon.");
         break;
-      case "delete":
-        handleDeleteLocation(locationId);
-        break;
       case "select":
         setIsMultiSelectMode(true);
         setSelectedIds(new Set([locationId]));
         break;
+      case "archive":
+        toast.info("Archive is coming soon.");
+        break;
+      case "delete":
+        handleDeleteLocation(locationId);
+        break;
     }
+  };
+
+  const handleSelectAll = () => {
+    setSelectedIds(new Set(locations.map(l => l.id)));
+  };
+
+  const handleBatchDuplicate = () => {
+    toast.info("Batch duplicate is coming soon.");
+  };
+
+  const handleBatchArchive = () => {
+    toast.info("Batch archive is coming soon.");
   };
 
   const toggleSelection = (locationId: number) => {
@@ -880,7 +895,7 @@ export default function Maps() {
                           {!isMultiSelectMode && (
                             <ItemActionsMenu
                               onAction={(action) => handleItemAction(action, location.id)}
-                              actions={["edit", "duplicate", "delete", "select"]}
+                              actions={["edit", "duplicate", "select", "archive", "delete"]}
                               triggerClassName="text-muted-foreground hover:text-foreground"
                               size="sm"
                             />
@@ -908,14 +923,20 @@ export default function Maps() {
       </div>
 
       {/* Multi-Select Bar */}
-      <MultiSelectBar
-        selectedCount={selectedIds.size}
-        onPrimaryAction={handleBatchDelete}
-        onCancel={() => {
-          setIsMultiSelectMode(false);
-          setSelectedIds(new Set());
-        }}
-      />
+      {isMultiSelectMode && (
+        <MultiSelectBar
+          selectedCount={selectedIds.size}
+          totalCount={locations.length}
+          onSelectAll={handleSelectAll}
+          onDuplicate={handleBatchDuplicate}
+          onArchive={handleBatchArchive}
+          onDelete={handleBatchDelete}
+          onCancel={() => {
+            setIsMultiSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+        />
+      )}
 
       {/* Add Location Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
