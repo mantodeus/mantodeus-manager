@@ -523,10 +523,10 @@ export function SimpleMarkdownEditor({
     textareaRef.current?.focus();
   };
 
-  const showToolbar = isMobile ? isFocused : true;
+  const showToolbar = true;
   const toolbarBottom = isMobile
     ? (keyboardHeight > 0 ? `${keyboardHeight}px` : "0px")
-    : "var(--notes-action-bar-height, 0px)";
+    : "0px";
 
   return (
     <div className={cn("relative", className)}>
@@ -537,7 +537,7 @@ export function SimpleMarkdownEditor({
           <div
             ref={previewRef}
             className={cn(
-              "absolute inset-0 px-4 py-3 text-sm pointer-events-none overflow-auto",
+              "absolute inset-0 px-4 py-3 text-sm pointer-events-none overflow-auto z-10 text-foreground",
               isMobile ? "min-h-[300px]" : "min-h-[400px]"
             )}
             style={{
@@ -566,15 +566,13 @@ export function SimpleMarkdownEditor({
             onScroll={handleScroll}
             placeholder=""
             className={cn(
-              "relative resize-none border-none shadow-none focus-visible:ring-0 px-4 py-3 text-sm",
+              "relative resize-none border-none shadow-none focus-visible:ring-0 px-4 py-3 text-sm z-20",
               "bg-transparent caret-foreground",
               isMobile ? "min-h-[300px]" : "min-h-[400px]"
             )}
             style={{ 
               whiteSpace: "pre-wrap",
               color: 'transparent',
-              textShadow: '0 0 0 transparent',
-              WebkitTextFillColor: 'transparent',
               lineHeight: '1.5',
             }}
           />
