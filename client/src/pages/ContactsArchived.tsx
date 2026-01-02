@@ -9,7 +9,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Archive, ChevronDown, Loader2, Mail, MapPin, Phone } from "@/components/ui/Icon";
+import { ArrowLeft, Archive, Building2, ChevronDown, Loader2, Mail, MapPin, Phone, User } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
@@ -99,13 +99,20 @@ export default function ContactsArchived() {
     const displayName = getDisplayName(contact);
     const previewAddress = getPreviewAddress(contact);
     const mapAddress = getMapAddress(contact);
-    const email = contact.email || "";
-    const phone = contact.phoneNumber || contact.phone || "";
+    
+    // Get emails and phone numbers from new array format or fallback to single values
+    const emails = (contact.emails as Array<{ label: string; value: string }> | null) || 
+      (contact.email ? [{ label: "Email", value: contact.email }] : []);
+    const phoneNumbers = (contact.phoneNumbers as Array<{ label: string; value: string }> | null) || 
+      (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
+    
+    const ContactIcon = contact.type === "business" ? Building2 : User;
 
     return (
       <div key={contact.id} className="rounded-lg border opacity-75">
         <div className="flex items-center gap-3 px-4 py-3">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <ContactIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
             <div className="truncate text-base font-regular">{displayName}</div>
           </div>
           <div className="flex items-center gap-1">
@@ -150,24 +157,36 @@ export default function ContactsArchived() {
                   <span className="truncate">{previewAddress}</span>
                 </button>
               )}
-              {email && (
+              {emails.map((emailItem, idx) => (
                 <a
-                  href={`mailto:${email}`}
+                  key={idx}
+                  href={`mailto:${emailItem.value}`}
                   className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Mail className="h-4 w-4" />
-                  <span className="truncate">{email}</span>
+                  <div className="flex-1 min-w-0">
+                    {emailItem.label !== "Email" && (
+                      <div className="text-xs text-muted-foreground/70">{emailItem.label}</div>
+                    )}
+                    <span className="truncate">{emailItem.value}</span>
+                  </div>
                 </a>
-              )}
-              {phone && (
+              ))}
+              {phoneNumbers.map((phoneItem, idx) => (
                 <a
-                  href={`tel:${phone}`}
+                  key={idx}
+                  href={`tel:${phoneItem.value}`}
                   className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Phone className="h-4 w-4" />
-                  <span className="truncate">{phone}</span>
+                  <div className="flex-1 min-w-0">
+                    {phoneItem.label !== "Phone" && (
+                      <div className="text-xs text-muted-foreground/70">{phoneItem.label}</div>
+                    )}
+                    <span className="truncate">{phoneItem.value}</span>
+                  </div>
                 </a>
-              )}
+              ))}
             </div>
           </div>
         </div>

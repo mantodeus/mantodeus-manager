@@ -633,9 +633,19 @@ export const appRouter = router({
         vatNumber: z.string().optional(),
         taxNumber: z.string().optional(),
         leitwegId: z.string().optional(),
-        email: z.string().email(),
+        email: z.string().email().optional().or(z.literal("")),
         phoneNumber: z.string().optional(),
         phone: z.string().optional(),
+        /** Array of email objects with label and value */
+        emails: z.array(z.object({
+          label: z.string().min(1),
+          value: z.string().email(),
+        })).optional(),
+        /** Array of phone objects with label and value */
+        phoneNumbers: z.array(z.object({
+          label: z.string().min(1),
+          value: z.string().min(1),
+        })).optional(),
         address: z.string().optional(),
         latitude: z.string().optional(),
         longitude: z.string().optional(),
@@ -653,6 +663,29 @@ export const appRouter = router({
           const vatNumber = normalizeNullableString(input.vatNumber);
           const taxNumber = normalizeNullableString(input.taxNumber);
           const leitwegId = normalizeNullableString(input.leitwegId);
+          // Handle emails: prefer new array format, fallback to single email
+          // At least one email is required
+          let emails: Array<{ label: string; value: string }> | null = null;
+          if (input.emails && input.emails.length > 0) {
+            emails = input.emails;
+          } else if (input.email) {
+            emails = [{ label: "Email", value: input.email }];
+          } else {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "At least one email is required",
+            });
+          }
+          
+          // Handle phone numbers: prefer new array format, fallback to single phone
+          let phoneNumbers: Array<{ label: string; value: string }> | null = null;
+          if (input.phoneNumbers && input.phoneNumbers.length > 0) {
+            phoneNumbers = input.phoneNumbers;
+          } else if (input.phoneNumber || input.phone) {
+            phoneNumbers = [{ label: "Phone", value: input.phoneNumber ?? input.phone ?? "" }];
+          }
+          
+          // Keep single email/phone for backward compatibility
           const email = normalizeNullableString(input.email);
           const phoneNumber = normalizeNullableString(input.phoneNumber ?? input.phone);
           const phone = normalizeNullableString(input.phone ?? input.phoneNumber);
@@ -693,6 +726,8 @@ export const appRouter = router({
             email: email,
             phone: phone,
             phoneNumber: phoneNumber,
+            emails: emails,
+            phoneNumbers: phoneNumbers,
             address: address,
             streetName: streetName,
             streetNumber: streetNumber,
@@ -770,6 +805,16 @@ export const appRouter = router({
         email: z.string().email().nullable().optional(),
         phoneNumber: z.string().nullable().optional(),
         phone: z.string().nullable().optional(),
+        /** Array of email objects with label and value */
+        emails: z.array(z.object({
+          label: z.string().min(1),
+          value: z.string().email(),
+        })).nullable().optional(),
+        /** Array of phone objects with label and value */
+        phoneNumbers: z.array(z.object({
+          label: z.string().min(1),
+          value: z.string().min(1),
+        })).nullable().optional(),
         address: z.string().nullable().optional(),
         latitude: z.string().nullable().optional(),
         longitude: z.string().nullable().optional(),
@@ -796,8 +841,8 @@ export const appRouter = router({
           hasField("city") ||
           hasField("country") ||
           hasField("address");
-        const phoneUpdateRequested = hasField("phoneNumber") || hasField("phone");
-        const emailUpdateRequested = hasField("email");
+        const phoneUpdateRequested = hasField("phoneNumber") || hasField("phone") || hasField("phoneNumbers");
+        const emailUpdateRequested = hasField("email") || hasField("emails");
         const notesUpdateRequested = hasField("notes");
 
         const clientName = normalizeNullableString(data.clientName);
@@ -810,6 +855,23 @@ export const appRouter = router({
         const vatNumber = normalizeNullableString(data.vatNumber);
         const taxNumber = normalizeNullableString(data.taxNumber);
         const leitwegId = normalizeNullableString(data.leitwegId);
+        // Handle emails: prefer new array format, fallback to single email
+        let emails: Array<{ label: string; value: string }> | null | undefined = undefined;
+        if (hasField("emails")) {
+          emails = data.emails ?? null;
+        } else if (emailUpdateRequested && data.email) {
+          emails = [{ label: "Email", value: data.email }];
+        }
+        
+        // Handle phone numbers: prefer new array format, fallback to single phone
+        let phoneNumbers: Array<{ label: string; value: string }> | null | undefined = undefined;
+        if (hasField("phoneNumbers")) {
+          phoneNumbers = data.phoneNumbers ?? null;
+        } else if (phoneUpdateRequested && (data.phoneNumber || data.phone)) {
+          phoneNumbers = [{ label: "Phone", value: data.phoneNumber ?? data.phone ?? "" }];
+        }
+        
+        // Keep single email/phone for backward compatibility
         const email = normalizeNullableString(data.email);
         const phoneNumber = normalizeNullableString(data.phoneNumber ?? data.phone);
         const phone = normalizeNullableString(data.phone ?? data.phoneNumber);
@@ -837,11 +899,17 @@ export const appRouter = router({
 
         if (emailUpdateRequested) {
           normalizedUpdate.email = email;
+          if (emails !== undefined) {
+            normalizedUpdate.emails = emails;
+          }
         }
 
         if (phoneUpdateRequested) {
           normalizedUpdate.phoneNumber = phoneNumber;
           normalizedUpdate.phone = phone;
+          if (phoneNumbers !== undefined) {
+            normalizedUpdate.phoneNumbers = phoneNumbers;
+          }
         }
 
         if (hasField("streetName")) normalizedUpdate.streetName = streetName;
