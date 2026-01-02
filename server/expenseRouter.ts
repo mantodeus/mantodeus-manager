@@ -13,10 +13,17 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
-import { createPresignedUploadUrl, createPresignedReadUrl, deleteFromStorage, storagePut } from "./storage";
+import {
+  createPresignedUploadUrl,
+  createPresignedReadUrl,
+  deleteFromStorage,
+  storageGet,
+  storagePut,
+} from "./storage";
 import { applyExpenseAutofill } from "./expenses/autofillEngine";
 import { parseReceiptFilename } from "./expenses/filenameParser";
 import { getProposedFields } from "./expenses/proposedFields";
+import { extractGermanTotalFromPdfText } from "./expenses/pdfTotalExtractor";
 import {
   calculateOverallScore,
   getMissingRequiredFields,
@@ -641,10 +648,27 @@ export const expenseRouter = router({
       // Apply autofill only if this is the first receipt
       if (isFirstReceipt) {
         try {
+          let pdfTotalCents: number | null = null;
+          if (input.mimeType.toLowerCase().includes("pdf")) {
+            try {
+              const { data } = await storageGet(input.s3Key);
+              const totalResult = await extractGermanTotalFromPdfText(data);
+              if (totalResult.confidence !== "low") {
+                pdfTotalCents = totalResult.grossAmountCents;
+              }
+            } catch (pdfError) {
+              console.error(
+                `[Expenses] PDF total extraction failed for expense ${input.expenseId}:`,
+                pdfError
+              );
+            }
+          }
+
           await applyExpenseAutofill(input.expenseId, {
             filename: input.originalFilename,
             userId: ctx.user.id,
             isFirstReceipt: true,
+            pdfTotalCents,
           });
         } catch (autofillError) {
           // Log but don't fail - autofill is best-effort
@@ -816,10 +840,26 @@ export const expenseRouter = router({
 
             // Apply autofill (this is the first receipt, so autofill runs)
             try {
+              let pdfTotalCents: number | null = null;
+              if (file.mimeType.toLowerCase().includes("pdf")) {
+                try {
+                  const totalResult = await extractGermanTotalFromPdfText(buffer);
+                  if (totalResult.confidence !== "low") {
+                    pdfTotalCents = totalResult.grossAmountCents;
+                  }
+                } catch (pdfError) {
+                  console.error(
+                    `[Expenses] PDF total extraction failed for expense ${expenseId}:`,
+                    pdfError
+                  );
+                }
+              }
+
               await applyExpenseAutofill(expenseId, {
                 filename: file.filename,
                 userId: ctx.user.id,
                 isFirstReceipt: true,
+                pdfTotalCents,
               });
             } catch (autofillError) {
               // Log but don't fail - autofill is best-effort

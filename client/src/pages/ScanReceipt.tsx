@@ -16,21 +16,18 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { scanDocument, type ScanResult } from "@/lib/documentScanner/scanPipeline";
-import { CornerAdjuster } from "@/components/expenses/CornerAdjuster";
 import { PageHeader } from "@/components/PageHeader";
 
-type ScanState = "idle" | "capturing" | "processing" | "preview" | "uploading";
+type ScanState = "idle" | "preview" | "uploading";
 
 export default function ScanReceipt() {
   const [location, navigate] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadControllerRef = useRef<AbortController | null>(null);
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
-  const [scannedResult, setScannedResult] = useState<ScanResult | null>(null);
   const [originalPreviewUrl, setOriginalPreviewUrl] = useState<string | null>(null);
-  const [showAdjuster, setShowAdjuster] = useState(false);
 
   const searchParams = new URLSearchParams(location.split("?")[1] || "");
   const expenseId = searchParams.get("expenseId")
@@ -57,21 +54,20 @@ export default function ScanReceipt() {
   // Cleanup preview URL on unmount
   useEffect(() => {
     return () => {
-      if (scannedResult?.previewUrl) {
-        URL.revokeObjectURL(scannedResult.previewUrl);
-      }
       if (originalPreviewUrl) {
         URL.revokeObjectURL(originalPreviewUrl);
       }
+      if (uploadControllerRef.current) {
+        uploadControllerRef.current.abort();
+      }
     };
-  }, [scannedResult?.previewUrl, originalPreviewUrl]);
+  }, [originalPreviewUrl]);
 
-  // Timeout helper for scan pipeline
-  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
     return Promise.race([
       promise,
       new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error("Scan timeout")), timeoutMs)
+        setTimeout(() => reject(new Error(message)), timeoutMs)
       ),
     ]);
   };
@@ -100,49 +96,8 @@ export default function ScanReceipt() {
       URL.revokeObjectURL(originalPreviewUrl);
     }
     setOriginalPreviewUrl(URL.createObjectURL(file));
-    setScanState("processing");
+    setScanState("preview");
     setError(null);
-
-    let processedResult: ScanResult | null = null;
-
-    try {
-      console.log("[ScanReceipt] Processing document:", file.name, file.type, file.size);
-      
-      // Best-effort scan with 8s timeout - NEVER block upload
-      try {
-        processedResult = await withTimeout(scanDocument(file), 8000);
-        console.log("[ScanReceipt] Processing complete:", processedResult.blob.size, processedResult.previewUrl);
-      } catch (scanError) {
-        console.error("[ScanReceipt] Scan failed, will use original:", scanError);
-        // Continue with original file - scan is best-effort only
-        processedResult = null;
-      }
-      
-      // Always proceed to preview, even if scan failed
-      if (processedResult) {
-        if (scannedResult?.previewUrl) {
-          URL.revokeObjectURL(scannedResult.previewUrl);
-        }
-        setScannedResult(processedResult);
-        setShowAdjuster(processedResult.confidence < 0.5);
-      } else {
-        // Use original file if scan failed
-        setScannedResult(null);
-        setShowAdjuster(false);
-      }
-      setScanState("preview");
-    } catch (err) {
-      console.error("[ScanReceipt] Unexpected error:", err);
-      // Even on unexpected error, proceed with original file
-      setScannedResult(null);
-      setShowAdjuster(false);
-      setScanState("preview");
-    } finally {
-      // Ensure loading state is always cleared
-      if (scanState === "processing") {
-        // State will be set above, but ensure we're not stuck
-      }
-    }
 
     // Reset input
     e.target.value = "";
@@ -160,10 +115,7 @@ export default function ScanReceipt() {
     setError(null);
 
     try {
-      // Use scanned result if available, otherwise use original file
-      const fileToUpload = scannedResult
-        ? new File([scannedResult.blob], "scan.jpg", { type: "image/jpeg" })
-        : originalFile;
+      const fileToUpload = originalFile;
 
       const { uploadUrl, s3Key } = await uploadReceiptMutation.mutateAsync({
         expenseId,
@@ -172,30 +124,36 @@ export default function ScanReceipt() {
         fileSize: fileToUpload.size,
       });
 
+      const controller = new AbortController();
+      uploadControllerRef.current = controller;
+      const uploadTimeoutId = window.setTimeout(() => controller.abort(), 25000);
+
       const uploadResponse = await fetch(uploadUrl, {
         method: "PUT",
         headers: {
           "Content-Type": fileToUpload.type,
         },
         body: fileToUpload,
-      });
+        signal: controller.signal,
+      }).finally(() => window.clearTimeout(uploadTimeoutId));
 
       if (!uploadResponse.ok) {
         throw new Error(`Storage upload failed (${uploadResponse.status})`);
       }
 
-      await registerReceiptMutation.mutateAsync({
-        expenseId,
-        s3Key,
-        mimeType: fileToUpload.type,
-        originalFilename: originalFile.name,
-        fileSize: fileToUpload.size,
-      });
+      await withTimeout(
+        registerReceiptMutation.mutateAsync({
+          expenseId,
+          s3Key,
+          mimeType: fileToUpload.type,
+          originalFilename: originalFile.name,
+          fileSize: fileToUpload.size,
+        }),
+        20000,
+        "Registering receipt timed out. Please try again."
+      );
 
-      toast.success(scannedResult ? "Receipt scanned and uploaded successfully" : "Receipt uploaded successfully");
-      if (scannedResult?.previewUrl) {
-        URL.revokeObjectURL(scannedResult.previewUrl);
-      }
+      toast.success("Receipt uploaded successfully");
       if (originalPreviewUrl) {
         URL.revokeObjectURL(originalPreviewUrl);
       }
@@ -204,31 +162,28 @@ export default function ScanReceipt() {
       navigate(`/expenses/${expenseId}`);
     } catch (err) {
       console.error("[ScanReceipt] Upload error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to upload receipt";
+      const errorMessage =
+        err instanceof DOMException && err.name === "AbortError"
+          ? "Upload timed out. Please try again."
+          : err instanceof Error
+          ? err.message
+          : "Failed to upload receipt";
       setError(errorMessage);
       setScanState("preview");
       toast.error(errorMessage);
     } finally {
-      // Ensure loading state is always cleared
-      if (scanState === "uploading") {
-        // State will be set above, but ensure we're not stuck
-      }
+      uploadControllerRef.current = null;
     }
   };
 
   const handleRetake = () => {
     // Cleanup preview URL
-    if (scannedResult?.previewUrl) {
-      URL.revokeObjectURL(scannedResult.previewUrl);
-    }
-    setScannedResult(null);
     setOriginalFile(null);
     if (originalPreviewUrl) {
       URL.revokeObjectURL(originalPreviewUrl);
     }
     setOriginalPreviewUrl(null);
     setError(null);
-    setShowAdjuster(false);
     setScanState("idle");
     // Reset input
     if (fileInputRef.current) {
@@ -276,8 +231,7 @@ export default function ScanReceipt() {
           <CardTitle>Document Scanner</CardTitle>
           <CardDescription>
             {scanState === "idle" && "Capture a receipt using your camera"}
-            {scanState === "processing" && "Processing document..."}
-            {scanState === "preview" && "Review scan before saving"}
+            {scanState === "preview" && "Review receipt before saving"}
             {scanState === "uploading" && "Uploading receipt..."}
           </CardDescription>
         </CardHeader>
@@ -320,78 +274,30 @@ export default function ScanReceipt() {
             </div>
           )}
 
-          {scanState === "processing" && (
-            <div className="flex flex-col items-center justify-center py-12 space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Processing document...
-              </p>
-              <p className="text-xs text-muted-foreground text-center">
-                Detecting document edges and correcting perspective
-              </p>
-            </div>
-          )}
-
           {scanState === "preview" && (
             <div className="space-y-4">
-              {scannedResult ? (
+              {originalPreviewUrl ? (
                 <>
-                  {showAdjuster && originalFile && originalPreviewUrl ? (
-                    <CornerAdjuster
-                      file={originalFile}
-                      imageUrl={originalPreviewUrl}
-                      initialCorners={scannedResult.corners}
-                      onApply={(result) => {
-                        if (scannedResult.previewUrl) {
-                          URL.revokeObjectURL(scannedResult.previewUrl);
-                        }
-                        setScannedResult(result);
-                        setShowAdjuster(false);
-                      }}
-                      onCancel={() => setShowAdjuster(false)}
-                    />
-                  ) : (
                   <div className="relative w-full border rounded-lg overflow-hidden bg-muted">
                     <img
-                      src={scannedResult.previewUrl}
+                      src={originalPreviewUrl}
                       alt="Scanned receipt"
                       className="w-full h-auto max-h-[600px] object-contain"
                       onError={(e) => {
-                        console.error("[ScanReceipt] Preview image failed to load:", scannedResult.previewUrl);
+                        console.error("[ScanReceipt] Preview image failed to load:", originalPreviewUrl);
                         setError("Failed to load preview image");
                       }}
                     />
-                  </div>
-                  )}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      Confidence:{" "}
-                      {scannedResult.confidence >= 0.7
-                        ? "High"
-                        : scannedResult.confidence >= 0.5
-                        ? "Medium"
-                        : "Low"}
-                    </span>
-                    <span>{Math.round(scannedResult.confidence * 100)}%</span>
                   </div>
                   <div className="flex gap-2">
                     <Button
                       onClick={handleUseScan}
                       className="flex-1"
                       size="lg"
-                      disabled={showAdjuster || !expenseId}
+                      disabled={!expenseId}
                     >
                       <Check className="h-5 w-5 mr-2" />
-                      {scannedResult ? "Use scan" : "Upload original"}
-                    </Button>
-                    <Button
-                      onClick={() => setShowAdjuster(true)}
-                      variant="outline"
-                      className="flex-1"
-                      size="lg"
-                      disabled={!originalPreviewUrl}
-                    >
-                      Adjust corners
+                      Use photo
                     </Button>
                     <Button
                       onClick={handleRetake}
@@ -408,7 +314,7 @@ export default function ScanReceipt() {
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
                   <AlertCircle className="h-12 w-12 text-destructive" />
                   <p className="text-sm text-muted-foreground">
-                    No scanned result available. Please try again.
+                    No preview available. Please try again.
                   </p>
                   <Button onClick={handleRetake} variant="outline">
                     <RotateCcw className="h-4 w-4 mr-2" />
@@ -425,6 +331,16 @@ export default function ScanReceipt() {
               <p className="text-sm text-muted-foreground">
                 Uploading receipt...
               </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  uploadControllerRef.current?.abort();
+                  setError("Upload canceled. Please try again.");
+                  setScanState("preview");
+                }}
+              >
+                Cancel upload
+              </Button>
             </div>
           )}
         </CardContent>

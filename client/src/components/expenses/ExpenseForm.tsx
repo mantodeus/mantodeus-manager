@@ -11,19 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { CategorySelect, type ExpenseCategory } from "./CategorySelect";
 import { CurrencySelect } from "./CurrencySelect";
 import { ReceiptUploadZone } from "./ReceiptUploadZone";
 import { ReceiptPreviewList } from "./ReceiptPreviewList";
-import { SuggestionBadge } from "./SuggestionBadge";
-import { SuggestionControls } from "./SuggestionControls";
 import { formatCurrency } from "@/lib/currencyFormat";
 import { Sparkles } from "@/components/ui/Icon";
 
@@ -83,10 +74,8 @@ interface ExpenseFormProps {
 export function ExpenseForm({
   initialData,
   files = [],
-  suggestions = [],
   autofilledFields = [],
   onSave,
-  onAcceptSuggestion,
   onMarkInOrder,
   onVoid,
   onDelete,
@@ -94,7 +83,6 @@ export function ExpenseForm({
   onReceiptDelete,
   onReceiptView,
   isSaving = false,
-  isAcceptingSuggestion = false,
   isMarkingInOrder = false,
   isVoiding = false,
   isDeleting = false,
@@ -117,7 +105,6 @@ export function ExpenseForm({
 
   const [deletingReceiptId, setDeletingReceiptId] = useState<number | null>(null);
   const [viewingReceiptId, setViewingReceiptId] = useState<number | null>(null);
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [fieldEdited, setFieldEdited] = useState<Set<string>>(new Set());
 
   const descriptionRef = useRef<HTMLInputElement>(null);
@@ -126,40 +113,9 @@ export function ExpenseForm({
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
-      // Reset dismissed suggestions and field edited state when data changes
-      setDismissedSuggestions(new Set());
       setFieldEdited(new Set());
     }
   }, [initialData]);
-
-  // Filter visible suggestions (not dismissed, field not manually edited)
-  const visibleSuggestions = suggestions.filter(
-    (s) => !dismissedSuggestions.has(s.field) && !fieldEdited.has(s.field)
-  );
-
-  const handleAcceptSuggestion = (suggestion: ExpenseSuggestion) => {
-    if (onAcceptSuggestion) {
-      onAcceptSuggestion(suggestion.field, suggestion.value);
-    }
-    // Remove from dismissed (in case it was dismissed before)
-    setDismissedSuggestions((prev) => {
-      const next = new Set(prev);
-      next.delete(suggestion.field);
-      return next;
-    });
-  };
-
-  const handleDismissSuggestion = (field: string) => {
-    setDismissedSuggestions((prev) => new Set(prev).add(field));
-  };
-
-  const handleAcceptAllSuggestions = () => {
-    visibleSuggestions.forEach((suggestion) => {
-      if (onAcceptSuggestion) {
-        onAcceptSuggestion(suggestion.field, suggestion.value);
-      }
-    });
-  };
 
   // Track when fields are manually edited (removes autofill indicator)
   const handleCategoryChange = (value: ExpenseCategory) => {
@@ -195,24 +151,11 @@ export function ExpenseForm({
     return autofilledFields.includes(fieldName) && !fieldEdited.has(fieldName);
   };
 
-  // Autofill indicator component
   const AutofillIndicator = ({ fieldName }: { fieldName: string }) => {
     if (!isAutofilled(fieldName)) return null;
 
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="outline" className="text-xs gap-1">
-              <Sparkles className="h-3 w-3" />
-              Autofilled
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>This field was automatically filled based on filename or previous expenses</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Sparkles className="h-3.5 w-3.5 text-muted-foreground" aria-label="Autofilled" />
     );
   };
 
@@ -269,12 +212,14 @@ export function ExpenseForm({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 pt-4 pb-24 max-w-[640px] mx-auto w-full space-y-6">
       {/* Basic Information */}
       <div className="space-y-4">
         <div className="grid gap-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="description">Description</Label>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="description" className="break-words">
+              Description
+            </Label>
             <AutofillIndicator fieldName="description" />
           </div>
           <Input
@@ -285,37 +230,16 @@ export function ExpenseForm({
               handleDescriptionChange(e.target.value || null)
             }
             placeholder="e.g., Office supplies, Travel expenses..."
+            className="w-full"
           />
         </div>
 
         <div className="grid gap-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="category">Category</Label>
-            <div className="flex items-center gap-2">
-              <AutofillIndicator fieldName="category" />
-              {visibleSuggestions.find((s) => s.field === "category") && (
-                <div className="flex items-center gap-2">
-                  <SuggestionBadge
-                    confidence={
-                      visibleSuggestions.find((s) => s.field === "category")?.confidence || 0
-                    }
-                    reason={
-                      visibleSuggestions.find((s) => s.field === "category")?.reason || null
-                    }
-                  />
-                  <SuggestionControls
-                    onAccept={() => {
-                      const suggestion = visibleSuggestions.find((s) => s.field === "category");
-                      if (suggestion) {
-                        handleAcceptSuggestion(suggestion);
-                      }
-                    }}
-                    onDismiss={() => handleDismissSuggestion("category")}
-                    isAccepting={isAcceptingSuggestion}
-                  />
-                </div>
-              )}
-            </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="category" className="break-words">
+              Category
+            </Label>
+            <AutofillIndicator fieldName="category" />
           </div>
           <CategorySelect
             value={formData.category}
@@ -323,13 +247,15 @@ export function ExpenseForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-4">
           <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="grossAmount">Gross Amount</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="grossAmount" className="break-words">
+                Gross Amount
+              </Label>
               <AutofillIndicator fieldName="grossAmountCents" />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 min-w-0">
               <Input
                 ref={grossAmountRef}
                 id="grossAmount"
@@ -342,42 +268,23 @@ export function ExpenseForm({
                   handleGrossAmountChange(value);
                 }}
                 placeholder="0.00"
+                className="w-full min-w-0"
               />
-              <CurrencySelect
-                value={formData.currency}
-                onValueChange={(value) => setFormData({ ...formData, currency: value })}
-              />
+              <div className="w-full sm:w-36">
+                <CurrencySelect
+                  value={formData.currency}
+                  onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                />
+              </div>
             </div>
           </div>
 
           <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="businessUsePct">Business Use (%)</Label>
-              <div className="flex items-center gap-2">
-                <AutofillIndicator fieldName="businessUsePct" />
-                {visibleSuggestions.find((s) => s.field === "businessUsePct") && (
-                  <div className="flex items-center gap-2">
-                    <SuggestionBadge
-                      confidence={
-                        visibleSuggestions.find((s) => s.field === "businessUsePct")?.confidence || 0
-                      }
-                      reason={
-                        visibleSuggestions.find((s) => s.field === "businessUsePct")?.reason || null
-                      }
-                    />
-                    <SuggestionControls
-                      onAccept={() => {
-                        const suggestion = visibleSuggestions.find((s) => s.field === "businessUsePct");
-                        if (suggestion) {
-                          handleAcceptSuggestion(suggestion);
-                        }
-                      }}
-                      onDismiss={() => handleDismissSuggestion("businessUsePct")}
-                      isAccepting={isAcceptingSuggestion}
-                    />
-                  </div>
-                )}
-              </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="businessUsePct" className="break-words">
+                Business Use (%)
+              </Label>
+              <AutofillIndicator fieldName="businessUsePct" />
             </div>
             <Input
               id="businessUsePct"
@@ -389,12 +296,13 @@ export function ExpenseForm({
                 const value = parseInt(e.target.value) || 0;
                 handleBusinessUsePctChange(value);
               }}
+              className="w-full"
             />
           </div>
         </div>
 
         <div className="grid gap-2">
-          <Label>Deductible Amount</Label>
+          <Label className="break-words">Deductible Amount</Label>
           <div className="text-lg font-medium">
             {formatCurrency(deductibleCents / 100, formData.currency)}
           </div>
@@ -404,7 +312,9 @@ export function ExpenseForm({
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="notes">Notes (Optional)</Label>
+          <Label htmlFor="notes" className="break-words">
+            Notes (Optional)
+          </Label>
           <Textarea
             id="notes"
             value={formData.notes || ""}
@@ -413,6 +323,7 @@ export function ExpenseForm({
             }
             placeholder="Additional notes about this expense..."
             rows={3}
+            className="w-full"
           />
         </div>
       </div>
@@ -438,7 +349,7 @@ export function ExpenseForm({
                 })
               }
             />
-            <Label htmlFor="paid" className="cursor-pointer">
+            <Label htmlFor="paid" className="cursor-pointer break-words">
               Mark as paid
             </Label>
           </div>
@@ -470,67 +381,46 @@ export function ExpenseForm({
         )}
       </div>
 
-      {/* Accept All Suggestions */}
-      {visibleSuggestions.length >= 2 && (
-        <>
-          <Separator />
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md border border-dashed">
-            <div>
-              <p className="text-sm font-medium">Multiple suggestions available</p>
-              <p className="text-xs text-muted-foreground">
-                Accept all suggestions at once
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleAcceptAllSuggestions}
-              disabled={isAcceptingSuggestion}
-            >
-              Accept all suggestions
-            </Button>
-          </div>
-        </>
-      )}
-
       {/* Actions */}
       {showActions && (
         <>
           <Separator />
-          <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={handleSave}
-              disabled={isSaving || formData.grossAmountCents <= 0}
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-            {canMarkInOrder && onMarkInOrder && (
+          <div className="sticky bottom-0 z-10 -mx-4 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] bg-background/95 backdrop-blur border-t md:static md:mx-0 md:px-0 md:pt-0 md:pb-0 md:border-0">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
-                variant="outline"
-                onClick={onMarkInOrder}
-                disabled={isMarkingInOrder}
+                onClick={handleSave}
+                disabled={isSaving || formData.grossAmountCents <= 0}
               >
-                {isMarkingInOrder ? "Marking..." : "Mark as In Order"}
+                {isSaving ? "Saving..." : "Save"}
               </Button>
-            )}
-            {canVoid && onVoid && (
-              <Button
-                variant="outline"
-                onClick={onVoid}
-                disabled={isVoiding}
-              >
-                {isVoiding ? "Voiding..." : "Void"}
-              </Button>
-            )}
-            {canDelete && onDelete && (
-              <Button
-                variant="destructive"
-                onClick={onDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
-              </Button>
-            )}
+              {canMarkInOrder && onMarkInOrder && (
+                <Button
+                  variant="outline"
+                  onClick={onMarkInOrder}
+                  disabled={isMarkingInOrder}
+                >
+                  {isMarkingInOrder ? "Marking..." : "Mark as In Order"}
+                </Button>
+              )}
+              {canVoid && onVoid && (
+                <Button
+                  variant="outline"
+                  onClick={onVoid}
+                  disabled={isVoiding}
+                >
+                  {isVoiding ? "Voiding..." : "Void"}
+                </Button>
+              )}
+              {canDelete && onDelete && (
+                <Button
+                  variant="destructive"
+                  onClick={onDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              )}
+            </div>
           </div>
         </>
       )}
