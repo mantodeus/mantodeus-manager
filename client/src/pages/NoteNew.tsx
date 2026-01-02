@@ -38,7 +38,7 @@ export default function NoteNew() {
   const [, navigate] = useLocation();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [selectedJobId, setSelectedJobId] = useState<string>("none");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("none");
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
   const [files, setFiles] = useState<NoteFile[]>([]);
   const [noteId, setNoteId] = useState<number | null>(null);
@@ -47,7 +47,7 @@ export default function NoteNew() {
 
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
-  const { data: jobs = [] } = trpc.jobs.list.useQuery();
+  const { data: projects = [] } = trpc.projects.list.useQuery();
 
   // Generate stable client creation key for idempotent creation (once per component mount)
   const clientCreationKey = useMemo(() => {
@@ -72,7 +72,7 @@ export default function NoteNew() {
   // Debounce values for autosave (increased to 2000ms for mobile typing latency)
   const debouncedTitle = useDebounce(title, 2000);
   const debouncedContent = useDebounce(content, 2000);
-  const debouncedJobId = useDebounce(selectedJobId, 2000);
+  const debouncedProjectId = useDebounce(selectedProjectId, 2000);
   const debouncedContactId = useDebounce(selectedContactId, 2000);
 
   const createNoteMutation = trpc.notes.create.useMutation({
@@ -88,7 +88,7 @@ export default function NoteNew() {
       lastSavedContentRef.current = {
         title: debouncedTitle.trim() || "Untitled Note",
         content: debouncedContent.trim() || "",
-        jobId: debouncedJobId,
+        jobId: debouncedProjectId,
         contactId: debouncedContactId,
       };
       
@@ -133,7 +133,7 @@ export default function NoteNew() {
       lastSavedContentRef.current = {
         title: debouncedTitle.trim() || "Untitled Note",
         content: debouncedContent.trim() || "",
-        jobId: debouncedJobId,
+        jobId: debouncedProjectId,
         contactId: debouncedContactId,
       };
       
@@ -183,7 +183,7 @@ export default function NoteNew() {
     const currentContent = {
       title: debouncedTitle.trim() || "Untitled Note",
       content: debouncedContent.trim() || "",
-      jobId: debouncedJobId,
+      jobId: debouncedProjectId,
       contactId: debouncedContactId,
     };
     
@@ -224,7 +224,7 @@ export default function NoteNew() {
       contactId: currentContent.contactId && currentContent.contactId !== "none" ? parseInt(currentContent.contactId) : undefined,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedTitle, debouncedContent, debouncedJobId, debouncedContactId, noteId]);
+  }, [debouncedTitle, debouncedContent, debouncedProjectId, debouncedContactId, noteId]);
   
   // Separate effect for initial note creation (on first meaningful change)
   useEffect(() => {
@@ -246,12 +246,12 @@ export default function NoteNew() {
     createNoteMutation.mutate({
       title: debouncedTitle.trim() || "Untitled Note",
       content: debouncedContent.trim() || undefined,
-      jobId: debouncedJobId && debouncedJobId !== "none" ? parseInt(debouncedJobId) : undefined,
+      jobId: debouncedProjectId && debouncedProjectId !== "none" ? parseInt(debouncedProjectId) : undefined,
       contactId: debouncedContactId && debouncedContactId !== "none" ? parseInt(debouncedContactId) : undefined,
       clientCreationKey: clientCreationKey,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedTitle, debouncedContent, debouncedJobId, debouncedContactId, clientCreationKey]);
+  }, [debouncedTitle, debouncedContent, debouncedProjectId, debouncedContactId, clientCreationKey]);
 
   const handleSave = async () => {
     const timestamp = new Date().toISOString();
@@ -262,7 +262,7 @@ export default function NoteNew() {
       const result = await createNoteMutation.mutateAsync({
         title: title.trim() || "Untitled Note",
         content: content.trim() || undefined,
-        jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
+        jobId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
         contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
         clientCreationKey: clientCreationKey,
       });
@@ -274,7 +274,7 @@ export default function NoteNew() {
         id: noteId,
         title: title.trim() || "Untitled Note",
         body: content.trim() || undefined,
-        jobId: selectedJobId && selectedJobId !== "none" ? parseInt(selectedJobId) : undefined,
+        jobId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
         contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
       });
       navigate(`/notes/${noteId}`);
@@ -431,11 +431,11 @@ export default function NoteNew() {
           className="flex-1 md:flex-initial"
         >
           <Paperclip className="h-4 w-4 mr-2" />
-          Add Attachment
+          Attachment
         </Button>
         <Select value={selectedContactId} onValueChange={setSelectedContactId}>
-          <SelectTrigger className="flex-1 md:flex-initial md:w-[180px]">
-            <SelectValue placeholder="Link Contact" />
+          <SelectTrigger className="flex-1 md:flex-initial md:w-[140px]">
+            <SelectValue placeholder="Contact" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">No Contact</SelectItem>
@@ -446,15 +446,15 @@ export default function NoteNew() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-          <SelectTrigger className="flex-1 md:flex-initial md:w-[180px]">
-            <SelectValue placeholder="Link Job" />
+        <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+          <SelectTrigger className="flex-1 md:flex-initial md:w-[140px]">
+            <SelectValue placeholder="Project" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">No Job</SelectItem>
-            {jobs.map((job) => (
-              <SelectItem key={job.id} value={job.id.toString()}>
-                {job.title}
+            <SelectItem value="none">No Project</SelectItem>
+            {projects.map((project) => (
+              <SelectItem key={project.id} value={project.id.toString()}>
+                {project.name}
               </SelectItem>
             ))}
           </SelectContent>
