@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Trash2, Copy, Check, Archive, RotateCcw, Trash, Eye, DollarSign, CheckCircle2, XCircle } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Copy, Check, Archive, RotateCcw, Trash, Eye, DollarSign, CheckCircle2, XCircle } from "@/components/ui/Icon";
 
 export type ItemAction =
   | "edit"

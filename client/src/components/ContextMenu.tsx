@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
-import { Edit, Trash2, Check, X } from "lucide-react";
+import { Edit, Trash2, Check, X } from "@/components/ui/Icon";
 
 export type ContextMenuAction = "edit" | "delete" | "select" | "cancel";
 

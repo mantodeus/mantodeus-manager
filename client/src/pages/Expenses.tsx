@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import { Camera, Plus, Loader2, Receipt, Upload } from "@/components/ui/Icon";
+import { Camera, Plus, Loader2, Receipt, Upload, CheckCircle2 } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { ExpenseCard } from "@/components/expenses/ExpenseCard";
 import { ReviewExpenseCard } from "@/components/expenses/ReviewExpenseCard";
@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelectBar, createDeleteAction } from "@/components/MultiSelectBar";
-import { CheckCircle2 } from "lucide-react";
 
 type ExpenseListItem = RouterOutputs["expenses"]["list"][number];
 
