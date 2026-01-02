@@ -638,12 +638,12 @@ export const appRouter = router({
         phone: z.string().optional(),
         /** Array of email objects with label and value */
         emails: z.array(z.object({
-          label: z.string().min(1),
+          label: z.string().optional(),
           value: z.string().email(),
         })).optional(),
         /** Array of phone objects with label and value */
         phoneNumbers: z.array(z.object({
-          label: z.string().min(1),
+          label: z.string().optional(),
           value: z.string().min(1),
         })).optional(),
         address: z.string().optional(),
@@ -664,25 +664,55 @@ export const appRouter = router({
           const taxNumber = normalizeNullableString(input.taxNumber);
           const leitwegId = normalizeNullableString(input.leitwegId);
           // Handle emails: prefer new array format, fallback to single email
-          // At least one email is required
+          // Filter out empty emails and ensure at least one valid email exists
           let emails: Array<{ label: string; value: string }> | null = null;
           if (input.emails && input.emails.length > 0) {
-            emails = input.emails;
-          } else if (input.email) {
-            emails = [{ label: "Email", value: input.email }];
-          } else {
+            // Filter out entries with empty values and normalize labels
+            const validEmails = input.emails
+              .filter(e => e.value && e.value.trim().length > 0)
+              .map(e => ({
+                label: (e.label?.trim() || "Email"),
+                value: e.value.trim(),
+              }));
+            if (validEmails.length > 0) {
+              emails = validEmails;
+            }
+          }
+          
+          // Fallback to single email field if no valid emails in array
+          if (!emails && input.email && input.email.trim()) {
+            emails = [{ label: "Email", value: input.email.trim() }];
+          }
+          
+          // At least one email is required
+          if (!emails || emails.length === 0) {
             throw new TRPCError({
               code: "BAD_REQUEST",
-              message: "At least one email is required",
+              message: "At least one valid email is required",
             });
           }
           
           // Handle phone numbers: prefer new array format, fallback to single phone
           let phoneNumbers: Array<{ label: string; value: string }> | null = null;
           if (input.phoneNumbers && input.phoneNumbers.length > 0) {
-            phoneNumbers = input.phoneNumbers;
-          } else if (input.phoneNumber || input.phone) {
-            phoneNumbers = [{ label: "Phone", value: input.phoneNumber ?? input.phone ?? "" }];
+            // Filter out entries with empty values and normalize labels
+            const validPhones = input.phoneNumbers
+              .filter(p => p.value && p.value.trim().length > 0)
+              .map(p => ({
+                label: (p.label?.trim() || "Phone"),
+                value: p.value.trim(),
+              }));
+            if (validPhones.length > 0) {
+              phoneNumbers = validPhones;
+            }
+          }
+          
+          // Fallback to single phone field if no valid phones in array
+          if (!phoneNumbers && (input.phoneNumber || input.phone)) {
+            const phoneValue = (input.phoneNumber || input.phone || "").trim();
+            if (phoneValue) {
+              phoneNumbers = [{ label: "Phone", value: phoneValue }];
+            }
           }
           
           // Keep single email/phone for backward compatibility
@@ -807,12 +837,12 @@ export const appRouter = router({
         phone: z.string().nullable().optional(),
         /** Array of email objects with label and value */
         emails: z.array(z.object({
-          label: z.string().min(1),
+          label: z.string().optional(),
           value: z.string().email(),
         })).nullable().optional(),
         /** Array of phone objects with label and value */
         phoneNumbers: z.array(z.object({
-          label: z.string().min(1),
+          label: z.string().optional(),
           value: z.string().min(1),
         })).nullable().optional(),
         address: z.string().nullable().optional(),
@@ -858,17 +888,42 @@ export const appRouter = router({
         // Handle emails: prefer new array format, fallback to single email
         let emails: Array<{ label: string; value: string }> | null | undefined = undefined;
         if (hasField("emails")) {
-          emails = data.emails ?? null;
+          if (data.emails && data.emails.length > 0) {
+            // Filter out entries with empty values and normalize labels
+            const validEmails = data.emails
+              .filter((e: { label?: string; value: string }) => e.value && e.value.trim().length > 0)
+              .map((e: { label?: string; value: string }) => ({
+                label: (e.label?.trim() || "Email"),
+                value: e.value.trim(),
+              }));
+            emails = validEmails.length > 0 ? validEmails : null;
+          } else {
+            emails = data.emails ?? null;
+          }
         } else if (emailUpdateRequested && data.email) {
-          emails = [{ label: "Email", value: data.email }];
+          emails = [{ label: "Email", value: data.email.trim() }];
         }
         
         // Handle phone numbers: prefer new array format, fallback to single phone
         let phoneNumbers: Array<{ label: string; value: string }> | null | undefined = undefined;
         if (hasField("phoneNumbers")) {
-          phoneNumbers = data.phoneNumbers ?? null;
+          if (data.phoneNumbers && data.phoneNumbers.length > 0) {
+            // Filter out entries with empty values and normalize labels
+            const validPhones = data.phoneNumbers
+              .filter((p: { label?: string; value: string }) => p.value && p.value.trim().length > 0)
+              .map((p: { label?: string; value: string }) => ({
+                label: (p.label?.trim() || "Phone"),
+                value: p.value.trim(),
+              }));
+            phoneNumbers = validPhones.length > 0 ? validPhones : null;
+          } else {
+            phoneNumbers = data.phoneNumbers ?? null;
+          }
         } else if (phoneUpdateRequested && (data.phoneNumber || data.phone)) {
-          phoneNumbers = [{ label: "Phone", value: data.phoneNumber ?? data.phone ?? "" }];
+          const phoneValue = (data.phoneNumber || data.phone || "").trim();
+          if (phoneValue) {
+            phoneNumbers = [{ label: "Phone", value: phoneValue }];
+          }
         }
         
         // Keep single email/phone for backward compatibility
