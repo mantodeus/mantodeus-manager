@@ -1,0 +1,48 @@
+!lm4KuaadW
+
+bash scripts/deploy-prod.sh
+
+rm -rf node_modules && npm install
+
+cd /srv/customer/sites/manager.mantodeus.com
+git fetch origin
+git pull origin main
+npx pnpm install
+npx pnpm run db:migrate
+npm run build
+npx pm2 restart mantodeus-manager
+
+npx pm2 start dist/index.js --name mantodeus-manager
+npx pm2 save
+
+cd /srv/customer/sites/manager.mantodeus.com
+rm -rf dist
+tar -xzf /tmp/dist.tar.gz
+npx pm2 restart mantodeus-manager --update-env || npx pm2 start dist/index.js --name mantodeus-manager
+rm /tmp/dist.tar.gz
+
+npx pm2 stop mantodeus-manager
+npx pm2 start ecosystem.config.js
+
+mysql -u bm9k66_mantodeus -p -h bm9k66.myd.infomaniak.com bm9k66_mantodeus_manager
+
+bash infra/deploy/deploy.sh
+
+git reset --hard origin/main
+
+git merge back
+git merge front
+git push
+
+npx pm2 logs mantodeus-manager --lines 200
+
+set +H
+export DATABASE_URL='mysql://bm9k66_mantodeus:!lm4KuaadW@bm9k66.myd.infomaniak.com:3306/bm9k66_mantodeus_manager'
+npx pnpm run db:migrate
+
+.\scripts\build-local.ps1
+.\scripts\build-local.ps1 -SkipInstall
+
+bash scripts/deploy-from-archive.sh
+
+nohup npm install > npm-install.log 2>&1 &
