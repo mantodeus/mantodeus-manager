@@ -60,16 +60,16 @@ export function InvoiceUploadReviewDialog({
   const handlePreviewPDF = async () => {
     if (!invoiceId || !invoice) return;
     
-    // For uploaded invoices, open file directly via file-proxy
+    // For uploaded invoices, open file directly via file-proxy in new tab (native browser preview)
     if (invoice.source === "uploaded" && invoice.originalPdfS3Key) {
       const fileName = invoice.invoiceName || invoice.originalFileName || invoice.invoiceNumber || "invoice.pdf";
       const fileUrl = `/api/file-proxy?key=${encodeURIComponent(invoice.originalPdfS3Key)}&filename=${encodeURIComponent(fileName)}`;
-      // Open in new tab/window for direct access, download, and share
+      // Open in new tab - browser will show native preview with URL bar, close, and share options
       window.open(fileUrl, '_blank');
       return;
     }
     
-    // For created invoices, generate PDF and open directly
+    // For created invoices, generate PDF and open in new tab (native browser preview)
     try {
       const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
       if (!session?.access_token) {
@@ -89,7 +89,7 @@ export function InvoiceUploadReviewDialog({
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      // Open in new tab/window for direct access
+      // Open in new tab - browser will show native preview with URL bar, close, and share options
       window.open(url, '_blank');
     } catch (error) {
       console.error('Preview error:', error);
@@ -237,9 +237,9 @@ export function InvoiceUploadReviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
         "sm:max-w-[500px]",
-        isMobile && "pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+        isMobile && "!grid-rows-[auto_1fr_auto] max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)]"
       )}>
-        <DialogHeader>
+        <DialogHeader className={cn("flex-shrink-0", isMobile && "px-0")}>
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
@@ -258,7 +258,10 @@ export function InvoiceUploadReviewDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className={cn(
+          "space-y-4 py-4",
+          isMobile && "overflow-y-auto min-h-0 pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+        )}>
           <div className="space-y-2">
             <Label htmlFor="client">Client</Label>
             <Select value={clientId} onValueChange={setClientId}>
@@ -312,7 +315,9 @@ export function InvoiceUploadReviewDialog({
           </div>
         </div>
 
-        <DialogFooter className={isMobile ? "flex-col gap-2" : ""}>
+        <DialogFooter className={cn(
+          isMobile ? "flex-col gap-2 flex-shrink-0" : ""
+        )}>
           <div className={isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"}>
             <Button 
               onClick={handleSave} 

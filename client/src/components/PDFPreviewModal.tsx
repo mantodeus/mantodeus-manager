@@ -1,10 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, X } from "@/components/ui/Icon";
+import { Download, X, Share2 } from "@/components/ui/Icon";
 import { useEffect, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { toast } from "sonner";
 
 // Set up the PDF worker from node_modules
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -80,6 +81,53 @@ export function PDFPreviewModal({
     }
   };
 
+  const handleShare = async () => {
+    if (!downloadUrl) return;
+    
+    // Use Web Share API if available (mobile)
+    if (navigator.share) {
+      try {
+        const response = await fetch(downloadUrl);
+        if (!response.ok) {
+          throw new Error("Failed to fetch PDF");
+        }
+        const blob = await response.blob();
+        const file = new File([blob], fileName, { type: "application/pdf" });
+        
+        await navigator.share({
+          title: fileName,
+          files: [file],
+        });
+      } catch (error) {
+        // If share fails or is cancelled, try sharing the URL
+        if (error instanceof Error && error.name !== "AbortError") {
+          try {
+            await navigator.share({
+              title: fileName,
+              text: fileName,
+              url: downloadUrl,
+            });
+          } catch (shareError) {
+            // Fall back to copying URL
+            handleCopyUrl();
+          }
+        }
+      }
+    } else {
+      // Fall back to copying URL to clipboard
+      handleCopyUrl();
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(downloadUrl);
+      toast.success("Link copied to clipboard");
+    } catch (error) {
+      toast.error("Failed to copy link");
+    }
+  };
+
   const contentClassName = fullScreen
     ? "w-[100vw] h-[100vh] max-w-none max-h-none rounded-none p-0 flex flex-col"
     : "max-w-4xl max-h-[90vh] flex flex-col";
@@ -91,6 +139,10 @@ export function PDFPreviewModal({
           <div className="flex items-center justify-between gap-3">
             <DialogTitle className="truncate">{fileName}</DialogTitle>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handleShare}>
+                <Share2 className="w-4 h-4" />
+                <span className="sr-only">Share</span>
+              </Button>
               <Button variant="ghost" size="icon" onClick={handleDownload}>
                 <Download className="w-4 h-4" />
                 <span className="sr-only">Download</span>

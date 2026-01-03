@@ -205,6 +205,17 @@
   #root svg[stroke="currentColor"] {
     stroke-width: 1.2;
   }
+
+  /* Global button hover icon contrast - icons inherit text color which changes on hover */
+  /* This ensures icons change color when button background changes on hover */
+  button:hover:not(:disabled) svg,
+  [role="button"]:hover:not([aria-disabled="true"]) svg,
+  [type="button"]:hover:not(:disabled) svg,
+  [type="submit"]:hover:not(:disabled) svg,
+  [type="reset"]:hover:not(:disabled) svg,
+  a[href]:hover svg {
+    transition: color 150ms ease-out;
+  }
 }
 
 @layer utilities {
@@ -298,8 +309,8 @@
   .glass-panel {
     position: relative;
     border: 1px solid var(--border);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 
@@ -312,30 +323,58 @@
     z-index: -1;
   }
 
-  /* Increase opacity on desktop to match mobile visibility */
+  /* Increase opacity and blur on desktop for better readability */
   @media (min-width: 768px) {
     .glass-panel::before {
       opacity: 0.98;
+    }
+    .glass-panel {
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
+    }
+  }
+
+  /* Popover and Select components - ensure dark background with blur */
+  [data-slot="popover-content"],
+  [data-slot="select-content"],
+  [data-slot="context-menu-content"],
+  [data-slot="menubar-content"],
+  [data-slot="navigation-menu-content"] {
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  /* Increase blur on desktop for popover/select components */
+  @media (min-width: 768px) {
+    [data-slot="popover-content"],
+    [data-slot="select-content"],
+    [data-slot="context-menu-content"],
+    [data-slot="menubar-content"],
+    [data-slot="navigation-menu-content"] {
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
     }
   }
 
   /* Glass context menu - Mantodeus design language */
   .glass-context-menu {
-    background: rgba(15, 18, 25, 0.72);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(15, 18, 25, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 14px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
     padding: 8px;
     min-width: 180px;
     animation: contextMenuIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
-  /* Increase opacity on desktop to match mobile visibility */
+  /* Increase opacity and blur on desktop for better readability */
   @media (min-width: 768px) {
     .glass-context-menu {
-      background: rgba(15, 18, 25, 0.92);
+      background: rgba(15, 18, 25, 0.98);
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
     }
   }
 
@@ -403,13 +442,22 @@
 
   /* Multi-select bar - glass container (tool tray, not warning panel) */
   .multi-select-bar {
-    background: rgba(15, 18, 25, 0.72);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(15, 18, 25, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
     padding: 14px;
+  }
+
+  /* Increase opacity and blur on desktop for better readability */
+  @media (min-width: 768px) {
+    .multi-select-bar {
+      background: rgba(15, 18, 25, 0.98);
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
+    }
   }
 
   /* Selected item indication - quiet, not glowing */
@@ -544,6 +592,14 @@
       :root {
         --bottom-tab-extra-offset: 12px;
       }
+    }
+  }
+
+  /* Ensure dialogs on mobile account for bottom tab bar */
+  @media (max-width: 767px) {
+    [data-slot="dialog-content"] {
+      max-height: calc(100vh - var(--bottom-safe-area, 0px) - 2rem) !important;
+      margin-bottom: calc(var(--bottom-safe-area, 0px) + 1rem) !important;
     }
   }
 

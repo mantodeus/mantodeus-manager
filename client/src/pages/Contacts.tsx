@@ -29,14 +29,37 @@ import { trpc } from "@/lib/trpc";
 import { Building2, Loader2, Mail, MapPin, Phone, Plus, Search, User, Users, X, ArrowLeft, Edit } from "@/components/ui/Icon";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { PageHeader } from "@/components/PageHeader";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { SlidersHorizontal } from "@/components/ui/Icon";
+
+type FilterState = {
+  time: string; // "all" | "2024" | "2024-10" (year-month format)
+  status: "active" | "archived" | "deleted" | "all";
+};
+
+const defaultFilters: FilterState = {
+  time: "all",
+  status: "active",
+};
+
+const monthDisplayNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
 export default function Contacts() {
   const [location, setLocation] = useLocation();
@@ -84,7 +107,22 @@ export default function Contacts() {
 
   const utils = trpc.useUtils();
   const { data: activeContactsData, isLoading: activeLoading } = trpc.contacts.list.useQuery();
+  const { data: archivedContacts = [] } = trpc.contacts.listArchived.useQuery();
+  const { data: trashedContacts = [] } = trpc.contacts.listTrashed.useQuery();
   const activeContacts = Array.isArray(activeContactsData) ? activeContactsData : [];
+  
+  // Combine all contacts for filtering
+  const allContacts = useMemo(() => {
+    const active = activeContacts.map(contact => ({ ...contact, _status: 'active' as const }));
+    const archived = archivedContacts.map(contact => ({ ...contact, _status: 'archived' as const }));
+    const trashed = trashedContacts.map(contact => ({ ...contact, _status: 'deleted' as const }));
+    return [...active, ...archived, ...trashed];
+  }, [activeContacts, archivedContacts, trashedContacts]);
+  
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [draftFilters, setDraftFilters] = useState<FilterState>(defaultFilters);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const createMutation = trpc.contacts.create.useMutation();
   const updateMutation = trpc.contacts.update.useMutation();
   const archiveMutation = trpc.contacts.archive.useMutation({
@@ -121,15 +159,48 @@ export default function Contacts() {
     utils.contacts.listTrashed.invalidate();
   };
 
-  const filteredActiveContacts = activeContacts.filter((contact) => {
-    const displayName = contact.clientName || contact.name || "";
-    const matchesName = displayName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesEmail = contact.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const phoneValue = contact.phoneNumber || contact.phone;
-    const matchesPhone = phoneValue?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesContactPerson = contact.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesName || matchesEmail || matchesPhone || matchesContactPerson;
-  });
+  const filteredActiveContacts = useMemo(() => {
+    return allContacts.filter((contact) => {
+      // Search filter
+      const displayName = contact.clientName || contact.name || "";
+      const matchesSearch = !searchTerm || 
+        displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (contact.phoneNumber || contact.phone)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Time filter (based on createdAt or updatedAt) - supports "all", "2024" (year), or "2024-10" (year-month)
+      const contactDate = contact.createdAt ? new Date(contact.createdAt) : (contact.updatedAt ? new Date(contact.updatedAt) : null);
+      const matchesTime =
+        filters.time === "all" ||
+        (contactDate && (() => {
+          const contactYear = contactDate.getFullYear();
+          const contactMonth = contactDate.getMonth() + 1; // 1-12
+          
+          // If filter is just a year (e.g., "2024")
+          if (/^\d{4}$/.test(filters.time)) {
+            return contactYear === parseInt(filters.time, 10);
+          }
+          
+          // If filter is year-month format (e.g., "2024-10")
+          if (/^\d{4}-\d{1,2}$/.test(filters.time)) {
+            const [filterYear, filterMonth] = filters.time.split("-").map(Number);
+            return contactYear === filterYear && contactMonth === filterMonth;
+          }
+          
+          return false;
+        })());
+
+      // Status filter
+      const matchesStatus =
+        filters.status === "all" ||
+        (filters.status === "active" && contact._status === "active") ||
+        (filters.status === "archived" && contact._status === "archived") ||
+        (filters.status === "deleted" && contact._status === "deleted");
+
+      return matchesSearch && matchesTime && matchesStatus;
+    });
+  }, [allContacts, searchTerm, filters]);
 
   const resetForm = () => {
     setFormData({
@@ -353,8 +424,23 @@ export default function Contacts() {
   };
 
   const handleSelectAll = () => {
-    setSelectedIds(new Set(activeContacts.map(c => c.id)));
+    setSelectedIds(new Set(filteredActiveContacts.map(c => c.id)));
   };
+  
+  const clearDraftFilters = () => {
+    setDraftFilters(defaultFilters);
+  };
+
+  const applyFilters = () => {
+    setFilters(draftFilters);
+    setIsFilterOpen(false);
+  };
+  
+  useEffect(() => {
+    if (isFilterOpen) {
+      setDraftFilters(filters);
+    }
+  }, [isFilterOpen, filters]);
 
   const handleBatchDuplicate = () => {
     if (selectedIds.size === 0) return;
@@ -851,9 +937,6 @@ export default function Contacts() {
           </div>
         )}
       </div>
-
-      {/* Scroll-reveal footer for Archived/Rubbish navigation */}
-      <ScrollRevealFooter basePath="/contacts" />
 
       {/* Multi-Select Bar */}
       {isMultiSelectMode && (

@@ -5,7 +5,7 @@
  * Pull-down reveal provides navigation to archived/rubbish views.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -40,7 +40,6 @@ import { Plus, Search, Tag, FileText, Loader2, SlidersHorizontal, X } from "@/co
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { PageHeader } from "@/components/PageHeader";
 import { Markdown } from "@/components/Markdown";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -63,14 +62,22 @@ type Note = {
 type FilterState = {
   project: string;
   contact: string;
-  time: "all" | "week" | "month" | "year";
+  time: string; // "all" | "2024" | "2024-10" (year-month format)
+  status: "active" | "archived" | "deleted" | "all";
 };
 
 const defaultFilters: FilterState = {
   project: "all",
   contact: "all",
   time: "all",
+  status: "active",
 };
+
+// Month names for date search and display
+const monthDisplayNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
 export default function Notes() {
   const { user } = useAuth();
@@ -100,8 +107,18 @@ export default function Notes() {
   // Queries
   const utils = trpc.useUtils();
   const { data: activeNotes = [], isLoading: activeLoading } = trpc.notes.list.useQuery();
+  const { data: archivedNotes = [] } = trpc.notes.listArchived.useQuery();
+  const { data: trashedNotes = [] } = trpc.notes.listTrashed.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: projects = [] } = trpc.projects.list.useQuery();
+  
+  // Combine all notes for filtering
+  const allNotes = useMemo(() => {
+    const active = activeNotes.map(note => ({ ...note, _status: 'active' as const }));
+    const archived = archivedNotes.map(note => ({ ...note, _status: 'archived' as const }));
+    const trashed = trashedNotes.map(note => ({ ...note, _status: 'deleted' as const }));
+    return [...active, ...archived, ...trashed];
+  }, [activeNotes, archivedNotes, trashedNotes]);
 
   // Auto-focus search input on mobile when search opens
   useEffect(() => {
@@ -263,19 +280,6 @@ export default function Notes() {
 
   // Filter notes helper
   const filterNotes = (notes: Note[]) => {
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    // Calculate time ranges based on updatedAt
-    const lastWeek = new Date(startOfToday);
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    
-    const lastMonth = new Date(startOfToday);
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
-    
-    const lastYear = new Date(startOfToday);
-    lastYear.setFullYear(lastYear.getFullYear() - 1);
-
     return notes.filter((note) => {
       // Search matching - includes title, body, project name, client
       const searchLower = searchQuery.toLowerCase();
@@ -303,19 +307,40 @@ export default function Notes() {
           ? !note.contactId
           : note.contactId?.toString() === filters.contact);
 
-      // Time filter (based on updatedAt)
+      // Time filter (based on updatedAt) - supports "all", "2024" (year), or "2024-10" (year-month)
       const updatedAt = new Date(note.updatedAt);
       const matchesTime =
         filters.time === "all" ||
-        (filters.time === "week" && updatedAt >= lastWeek) ||
-        (filters.time === "month" && updatedAt >= lastMonth) ||
-        (filters.time === "year" && updatedAt >= lastYear);
+        (() => {
+          const noteYear = updatedAt.getFullYear();
+          const noteMonth = updatedAt.getMonth() + 1; // 1-12
+          
+          // If filter is just a year (e.g., "2024")
+          if (/^\d{4}$/.test(filters.time)) {
+            return noteYear === parseInt(filters.time, 10);
+          }
+          
+          // If filter is year-month format (e.g., "2024-10")
+          if (/^\d{4}-\d{1,2}$/.test(filters.time)) {
+            const [filterYear, filterMonth] = filters.time.split("-").map(Number);
+            return noteYear === filterYear && noteMonth === filterMonth;
+          }
+          
+          return false;
+        })();
 
-      return matchesSearch && matchesProject && matchesContact && matchesTime;
+      // Status filter
+      const matchesStatus =
+        filters.status === "all" ||
+        (filters.status === "active" && note._status === "active") ||
+        (filters.status === "archived" && note._status === "archived") ||
+        (filters.status === "deleted" && note._status === "deleted");
+
+      return matchesSearch && matchesProject && matchesContact && matchesTime && matchesStatus;
     });
   };
 
-  const filteredActiveNotes = filterNotes(activeNotes);
+  const filteredActiveNotes = filterNotes(allNotes);
 
   const getContactName = (contactId: number | null) => {
     if (!contactId) return null;
@@ -415,7 +440,8 @@ export default function Notes() {
     searchQuery ||
     filters.project !== "all" ||
     filters.contact !== "all" ||
-    filters.time !== "all";
+    filters.time !== "all" ||
+    filters.status !== "active";
 
   // Search overlay - full screen at top on mobile
   const searchSlot = (
@@ -596,7 +622,7 @@ export default function Notes() {
               onValueChange={(value) =>
                 setDraftFilters((prev) => ({
                   ...prev,
-                  time: value as FilterState["time"],
+                  time: value,
                 }))
               }
             >
@@ -605,9 +631,53 @@ export default function Notes() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Any time</SelectItem>
-                <SelectItem value="week">Last week</SelectItem>
-                <SelectItem value="month">Last month</SelectItem>
-                <SelectItem value="year">Last year</SelectItem>
+                {/* Generate years (current year and 5 years back) */}
+                {(() => {
+                  const currentYear = new Date().getFullYear();
+                  const years = [];
+                  for (let year = currentYear; year >= currentYear - 5; year--) {
+                    years.push(
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    );
+                    // Add months for each year (January to December)
+                    for (let month = 1; month <= 12; month++) {
+                      const monthValue = `${year}-${month}`;
+                      const monthName = monthDisplayNames[month - 1];
+                      years.push(
+                        <SelectItem key={monthValue} value={monthValue}>
+                          {monthName} {year}
+                        </SelectItem>
+                      );
+                    }
+                  }
+                  return years;
+                })()}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Status</div>
+            <Select
+              value={draftFilters.status}
+              onValueChange={(value) =>
+                setDraftFilters((prev) => ({
+                  ...prev,
+                  status: value as FilterState["status"],
+                }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+                <SelectItem value="deleted">Deleted</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -669,9 +739,6 @@ export default function Notes() {
           </div>
         )}
       </div>
-
-      {/* Scroll-reveal footer for Archived/Rubbish navigation */}
-      <ScrollRevealFooter basePath="/notes" />
 
       {/* Multi-Select Bar */}
       {isMultiSelectMode && (

@@ -16,24 +16,71 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen } from "@/components/ui/Icon";
+import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen, SlidersHorizontal } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { PageHeader } from "@/components/PageHeader";
 import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type ProjectListItem = RouterOutputs["projects"]["list"][number];
+
+type FilterState = {
+  client: string;
+  time: string; // "all" | "2024" | "2024-10" (year-month format)
+  status: "active" | "archived" | "deleted" | "all";
+};
+
+const defaultFilters: FilterState = {
+  client: "all",
+  time: "all",
+  status: "active",
+};
+
+const monthDisplayNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
 export default function Projects() {
   const [location, setLocation] = useLocation();
   
   const { data: activeProjects, isLoading: activeLoading } = trpc.projects.list.useQuery();
+  const { data: archivedProjects = [] } = trpc.projects.listArchived.useQuery();
+  const { data: trashedProjects = [] } = trpc.projects.listTrashed.useQuery();
+  const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const utils = trpc.useUtils();
+  
+  // Combine all projects for filtering
+  const allProjects = useMemo(() => {
+    const active = (activeProjects || []).map(proj => ({ ...proj, _status: 'active' as const }));
+    const archived = archivedProjects.map(proj => ({ ...proj, _status: 'archived' as const }));
+    const trashed = trashedProjects.map(proj => ({ ...proj, _status: 'deleted' as const }));
+    return [...active, ...archived, ...trashed];
+  }, [activeProjects, archivedProjects, trashedProjects]);
+  
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [draftFilters, setDraftFilters] = useState<FilterState>(defaultFilters);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Delete confirmation dialogs
   const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
@@ -153,8 +200,7 @@ export default function Projects() {
   };
 
   const handleSelectAll = () => {
-    if (!activeProjects) return;
-    setSelectedIds(new Set(activeProjects.map(p => p.id)));
+    setSelectedIds(new Set(filteredProjects.map(p => p.id)));
   };
 
   const handleBatchArchive = () => {
@@ -226,6 +272,66 @@ export default function Projects() {
     const label = contact?.name || project.client || null;
     return { contact, label };
   };
+  
+  const clearDraftFilters = () => {
+    setDraftFilters(defaultFilters);
+  };
+
+  const applyFilters = () => {
+    setFilters(draftFilters);
+    setIsFilterOpen(false);
+  };
+  
+  // Filter projects helper
+  const filterProjects = (projects: typeof allProjects) => {
+    return projects.filter((project) => {
+      // Client filter
+      const matchesClient =
+        filters.client === "all" ||
+        (filters.client === "unassigned"
+          ? !project.clientId
+          : project.clientId?.toString() === filters.client);
+
+      // Time filter (based on createdAt or updatedAt) - supports "all", "2024" (year), or "2024-10" (year-month)
+      const projectDate = project.createdAt ? new Date(project.createdAt) : (project.updatedAt ? new Date(project.updatedAt) : null);
+      const matchesTime =
+        filters.time === "all" ||
+        (projectDate && (() => {
+          const projectYear = projectDate.getFullYear();
+          const projectMonth = projectDate.getMonth() + 1; // 1-12
+          
+          // If filter is just a year (e.g., "2024")
+          if (/^\d{4}$/.test(filters.time)) {
+            return projectYear === parseInt(filters.time, 10);
+          }
+          
+          // If filter is year-month format (e.g., "2024-10")
+          if (/^\d{4}-\d{1,2}$/.test(filters.time)) {
+            const [filterYear, filterMonth] = filters.time.split("-").map(Number);
+            return projectYear === filterYear && projectMonth === filterMonth;
+          }
+          
+          return false;
+        })());
+
+      // Status filter
+      const matchesStatus =
+        filters.status === "all" ||
+        (filters.status === "active" && project._status === "active") ||
+        (filters.status === "archived" && project._status === "archived") ||
+        (filters.status === "deleted" && project._status === "deleted");
+
+      return matchesClient && matchesTime && matchesStatus;
+    });
+  };
+  
+  const filteredProjects = filterProjects(allProjects);
+  
+  useEffect(() => {
+    if (isFilterOpen) {
+      setDraftFilters(filters);
+    }
+  }, [isFilterOpen, filters]);
 
   if (activeLoading) {
     return (
@@ -333,11 +439,136 @@ export default function Projects() {
     );
   };
 
+  const filterSlot = (
+    <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Filter projects">
+          <SlidersHorizontal className="size-6" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="p-0">
+        <SheetHeader>
+          <SheetTitle>Filters</SheetTitle>
+        </SheetHeader>
+        <div className="px-4 pb-4 overflow-y-auto space-y-4 pt-4">
+          {/* Client Filter */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Client</div>
+            <Select
+              value={draftFilters.client}
+              onValueChange={(value) =>
+                setDraftFilters((prev) => ({ ...prev, client: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All clients" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Clients</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {contacts.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    No contacts available
+                  </div>
+                ) : (
+                  contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id.toString()}>
+                      {contact.name || contact.clientName}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Time Filter */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Time</div>
+            <Select
+              value={draftFilters.time}
+              onValueChange={(value) =>
+                setDraftFilters((prev) => ({
+                  ...prev,
+                  time: value,
+                }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Any time" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any time</SelectItem>
+                {/* Generate years (current year and 5 years back) */}
+                {(() => {
+                  const currentYear = new Date().getFullYear();
+                  const years = [];
+                  for (let year = currentYear; year >= currentYear - 5; year--) {
+                    years.push(
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    );
+                    // Add months for each year (January to December)
+                    for (let month = 1; month <= 12; month++) {
+                      const monthValue = `${year}-${month}`;
+                      const monthName = monthDisplayNames[month - 1];
+                      years.push(
+                        <SelectItem key={monthValue} value={monthValue}>
+                          {monthName} {year}
+                        </SelectItem>
+                      );
+                    }
+                  }
+                  return years;
+                })()}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Status</div>
+            <Select
+              value={draftFilters.status}
+              onValueChange={(value) =>
+                setDraftFilters((prev) => ({
+                  ...prev,
+                  status: value as FilterState["status"],
+                }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+                <SelectItem value="deleted">Deleted</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <SheetFooter>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="flex-1" onClick={clearDraftFilters}>
+              Clear all
+            </Button>
+            <Button className="flex-1" onClick={applyFilters}>
+              Apply filters
+            </Button>
+          </div>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Projects"
         subtitle="Manage your client projects and work"
+        filterSlot={filterSlot}
       />
 
       {/* Top-of-Page Action Row */}
@@ -350,38 +581,41 @@ export default function Projects() {
         </Link>
       </div>
 
-      {/* Active Projects Grid */}
+      {/* Projects Grid */}
       <div className="space-y-4">
-        {activeProjects && activeProjects.length === 0 ? (
+        {filteredProjects.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">No projects yet. Create your first project to get started.</p>
-              <Link href="/projects/new">
-                <Button>
-                  <Plus className="h-4 w-4 mr-1" />
-                  New
-                </Button>
-              </Link>
+              <p className="text-muted-foreground mb-4">
+                {filters.status !== "active" || filters.client !== "all" || filters.time !== "all"
+                  ? "No projects found matching your filters"
+                  : "No projects yet. Create your first project to get started."}
+              </p>
+              {filters.status === "active" && filters.client === "all" && filters.time === "all" && (
+                <Link href="/projects/new">
+                  <Button>
+                    <Plus className="h-4 w-4 mr-1" />
+                    New
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {activeProjects?.map((project) => (
+            {filteredProjects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>
         )}
       </div>
 
-      {/* Scroll-reveal footer for Archived/Rubbish navigation */}
-      <ScrollRevealFooter basePath="/projects" />
-
       {/* Multi-select bar */}
       {isMultiSelectMode && (
         <MultiSelectBar
           selectedCount={selectedIds.size}
-          totalCount={activeProjects?.length}
+          totalCount={filteredProjects.length}
           onSelectAll={handleSelectAll}
           onDuplicate={handleBatchDuplicate}
           onArchive={handleBatchArchive}

@@ -3,11 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X } from "@/components/ui/Icon";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { PageHeader } from "@/components/PageHeader";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
@@ -31,19 +30,26 @@ function formatCurrency(amount: number | string) {
 type FilterState = {
   project: string;
   client: string;
-  time: "all" | "week" | "month" | "year";
+  time: string; // "all" | "2024" | "2024-10" (year-month format)
+  status: "active" | "archived" | "deleted" | "all";
 };
 
 const defaultFilters: FilterState = {
   project: "all",
   client: "all",
   time: "all",
+  status: "active",
 };
 
-// Month names for date search
+// Month names for date search and display
 const monthNames = [
   "january", "february", "march", "april", "may", "june",
   "july", "august", "september", "october", "november", "december"
+];
+
+const monthDisplayNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
 ];
 
 export default function Invoices() {
@@ -85,9 +91,19 @@ export default function Invoices() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
+  const { data: archivedInvoices = [] } = trpc.invoices.listArchived.useQuery();
+  const { data: trashedInvoices = [] } = trpc.invoices.listTrashed.useQuery();
   const { data: needsReviewInvoices = [], refetch: refetchNeedsReview } = trpc.invoices.listNeedsReview.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: projects = [] } = trpc.projects.list.useQuery();
+  
+  // Combine all invoices for filtering
+  const allInvoices = useMemo(() => {
+    const active = invoices.map(inv => ({ ...inv, _status: 'active' as const }));
+    const archived = archivedInvoices.map(inv => ({ ...inv, _status: 'archived' as const }));
+    const trashed = trashedInvoices.map(inv => ({ ...inv, _status: 'deleted' as const }));
+    return [...active, ...archived, ...trashed];
+  }, [invoices, archivedInvoices, trashedInvoices]);
   const { data: companySettings } = trpc.settings.get.useQuery();
   const issueMutation = trpc.invoices.issue.useMutation({
     onSuccess: () => {
@@ -251,18 +267,6 @@ export default function Invoices() {
 
   // Filter invoices helper
   const filterInvoices = (invoices: any[]) => {
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    const lastWeek = new Date(startOfToday);
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    
-    const lastMonth = new Date(startOfToday);
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
-    
-    const lastYear = new Date(startOfToday);
-    lastYear.setFullYear(lastYear.getFullYear() - 1);
-
     return invoices.filter((invoice) => {
       // Search matching - client name, date (month), amount
       const searchLower = searchQuery.toLowerCase();
@@ -307,20 +311,40 @@ export default function Invoices() {
           ? !invoice.clientId && !invoice.contactId
           : invoice.clientId?.toString() === filters.client || invoice.contactId?.toString() === filters.client);
 
-      // Time filter (based on issueDate)
+      // Time filter (based on issueDate) - supports "all", "2024" (year), or "2024-10" (year-month)
       const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
       const matchesTime =
         filters.time === "all" ||
-        (issueDate &&
-          ((filters.time === "week" && issueDate >= lastWeek) ||
-           (filters.time === "month" && issueDate >= lastMonth) ||
-           (filters.time === "year" && issueDate >= lastYear)));
+        (issueDate && (() => {
+          const invoiceYear = issueDate.getFullYear();
+          const invoiceMonth = issueDate.getMonth() + 1; // 1-12
+          
+          // If filter is just a year (e.g., "2024")
+          if (/^\d{4}$/.test(filters.time)) {
+            return invoiceYear === parseInt(filters.time, 10);
+          }
+          
+          // If filter is year-month format (e.g., "2024-10")
+          if (/^\d{4}-\d{1,2}$/.test(filters.time)) {
+            const [filterYear, filterMonth] = filters.time.split("-").map(Number);
+            return invoiceYear === filterYear && invoiceMonth === filterMonth;
+          }
+          
+          return false;
+        })());
 
-      return matchesSearch && matchesProject && matchesClient && matchesTime;
+      // Status filter
+      const matchesStatus =
+        filters.status === "all" ||
+        (filters.status === "active" && invoice._status === "active") ||
+        (filters.status === "archived" && invoice._status === "archived") ||
+        (filters.status === "deleted" && invoice._status === "deleted");
+
+      return matchesSearch && matchesProject && matchesClient && matchesTime && matchesStatus;
     });
   };
 
-  const filteredInvoices = filterInvoices(invoices);
+  const filteredInvoices = filterInvoices(allInvoices);
 
   const handlePreviewPDF = async (invoiceId: number, fileName: string) => {
     try {
@@ -509,7 +533,8 @@ export default function Invoices() {
     searchQuery ||
     filters.project !== "all" ||
     filters.client !== "all" ||
-    filters.time !== "all";
+    filters.time !== "all" ||
+    filters.status !== "active";
 
   // Search overlay - full screen at top on mobile
   const searchSlot = (
@@ -707,7 +732,7 @@ export default function Invoices() {
               onValueChange={(value) =>
                 setDraftFilters((prev) => ({
                   ...prev,
-                  time: value as FilterState["time"],
+                  time: value,
                 }))
               }
             >
@@ -716,9 +741,53 @@ export default function Invoices() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Any time</SelectItem>
-                <SelectItem value="week">Last week</SelectItem>
-                <SelectItem value="month">Last month</SelectItem>
-                <SelectItem value="year">Last year</SelectItem>
+                {/* Generate years (current year and 5 years back) */}
+                {(() => {
+                  const currentYear = new Date().getFullYear();
+                  const years = [];
+                  for (let year = currentYear; year >= currentYear - 5; year--) {
+                    years.push(
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    );
+                    // Add months for each year (January to December)
+                    for (let month = 1; month <= 12; month++) {
+                      const monthValue = `${year}-${month}`;
+                      const monthName = monthDisplayNames[month - 1];
+                      years.push(
+                        <SelectItem key={monthValue} value={monthValue}>
+                          {monthName} {year}
+                        </SelectItem>
+                      );
+                    }
+                  }
+                  return years;
+                })()}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Status</div>
+            <Select
+              value={draftFilters.status}
+              onValueChange={(value) =>
+                setDraftFilters((prev) => ({
+                  ...prev,
+                  status: value as FilterState["status"],
+                }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+                <SelectItem value="deleted">Deleted</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -980,8 +1049,6 @@ export default function Invoices() {
           }}
         />
       )}
-
-      <ScrollRevealFooter basePath="/invoices" />
 
       <InvoiceUploadReviewDialog
         open={uploadReviewDialogOpen}
