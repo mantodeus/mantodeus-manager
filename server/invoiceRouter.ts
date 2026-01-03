@@ -73,8 +73,14 @@ function deriveInvoiceNameFromFilename(filename: string) {
 /**
  * Check if invoice needs review and block mutations
  * Uploaded invoices with needsReview=true must be confirmed before any other action
+ * Exception: Draft invoices can always be updated, even if they need review
  */
 function checkInvoiceNeedsReview(invoice: Awaited<ReturnType<typeof db.getInvoiceById>>, action: string) {
+  // Allow updates to draft invoices even if they need review
+  if (action === "updated" && invoice.status === "draft") {
+    return;
+  }
+  
   if (invoice.source === "uploaded" && invoice.needsReview) {
     throw new TRPCError({
       code: "BAD_REQUEST",

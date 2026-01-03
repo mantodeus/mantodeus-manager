@@ -36,6 +36,7 @@ export default function ScanReceipt() {
 
   const utils = trpc.useUtils();
 
+  const createExpenseMutation = trpc.expenses.createManualExpense.useMutation();
   const uploadReceiptMutation = trpc.expenses.uploadExpenseReceipt.useMutation();
   const registerReceiptMutation = trpc.expenses.registerReceipt.useMutation();
 
@@ -105,20 +106,36 @@ export default function ScanReceipt() {
 
   const handleUseScan = async () => {
     if (!originalFile) return;
-    if (!expenseId || Number.isNaN(expenseId)) {
-      setError("Open this scanner from an expense to attach the scan.");
-      setScanState("preview");
-      return;
-    }
 
     setScanState("uploading");
     setError(null);
 
     try {
       const fileToUpload = originalFile;
+      let targetExpenseId = expenseId;
+
+      // Create a new expense if one doesn't exist
+      if (!targetExpenseId || Number.isNaN(targetExpenseId)) {
+        const newExpense = await createExpenseMutation.mutateAsync({
+          supplierName: "Receipt Scan",
+          description: null,
+          expenseDate: new Date(),
+          grossAmountCents: 0,
+          currency: "EUR",
+          vatMode: "none",
+          vatRate: null,
+          vatAmountCents: null,
+          businessUsePct: 100,
+          category: "other",
+          paymentStatus: "unpaid",
+          paymentDate: null,
+          paymentMethod: null,
+        });
+        targetExpenseId = newExpense.id;
+      }
 
       const { uploadUrl, s3Key } = await uploadReceiptMutation.mutateAsync({
-        expenseId,
+        expenseId: targetExpenseId,
         filename: fileToUpload.name,
         mimeType: fileToUpload.type,
         fileSize: fileToUpload.size,
@@ -143,7 +160,7 @@ export default function ScanReceipt() {
 
       await withTimeout(
         registerReceiptMutation.mutateAsync({
-          expenseId,
+          expenseId: targetExpenseId,
           s3Key,
           mimeType: fileToUpload.type,
           originalFilename: originalFile.name,
@@ -157,9 +174,9 @@ export default function ScanReceipt() {
       if (originalPreviewUrl) {
         URL.revokeObjectURL(originalPreviewUrl);
       }
-      await utils.expenses.getExpense.invalidate({ id: expenseId });
+      await utils.expenses.getExpense.invalidate({ id: targetExpenseId });
       await utils.expenses.list.invalidate();
-      navigate(`/expenses/${expenseId}`);
+      navigate(`/expenses/${targetExpenseId}`);
     } catch (err) {
       console.error("[ScanReceipt] Upload error:", err);
       const errorMessage =
@@ -294,9 +311,13 @@ export default function ScanReceipt() {
                       onClick={handleUseScan}
                       className="flex-1"
                       size="lg"
-                      disabled={!expenseId}
+                      disabled={uploadReceiptMutation.isPending || registerReceiptMutation.isPending || createExpenseMutation.isPending}
                     >
-                      <Check className="h-5 w-5 mr-2" />
+                      {(uploadReceiptMutation.isPending || registerReceiptMutation.isPending || createExpenseMutation.isPending) ? (
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      ) : (
+                        <Check className="h-5 w-5 mr-2" />
+                      )}
                       Use photo
                     </Button>
                     <Button

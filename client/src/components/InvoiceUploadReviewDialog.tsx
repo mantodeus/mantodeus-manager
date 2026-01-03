@@ -99,17 +99,12 @@ export function InvoiceUploadReviewDialog({
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      if (isMobile) {
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
-        }
-        setPreviewUrl(url);
-        setPreviewFileName(invoice?.invoiceName || invoice?.invoiceNumber || "invoice.pdf");
-        setPreviewModalOpen(true);
-      } else {
-        window.open(url, "_blank");
-        setTimeout(() => URL.revokeObjectURL(url), 100);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
+      setPreviewUrl(url);
+      setPreviewFileName(invoice?.invoiceName || invoice?.invoiceNumber || "invoice.pdf");
+      setPreviewModalOpen(true);
     } catch (error) {
       console.error('Preview error:', error);
       toast.error('Failed to open preview');

@@ -55,7 +55,7 @@ export default function InvoiceDetail() {
       return;
     }
     
-    // For created invoices, generate PDF
+    // For created invoices, generate PDF and open in preview modal
     try {
       const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
       if (!session?.access_token) {
@@ -75,17 +75,12 @@ export default function InvoiceDetail() {
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      if (isMobile) {
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
-        }
-        setPreviewUrl(url);
-        setPreviewFileName(invoice?.invoiceName || invoice?.invoiceNumber || "invoice.pdf");
-        setPreviewModalOpen(true);
-      } else {
-        window.open(url, "_blank");
-        setTimeout(() => URL.revokeObjectURL(url), 100);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
+      setPreviewUrl(url);
+      setPreviewFileName(invoice?.invoiceName || invoice?.invoiceNumber || "invoice.pdf");
+      setPreviewModalOpen(true);
     } catch (error) {
       console.error('Preview error:', error);
       toast.error('Failed to open preview');
@@ -160,7 +155,7 @@ export default function InvoiceDetail() {
           <h1 className="text-3xl font-regular">{title}</h1>
           <p className="text-muted-foreground text-sm">View and edit invoice details</p>
         </div>
-        {invoice && invoice.source === "uploaded" && (
+        {invoice && (
           <Button variant="outline" onClick={handlePreviewPDF}>
             Preview
           </Button>
@@ -197,7 +192,7 @@ export default function InvoiceDetail() {
           setPreviewUrl(null);
         }}
         fileUrl={previewUrl ?? undefined}
-        fileKey={invoice?.originalPdfS3Key ?? undefined}
+        fileKey={invoice?.source === "uploaded" ? invoice.originalPdfS3Key ?? undefined : undefined}
         fileName={previewFileName}
         fullScreen={isMobile}
       />

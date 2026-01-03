@@ -349,17 +349,12 @@ export default function Invoices() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
 
-      if (isMobile) {
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
-        }
-        setPreviewUrl(url);
-        setPreviewFileName(fileName);
-        setPreviewModalOpen(true);
-      } else {
-        window.open(url, "_blank");
-        setTimeout(() => URL.revokeObjectURL(url), 100);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
+      setPreviewUrl(url);
+      setPreviewFileName(fileName);
+      setPreviewModalOpen(true);
     } catch (error) {
       console.error('Preview error:', error);
       toast.error('Failed to open preview');
