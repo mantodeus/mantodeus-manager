@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Loader2, PencilLine, Plus, X } from "@/components/ui/Icon";
+import { Eye, Loader2, PencilLine, Plus, X } from "@/components/ui/Icon";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -64,6 +64,8 @@ export function InvoiceForm({
   onClose,
   onSuccess,
   onOpenInvoice,
+  onPreview,
+  showPreview = false,
 }: {
   mode: "create" | "edit";
   invoiceId?: number;
@@ -71,6 +73,8 @@ export function InvoiceForm({
   onClose: () => void;
   onSuccess: () => void;
   onOpenInvoice?: (invoiceId: number) => void;
+  onPreview?: () => void;
+  showPreview?: boolean;
 }) {
   const isCreate = mode === "create";
   const [formState, setFormState] = useState<InvoiceFormState>(() => ({
@@ -478,14 +482,28 @@ export function InvoiceForm({
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onClose} disabled={isLoading}>
-          Cancel
-        </Button>
-        <Button type="submit" className="flex-1" disabled={isLoading || !isDraft}>
-          {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-          {isCreate ? "Save" : "Save"}
-        </Button>
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" className="flex-1" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button type="submit" className="flex-1" disabled={isLoading || !isDraft}>
+            {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            {isCreate ? "Save" : "Save"}
+          </Button>
+        </div>
+        {showPreview && onPreview && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onPreview}
+            disabled={isLoading}
+            className="w-full"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Preview
+          </Button>
+        )}
       </div>
 
       <LineItemModal

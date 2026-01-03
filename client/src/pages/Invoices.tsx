@@ -904,7 +904,7 @@ export default function Invoices() {
                 onClick={handleCardClick}
                 className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected rounded-lg" : ""}`}
               >
-                <Card className="p-3 sm:p-4 hover:shadow-sm transition-all">
+                <Card className="p-3 sm:p-4 hover:shadow-sm transition-all md:min-h-[120px]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       {(() => {

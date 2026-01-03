@@ -155,7 +155,8 @@ export function InvoiceUploadReviewDialog({
           ? new Date(invoice.issueDate).toISOString().split("T")[0]
           : ""
       );
-      setTotalAmount(invoice.total || "");
+      // Ensure totalAmount is always a string
+      setTotalAmount(invoice.total ? String(invoice.total) : "");
       setClientId(invoice.clientId?.toString() || "none");
     }
   }, [parsedData, invoice]);
@@ -199,7 +200,7 @@ export function InvoiceUploadReviewDialog({
       clientId: clientId !== "none" ? parseInt(clientId, 10) : null,
       invoiceNumber: invoiceNumber || undefined,
       issueDate: new Date(issueDate),
-      totalAmount,
+      totalAmount: String(totalAmount), // Ensure it's always a string
     });
   };
 

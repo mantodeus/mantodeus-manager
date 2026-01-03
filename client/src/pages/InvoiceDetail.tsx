@@ -155,11 +155,6 @@ export default function InvoiceDetail() {
           <h1 className="text-3xl font-regular">{title}</h1>
           <p className="text-muted-foreground text-sm">View and edit invoice details</p>
         </div>
-        {invoice && (
-          <Button variant="outline" onClick={handlePreviewPDF}>
-            Preview
-          </Button>
-        )}
       </div>
 
       <Card>
@@ -178,6 +173,8 @@ export default function InvoiceDetail() {
               await utils.invoices.listNeedsReview.invalidate();
             }}
             onOpenInvoice={(nextId) => navigate(`/invoices/${nextId}`)}
+            onPreview={handlePreviewPDF}
+            showPreview={invoice && invoice.status !== "draft"}
           />
         </CardContent>
       </Card>
