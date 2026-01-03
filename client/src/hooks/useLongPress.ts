@@ -209,9 +209,31 @@ export function useLongPress({
   // Prevent click/tap if long-press was activated
   const handleClick = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
-      if (gestureState === "long-press" || gestureState === "menu-open") {
+      if (gestureState === "long-press" || gestureState === "menu-open" || gestureState === "pressing") {
         e.preventDefault();
         e.stopPropagation();
+      }
+    },
+    [gestureState]
+  );
+
+  // Prevent text selection events
+  const handleSelectStart = useCallback(
+    (e: React.SyntheticEvent) => {
+      // Don't interfere with inputs, textareas, or contenteditable
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable ||
+        target.closest('input, textarea, select, [contenteditable]')
+      ) {
+        return; // Allow selection in these elements
+      }
+      
+      if (gestureState !== "idle") {
+        e.preventDefault();
       }
     },
     [gestureState]
