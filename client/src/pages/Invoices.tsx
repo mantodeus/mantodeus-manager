@@ -777,7 +777,7 @@ export default function Invoices() {
               {needsReviewInvoices.length}
             </Badge>
           </div>
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {needsReviewInvoices.map((invoice) => {
               const uploadDate = invoice.uploadedAt || invoice.uploadDate || invoice.createdAt;
               const uploadDateLabel = uploadDate ? new Date(uploadDate).toLocaleDateString("de-DE") : "Unknown date";
