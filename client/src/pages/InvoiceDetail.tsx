@@ -28,9 +28,9 @@ export default function InvoiceDetail() {
     { enabled: !!invoiceId }
   );
 
-  // Redirect uploaded invoices to review dialog
+  // Redirect uploaded invoices to review dialog only if they need review
   useEffect(() => {
-    if (invoice && invoice.source === "uploaded" && invoice.status === "draft") {
+    if (invoice && invoice.source === "uploaded" && invoice.status === "draft" && invoice.needsReview) {
       setReviewDialogOpen(true);
     }
   }, [invoice]);
@@ -103,8 +103,8 @@ export default function InvoiceDetail() {
     );
   }
 
-  // For uploaded invoices in draft mode, show review dialog instead
-  if (invoice && invoice.source === "uploaded" && invoice.status === "draft") {
+  // For uploaded invoices in draft mode that need review, show review dialog instead
+  if (invoice && invoice.source === "uploaded" && invoice.status === "draft" && invoice.needsReview) {
     return (
       <>
         <InvoiceUploadReviewDialog

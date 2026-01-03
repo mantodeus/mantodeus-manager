@@ -915,20 +915,20 @@ export default function Contacts() {
                   {/* Title (center left) */}
                   <div className="flex-1 flex items-center gap-3 min-w-0">
                     <ContactIcon className="h-6 w-6 text-primary flex-shrink-0" />
-                    <DialogTitle className="text-2xl truncate">{displayName}</DialogTitle>
+                    <DialogTitle className="text-2xl break-words">{displayName}</DialogTitle>
                 </div>
                   
                   {/* Edit and Close buttons (top right) */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <Button
-                      variant="ghost"
-                      size="icon"
+                      variant="outline"
                       onClick={() => {
                         handleEdit(contact);
                         setPreviewContactId(null);
                       }}
                     >
-                      <Edit className="h-5 w-5" />
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
                     </Button>
                     <Button
                       variant="ghost"
