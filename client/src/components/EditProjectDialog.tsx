@@ -9,8 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -26,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2 } from "@/components/ui/Icon";
+import { Loader2, ArrowLeft } from "@/components/ui/Icon";
 import { DatePicker } from "@/components/DatePicker";
 
 interface Project {
@@ -167,15 +165,40 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Project</DialogTitle>
-          <DialogDescription>
-            Update project details.
-          </DialogDescription>
+      <DialogContent 
+        className="h-screen w-screen max-w-full top-0 left-0 right-0 bottom-0 translate-x-0 translate-y-0 rounded-none m-0 p-0 flex flex-col"
+        showCloseButton={false}
+      >
+        {/* Header */}
+        <DialogHeader className="px-4 py-3 border-b border-border flex-shrink-0">
+          <div className="flex items-center justify-between gap-3">
+            {/* Back button and title */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChange(false)}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <DialogTitle className="text-2xl">Edit Project</DialogTitle>
+            </div>
+            
+            {/* Save button */}
+            <Button 
+              type="submit" 
+              form="edit-project-form"
+              disabled={updateProject.isPending}
+            >
+              {updateProject.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+        
+        {/* Form - scrollable */}
+        <form id="edit-project-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="grid gap-4 p-4 max-w-2xl mx-auto">
             <div className="grid gap-2">
               <Label htmlFor="name">Project Name *</Label>
               <Input
@@ -254,15 +277,6 @@ export function EditProjectDialog({ open, onOpenChange, project, onRequestAddCon
               <DatePicker selectedDates={selectedDates} onChange={setSelectedDates} />
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={updateProject.isPending}>
-              {updateProject.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
-          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

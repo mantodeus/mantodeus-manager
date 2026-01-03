@@ -11,8 +11,6 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -973,39 +971,30 @@ export default function Contacts() {
         return (
           <Dialog open={!!previewContactId} onOpenChange={(open) => !open && setPreviewContactId(null)}>
             <DialogContent 
-              className={cn(
-                isMobile 
-                  ? "h-screen w-screen max-w-full top-0 left-0 right-0 bottom-0 translate-x-0 translate-y-0 rounded-none m-0 p-0 flex flex-col"
-                  : "md:max-w-2xl md:max-h-[90vh] md:top-[50%] md:left-[50%] md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-lg md:h-auto"
-              )}
+              className="h-screen w-screen max-w-full top-0 left-0 right-0 bottom-0 translate-x-0 translate-y-0 rounded-none m-0 p-0 flex flex-col"
               showCloseButton={false}
             >
               {/* Header */}
-              <DialogHeader className={cn(
-                isMobile ? "px-4 py-3 border-b border-border flex-shrink-0" : ""
-              )}>
-                {/* Title Section - Back button and title on one line */}
-                <div className="flex items-center gap-3">
-                  {/* Back arrow (left) */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setPreviewContactId(null)}
-                    className={isMobile ? "" : "hidden"}
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                  
-                  {/* Title (center left) */}
-                  <div className="flex-1 flex items-center gap-3 min-w-0">
-                    <ContactIcon className="h-6 w-6 text-primary flex-shrink-0" />
-                    <DialogTitle className="text-2xl break-words">{displayName}</DialogTitle>
+              <DialogHeader className="px-4 py-3 border-b border-border flex-shrink-0">
+                <div className="flex items-center justify-between gap-3">
+                  {/* Back button and title */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setPreviewContactId(null)}
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <ContactIcon className="h-6 w-6 text-primary flex-shrink-0" />
+                      <DialogTitle className="text-2xl break-words">{displayName}</DialogTitle>
+                    </div>
                   </div>
-                </div>
-                
-                {/* Action Row - Edit button on next line */}
-                <div className="flex items-center justify-end gap-2 pb-2 border-b mt-2">
+                  
+                  {/* Edit button */}
                   <Button
+                    variant="outline"
                     onClick={() => {
                       handleEdit(contact);
                       setPreviewContactId(null);
@@ -1014,32 +1003,11 @@ export default function Contacts() {
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setPreviewContactId(null)}
-                    className={isMobile ? "hidden" : ""}
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
                 </div>
-                
-                {!isMobile && (
-                <DialogDescription>
-                  {contact.contactPerson 
-                    ? `Contact person: ${contact.contactPerson}` 
-                    : contact.type === "business" 
-                      ? "Business contact" 
-                      : "Personal contact"}
-                </DialogDescription>
-                )}
               </DialogHeader>
               
               {/* Content - scrollable, aligned to top */}
-              <div className={cn(
-                "space-y-6",
-                isMobile ? "flex-1 overflow-y-auto px-4 py-4 pb-24" : "mt-6"
-              )}>
+              <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
                 {/* Address Section */}
                 {previewAddress && (
                   <div className="space-y-2">
@@ -1152,19 +1120,6 @@ export default function Contacts() {
                   </div>
                 )}
               </div>
-
-              {/* Footer - only show on desktop */}
-              {!isMobile && (
-              <DialogFooter>
-                <Button variant="outline" onClick={() => {
-                  handleEdit(contact);
-                  setPreviewContactId(null);
-                }}>
-                  Edit Contact
-                </Button>
-                <Button onClick={() => setPreviewContactId(null)}>Close</Button>
-              </DialogFooter>
-              )}
             </DialogContent>
           </Dialog>
         );

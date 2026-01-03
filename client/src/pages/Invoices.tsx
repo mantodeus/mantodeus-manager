@@ -83,7 +83,6 @@ export default function Invoices() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
-  const [draftFilters, setDraftFilters] = useState<FilterState>(defaultFilters);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Multi-select state
@@ -221,12 +220,6 @@ export default function Invoices() {
   }, [isSearchOpen, isMobile]);
 
   useEffect(() => {
-    if (isFilterOpen) {
-      setDraftFilters(filters);
-    }
-  }, [isFilterOpen, filters]);
-
-  useEffect(() => {
     return () => {
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
@@ -247,13 +240,6 @@ export default function Invoices() {
 
   const revertFilters = () => {
     setFilters(defaultFilters);
-    setDraftFilters(defaultFilters);
-    setIsFilterOpen(false);
-  };
-
-  const applyFilters = () => {
-    setFilters(draftFilters);
-    setIsFilterOpen(false);
   };
 
   // Get client name for an invoice
@@ -670,9 +656,9 @@ export default function Invoices() {
           <div className="space-y-2">
             <div className="text-sm font-medium">Project</div>
             <Select
-              value={draftFilters.project}
+              value={filters.project}
               onValueChange={(value) =>
-                setDraftFilters((prev) => ({ ...prev, project: value }))
+                setFilters((prev) => ({ ...prev, project: value }))
               }
             >
               <SelectTrigger>
@@ -700,9 +686,9 @@ export default function Invoices() {
           <div className="space-y-2">
             <div className="text-sm font-medium">Client</div>
             <Select
-              value={draftFilters.client}
+              value={filters.client}
               onValueChange={(value) =>
-                setDraftFilters((prev) => ({ ...prev, client: value }))
+                setFilters((prev) => ({ ...prev, client: value }))
               }
             >
               <SelectTrigger>
@@ -730,9 +716,9 @@ export default function Invoices() {
           <div className="space-y-2">
             <div className="text-sm font-medium">Time</div>
             <Select
-              value={draftFilters.time}
+              value={filters.time}
               onValueChange={(value) =>
-                setDraftFilters((prev) => ({
+                setFilters((prev) => ({
                   ...prev,
                   time: value,
                 }))
@@ -774,9 +760,9 @@ export default function Invoices() {
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
             <Select
-              value={draftFilters.status}
+              value={filters.status}
               onValueChange={(value) =>
-                setDraftFilters((prev) => ({
+                setFilters((prev) => ({
                   ...prev,
                   status: value as FilterState["status"],
                 }))
@@ -797,9 +783,6 @@ export default function Invoices() {
         <SheetFooter className="flex-row justify-end gap-2">
           <Button variant="outline" onClick={revertFilters}>
             Revert
-          </Button>
-          <Button onClick={applyFilters}>
-            Apply
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -846,7 +829,7 @@ export default function Invoices() {
               {needsReviewInvoices.length}
             </Badge>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
             {needsReviewInvoices.map((invoice) => {
               const uploadDate = invoice.uploadedAt || invoice.uploadDate || invoice.createdAt;
               const uploadDateLabel = uploadDate ? new Date(uploadDate).toLocaleDateString("de-DE") : "Unknown date";
@@ -868,12 +851,11 @@ export default function Invoices() {
               };
               
               return (
-                <div
+                <Card
                   key={`needs-review-${invoice.id}`}
                   onClick={handleNeedsReviewClick}
-                  className={`${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected rounded-lg" : ""}`}
+                  className={`p-3 sm:p-4 hover:shadow-sm transition-all md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
                 >
-                  <Card className="p-3 sm:p-4 hover:shadow-sm transition-all">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
                         {(() => {
@@ -917,8 +899,7 @@ export default function Invoices() {
                         )}
                       </div>
                     </div>
-                  </Card>
-                </div>
+                </Card>
               );
             })}
           </div>
@@ -943,7 +924,7 @@ export default function Invoices() {
           )}
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
           {filteredInvoices.map((invoice) => {
             const linkedContact = contacts.find(
               (contact: { id: number }) => contact.id === invoice.clientId || contact.id === invoice.contactId
@@ -976,12 +957,11 @@ export default function Invoices() {
             };
 
             return (
-              <div
+              <Card
                 key={invoice.id}
                 onClick={handleCardClick}
-                className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected rounded-lg" : ""}`}
+                className={`p-3 sm:p-4 hover:shadow-sm transition-all md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
               >
-                <Card className="p-3 sm:p-4 hover:shadow-sm transition-all md:min-h-[120px]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       {(() => {
@@ -1035,8 +1015,7 @@ export default function Invoices() {
                       )}
                     </div>
                   </div>
-                </Card>
-              </div>
+              </Card>
             );
           })}
         </div>
