@@ -157,7 +157,7 @@ export default function InvoiceDetail() {
         </div>
       </div>
 
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Edit Invoice</CardTitle>
         </CardHeader>

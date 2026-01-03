@@ -19,7 +19,8 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { APP_LOGO, APP_TITLE } from "@/const";
+import { APP_TITLE } from "@/const";
+import { Logo } from "@/components/Logo";
 import { useIsMobile } from "@/hooks/useMobile";
 import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, File, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, Receipt, ClipboardCheck, DocumentCurrencyEuro } from "@/components/ui/Icon";
 import { DataExportImportDialog } from "./DataExportImportDialog";
@@ -167,11 +168,10 @@ function DashboardLayoutContent({
             <div className="flex items-center gap-3 pl-2 group-data-[collapsible=icon]:px-0 transition-all w-full">
               {isCollapsed ? (
                 <div className="relative h-8 w-8 shrink-0 group">
-                  <img
-                    src={APP_LOGO}
-                    className="h-8 w-8 rounded-md object-cover ring-1 ring-border"
-                    alt="Logo"
-                  />
+                    <Logo
+                      className="h-8 w-8 rounded-md object-cover ring-1 ring-border"
+                      alt="Logo"
+                    />
                   <button
                     onClick={toggleSidebar}
                     className="absolute inset-0 flex items-center justify-center bg-accent rounded-md ring-1 ring-border opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -182,8 +182,7 @@ function DashboardLayoutContent({
               ) : (
                 <>
                   <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={APP_LOGO}
+                    <Logo
                       className="h-8 w-8 rounded-md object-cover ring-1 ring-border shrink-0"
                       alt="Logo"
                     />

@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
-import { APP_TITLE, APP_LOGO } from "@/const";
+import { APP_TITLE } from "@/const";
+import { Logo } from "@/components/Logo";
 import { Loader2 } from "@/components/ui/Icon";
 
 export default function Login() {
@@ -91,13 +92,10 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          {APP_LOGO && (
-            <img
-              src={APP_LOGO}
-              alt={APP_TITLE}
-              className="h-12 mx-auto mb-4"
-            />
-          )}
+          <Logo
+            alt={APP_TITLE}
+            className="h-12 mx-auto mb-4"
+          />
           <CardTitle className="text-2xl font-bold">{APP_TITLE}</CardTitle>
           <CardDescription>
             {isSignUp ? "Create a new account" : "Sign in to your account"}

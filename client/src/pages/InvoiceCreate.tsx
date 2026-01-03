@@ -27,7 +27,7 @@ export default function InvoiceCreate() {
         </div>
       </div>
 
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Invoice Details</CardTitle>
         </CardHeader>

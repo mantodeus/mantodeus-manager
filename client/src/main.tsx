@@ -7,6 +7,7 @@ import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
 import { supabase } from "./lib/supabase";
+import { initializeLogos } from "./lib/logo";
 import "./index.css";
 import "./theme-fixes.css";
 
@@ -186,10 +187,14 @@ const initializeApp = () => {
 
 // Initialize when DOM is ready
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initializeApp);
+  document.addEventListener("DOMContentLoaded", () => {
+    initializeApp();
+    initializeLogos();
+  });
 } else {
   // DOM is already ready
   initializeApp();
+  initializeLogos();
 }
 
 // Service Worker registration
