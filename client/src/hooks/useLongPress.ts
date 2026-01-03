@@ -206,5 +206,6 @@ export function useLongPress({
     },
     gestureState,
     cancelLongPress,
+    isPressing: gestureState === "pressing",
   };
 }

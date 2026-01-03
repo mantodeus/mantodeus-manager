@@ -86,6 +86,8 @@ export const CenteredContextMenu = React.forwardRef<
   menuClassName,
 }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isPressing, setIsPressing] = useState(false);
+  const [menuItemsClickable, setMenuItemsClickable] = useState(false);
   const [itemRect, setItemRect] = useState<DOMRect | null>(null);
   const itemRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -209,6 +211,13 @@ export const CenteredContextMenu = React.forwardRef<
       const rect = element.getBoundingClientRect();
       setItemRect(rect);
       setIsOpen(true);
+      setIsPressing(false);
+      
+      // Prevent accidental clicks - menu items become clickable after a delay
+      setMenuItemsClickable(false);
+      setTimeout(() => {
+        setMenuItemsClickable(true);
+      }, 300); // 300ms cooldown before items are clickable
     }
   }, [disabled]);
 
@@ -239,14 +248,26 @@ export const CenteredContextMenu = React.forwardRef<
     [onAction, closeMenu]
   );
 
-  // Long-press handler (mobile)
-  const { longPressHandlers } = useLongPress({
+  // Long-press handler (mobile) with visual feedback
+  const { longPressHandlers, gestureState } = useLongPress({
     onLongPress: (event) => {
       openMenu(event);
     },
-    duration: 550,
+    onPressStart: () => {
+      setIsPressing(true);
+    },
+    duration: 500, // Reduced for better responsiveness
     hapticFeedback: true,
   });
+
+  // Update pressing state based on gesture
+  useEffect(() => {
+    if (gestureState === "pressing") {
+      setIsPressing(true);
+    } else if (gestureState === "idle" || gestureState === "menu-open") {
+      setIsPressing(false);
+    }
+  }, [gestureState]);
 
   // Right-click handler (desktop)
   const handleContextMenu = useCallback(
@@ -361,11 +382,19 @@ export const CenteredContextMenu = React.forwardRef<
     return (
       <button
         key={action}
-        onClick={() => handleAction(action)}
+        onClick={() => {
+          if (!menuItemsClickable) return; // Prevent clicks during cooldown
+          handleAction(action);
+        }}
+        disabled={!menuItemsClickable}
         className={cn(
-          "glass-menu-item w-full text-left",
-          isDestructive && "delete"
+          "glass-menu-item w-full text-left transition-opacity",
+          isDestructive && "delete",
+          !menuItemsClickable && "opacity-50 pointer-events-none"
         )}
+        style={{
+          pointerEvents: menuItemsClickable ? "auto" : "none",
+        }}
       >
         <Icon className="h-4 w-4" />
         <span>{config.label}</span>
@@ -379,7 +408,9 @@ export const CenteredContextMenu = React.forwardRef<
         ref={wrapperRef}
         style={{
           opacity: isOpen ? 0 : 1,
-          transition: "opacity 180ms ease-out",
+          transition: "opacity 180ms ease-out, transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+          transform: isPressing && !isOpen ? "scale(0.97)" : "scale(1)",
+          transformOrigin: "center center",
         }}
         onContextMenu={handleContextMenu}
         {...(!isOpen && !disabled ? longPressHandlers : {})}
