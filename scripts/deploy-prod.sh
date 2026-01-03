@@ -25,11 +25,11 @@ fi
 echo "==> Install dependencies"
 npx pnpm install
 
+echo "==> Generate database schema"
+npx pnpm run db:generate
+
 echo "==> Run migrations"
 npx pnpm run db:migrate
-
-echo "==> Install (frozen lockfile)"
-npx pnpm install --frozen-lockfile
 
 echo "==> Build"
 # Increase Node.js memory limit to prevent OOM during Vite build
@@ -47,5 +47,8 @@ if ! npx pm2 restart mantodeus-manager; then
   echo "WARN: Restart failed, attempting fresh start"
   npx pm2 start dist/index.js --name mantodeus-manager
 fi
+
+echo "==> Save PM2 configuration"
+npx pm2 save
 
 echo "==> Deploy complete: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"

@@ -238,7 +238,7 @@ export function InvoiceForm({
   const editingItem = itemEditor.index !== null ? items[itemEditor.index] : defaultLineItem;
 
   return (
-    <form onSubmit={handleSave} className="space-y-8 max-w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <form onSubmit={handleSave} className="space-y-8 w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
       {isCancellation && (
         <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
           <div className="flex items-center gap-2">
