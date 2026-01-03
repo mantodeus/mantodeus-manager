@@ -21,8 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { Loader2, FileText, Eye } from "@/components/ui/Icon";
 import { toast } from "sonner";
-import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { useIsMobile } from "@/hooks/useMobile";
+import { cn } from "@/lib/utils";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -49,9 +49,6 @@ export function InvoiceUploadReviewDialog({
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [issueDate, setIssueDate] = useState<string>("");
   const [totalAmount, setTotalAmount] = useState<string>("");
-  const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
@@ -59,27 +56,20 @@ export function InvoiceUploadReviewDialog({
     { enabled: !!invoiceId }
   );
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
 
   const handlePreviewPDF = async () => {
     if (!invoiceId || !invoice) return;
     
-    // For uploaded invoices, use the original PDF from S3
+    // For uploaded invoices, open file directly via file-proxy
     if (invoice.source === "uploaded" && invoice.originalPdfS3Key) {
       const fileName = invoice.invoiceName || invoice.originalFileName || invoice.invoiceNumber || "invoice.pdf";
-      setPreviewFileName(fileName);
-      setPreviewModalOpen(true);
-      // PDFPreviewModal will use fileKey to fetch via file-proxy
+      const fileUrl = `/api/file-proxy?key=${encodeURIComponent(invoice.originalPdfS3Key)}&filename=${encodeURIComponent(fileName)}`;
+      // Open in new tab/window for direct access, download, and share
+      window.open(fileUrl, '_blank');
       return;
     }
     
-    // For created invoices, generate PDF
+    // For created invoices, generate PDF and open directly
     try {
       const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
       if (!session?.access_token) {
@@ -99,12 +89,8 @@ export function InvoiceUploadReviewDialog({
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-      setPreviewUrl(url);
-      setPreviewFileName(invoice?.invoiceName || invoice?.invoiceNumber || "invoice.pdf");
-      setPreviewModalOpen(true);
+      // Open in new tab/window for direct access
+      window.open(url, '_blank');
     } catch (error) {
       console.error('Preview error:', error);
       toast.error('Failed to open preview');
@@ -219,14 +205,13 @@ export function InvoiceUploadReviewDialog({
         totalAmount: String(totalAmount), // Ensure it's always a string
       });
     } else {
-      // For already-confirmed uploaded invoices, use update mutation
-      // Note: update mutation doesn't accept totalAmount directly, so we calculate from existing items or use subtotal
+      // For already-confirmed uploaded invoices, use update mutation with totalAmount
       await updateMutation.mutateAsync({
         id: invoiceId,
         invoiceNumber: invoiceNumber || invoice.invoiceNumber,
         clientId: clientId !== "none" ? parseInt(clientId, 10) : undefined,
         issueDate: new Date(issueDate),
-        // Update mutation will preserve existing items and totals for uploaded invoices
+        totalAmount: String(totalAmount), // Allow updating total for uploaded invoices
       });
     }
   };
@@ -250,7 +235,10 @@ export function InvoiceUploadReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className={cn(
+        "sm:max-w-[500px]",
+        isMobile && "pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+      )}>
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
@@ -320,13 +308,7 @@ export function InvoiceUploadReviewDialog({
               onChange={(e) => setTotalAmount(e.target.value)}
               placeholder="0.00"
               required
-              disabled={!invoice?.needsReview}
             />
-            {!invoice?.needsReview && (
-              <p className="text-xs text-muted-foreground">
-                Total amount cannot be changed for confirmed uploaded invoices. The amount is preserved from the original PDF.
-              </p>
-            )}
           </div>
         </div>
 
@@ -363,21 +345,6 @@ export function InvoiceUploadReviewDialog({
           </div>
         </DialogFooter>
       </DialogContent>
-
-      <PDFPreviewModal
-        isOpen={previewModalOpen}
-        onClose={() => {
-          setPreviewModalOpen(false);
-          if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-          }
-          setPreviewUrl(null);
-        }}
-        fileUrl={previewUrl ?? undefined}
-        fileKey={invoice?.originalPdfS3Key ?? undefined}
-        fileName={previewFileName}
-        fullScreen={isMobile}
-      />
     </Dialog>
   );
 }

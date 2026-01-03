@@ -54,6 +54,13 @@ function calculateTotals(items: ReturnType<typeof normalizeLineItems>) {
   };
 }
 
+/**
+ * Format invoice name as "Rechnung {invoiceNumber}" for German invoices
+ */
+function formatInvoiceName(invoiceNumber: string): string {
+  return `Rechnung ${invoiceNumber}`;
+}
+
 function extractInvoiceCounter(value: string): number | null {
   const match = value.match(/^(.*)(\d+)(\D*)$/);
   if (!match) return null;
@@ -248,6 +255,7 @@ export const invoiceRouter = router({
         userId: userId,
         clientId: input.clientId ?? null,
         invoiceNumber,
+        invoiceName: formatInvoiceName(invoiceNumber),
         invoiceCounter: effectiveCounter,
         invoiceYear,
         status: "draft",
@@ -277,6 +285,7 @@ export const invoiceRouter = router({
       invoiceMetadataSchema.extend({
         id: z.number(),
         items: z.array(lineItemSchema).optional(),
+        totalAmount: z.string().optional(), // For uploaded invoices to update total directly
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -364,19 +373,23 @@ export const invoiceRouter = router({
       // If no items provided and invoice has no items, use empty array (for uploaded invoices)
       const finalItems = normalizedItems.length > 0 ? normalizedItems : [];
 
-      // Calculate totals - for uploaded invoices without items, preserve existing totals
+      // Calculate totals - for uploaded invoices, allow direct totalAmount override
       const totals = finalItems.length > 0 
         ? calculateTotals(finalItems)
+        : input.totalAmount && invoice.source === "uploaded"
+        ? {
+            subtotal: Number(input.totalAmount),
+            vatAmount: Number(invoice.vatAmount || 0),
+            total: Number(input.totalAmount),
+          }
         : {
             subtotal: Number(invoice.subtotal || 0),
             vatAmount: Number(invoice.vatAmount || 0),
             total: Number(invoice.total || 0),
           };
 
-      // Sync invoiceName with invoiceNumber when invoiceNumber changes
-      const invoiceName = (input.invoiceNumber?.trim() && input.invoiceNumber.trim() !== invoice.invoiceNumber)
-        ? invoiceNumber
-        : invoice.invoiceName;
+      // Always format invoiceName as "Rechnung {invoiceNumber}" when invoiceNumber exists
+      const invoiceName = formatInvoiceName(invoiceNumber);
 
       const updated = await db.updateInvoice(invoice.id, {
         clientId: input.clientId ?? invoice.clientId,
@@ -666,9 +679,11 @@ export const invoiceRouter = router({
       }
       
       // Update invoice with confirmed data
+      const finalInvoiceNumber = input.invoiceNumber ?? invoice.invoiceNumber;
       const updated = await db.updateInvoice(input.id, {
         clientId: input.clientId ?? invoice.clientId,
-        invoiceNumber: input.invoiceNumber ?? invoice.invoiceNumber,
+        invoiceNumber: finalInvoiceNumber,
+        invoiceName: formatInvoiceName(finalInvoiceNumber),
         issueDate: input.issueDate ? new Date(input.issueDate) : invoice.issueDate,
         subtotal,
         total,
