@@ -487,4 +487,4 @@ export const CenteredContextMenu = React.forwardRef<
         )}
     </>
   );
-}
+});
