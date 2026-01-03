@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Building2, Loader2, Mail, MapPin, Phone, Plus, Search, User, Users, X } from "@/components/ui/Icon";
+import { Building2, Loader2, Mail, MapPin, Phone, Plus, Search, User, Users, X, ArrowLeft, Edit } from "@/components/ui/Icon";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { useEffect, useRef, useState } from "react";
@@ -35,9 +35,12 @@ import { useLocation } from "wouter";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { PageHeader } from "@/components/PageHeader";
+import { useIsMobile } from "@/hooks/useMobile";
+import { cn } from "@/lib/utils";
 
 export default function Contacts() {
   const [location, setLocation] = useLocation();
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDraft, setSearchDraft] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -710,8 +713,9 @@ export default function Contacts() {
                       placeholder="Label (e.g., Work, Personal)"
                       value={email.label}
                       onChange={(e) => {
-                        const newEmails = [...formData.emails];
-                        newEmails[idx].label = e.target.value;
+                        const newEmails = formData.emails.map((item, i) => 
+                          i === idx ? { ...item, label: e.target.value } : item
+                        );
                         setFormData({ ...formData, emails: newEmails });
                       }}
                     />
@@ -721,8 +725,9 @@ export default function Contacts() {
                       placeholder="email@example.com"
                       value={email.value}
                       onChange={(e) => {
-                        const newEmails = [...formData.emails];
-                        newEmails[idx].value = e.target.value;
+                        const newEmails = formData.emails.map((item, i) => 
+                          i === idx ? { ...item, value: e.target.value } : item
+                        );
                         setFormData({ ...formData, emails: newEmails });
                       }}
                     />
@@ -768,8 +773,9 @@ export default function Contacts() {
                       placeholder="Label (e.g., Mobile, Office)"
                       value={phone.label}
                       onChange={(e) => {
-                        const newPhones = [...formData.phoneNumbers];
-                        newPhones[idx].label = e.target.value;
+                        const newPhones = formData.phoneNumbers.map((item, i) => 
+                          i === idx ? { ...item, label: e.target.value } : item
+                        );
                         setFormData({ ...formData, phoneNumbers: newPhones });
                       }}
                     />
@@ -778,8 +784,9 @@ export default function Contacts() {
                       placeholder="+49 123 456 789"
                       value={phone.value}
                       onChange={(e) => {
-                        const newPhones = [...formData.phoneNumbers];
-                        newPhones[idx].value = e.target.value;
+                        const newPhones = formData.phoneNumbers.map((item, i) => 
+                          i === idx ? { ...item, value: e.target.value } : item
+                        );
                         setFormData({ ...formData, phoneNumbers: newPhones });
                       }}
                     />
@@ -882,22 +889,73 @@ export default function Contacts() {
         
         return (
           <Dialog open={!!previewContactId} onOpenChange={(open) => !open && setPreviewContactId(null)}>
-            <DialogContent className="h-full w-full max-w-full top-0 left-0 right-0 bottom-0 translate-x-0 translate-y-0 rounded-none md:max-w-2xl md:max-h-[90vh] md:top-[50%] md:left-[50%] md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-lg md:h-auto overflow-y-auto">
-              <DialogHeader>
-                <div className="flex items-center gap-3">
-                  <ContactIcon className="h-6 w-6 text-primary" />
-                  <DialogTitle className="text-2xl">{displayName}</DialogTitle>
+            <DialogContent 
+              className={cn(
+                isMobile 
+                  ? "h-screen w-screen max-w-full top-0 left-0 right-0 bottom-0 translate-x-0 translate-y-0 rounded-none m-0 p-0 flex flex-col"
+                  : "md:max-w-2xl md:max-h-[90vh] md:top-[50%] md:left-[50%] md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-lg md:h-auto"
+              )}
+              showCloseButton={false}
+            >
+              {/* Header */}
+              <DialogHeader className={cn(
+                isMobile ? "px-4 py-3 border-b border-border flex-shrink-0" : ""
+              )}>
+                <div className="flex items-center justify-between gap-3">
+                  {/* Back arrow (left) */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setPreviewContactId(null)}
+                    className={isMobile ? "" : "hidden"}
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  
+                  {/* Title (center left) */}
+                  <div className="flex-1 flex items-center gap-3 min-w-0">
+                    <ContactIcon className="h-6 w-6 text-primary flex-shrink-0" />
+                    <DialogTitle className="text-2xl truncate">{displayName}</DialogTitle>
+                  </div>
+                  
+                  {/* Edit and Close buttons (top right) */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        handleEdit(contact);
+                        setPreviewContactId(null);
+                      }}
+                    >
+                      <Edit className="h-5 w-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setPreviewContactId(null)}
+                      className={isMobile ? "hidden" : ""}
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
-                <DialogDescription>
-                  {contact.contactPerson 
-                    ? `Contact person: ${contact.contactPerson}` 
-                    : contact.type === "business" 
-                      ? "Business contact" 
-                      : "Personal contact"}
-                </DialogDescription>
+                {!isMobile && (
+                  <DialogDescription>
+                    {contact.contactPerson 
+                      ? `Contact person: ${contact.contactPerson}` 
+                      : contact.type === "business" 
+                        ? "Business contact" 
+                        : "Personal contact"}
+                  </DialogDescription>
+                )}
               </DialogHeader>
               
-              <div className="space-y-6 mt-6">
+              {/* Content - scrollable, aligned to top */}
+              <div className={cn(
+                "space-y-6",
+                isMobile ? "flex-1 overflow-y-auto px-4 py-4 pb-24" : "mt-6"
+              )}>
                 {/* Address Section */}
                 {previewAddress && (
                   <div className="space-y-2">
@@ -1011,15 +1069,18 @@ export default function Contacts() {
                 )}
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => {
-                  handleEdit(contact);
-                  setPreviewContactId(null);
-                }}>
-                  Edit Contact
-                </Button>
-                <Button onClick={() => setPreviewContactId(null)}>Close</Button>
-              </DialogFooter>
+              {/* Footer - only show on desktop */}
+              {!isMobile && (
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => {
+                    handleEdit(contact);
+                    setPreviewContactId(null);
+                  }}>
+                    Edit Contact
+                  </Button>
+                  <Button onClick={() => setPreviewContactId(null)}>Close</Button>
+                </DialogFooter>
+              )}
             </DialogContent>
           </Dialog>
         );

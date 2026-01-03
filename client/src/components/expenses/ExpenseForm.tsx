@@ -313,7 +313,7 @@ export function ExpenseForm({
 
         <div className="grid gap-2">
           <Label htmlFor="notes" className="break-words">
-            Notes (Optional)
+            Notes
           </Label>
           <Textarea
             id="notes"

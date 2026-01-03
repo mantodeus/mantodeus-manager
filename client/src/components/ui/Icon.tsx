@@ -232,6 +232,7 @@ export { ClipboardDocumentCheckIcon as ClipboardCheck } from '@heroicons/react/2
 export { ClipboardDocumentIcon as ClipboardDocument } from '@heroicons/react/24/outline';
 export { ClipboardDocumentListIcon as ClipboardDocumentList } from '@heroicons/react/24/outline';
 export { DocumentCurrencyEuroIcon as DocumentCurrencyEuro } from '@heroicons/react/24/outline';
+export { DocumentCurrencyPoundIcon as DocumentCurrencyPound } from '@heroicons/react/24/outline';
 export { HomeModernIcon as HomeModern } from '@heroicons/react/24/outline';
 export { WrenchScrewdriverIcon as Wrench } from '@heroicons/react/24/outline';
 export { WrenchScrewdriverIcon as WrenchScrewdriver } from '@heroicons/react/24/outline';

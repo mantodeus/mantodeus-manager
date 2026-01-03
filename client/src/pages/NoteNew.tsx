@@ -355,7 +355,7 @@ export default function NoteNew() {
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Note title (optional)"
+            placeholder="Note title"
             className="text-3xl font-regular border-none shadow-none px-0 focus-visible:ring-0 h-auto"
           />
         </div>

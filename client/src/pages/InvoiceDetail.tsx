@@ -6,11 +6,20 @@ import { ArrowLeft, Loader2 } from "@/components/ui/Icon";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
+import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
+import { useState, useEffect } from "react";
+import { PDFPreviewModal } from "@/components/PDFPreviewModal";
+import { useIsMobile } from "@/hooks/useMobile";
 
 export default function InvoiceDetail() {
   const [, params] = useRoute("/invoices/:id");
   const [, navigate] = useLocation();
   const invoiceId = params?.id ? parseInt(params.id) : null;
+  const isMobile = useIsMobile();
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -18,6 +27,59 @@ export default function InvoiceDetail() {
     { id: invoiceId! },
     { enabled: !!invoiceId }
   );
+
+  // Redirect uploaded invoices to review dialog
+  useEffect(() => {
+    if (invoice && invoice.source === "uploaded" && invoice.status === "draft") {
+      setReviewDialogOpen(true);
+    }
+  }, [invoice]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const handlePreviewPDF = async () => {
+    if (!invoiceId) return;
+    try {
+      const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+      if (!session?.access_token) {
+        toast.error("Please log in to preview invoices");
+        return;
+      }
+      const response = await fetch(`/api/invoices/${invoiceId}/pdf?preview=true`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        toast.error(errorData.error || 'Failed to generate preview');
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      if (isMobile) {
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+        }
+        setPreviewUrl(url);
+        setPreviewFileName(invoice?.invoiceName || invoice?.invoiceNumber || "invoice.pdf");
+        setPreviewModalOpen(true);
+      } else {
+        window.open(url, "_blank");
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      }
+    } catch (error) {
+      console.error('Preview error:', error);
+      toast.error('Failed to open preview');
+    }
+  };
 
   if (!invoiceId || Number.isNaN(invoiceId)) {
     navigate("/invoices");
@@ -35,6 +97,43 @@ export default function InvoiceDetail() {
     );
   }
 
+  // For uploaded invoices in draft mode, show review dialog instead
+  if (invoice && invoice.source === "uploaded" && invoice.status === "draft") {
+    return (
+      <>
+        <InvoiceUploadReviewDialog
+          open={reviewDialogOpen}
+          onOpenChange={(open) => {
+            setReviewDialogOpen(open);
+            if (!open) {
+              navigate("/invoices");
+            }
+          }}
+          invoiceId={invoiceId}
+          parsedData={null}
+          onSuccess={async () => {
+            await utils.invoices.list.invalidate();
+            await utils.invoices.listNeedsReview.invalidate();
+            navigate("/invoices");
+          }}
+        />
+        <PDFPreviewModal
+          isOpen={previewModalOpen}
+          onClose={() => {
+            setPreviewModalOpen(false);
+            if (previewUrl) {
+              URL.revokeObjectURL(previewUrl);
+            }
+            setPreviewUrl(null);
+          }}
+          fileUrl={previewUrl ?? undefined}
+          fileName={previewFileName}
+          fullScreen={isMobile}
+        />
+      </>
+    );
+  }
+
   const title = invoice?.invoiceName || invoice?.invoiceNumber || "Invoice";
 
   return (
@@ -46,10 +145,15 @@ export default function InvoiceDetail() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-regular">{title}</h1>
           <p className="text-muted-foreground text-sm">View and edit invoice details</p>
         </div>
+        {invoice && invoice.source === "uploaded" && (
+          <Button variant="outline" onClick={handlePreviewPDF}>
+            Preview
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -71,6 +175,20 @@ export default function InvoiceDetail() {
           />
         </CardContent>
       </Card>
+
+      <PDFPreviewModal
+        isOpen={previewModalOpen}
+        onClose={() => {
+          setPreviewModalOpen(false);
+          if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+          }
+          setPreviewUrl(null);
+        }}
+        fileUrl={previewUrl ?? undefined}
+        fileName={previewFileName}
+        fullScreen={isMobile}
+      />
     </div>
   );
 }

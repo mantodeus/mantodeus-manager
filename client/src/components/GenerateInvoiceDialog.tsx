@@ -166,7 +166,7 @@ export function GenerateInvoiceDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">Notes</Label>
             <Textarea
               id="notes"
               value={notes}

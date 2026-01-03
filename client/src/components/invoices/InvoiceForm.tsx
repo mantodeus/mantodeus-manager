@@ -234,7 +234,7 @@ export function InvoiceForm({
   const editingItem = itemEditor.index !== null ? items[itemEditor.index] : defaultLineItem;
 
   return (
-    <form onSubmit={handleSave} className="space-y-8 max-w-full overflow-x-hidden">
+    <form onSubmit={handleSave} className="space-y-8 max-w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
       {isCancellation && (
         <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
           <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ export function InvoiceForm({
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Client (optional)</Label>
+              <Label>Client</Label>
               <Select
                 value={formState.clientId && formState.clientId.trim() !== "" ? formState.clientId : "none"}
                 onValueChange={(val) => {
@@ -317,7 +317,7 @@ export function InvoiceForm({
               />
             </div>
             <div className="space-y-2">
-              <Label>Due Date (optional)</Label>
+              <Label>Due Date</Label>
               <Input
                 type="date"
                 value={formState.dueDate ?? ""}
@@ -343,7 +343,7 @@ export function InvoiceForm({
             <div className="flex items-center justify-between">
               <Label>Service Period</Label>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 mt-2 items-center">
               <Input
                 type="date"
                 value={formState.servicePeriodStart ?? ""}
@@ -351,7 +351,9 @@ export function InvoiceForm({
                   setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
                 }
                 disabled={!isDraft}
+                className="w-full"
               />
+              <span className="text-muted-foreground text-sm">→</span>
               <Input
                 type="date"
                 value={formState.servicePeriodEnd ?? ""}
@@ -359,6 +361,7 @@ export function InvoiceForm({
                   setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
                 }
                 disabled={!isDraft}
+                className="w-full"
               />
             </div>
           </div>
@@ -451,7 +454,7 @@ export function InvoiceForm({
       </div>
 
       <div className="space-y-3">
-        <Label>Notes (optional)</Label>
+        <Label>Notes</Label>
         <Textarea
           value={formState.notes ?? ""}
           onChange={(e) => setFormState((prev) => ({ ...prev, notes: e.target.value }))}
@@ -535,7 +538,7 @@ function LineItemModal({
             <Input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} />
           </div>
           <div>
-            <Label>Item Description (optional)</Label>
+            <Label>Item Description</Label>
             <Textarea
               value={draft.description ?? ""}
               onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))}
@@ -543,7 +546,7 @@ function LineItemModal({
             />
           </div>
           <div>
-            <Label>Category (optional)</Label>
+            <Label>Category</Label>
             <Input
               value={draft.category ?? ""}
               onChange={(e) => setDraft((prev) => ({ ...prev, category: e.target.value }))}

@@ -223,7 +223,7 @@ export default function ProjectNew() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Project Dates (Optional)</Label>
+                <Label>Project Dates</Label>
                 <DatePicker selectedDates={selectedDates} onChange={setSelectedDates} />
               </div>
             </div>

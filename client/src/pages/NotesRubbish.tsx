@@ -145,7 +145,7 @@ export default function NotesRubbish() {
               disabled={deletePermanentlyMutation.isPending}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Empty rubbish
+              Empty
             </Button>
           ) : undefined
         }

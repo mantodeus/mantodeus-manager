@@ -927,7 +927,7 @@ function FindingDialog({
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Defect Type (optional)</label>
+              <label className="text-sm font-medium mb-2 block">Defect Type</label>
               <input
                 type="text"
                 value={defectType}
@@ -938,7 +938,7 @@ function FindingDialog({
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Severity (optional)</label>
+              <label className="text-sm font-medium mb-2 block">Severity</label>
               <input
                 type="text"
                 value={severity}
@@ -949,7 +949,7 @@ function FindingDialog({
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Notes (optional)</label>
+              <label className="text-sm font-medium mb-2 block">Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -959,7 +959,7 @@ function FindingDialog({
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Position (optional)</label>
+              <label className="text-sm font-medium mb-2 block">Position</label>
               <input
                 type="text"
                 value={positionDescriptor}

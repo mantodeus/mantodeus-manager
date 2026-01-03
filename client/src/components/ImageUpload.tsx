@@ -123,7 +123,7 @@ export function ImageUpload({ jobId, taskId, projectId }: ImageUploadProps) {
       <CardContent className="pt-6">
         <div className="space-y-4">
           <div className="grid gap-2">
-            <Label htmlFor="caption">Caption (optional)</Label>
+            <Label htmlFor="caption">Caption</Label>
             <Input
               id="caption"
               value={caption}

@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "@/components/ui/Icon";
+import { useAutoScrollOnOpen } from "@/hooks/useAutoScrollOnOpen";
 
 import { cn } from "@/lib/utils";
 
@@ -55,9 +56,47 @@ function SelectContent({
   align = "center",
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  // Watch for open state changes via data-state attribute
+  React.useEffect(() => {
+    if (!contentRef.current) return;
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-state') {
+          const element = mutation.target as HTMLElement;
+          setIsOpen(element.getAttribute('data-state') === 'open');
+        }
+      });
+    });
+
+    observer.observe(contentRef.current, {
+      attributes: true,
+      attributeFilter: ['data-state'],
+    });
+
+    // Initial check
+    setIsOpen(contentRef.current.getAttribute('data-state') === 'open');
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  // Enable auto-scroll to prevent dropdowns from being cropped
+  useAutoScrollOnOpen({
+    isOpen,
+    menuRef: contentRef,
+    enabled: true,
+    scrollBuffer: 12,
+  });
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
+        ref={contentRef}
         data-slot="select-content"
         className={cn(
           "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border shadow-md",

@@ -89,7 +89,7 @@ export function FileUploadDialog({
         <DialogHeader>
           <DialogTitle>Upload Files</DialogTitle>
           <DialogDescription>
-            Select files to upload. Add tags to categorize photos (optional).
+            Select files to upload. Add tags to categorize photos.
           </DialogDescription>
         </DialogHeader>
 
@@ -111,7 +111,7 @@ export function FileUploadDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Tags (optional)</Label>
+            <Label>Tags</Label>
             <div className="flex flex-wrap gap-2 mb-2">
               {SUGGESTED_TAGS.map((tag) => (
                 <Badge

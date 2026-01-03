@@ -19,8 +19,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye } from "@/components/ui/Icon";
 import { toast } from "sonner";
+import { PDFPreviewModal } from "@/components/PDFPreviewModal";
+import { useIsMobile } from "@/hooks/useMobile";
+import { useState, useEffect } from "react";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -42,16 +45,66 @@ export function InvoiceUploadReviewDialog({
   parsedData,
   onSuccess,
 }: InvoiceUploadReviewDialogProps) {
+  const isMobile = useIsMobile();
   const [clientId, setClientId] = useState<string>("none");
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [issueDate, setIssueDate] = useState<string>("");
   const [totalAmount, setTotalAmount] = useState<string>("");
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
     { id: invoiceId! },
     { enabled: !!invoiceId }
   );
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const handlePreviewPDF = async () => {
+    if (!invoiceId) return;
+    try {
+      const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+      if (!session?.access_token) {
+        toast.error("Please log in to preview invoices");
+        return;
+      }
+      const response = await fetch(`/api/invoices/${invoiceId}/pdf?preview=true`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        toast.error(errorData.error || 'Failed to generate preview');
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      if (isMobile) {
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+        }
+        setPreviewUrl(url);
+        setPreviewFileName(invoice?.invoiceName || invoice?.invoiceNumber || "invoice.pdf");
+        setPreviewModalOpen(true);
+      } else {
+        window.open(url, "_blank");
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      }
+    } catch (error) {
+      console.error('Preview error:', error);
+      toast.error('Failed to open preview');
+    }
+  };
 
   const utils = trpc.useUtils();
   const confirmMutation = trpc.invoices.confirmUploadedInvoice.useMutation({
@@ -159,10 +212,15 @@ export function InvoiceUploadReviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            Review Invoice
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Review Invoice
+            </DialogTitle>
+            <Button variant="outline" size="icon" onClick={handlePreviewPDF}>
+              <Eye className="h-4 w-4" />
+            </Button>
+          </div>
           <DialogDescription>
             We've extracted these details from the PDF. Please review and confirm before saving.
           </DialogDescription>
@@ -187,7 +245,7 @@ export function InvoiceUploadReviewDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="invoiceNumber">Invoice Number (optional)</Label>
+            <Label htmlFor="invoiceNumber">Invoice Number</Label>
             <Input
               id="invoiceNumber"
               value={invoiceNumber}
@@ -240,6 +298,20 @@ export function InvoiceUploadReviewDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <PDFPreviewModal
+        isOpen={previewModalOpen}
+        onClose={() => {
+          setPreviewModalOpen(false);
+          if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+          }
+          setPreviewUrl(null);
+        }}
+        fileUrl={previewUrl ?? undefined}
+        fileName={previewFileName}
+        fullScreen={isMobile}
+      />
     </Dialog>
   );
 }

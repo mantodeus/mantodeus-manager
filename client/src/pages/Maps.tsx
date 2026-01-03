@@ -971,7 +971,7 @@ export default function Maps() {
                 id="address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Enter address (optional)"
+                placeholder="Enter address"
               />
             </div>
             <div className="grid gap-2">
@@ -1070,7 +1070,7 @@ export default function Maps() {
                 id="edit-address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Enter address (optional)"
+                placeholder="Enter address"
               />
             </div>
             <div className="grid gap-2">

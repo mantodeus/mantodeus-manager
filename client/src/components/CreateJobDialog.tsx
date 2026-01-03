@@ -138,7 +138,7 @@ export function CreateJobDialog({ open, onOpenChange }: CreateJobDialogProps) {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="contact">Contact (Optional)</Label>
+              <Label htmlFor="contact">Contact</Label>
               <Select value={contactId?.toString() || "none"} onValueChange={(value) => setContactId(value === "none" ? undefined : parseInt(value))}>
                 <SelectTrigger id="contact">
                   <SelectValue placeholder="Select a contact" />
@@ -154,7 +154,7 @@ export function CreateJobDialog({ open, onOpenChange }: CreateJobDialogProps) {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Select Dates (Optional)</Label>
+              <Label>Select Dates</Label>
               <DatePicker selectedDates={selectedDates} onChange={setSelectedDates} />
             </div>
           </div>

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Loader2, Upload } from "@/components/ui/Icon";
+import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound } from "@/components/ui/Icon";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
@@ -57,6 +57,7 @@ export default function Invoices() {
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: needsReviewInvoices = [], refetch: refetchNeedsReview } = trpc.invoices.listNeedsReview.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: companySettings } = trpc.settings.get.useQuery();
   const issueMutation = trpc.invoices.issue.useMutation({
     onSuccess: () => {
       toast.success("Invoice sent");
@@ -333,6 +334,15 @@ export default function Invoices() {
     return <Badge variant="outline" className="text-xs">OPEN</Badge>;
   };
 
+  const getInvoiceIcon = () => {
+    const country = companySettings?.country?.toLowerCase() || "";
+    if (country === "united kingdom" || country === "uk" || country === "great britain") {
+      return DocumentCurrencyPound;
+    }
+    // Default to Euro (Germany or any other country)
+    return DocumentCurrencyEuro;
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -384,7 +394,10 @@ export default function Invoices() {
                 <Card key={`needs-review-${invoice.id}`} className="p-3 sm:p-4 hover:shadow-sm transition-all">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
+                      {(() => {
+                        const InvoiceIcon = getInvoiceIcon();
+                        return <InvoiceIcon className="w-5 h-5 text-accent mt-0.5 shrink-0" />;
+                      })()}
                       <div className="min-w-0">
                         <div className="font-light text-base leading-tight break-words">{displayName}</div>
                         <div className="text-xs text-muted-foreground">Uploaded {uploadDateLabel}</div>
@@ -452,7 +465,14 @@ export default function Invoices() {
               if (isMultiSelectMode) {
                 toggleSelection(invoice.id);
               } else {
-                navigate(`/invoices/${invoice.id}`);
+                // For uploaded invoices that have been saved once (draft mode), open review dialog
+                if (invoice.source === "uploaded" && invoice.status === "draft") {
+                  setUploadedInvoiceId(invoice.id);
+                  setUploadedParsedData(null);
+                  setUploadReviewDialogOpen(true);
+                } else {
+                  navigate(`/invoices/${invoice.id}`);
+                }
               }
             };
 
@@ -465,7 +485,10 @@ export default function Invoices() {
                 <Card className="p-3 sm:p-4 hover:shadow-sm transition-all">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
+                      {(() => {
+                        const InvoiceIcon = getInvoiceIcon();
+                        return <InvoiceIcon className="w-5 h-5 text-accent mt-0.5 shrink-0" />;
+                      })()}
                       <div className="min-w-0">
                         <div className="font-light text-base leading-tight break-words">{displayName}</div>
                         {linkedContact && (

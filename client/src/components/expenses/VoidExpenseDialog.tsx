@@ -108,7 +108,7 @@ export function VoidExpenseDialog({
             </RadioGroup>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="void-note">Additional note (optional)</Label>
+            <Label htmlFor="void-note">Additional note</Label>
             <Textarea
               id="void-note"
               value={voidNote}
