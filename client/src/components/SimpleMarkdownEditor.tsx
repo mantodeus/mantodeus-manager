@@ -73,6 +73,12 @@ function ListOrderedIcon({ className }: { className?: string }) {
 function htmlToMarkdown(element: HTMLElement | null): string {
   if (!element) return "";
   
+  // First, check if element has any text content at all
+  const textContent = element.textContent || "";
+  if (!textContent.trim()) {
+    return "";
+  }
+  
   let markdown = "";
   const nodes = Array.from(element.childNodes);
   let inList = false;
@@ -134,9 +140,10 @@ function htmlToMarkdown(element: HTMLElement | null): string {
           listType = null;
         }
         const inner = processInlineMarkdown(el);
-        if (inner.trim() || i === nodes.length - 1) {
+        // Include div content even if it's just whitespace (might be a line break)
+        if (inner.trim() || (inner && i < nodes.length - 1)) {
           markdown += inner;
-          if (i < nodes.length - 1) {
+          if (i < nodes.length - 1 && inner.trim()) {
             markdown += "\n";
           }
         }
@@ -476,7 +483,20 @@ export function SimpleMarkdownEditor({
     isUserInputRef.current = true;
     
     const html = editorRef.current.innerHTML;
-    const markdown = htmlToMarkdown(editorRef.current);
+    
+    // Check if editor has actual content (not just empty divs/brs)
+    const hasContent = editorRef.current.textContent && editorRef.current.textContent.trim().length > 0;
+    
+    // Convert HTML to markdown
+    let markdown = htmlToMarkdown(editorRef.current);
+    
+    // If editor has text content but markdown is empty, preserve at least a newline
+    // This happens when user types but HTML structure hasn't formed yet
+    if (hasContent && !markdown.trim()) {
+      // Extract plain text as fallback
+      markdown = editorRef.current.textContent || "";
+    }
+    
     lastContentRef.current = markdown;
     onChange(markdown);
   };

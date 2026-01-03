@@ -232,14 +232,22 @@ export default function NoteNew() {
     
     // Only create if note doesn't exist yet and we have content
     if (noteId) return; // Note already exists
-    if (!debouncedTitle.trim() && !debouncedContent.trim()) return; // No content yet
     if (createInFlightRef.current) {
       console.log(`[NOTES_NEW] ${timestamp} | CREATE_SKIP | reason: create_in_flight`);
       return; // Create already in flight
     }
     
+    // Check if we have any content (title or body)
+    const hasTitle = debouncedTitle.trim().length > 0;
+    const hasContent = debouncedContent.trim().length > 0;
+    
+    // Don't create if both are empty
+    if (!hasTitle && !hasContent) {
+      return; // No content yet
+    }
+    
     // Create note on first meaningful change (with idempotency key)
-    console.log(`[NOTES_NEW] ${timestamp} | CREATE_TRIGGER | key: ${clientCreationKey}`);
+    console.log(`[NOTES_NEW] ${timestamp} | CREATE_TRIGGER | key: ${clientCreationKey} | title: ${hasTitle} | content: ${hasContent}`);
     createInFlightRef.current = true;
     setSaveStatus("saving");
     
