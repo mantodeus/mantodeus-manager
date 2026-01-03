@@ -96,7 +96,7 @@ export const CenteredContextMenu = React.forwardRef<
 
   // Calculate preview position (centered, above menu) - INSTANT positioning
   const previewStyle = useMemo(() => {
-    if (!itemRect) return null;
+    if (!itemRect || !itemRef.current) return null;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -112,6 +112,10 @@ export const CenteredContextMenu = React.forwardRef<
     const totalHeight = previewHeight + spacing + menuHeight;
     const top = viewportHeight / 2 - totalHeight / 2;
 
+    // Get the actual border-radius from the original element
+    const computedStyle = window.getComputedStyle(itemRef.current);
+    const borderRadius = computedStyle.borderRadius || "0.75rem";
+
     return {
       position: "fixed" as const,
       top: `${top}px`,
@@ -122,6 +126,8 @@ export const CenteredContextMenu = React.forwardRef<
       transformOrigin: "center center",
       zIndex: 1001,
       pointerEvents: "none" as const,
+      borderRadius: borderRadius,
+      overflow: "hidden" as const,
     };
   }, [itemRect]);
 
@@ -274,7 +280,7 @@ export const CenteredContextMenu = React.forwardRef<
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      openMenu(e.nativeEvent);
+      openMenu(e);
     },
     [openMenu]
   );
@@ -413,43 +419,9 @@ export const CenteredContextMenu = React.forwardRef<
           transformOrigin: "center center",
         }}
         onContextMenu={handleContextMenu}
-        onSelectStart={(e) => {
-          // Prevent text selection during press - but allow in inputs
-          const target = e.target as HTMLElement;
-          if (
-            isPressing || isOpen
-          ) {
-            // Allow selection in inputs, textareas, and contenteditable
-            if (
-              target.tagName === 'INPUT' ||
-              target.tagName === 'TEXTAREA' ||
-              target.tagName === 'SELECT' ||
-              target.isContentEditable ||
-              target.closest('input, textarea, select, [contenteditable]')
-            ) {
-              return; // Allow selection in these elements
-            }
-            e.preventDefault();
-          }
-        }}
-        onDragStart={(e) => {
-          // Prevent drag during press - but allow in inputs
-          const target = e.target as HTMLElement;
-          if (isPressing || isOpen) {
-            if (
-              target.tagName === 'INPUT' ||
-              target.tagName === 'TEXTAREA' ||
-              target.tagName === 'SELECT' ||
-              target.closest('input, textarea, select')
-            ) {
-              return; // Allow drag in inputs
-            }
-            e.preventDefault();
-          }
-        }}
         {...(!isOpen && !disabled ? longPressHandlers : {})}
       >
-        <div ref={itemRef}>
+        <div ref={itemRef as React.RefObject<HTMLDivElement>}>
           {children}
         </div>
       </div>
@@ -478,8 +450,6 @@ export const CenteredContextMenu = React.forwardRef<
               style={{
                 ...previewStyle,
                 animation: "previewAppear 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-                borderRadius: "0.75rem", // Match card border-radius (rounded-xl = 0.75rem)
-                overflow: "hidden",
               }}
             >
               <div
@@ -488,11 +458,33 @@ export const CenteredContextMenu = React.forwardRef<
                   boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)",
                   borderRadius: "inherit",
                   overflow: "hidden",
-                  border: "none", // Ensure no border
-                  outline: "none", // Ensure no outline
+                  border: "none",
+                  outline: "none",
                 }}
                 dangerouslySetInnerHTML={{
-                  __html: itemRef.current.outerHTML,
+                  __html: (() => {
+                    // Clone the element and remove borders from Card elements to preserve rounded edges
+                    const clone = itemRef.current!.cloneNode(true) as HTMLElement;
+                    // Find and remove border from Card elements (data-slot="card" or class containing "card")
+                    const cardElements = clone.querySelectorAll('[data-slot="card"], .card, [class*="rounded"]');
+                    cardElements.forEach((card) => {
+                      if (card instanceof HTMLElement) {
+                        // Remove border styles that create rectangular appearance
+                        card.style.border = "none";
+                        card.style.borderWidth = "0";
+                        card.style.borderStyle = "none";
+                        card.style.borderColor = "transparent";
+                      }
+                    });
+                    // Also check the root element itself
+                    if (clone.hasAttribute('data-slot') && clone.getAttribute('data-slot') === 'card') {
+                      clone.style.border = "none";
+                      clone.style.borderWidth = "0";
+                      clone.style.borderStyle = "none";
+                      clone.style.borderColor = "transparent";
+                    }
+                    return clone.outerHTML;
+                  })(),
                 }}
               />
             </div>
