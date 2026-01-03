@@ -398,7 +398,12 @@ export default function Invoices() {
   };
 
   const handleSelectAll = () => {
-    setSelectedIds(new Set(filteredInvoices.map(i => i.id)));
+    // Include both regular invoices and needs review invoices
+    const allInvoiceIds = [
+      ...filteredInvoices.map(i => i.id),
+      ...needsReviewInvoices.map(i => i.id)
+    ];
+    setSelectedIds(new Set(allInvoiceIds));
   };
 
   const handleBatchArchive = () => {
@@ -425,7 +430,15 @@ export default function Invoices() {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
     ids.forEach((id) => {
-      moveToTrashMutation.mutate({ id });
+      // Check if this is a needs review invoice
+      const needsReviewInvoice = needsReviewInvoices.find(inv => inv.id === id);
+      if (needsReviewInvoice) {
+        // Use cancelUploadedInvoice for needs review invoices
+        needsReviewDeleteMutation.mutate({ id });
+      } else {
+        // Use moveToTrash for regular invoices
+        moveToTrashMutation.mutate({ id });
+      }
     });
     setSelectedIds(new Set());
     setIsMultiSelectMode(false);
@@ -774,48 +787,61 @@ export default function Invoices() {
                 "Untitled invoice";
               const displayTotal = formatCurrency(invoice.total);
               return (
-                <Card key={`needs-review-${invoice.id}`} className="p-3 sm:p-4 hover:shadow-sm transition-all">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      {(() => {
-                        const InvoiceIcon = getInvoiceIcon();
-                        return <InvoiceIcon className="w-5 h-5 text-accent mt-0.5 shrink-0" />;
-                      })()}
-                      <div className="min-w-0">
-                        <div className="font-light text-base leading-tight break-words">{displayName}</div>
-                        <div className="text-xs text-muted-foreground">Uploaded {uploadDateLabel}</div>
+                <div
+                  key={`needs-review-${invoice.id}`}
+                  onClick={() => {
+                    if (isMultiSelectMode) {
+                      toggleSelection(invoice.id);
+                    }
+                  }}
+                  className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected rounded-lg" : ""}`}
+                >
+                  <Card className="p-3 sm:p-4 hover:shadow-sm transition-all">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        {(() => {
+                          const InvoiceIcon = getInvoiceIcon();
+                          return <InvoiceIcon className="w-5 h-5 text-accent mt-0.5 shrink-0" />;
+                        })()}
+                        <div className="min-w-0">
+                          <div className="font-light text-base leading-tight break-words">{displayName}</div>
+                          <div className="text-xs text-muted-foreground">Uploaded {uploadDateLabel}</div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <div className="text-sm font-light">{displayTotal}</div>
+                        <Badge variant="outline" className="text-xs">NEEDS REVIEW</Badge>
+                        <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
+                        {!isMultiSelectMode && (
+                          <ItemActionsMenu
+                            actions={["edit", "duplicate", "select", "archive", "delete"]}
+                            onAction={(action) => {
+                              if (action === "edit") {
+                                // "Edit" maps to "review" for needs-review invoices
+                                setUploadedInvoiceId(invoice.id);
+                                setUploadedParsedData(null);
+                                setUploadReviewDialogOpen(true);
+                              }
+                              if (action === "duplicate") {
+                                duplicateInvoiceMutation.mutate({ id: invoice.id });
+                              }
+                              if (action === "select") {
+                                setIsMultiSelectMode(true);
+                                setSelectedIds(new Set([invoice.id]));
+                              }
+                              if (action === "archive") {
+                                handleArchiveInvoice(invoice.id);
+                              }
+                              if (action === "delete") {
+                                setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName });
+                              }
+                            }}
+                          />
+                        )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <div className="text-sm font-light">{displayTotal}</div>
-                      <Badge variant="outline" className="text-xs">NEEDS REVIEW</Badge>
-                      <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
-                      <ItemActionsMenu
-                        actions={["edit", "duplicate", "select", "archive", "delete"]}
-                        onAction={(action) => {
-                          if (action === "edit") {
-                            // "Edit" maps to "review" for needs-review invoices
-                            setUploadedInvoiceId(invoice.id);
-                            setUploadedParsedData(null);
-                            setUploadReviewDialogOpen(true);
-                          }
-                          if (action === "duplicate") {
-                            toast.info("Duplicate is coming soon.");
-                          }
-                          if (action === "select") {
-                            toast.info("Selection mode is coming soon.");
-                          }
-                          if (action === "archive") {
-                            toast.info("Archive is coming soon.");
-                          }
-                          if (action === "delete") {
-                            setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName });
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                </Card>
+                  </Card>
+                </div>
               );
             })}
           </div>
@@ -943,7 +969,7 @@ export default function Invoices() {
       {isMultiSelectMode && (
         <MultiSelectBar
           selectedCount={selectedIds.size}
-          totalCount={filteredInvoices.length}
+          totalCount={filteredInvoices.length + needsReviewInvoices.length}
           onSelectAll={handleSelectAll}
           onDuplicate={handleBatchDuplicate}
           onArchive={handleBatchArchive}

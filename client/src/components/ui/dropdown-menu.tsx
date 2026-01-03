@@ -39,14 +39,33 @@ function DropdownMenuContent({
   const [isOpen, setIsOpen] = React.useState(false);
 
   // Watch for open state changes via data-state attribute
+  // Also watch for when element is added to DOM (for portal-rendered menus)
   React.useEffect(() => {
-    if (!menuRef.current) return;
+    const checkState = () => {
+      if (menuRef.current) {
+        const state = menuRef.current.getAttribute('data-state');
+        setIsOpen(state === 'open');
+      }
+    };
+
+    if (!menuRef.current) {
+      // If ref not ready, check again after a short delay
+      const timeout = setTimeout(() => {
+        if (menuRef.current) {
+          checkState();
+        }
+      }, 0);
+      return () => clearTimeout(timeout);
+    }
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'data-state') {
-          const element = mutation.target as HTMLElement;
-          setIsOpen(element.getAttribute('data-state') === 'open');
+          checkState();
+        }
+        // Also watch for when element is added to DOM
+        if (mutation.type === 'childList') {
+          checkState();
         }
       });
     });
@@ -54,13 +73,32 @@ function DropdownMenuContent({
     observer.observe(menuRef.current, {
       attributes: true,
       attributeFilter: ['data-state'],
+      childList: false,
+      subtree: false,
+    });
+
+    // Also observe the document body for portal-rendered menus
+    const bodyObserver = new MutationObserver(() => {
+      if (menuRef.current) {
+        checkState();
+      }
+    });
+
+    bodyObserver.observe(document.body, {
+      childList: true,
+      subtree: false,
     });
 
     // Initial check
-    setIsOpen(menuRef.current.getAttribute('data-state') === 'open');
+    checkState();
+
+    // Also check periodically as a fallback (less frequent to avoid performance issues)
+    const pollInterval = setInterval(checkState, 100);
 
     return () => {
       observer.disconnect();
+      bodyObserver.disconnect();
+      clearInterval(pollInterval);
     };
   }, []);
 

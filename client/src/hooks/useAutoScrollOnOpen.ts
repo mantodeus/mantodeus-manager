@@ -165,7 +165,11 @@ export function useAutoScrollOnOpen({
     rafId = requestAnimationFrame(() => {
       rafId = requestAnimationFrame(() => {
         // Small additional delay to ensure positioning is stable
-        timeoutId = setTimeout(performScroll, 10);
+        timeoutId = setTimeout(() => {
+          performScroll();
+          // Also check again after a short delay in case positioning takes longer
+          setTimeout(performScroll, 50);
+        }, 10);
       });
     });
 

@@ -355,11 +355,23 @@ export const invoiceRouter = router({
             lineTotal: Number(item.lineTotal),
           }));
 
-      if (!normalizedItems.length) {
+      // For uploaded invoices, allow updates without line items (they may not have been parsed yet)
+      // For created invoices, require at least one line item
+      if (!normalizedItems.length && invoice.source !== "uploaded") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "At least one line item is required" });
       }
+      
+      // If no items provided and invoice has no items, use empty array (for uploaded invoices)
+      const finalItems = normalizedItems.length > 0 ? normalizedItems : [];
 
-      const totals = calculateTotals(normalizedItems);
+      // Calculate totals - for uploaded invoices without items, preserve existing totals
+      const totals = finalItems.length > 0 
+        ? calculateTotals(finalItems)
+        : {
+            subtotal: Number(invoice.subtotal || 0),
+            vatAmount: Number(invoice.vatAmount || 0),
+            total: Number(invoice.total || 0),
+          };
 
       // Sync invoiceName with invoiceNumber when invoiceNumber changes
       const invoiceName = (input.invoiceNumber?.trim() && input.invoiceNumber.trim() !== invoice.invoiceNumber)
@@ -382,7 +394,7 @@ export const invoiceRouter = router({
         subtotal: totals.subtotal.toFixed(2),
         vatAmount: totals.vatAmount.toFixed(2),
         total: totals.total.toFixed(2),
-        items: normalizedItems.map((item) => ({
+        items: finalItems.map((item) => ({
           ...item,
           quantity: item.quantity.toFixed(2),
           unitPrice: item.unitPrice.toFixed(2),
