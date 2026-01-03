@@ -301,6 +301,8 @@ export function SimpleMarkdownEditor({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
   const isUpdatingRef = useRef(false);
+  const isUserInputRef = useRef(false);
+  const lastContentRef = useRef<string>("");
 
   // Detect mobile for toolbar positioning
   useEffect(() => {
@@ -320,13 +322,17 @@ export function SimpleMarkdownEditor({
       if (window.visualViewport) {
         const viewport = window.visualViewport;
         const windowHeight = window.innerHeight;
-        const keyboardOffset = Math.max(0, windowHeight - (viewport.height + viewport.offsetTop));
+        // Calculate keyboard height: difference between window height and visual viewport
+        const keyboardOffset = Math.max(0, windowHeight - viewport.height);
         if (keyboardOffset > 50) {
+          // Keyboard is open - store the height
           setKeyboardHeight(keyboardOffset);
         } else {
+          // Keyboard is closed
           setKeyboardHeight(0);
         }
       } else {
+        // Fallback for browsers without visual viewport API
         const currentHeight = window.innerHeight;
         const storedHeight = sessionStorage.getItem('viewport-height');
         if (storedHeight) {
@@ -364,15 +370,27 @@ export function SimpleMarkdownEditor({
   }, [isMobile]);
 
   // Update editor HTML when markdown content changes (from props)
+  // BUT only if the change came from outside (not from user typing)
   useEffect(() => {
     if (!editorRef.current || isUpdatingRef.current) return;
+    
+    // If this change came from user input, don't update (prevents cursor jumping)
+    if (isUserInputRef.current) {
+      isUserInputRef.current = false;
+      lastContentRef.current = content;
+      return;
+    }
+    
+    // Only update if content actually changed from external source
+    if (content === lastContentRef.current) return;
+    lastContentRef.current = content;
     
     const html = markdownToHtml(content || "");
     const currentHtml = editorRef.current.innerHTML.trim();
     const normalizedHtml = html.trim();
     
-    // Only update if content actually changed (avoid loops)
-    if (currentHtml !== normalizedHtml && normalizedHtml !== "") {
+    // Only update if HTML actually differs
+    if (currentHtml !== normalizedHtml) {
       isUpdatingRef.current = true;
       const selection = window.getSelection();
       let savedRange: Range | null = null;
@@ -385,10 +403,20 @@ export function SimpleMarkdownEditor({
       editorRef.current.innerHTML = normalizedHtml || "";
       
       // Try to restore cursor position
-      if (savedRange && editorRef.current.contains(savedRange.startContainer)) {
+      if (savedRange) {
         try {
-          selection?.removeAllRanges();
-          selection?.addRange(savedRange);
+          // Check if the saved range is still valid
+          if (editorRef.current.contains(savedRange.startContainer)) {
+            selection?.removeAllRanges();
+            selection?.addRange(savedRange);
+          } else {
+            // Place cursor at end if saved position is invalid
+            const newRange = document.createRange();
+            newRange.selectNodeContents(editorRef.current);
+            newRange.collapse(false);
+            selection?.removeAllRanges();
+            selection?.addRange(newRange);
+          }
         } catch {
           // If restoration fails, place cursor at end
           const newRange = document.createRange();
@@ -402,13 +430,6 @@ export function SimpleMarkdownEditor({
       setTimeout(() => {
         isUpdatingRef.current = false;
       }, 50);
-    } else if (content === "" && editorRef.current.innerHTML.trim() !== "") {
-      // Handle empty content
-      isUpdatingRef.current = true;
-      editorRef.current.innerHTML = "";
-      setTimeout(() => {
-        isUpdatingRef.current = false;
-      }, 50);
     }
   }, [content]);
 
@@ -417,6 +438,7 @@ export function SimpleMarkdownEditor({
     if (editorRef.current && !editorRef.current.innerHTML && content) {
       isUpdatingRef.current = true;
       editorRef.current.innerHTML = markdownToHtml(content);
+      lastContentRef.current = content;
       setTimeout(() => {
         isUpdatingRef.current = false;
       }, 50);
@@ -450,8 +472,12 @@ export function SimpleMarkdownEditor({
   const handleInput = () => {
     if (isUpdatingRef.current || !editorRef.current) return;
     
+    // Mark that this change came from user input
+    isUserInputRef.current = true;
+    
     const html = editorRef.current.innerHTML;
     const markdown = htmlToMarkdown(editorRef.current);
+    lastContentRef.current = markdown;
     onChange(markdown);
   };
 
@@ -615,6 +641,9 @@ export function SimpleMarkdownEditor({
   };
 
   const showToolbar = isMobile ? isFocused : true;
+  
+  // On mobile, position toolbar at top of keyboard (keyboardHeight from bottom)
+  // On desktop, position at bottom of action bar
   const toolbarBottom = isMobile
     ? (keyboardHeight > 0 
         ? `${keyboardHeight}px` 
