@@ -24,6 +24,26 @@ export function getLogoPath(): string {
 }
 
 /**
+ * Get the PWA app icon path based on the current theme
+ * Green app icon for green-mantis (dark mode)
+ * Pink app icon for orchid-mantis (light mode)
+ */
+export function getAppIconPath(): string {
+  if (typeof window === "undefined") {
+    return "/app_icon_green.PNG"; // Default for SSR
+  }
+
+  const theme = document.documentElement.getAttribute("data-theme");
+  
+  if (theme === "orchid-mantis") {
+    return "/app_icon_pink.PNG";
+  }
+  
+  // Default to green for green-mantis or any other theme
+  return "/app_icon_green.PNG";
+}
+
+/**
  * Get the favicon path based on the current theme
  */
 export function getFaviconPath(): string {
@@ -56,6 +76,73 @@ export function updateFavicon(): void {
   }
 }
 
+// Store the current manifest blob URL for cleanup
+let currentManifestBlobUrl: string | null = null;
+
+/**
+ * Update PWA manifest dynamically based on theme
+ */
+function updatePwaManifest(): void {
+  if (typeof window === "undefined") return;
+
+  const appIconPath = getAppIconPath();
+  
+  // Base manifest structure
+  const manifest = {
+    name: "Mantodeus Manager",
+    short_name: "Mantodeus",
+    description: "Job management system for construction teams to log jobs, create reports, and manage tasks",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#0a0a0a",
+    theme_color: "#030303",
+    orientation: "portrait-primary",
+    icons: [
+      {
+        src: appIconPath,
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any maskable"
+      },
+      {
+        src: appIconPath,
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any maskable"
+      }
+    ],
+    categories: ["productivity", "business"],
+    screenshots: [
+      {
+        src: "/screenshot-mobile.png",
+        sizes: "390x844",
+        type: "image/png",
+        form_factor: "narrow"
+      }
+    ]
+  };
+
+  // Revoke previous blob URL if it exists
+  if (currentManifestBlobUrl) {
+    URL.revokeObjectURL(currentManifestBlobUrl);
+    currentManifestBlobUrl = null;
+  }
+
+  // Find or create manifest link
+  let manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+  
+  if (!manifestLink) {
+    manifestLink = document.createElement("link");
+    manifestLink.rel = "manifest";
+    document.head.appendChild(manifestLink);
+  }
+
+  // Create new blob URL for manifest
+  const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
+  currentManifestBlobUrl = URL.createObjectURL(manifestBlob);
+  manifestLink.href = currentManifestBlobUrl;
+}
+
 /**
  * Update app icons dynamically based on theme
  */
@@ -63,6 +150,7 @@ export function updateAppIcons(): void {
   if (typeof window === "undefined") return;
 
   const iconPath = getLogoPath();
+  const appIconPath = getAppIconPath();
   
   // Update all apple-touch-icon links
   const appleIcons = document.querySelectorAll<HTMLLinkElement>('link[rel="apple-touch-icon"]');
@@ -79,6 +167,9 @@ export function updateAppIcons(): void {
     appleIcon.href = iconPath;
     document.head.appendChild(appleIcon);
   }
+
+  // Update PWA manifest with app icons
+  updatePwaManifest();
 }
 
 /**
