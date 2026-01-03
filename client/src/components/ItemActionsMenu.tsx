@@ -75,9 +75,7 @@ export function ItemActionsMenu({
       size="icon"
       className={cn(sizeClasses[size], triggerClassName)}
       disabled={disabled}
-      onClick={(e) => {
-        e.stopPropagation();
-      }}
+      type="button"
     >
       <MoreVertical className={iconSizes[size]} />
       <span className="sr-only">More actions</span>

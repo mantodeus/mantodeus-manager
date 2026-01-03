@@ -140,22 +140,64 @@ export function CenteredContextMenu({
     };
   }, [itemRect]);
 
-  const openMenu = useCallback(() => {
+  const openMenu = useCallback((event?: Event | React.SyntheticEvent) => {
     if (disabled) return;
 
     // Find the item element - look for parent card/item
     const findItemElement = (): HTMLElement | null => {
-      // First try the ref
+      // If we have an event, use it to find the element
+      if (event) {
+        const target = (event.target as HTMLElement) || (event.currentTarget as HTMLElement);
+        if (target) {
+          // Look for parent card/item - try multiple selectors
+          // Card component uses data-slot="card", so check for that first
+          const parent = target.closest(
+            '[data-slot="card"], .card, [data-item], li, .item-card, [class*="Card"], [role="article"], article'
+          );
+          if (parent) return parent as HTMLElement;
+          
+          // Also try going up a few levels to find a card-like element
+          let current: HTMLElement | null = target.parentElement;
+          let depth = 0;
+          while (current && depth < 5) {
+            // Check if this element looks like a card (has padding, border, etc.)
+            if (
+              current.getAttribute('data-slot') === 'card' ||
+              current.classList.contains('card') ||
+              current.hasAttribute('data-item')
+            ) {
+              return current;
+            }
+            const styles = window.getComputedStyle(current);
+            if (
+              styles.borderRadius !== '0px' ||
+              styles.boxShadow !== 'none' ||
+              styles.padding !== '0px'
+            ) {
+              // This might be a card-like container
+              return current;
+            }
+            current = current.parentElement;
+            depth++;
+          }
+        }
+      }
+      
+      // Fallback: try the ref
       if (itemRef.current) {
-        const parent = itemRef.current.closest('.card, [data-item], li, .item-card, [class*="Card"]');
+        const parent = itemRef.current.closest(
+          '[data-slot="card"], .card, [data-item], li, .item-card, [class*="Card"], [role="article"], article'
+        );
         if (parent) return parent as HTMLElement;
         return itemRef.current;
       }
       
-      // If trigger button was clicked, find the parent item
+      // Last resort: try active element
       const activeElement = document.activeElement as HTMLElement;
       if (activeElement) {
-        const parent = activeElement.closest('.card, [data-item], li, .item-card, [class*="Card"]');
+        const parent = activeElement.closest(
+          '[data-slot="card"], .card, [data-item], li, .item-card, [class*="Card"], [role="article"], article'
+        );
         if (parent) return parent as HTMLElement;
       }
       
@@ -168,6 +210,11 @@ export function CenteredContextMenu({
       const rect = element.getBoundingClientRect();
       setItemRect(rect);
       setIsOpen(true);
+    } else {
+      console.warn('CenteredContextMenu: Could not find parent item element', {
+        itemRef: itemRef.current,
+        event,
+      });
     }
   }, [disabled]);
 
@@ -190,8 +237,8 @@ export function CenteredContextMenu({
 
   // Long-press handler
   const { longPressHandlers } = useLongPress({
-    onLongPress: () => {
-      openMenu();
+    onLongPress: (event) => {
+      openMenu(event);
     },
     duration: 450,
     hapticFeedback: true,
@@ -328,11 +375,18 @@ export function CenteredContextMenu({
           data-trigger-button
           onClick={(e) => {
             e.stopPropagation();
-            openMenu();
+            openMenu(e.nativeEvent);
           }}
           {...(!isOpen ? longPressHandlers : {})}
         >
-          {triggerButton}
+          {React.isValidElement(triggerButton)
+            ? React.cloneElement(triggerButton as React.ReactElement, {
+                onClick: (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  openMenu(e.nativeEvent);
+                },
+              })
+            : triggerButton}
         </div>
       )}
 
