@@ -2607,18 +2607,18 @@ export async function createNote(data: InsertNote) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Always try without clientCreationKey first if it's provided, since the column might not exist
-  // This is safer than trying with it and catching errors
-  const { clientCreationKey, ...dataWithoutKey } = data;
-  
-  // If clientCreationKey is provided, try with it first, but fall back to without it
-  // If clientCreationKey is null/undefined, just use dataWithoutKey
-  const insertData = clientCreationKey != null ? data : dataWithoutKey;
+  // Always exclude clientCreationKey from insert since the column may not exist yet
+  // The idempotency check in the router will still work (it checks before calling createNote)
+  // This is safer than trying to insert it and catching errors
+  const { clientCreationKey, ...insertData } = data;
   
   try {
     const result = await db.insert(notes).values(insertData);
     // Extract insertId from Drizzle result (same pattern as createImage, createExpense, etc.)
     const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
+    if (!insertId) {
+      throw new Error("Failed to create note: no insert ID returned");
+    }
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2616',message:'createNote success',data:{insertId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
     // #endregion
@@ -2626,53 +2626,9 @@ export async function createNote(data: InsertNote) {
     return [{ id: Number(insertId) }];
   } catch (error: any) {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2620',message:'createNote error',data:{errorMessage:error?.message,errorCode:error?.code,errorStack:error?.stack?.substring(0,500),hasClientCreationKey:!!clientCreationKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2620',message:'createNote error',data:{errorMessage:error?.message,errorCode:error?.code,errorStack:error?.stack?.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
     // #endregion
-    // Handle case where clientCreationKey column doesn't exist yet
-    // Check error message more thoroughly (Drizzle wraps MySQL errors)
-    const errorMessage = String(error?.message || '');
-    const errorString = JSON.stringify(error || {});
-    const cause = (error as any)?.cause;
-    const causeMessage = cause ? String(cause?.message || '') : '';
-    
-    // Check multiple sources for column error indicators
-    const isColumnError = 
-      errorMessage.includes("clientCreationKey") || 
-      errorMessage.includes("Unknown column") ||
-      errorMessage.includes("doesn't exist") ||
-      errorMessage.includes("ER_BAD_FIELD_ERROR") ||
-      error?.code === "ER_BAD_FIELD_ERROR" ||
-      errorString.includes("clientCreationKey") ||
-      causeMessage.includes("clientCreationKey") ||
-      causeMessage.includes("Unknown column") ||
-      causeMessage.includes("ER_BAD_FIELD_ERROR");
-    
-    // If we tried with clientCreationKey and got an error, retry without it as fallback
-    // This handles cases where the column doesn't exist (common during migrations)
-    if (clientCreationKey != null && insertData === data) {
-      console.log("[Database] Error creating note with clientCreationKey, retrying without it (column may not exist)");
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2638',message:'createNote retry without clientCreationKey',data:{originalError:errorMessage.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
-      try {
-        const retryResult = await db.insert(notes).values(dataWithoutKey);
-        const insertId = Array.isArray(retryResult) ? retryResult[0]?.insertId : (retryResult as any).insertId;
-        if (!insertId) {
-          throw new Error("Failed to create note: no insert ID returned");
-        }
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2645',message:'createNote retry success',data:{insertId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
-        return [{ id: Number(insertId) }];
-      } catch (retryError: any) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2650',message:'createNote retry failed',data:{errorMessage:retryError?.message,errorCode:retryError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
-        // If retry also failed, throw the original error (more informative)
-        throw error;
-      }
-    }
-    // Re-throw other errors
+    // Re-throw error (no retry needed since we're not using clientCreationKey)
     throw error;
   }
 }
