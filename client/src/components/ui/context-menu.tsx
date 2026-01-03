@@ -132,7 +132,7 @@ function ContextMenuContent({
     isOpen,
     menuRef: contentRef,
     enabled: true,
-    scrollBuffer: isMobile ? 24 : 12, // Larger buffer on mobile for tab bar clearance
+    scrollBuffer: isMobile ? 32 : 16, // Increased buffer on mobile for better tab bar clearance
   });
 
   return (

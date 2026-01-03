@@ -28,24 +28,29 @@ interface UseAutoScrollOnOpenOptions {
  * Calculates the bottom obstruction height (tab bar + safe area)
  */
 function getBottomObstructionHeight(): number {
-  // Bottom tab bar height: calc(56px + env(safe-area-inset-bottom) + 12px)
-  // We need to account for the actual rendered height
+  // Get the actual rendered tab bar height from the DOM
   const tabBar = document.querySelector('.bottom-tab-bar') as HTMLElement;
   if (tabBar) {
     const rect = tabBar.getBoundingClientRect();
-    return window.innerHeight - rect.top;
+    const height = window.innerHeight - rect.top;
+    // Return the actual height, ensuring it's at least the tab bar height
+    return Math.max(height, rect.height || 0);
   }
   
   // Fallback: calculate from CSS if tab bar not found
   // On mobile, tab bar is visible (md:hidden means hidden on desktop)
   const isMobile = window.innerWidth < 768; // Tailwind md breakpoint
   if (isMobile) {
-    // Base height: 56px (h-14) + 12px padding + safe area
+    // Base height: 56px (h-14) + padding (8px browser, 20px PWA) + safe area
+    // Check if PWA mode
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  (window.navigator as any).standalone === true;
+    const padding = isPWA ? 20 : 8;
     const safeArea = parseInt(
       getComputedStyle(document.documentElement)
         .getPropertyValue('env(safe-area-inset-bottom)') || '0'
     );
-    return 56 + 12 + safeArea;
+    return 56 + padding + safeArea;
   }
   
   return 0;
@@ -166,17 +171,34 @@ export function useAutoScrollOnOpen({
         // Calculate how much we need to scroll to show the bottom of the menu
         const scrollAmount = menuBottom - availableBottomSpace + scrollBuffer;
         
+        // Use instant scroll for immediate visibility
         if (scrollContainer === window) {
-          window.scrollBy({
-            top: scrollAmount,
-            behavior: 'smooth',
+          const currentScroll = window.scrollY || window.pageYOffset || 0;
+          const targetScroll = currentScroll + scrollAmount;
+          // Scroll instantly to ensure menu bottom is visible immediately
+          window.scrollTo({
+            top: targetScroll,
+            behavior: 'auto',
           });
         } else {
           const element = scrollContainer as HTMLElement;
-          element.scrollBy({
-            top: scrollAmount,
-            behavior: 'smooth',
+          const currentScroll = element.scrollTop;
+          const targetScroll = currentScroll + scrollAmount;
+          element.scrollTo({
+            top: targetScroll,
+            behavior: 'auto',
           });
+        }
+        
+        // Also try scrollIntoView as a fallback to ensure menu is fully visible
+        try {
+          menuElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest',
+          });
+        } catch (e) {
+          // Ignore errors
         }
       } else if (topClipped) {
         // Menu top is hidden - scroll up to reveal it
@@ -197,17 +219,32 @@ export function useAutoScrollOnOpen({
       }
     };
 
-    // Double RAF to ensure Radix positioning is complete
+    // Multiple attempts to ensure menu is positioned and scrolled correctly
+    // Radix UI positioning happens after render, so we need to wait for layout
+    let attemptCount = 0;
+    const maxAttempts = 5;
+    
+    const attemptScroll = () => {
+      if (attemptCount >= maxAttempts) return;
+      attemptCount++;
+      
+      performScroll();
+      
+      // Schedule next attempt with increasing delays
+      if (attemptCount < maxAttempts) {
+        const delay = attemptCount === 1 ? 50 : attemptCount === 2 ? 100 : 150;
+        timeoutId = setTimeout(attemptScroll, delay);
+      }
+    };
+
+    // Start immediately with multiple attempts
+    // First attempt: immediate (after RAF)
     rafId = requestAnimationFrame(() => {
       rafId = requestAnimationFrame(() => {
-        // Small additional delay to ensure positioning is stable
+        // First attempt after positioning
         timeoutId = setTimeout(() => {
-          performScroll();
-          // Also check again after a short delay in case positioning takes longer
-          // Use longer delay on mobile where positioning might take more time
-          const isMobile = window.innerWidth < 768;
-          setTimeout(performScroll, isMobile ? 100 : 50);
-        }, 20);
+          attemptScroll();
+        }, 10);
       });
     });
 

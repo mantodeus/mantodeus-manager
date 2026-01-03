@@ -524,8 +524,9 @@
   }
 
   .bottom-tab-bar {
-    height: calc(56px + env(safe-area-inset-bottom) + 8px);
-    padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
+    /* Browser mode: minimal padding, just safe area */
+    height: calc(56px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
     transform: translateY(calc(-1 * var(--bottom-tab-extra-offset)));
     /* Force prevent text selection on entire tab bar */
     -webkit-user-select: none;
@@ -563,14 +564,17 @@
     -webkit-touch-callout: none !important;
   }
 
-  .bottom-tab-bar::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: calc(-1 * var(--bottom-tab-extra-offset));
-    height: var(--bottom-tab-extra-offset);
-    background-color: var(--background);
+  /* Only show extra background space in PWA/app mode */
+  @media (display-mode: standalone) {
+    .bottom-tab-bar::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(-1 * var(--bottom-tab-extra-offset));
+      height: var(--bottom-tab-extra-offset);
+      background-color: var(--background);
+    }
   }
 
   .toaster,
@@ -588,7 +592,8 @@
   
   @media (max-width: 767px) {
     :root {
-      --bottom-safe-area: calc(56px + env(safe-area-inset-bottom) + 12px + var(--bottom-tab-extra-offset));
+      /* Browser mode: minimal padding (just safe area) */
+      --bottom-safe-area: calc(56px + env(safe-area-inset-bottom));
     }
     .app-content {
       padding-bottom: calc(var(--bottom-safe-area) + 1rem) !important;
@@ -605,8 +610,16 @@
     }
   }
 
+  /* PWA/app mode: extra padding for home swipe gesture */
+  @media (max-width: 767px) and (display-mode: standalone) {
+    :root {
+      --bottom-safe-area: calc(56px + env(safe-area-inset-bottom) + 20px + var(--bottom-tab-extra-offset));
+    }
+  }
+
+  /* Only apply extra offset in PWA/app mode */
   @supports (-webkit-touch-callout: none) {
-    @media (max-width: 767px) {
+    @media (max-width: 767px) and (display-mode: standalone) {
       :root {
         --bottom-tab-extra-offset: 12px;
       }
