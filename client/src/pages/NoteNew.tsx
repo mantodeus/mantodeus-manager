@@ -80,6 +80,10 @@ export default function NoteNew() {
       const timestamp = new Date().toISOString();
       console.log(`[NOTES_NEW] ${timestamp} | CREATE_SUCCESS | note: ${data.id} | key: ${clientCreationKey}`);
       
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:79',message:'note creation success',data:{noteId:data.id,clientCreationKey,previousNoteId:noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      
       createInFlightRef.current = false;
       setNoteId(data.id);
       setSaveStatus("saved");
@@ -111,6 +115,10 @@ export default function NoteNew() {
     onError: (error) => {
       const timestamp = new Date().toISOString();
       console.error(`[NOTES_NEW] ${timestamp} | CREATE_ERROR | key: ${clientCreationKey} | error: ${error.message}`);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:111',message:'note creation error',data:{error:error.message,clientCreationKey,createInFlight:createInFlightRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       
       createInFlightRef.current = false;
       setSaveStatus("error");
@@ -173,8 +181,15 @@ export default function NoteNew() {
   useEffect(() => {
     const timestamp = new Date().toISOString();
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:173',message:'autosave effect triggered',data:{noteId,updateInFlight:updateInFlightRef.current,debouncedTitleLength:debouncedTitle.length,debouncedContentLength:debouncedContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    
     // Rule 3.1: Autosave may run only if valid note id exists
     if (!noteId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:177',message:'autosave skipped - no noteId',data:{noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       // Autosave never creates - creation happens via explicit save button or first change handler
       return;
     }
@@ -194,7 +209,14 @@ export default function NoteNew() {
         currentContent.jobId !== lastSavedContentRef.current.jobId ||
         currentContent.contactId !== lastSavedContentRef.current.contactId;
       
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:191',message:'change detection',data:{hasChanges,titleChanged:currentContent.title!==lastSavedContentRef.current.title,contentChanged:currentContent.content!==lastSavedContentRef.current.content,currentContentLength:currentContent.content.length,lastSavedLength:lastSavedContentRef.current.content.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
+      
       if (!hasChanges) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:197',message:'no changes, skipping autosave',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
         return; // No changes, skip autosave
       }
     }
@@ -202,17 +224,28 @@ export default function NoteNew() {
     // Rule 3.3: Concurrency control - at most one save in flight
     if (updateInFlightRef.current) {
       console.log(`[NOTES_NEW] ${timestamp} | AUTOSAVE_SKIP | note: ${noteId} | reason: save_in_flight`);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:203',message:'autosave skipped - update in flight',data:{noteId,updateInFlight:updateInFlightRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       pendingSaveRef.current = true; // Mark that another save is pending
       return;
     }
     
     // Rule 3.1: Don't autosave if title is empty
     if (!debouncedTitle.trim()) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:210',message:'autosave skipped - empty title',data:{noteId,titleLength:debouncedTitle.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       return;
     }
     
     // All checks passed - perform autosave
     console.log(`[NOTES_NEW] ${timestamp} | AUTOSAVE_TRIGGER | note: ${noteId}`);
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:215',message:'triggering autosave',data:{noteId,title:currentContent.title.substring(0,20),contentLength:currentContent.content.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    
     updateInFlightRef.current = true;
     setSaveStatus("saving");
     
@@ -230,10 +263,22 @@ export default function NoteNew() {
   useEffect(() => {
     const timestamp = new Date().toISOString();
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:230',message:'note creation effect triggered',data:{noteId,createInFlight:createInFlightRef.current,debouncedTitle:debouncedTitle.substring(0,20),debouncedContentLength:debouncedContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
     // Only create if note doesn't exist yet and we have content
-    if (noteId) return; // Note already exists
+    if (noteId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:234',message:'note already exists, skipping',data:{noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      return; // Note already exists
+    }
     if (createInFlightRef.current) {
       console.log(`[NOTES_NEW] ${timestamp} | CREATE_SKIP | reason: create_in_flight`);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:237',message:'create in flight, skipping',data:{createInFlight:createInFlightRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       return; // Create already in flight
     }
     
@@ -241,13 +286,25 @@ export default function NoteNew() {
     const hasTitle = debouncedTitle.trim().length > 0;
     const hasContent = debouncedContent.trim().length > 0;
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:243',message:'content check',data:{hasTitle,hasContent,titleLength:debouncedTitle.length,contentLength:debouncedContent.length,contentPreview:debouncedContent.substring(0,30)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
+    
     // Don't create if both are empty
     if (!hasTitle && !hasContent) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:246',message:'no content, skipping creation',data:{hasTitle,hasContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       return; // No content yet
     }
     
     // Create note on first meaningful change (with idempotency key)
     console.log(`[NOTES_NEW] ${timestamp} | CREATE_TRIGGER | key: ${clientCreationKey} | title: ${hasTitle} | content: ${hasContent}`);
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:251',message:'triggering note creation',data:{clientCreationKey,hasTitle,hasContent,title:debouncedTitle.trim()||'Untitled Note',contentLength:debouncedContent.trim().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
     createInFlightRef.current = true;
     setSaveStatus("saving");
     

@@ -487,15 +487,31 @@ export function SimpleMarkdownEditor({
     // Check if editor has actual content (not just empty divs/brs)
     const hasContent = editorRef.current.textContent && editorRef.current.textContent.trim().length > 0;
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SimpleMarkdownEditor.tsx:479',message:'handleInput entry',data:{htmlLength:html.length,hasContent,textContentLength:editorRef.current.textContent?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
     // Convert HTML to markdown
     let markdown = htmlToMarkdown(editorRef.current);
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SimpleMarkdownEditor.tsx:491',message:'after htmlToMarkdown',data:{markdownLength:markdown.length,markdownPreview:markdown.substring(0,50),hasContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     
     // If editor has text content but markdown is empty, preserve at least a newline
     // This happens when user types but HTML structure hasn't formed yet
     if (hasContent && !markdown.trim()) {
       // Extract plain text as fallback
       markdown = editorRef.current.textContent || "";
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SimpleMarkdownEditor.tsx:497',message:'fallback to textContent',data:{markdownLength:markdown.length,markdownPreview:markdown.substring(0,50)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
     }
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SimpleMarkdownEditor.tsx:502',message:'calling onChange',data:{finalMarkdownLength:markdown.length,finalMarkdownPreview:markdown.substring(0,50)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     
     lastContentRef.current = markdown;
     onChange(markdown);
