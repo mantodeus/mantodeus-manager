@@ -80,7 +80,16 @@ export function ItemActionsMenu({
     };
 
     const cardElement = findParentCard();
-    if (!cardElement) return;
+    if (!cardElement) {
+      console.warn('ItemActionsMenu: Could not find parent card element');
+      return;
+    }
+    
+    // Add a class to identify this card for CSS targeting
+    cardElement.classList.add('has-context-menu');
+
+    // Track if we're currently pressing to apply CSS
+    let isPressing = false;
 
     // Apply pointer event handlers for long-press
     const pointerDownHandler = (e: PointerEvent) => {
@@ -100,19 +109,52 @@ export function ItemActionsMenu({
         return; // Let these elements work normally
       }
       
-      // Prevent text selection immediately
+      // Prevent text selection immediately - clear any existing selection
       if (document.getSelection) {
         const selection = document.getSelection();
         if (selection) {
           selection.removeAllRanges();
         }
       }
+      
+      // Apply CSS to prevent selection
+      isPressing = true;
+      cardElement.style.userSelect = 'none';
+      (cardElement.style as any).webkitUserSelect = 'none';
+      (cardElement.style as any).mozUserSelect = 'none';
+      (cardElement.style as any).msUserSelect = 'none';
+      
       longPressHandlers.onPointerDown?.(e as any);
     };
     
-    // Prevent text selection - but only for non-interactive elements
+    const pointerUpHandler = (e: PointerEvent) => {
+      longPressHandlers.onPointerUp?.(e as any);
+      
+      // Restore user-select after a delay
+      setTimeout(() => {
+        if (!isPressing) {
+          cardElement.style.userSelect = '';
+          (cardElement.style as any).webkitUserSelect = '';
+          (cardElement.style as any).mozUserSelect = '';
+          (cardElement.style as any).msUserSelect = '';
+        }
+      }, 100);
+    };
+    
+    const pointerCancelHandler = (e: PointerEvent) => {
+      longPressHandlers.onPointerCancel?.(e as any);
+      isPressing = false;
+      cardElement.style.userSelect = '';
+      (cardElement.style as any).webkitUserSelect = '';
+      (cardElement.style as any).mozUserSelect = '';
+      (cardElement.style as any).msUserSelect = '';
+    };
+    
+    // Prevent text selection - use CAPTURE phase to catch it early
     const selectStartHandler = (e: Event) => {
       const target = e.target as HTMLElement;
+      
+      // Always allow selection in inputs, textareas, and contenteditable
       if (
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
@@ -120,10 +162,13 @@ export function ItemActionsMenu({
         target.isContentEditable ||
         target.closest('input, textarea, select, [contenteditable]')
       ) {
-        return; // Allow selection in inputs
+        return; // Allow selection in these elements
       }
+      
+      // Prevent all other text selection
       e.preventDefault();
-      e.stopPropagation();
+      e.stopImmediatePropagation();
+      return false;
     };
     
     const dragStartHandler = (e: Event) => {
@@ -139,14 +184,35 @@ export function ItemActionsMenu({
       e.preventDefault();
       e.stopPropagation();
     };
+    
+    // Also prevent mousedown from starting selection
+    const mouseDownHandler = (e: MouseEvent) => {
+      // Don't interfere with inputs, buttons, links
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON' ||
+        target.tagName === 'A' ||
+        target.isContentEditable ||
+        target.closest('input, textarea, select, button, a, [contenteditable]')
+      ) {
+        return;
+      }
+      
+      // Prevent text selection on mousedown
+      if (e.button === 0) { // Left mouse button
+        if (document.getSelection) {
+          const selection = document.getSelection();
+          if (selection) {
+            selection.removeAllRanges();
+          }
+        }
+      }
+    };
     const pointerMoveHandler = (e: PointerEvent) => {
       longPressHandlers.onPointerMove?.(e as any);
-    };
-    const pointerUpHandler = (e: PointerEvent) => {
-      longPressHandlers.onPointerUp?.(e as any);
-    };
-    const pointerCancelHandler = (e: PointerEvent) => {
-      longPressHandlers.onPointerCancel?.(e as any);
     };
     const clickHandler = (e: MouseEvent) => {
       longPressHandlers.onClick?.(e as any);
@@ -159,27 +225,35 @@ export function ItemActionsMenu({
       menuRef.current?.open(e);
     };
 
-    // Don't apply user-select: none globally - it breaks inputs
-    // Only prevent selection during actual long-press via event handlers
-
-    cardElement.addEventListener('pointerdown', pointerDownHandler);
-    cardElement.addEventListener('pointermove', pointerMoveHandler);
-    cardElement.addEventListener('pointerup', pointerUpHandler);
-    cardElement.addEventListener('pointercancel', pointerCancelHandler);
-    cardElement.addEventListener('click', clickHandler);
-    cardElement.addEventListener('contextmenu', contextMenuHandler);
-    cardElement.addEventListener('selectstart', selectStartHandler);
-    cardElement.addEventListener('dragstart', dragStartHandler);
+    // Apply event listeners - use CAPTURE phase for selectstart to catch it early
+    cardElement.addEventListener('pointerdown', pointerDownHandler, true);
+    cardElement.addEventListener('pointermove', pointerMoveHandler, true);
+    cardElement.addEventListener('pointerup', pointerUpHandler, true);
+    cardElement.addEventListener('pointercancel', pointerCancelHandler, true);
+    cardElement.addEventListener('click', clickHandler, true);
+    cardElement.addEventListener('contextmenu', contextMenuHandler, true);
+    cardElement.addEventListener('selectstart', selectStartHandler, true); // CAPTURE phase
+    cardElement.addEventListener('dragstart', dragStartHandler, true);
+    cardElement.addEventListener('mousedown', mouseDownHandler, true); // Also catch mousedown
 
     return () => {
-      cardElement.removeEventListener('pointerdown', pointerDownHandler);
-      cardElement.removeEventListener('pointermove', pointerMoveHandler);
-      cardElement.removeEventListener('pointerup', pointerUpHandler);
-      cardElement.removeEventListener('pointercancel', pointerCancelHandler);
-      cardElement.removeEventListener('click', clickHandler);
-      cardElement.removeEventListener('contextmenu', contextMenuHandler);
-      cardElement.removeEventListener('selectstart', selectStartHandler);
-      cardElement.removeEventListener('dragstart', dragStartHandler);
+      cardElement.removeEventListener('pointerdown', pointerDownHandler, true);
+      cardElement.removeEventListener('pointermove', pointerMoveHandler, true);
+      cardElement.removeEventListener('pointerup', pointerUpHandler, true);
+      cardElement.removeEventListener('pointercancel', pointerCancelHandler, true);
+      cardElement.removeEventListener('click', clickHandler, true);
+      cardElement.removeEventListener('contextmenu', contextMenuHandler, true);
+      cardElement.removeEventListener('selectstart', selectStartHandler, true);
+      cardElement.removeEventListener('dragstart', dragStartHandler, true);
+      cardElement.removeEventListener('mousedown', mouseDownHandler, true);
+      
+      // Clean up CSS
+      isPressing = false;
+      cardElement.style.userSelect = '';
+      (cardElement.style as any).webkitUserSelect = '';
+      (cardElement.style as any).mozUserSelect = '';
+      (cardElement.style as any).msUserSelect = '';
+      cardElement.classList.remove('has-context-menu');
     };
   }, [disabled, longPressHandlers]);
 

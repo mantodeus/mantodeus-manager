@@ -178,6 +178,14 @@ export function useLongPress({
 
       // Otherwise, cancel and allow normal tap
       cancelLongPress();
+      
+      // Clear any text selection that might have started
+      if (document.getSelection) {
+        const selection = document.getSelection();
+        if (selection && selection.toString().length > 0) {
+          selection.removeAllRanges();
+        }
+      }
     },
     [gestureState, cancelLongPress]
   );

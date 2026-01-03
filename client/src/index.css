@@ -389,6 +389,26 @@
     }
   }
 
+  /* Prevent text selection on cards with context menu during interaction */
+  .has-context-menu {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* But allow selection in inputs, textareas, etc. */
+  .has-context-menu input,
+  .has-context-menu textarea,
+  .has-context-menu select,
+  .has-context-menu [contenteditable] {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+
   /* Apple-style centered context menu animations - transform-only, no layout */
   @keyframes fadeIn {
     from {
