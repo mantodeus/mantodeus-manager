@@ -69,14 +69,6 @@ export function MultiSelectBar({
   const standardActions: MultiSelectAction[] = [];
   
   if (useNewAPI) {
-    if (onSelectAll && totalCount && selectedCount < totalCount) {
-      standardActions.push({
-        label: "Select all",
-        icon: CheckSquare,
-        onClick: onSelectAll,
-        variant: "outline",
-      });
-    }
     if (onDuplicate) {
       standardActions.push({
         label: "Duplicate",
@@ -148,6 +140,15 @@ export function MultiSelectBar({
               </button>
             );
           })}
+          {onSelectAll && totalCount && selectedCount < totalCount && (
+            <button
+              onClick={onSelectAll}
+              className="select-action"
+            >
+              <CheckSquare className="h-4 w-4" />
+              <span className="whitespace-nowrap">All</span>
+            </button>
+          )}
           <button
             onClick={onCancel}
             className="select-action"

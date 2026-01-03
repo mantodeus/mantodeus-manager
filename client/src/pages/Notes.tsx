@@ -136,7 +136,7 @@ export default function Notes() {
 
   const deleteToRubbishMutation = trpc.notes.delete.useMutation({
     onSuccess: () => {
-      toast.success("Deleted. You can restore this later from the Rubbish bin.");
+      toast.success("Deleted. You can restore this later from the Rubbish.");
       invalidateNoteLists();
     },
     onError: (error) => {
@@ -722,7 +722,7 @@ export default function Notes() {
           deleteToRubbishMutation.mutate({ id: deleteToRubbishTargetId });
         }}
         title="Delete"
-        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        description={"Are you sure?\nYou can restore this later from the Rubbish."}
         confirmLabel="Delete"
         isDeleting={deleteToRubbishMutation.isPending}
       />
@@ -738,7 +738,7 @@ export default function Notes() {
           setIsMultiSelectMode(false);
         }}
         title="Delete"
-        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        description={"Are you sure?\nYou can restore this later from the Rubbish."}
         confirmLabel="Delete"
         isDeleting={deleteToRubbishMutation.isPending}
       />

@@ -28,7 +28,7 @@ export function ScrollRevealFooter({
   basePath,
   className = "",
   archivedLabel = "Archived",
-  rubbishLabel = "Rubbish Bin",
+  rubbishLabel = "Rubbish",
 }: ScrollRevealFooterProps) {
   const [isVisible, setIsVisible] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);

@@ -310,6 +310,10 @@ export default function Expenses() {
     setSelectedIds(newSelected);
   };
 
+  const handleSelectAll = () => {
+    setSelectedIds(new Set(expenses.map(e => e.id)));
+  };
+
   const handleBatchMarkInOrder = () => {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
@@ -659,12 +663,14 @@ export default function Expenses() {
       {isMultiSelectMode && (
         <MultiSelectBar
           selectedCount={selectedIds.size}
+          totalCount={expenses.length}
+          onSelectAll={handleSelectAll}
+          onDuplicate={handleBatchDuplicate}
+          onDelete={handleBatchDelete}
           onCancel={() => {
             setIsMultiSelectMode(false);
             setSelectedIds(new Set());
           }}
-          onDuplicate={handleBatchDuplicate}
-          onDelete={handleBatchDelete}
         />
       )}
     </div>

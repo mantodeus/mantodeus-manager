@@ -231,7 +231,7 @@ export default function InvoicesArchived() {
           moveToTrashMutation.mutate({ id: moveToRubbishTargetId });
         }}
         title="Delete invoice"
-        description="Delete this draft invoice? You can restore it later from the Rubbish bin."
+        description="Delete this draft invoice? You can restore it later from the Rubbish."
         confirmLabel="Delete"
         isDeleting={moveToTrashMutation.isPending}
       />

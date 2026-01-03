@@ -29,7 +29,9 @@ export type ItemAction =
   | "duplicate"
   | "select"
   | "archive"
-  | "delete";
+  | "delete"
+  | "restore"
+  | "deletePermanently";
 
 interface ItemActionsMenuProps {
   /** Callback when an action is selected */
@@ -46,6 +48,8 @@ interface ItemActionsMenuProps {
 
 // STRICT ORDER - This order must never change
 const STANDARD_ACTION_ORDER: ItemAction[] = ["edit", "duplicate", "select", "archive", "delete"];
+// Rubbish actions order (for trashed items)
+const RUBBISH_ACTION_ORDER: ItemAction[] = ["restore", "deletePermanently"];
 
 export function ItemActionsMenu({
   onAction,
@@ -85,26 +89,41 @@ export function ItemActionsMenu({
     [onAction]
   );
 
-  // Enforce strict order: filter to only standard actions, then sort by STANDARD_ACTION_ORDER
-  const validActions = STANDARD_ACTION_ORDER.filter((action) => 
-    (actions || []).includes(action)
+  // Separate standard actions from rubbish actions
+  const standardActions = (actions || []).filter((action) => 
+    STANDARD_ACTION_ORDER.includes(action)
+  );
+  const rubbishActions = (actions || []).filter((action) => 
+    RUBBISH_ACTION_ORDER.includes(action)
   );
 
-  // Group actions logically: Primary, Mode, Lifecycle, Destructive
+  // Enforce strict order: filter to only standard actions, then sort by STANDARD_ACTION_ORDER
+  const validStandardActions = STANDARD_ACTION_ORDER.filter((action) => 
+    standardActions.includes(action)
+  );
+  
+  // Enforce strict order for rubbish actions
+  const validRubbishActions = RUBBISH_ACTION_ORDER.filter((action) => 
+    rubbishActions.includes(action)
+  );
+
+  // Group actions logically: Primary, Mode, Lifecycle, Destructive, Rubbish
   const groupedActions = useMemo(() => {
     const groups: {
       primary: ItemAction[];
       mode: ItemAction[];
       lifecycle: ItemAction[];
       destructive: ItemAction[];
+      rubbish: ItemAction[];
     } = {
       primary: [],
       mode: [],
       lifecycle: [],
       destructive: [],
+      rubbish: [],
     };
 
-    validActions.forEach((action) => {
+    validStandardActions.forEach((action) => {
       if (action === "edit" || action === "duplicate") {
         groups.primary.push(action);
       } else if (action === "select") {
@@ -116,8 +135,13 @@ export function ItemActionsMenu({
       }
     });
 
+    // Rubbish actions go in their own group
+    validRubbishActions.forEach((action) => {
+      groups.rubbish.push(action);
+    });
+
     return groups;
-  }, [validActions]);
+  }, [validStandardActions, validRubbishActions]);
 
   const sizeClasses = {
     sm: "h-7 w-7",
@@ -186,7 +210,7 @@ export function ItemActionsMenu({
         sideOffset={8}
         onClick={(e) => e.stopPropagation()}
       >
-        {validActions.length === 0 ? (
+        {validStandardActions.length === 0 && validRubbishActions.length === 0 ? (
           <DropdownMenuItem disabled className="text-xs uppercase">
             No actions available
           </DropdownMenuItem>
@@ -210,6 +234,13 @@ export function ItemActionsMenu({
             {groupedActions.lifecycle.length > 0 && (
               <div className="menu-group">
                 {groupedActions.lifecycle.map(renderActionItem)}
+              </div>
+            )}
+
+            {/* Rubbish: Restore, Delete Permanently */}
+            {groupedActions.rubbish.length > 0 && (
+              <div className="menu-group">
+                {groupedActions.rubbish.map(renderActionItem)}
               </div>
             )}
 

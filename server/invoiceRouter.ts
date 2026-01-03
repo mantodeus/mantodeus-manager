@@ -451,7 +451,7 @@ export const invoiceRouter = router({
       if (!invoice.trashedAt) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Invoices must be moved to the Rubbish bin before permanent deletion.",
+          message: "Invoices must be moved to the Rubbish before permanent deletion.",
         });
       }
       checkInvoiceNeedsReview(invoice, "deleted");
@@ -504,7 +504,7 @@ export const invoiceRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
       if (invoice.status !== "draft") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Only draft invoices can be moved to the Rubbish bin." });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only draft invoices can be moved to the Rubbish." });
       }
       checkInvoiceNeedsReview(invoice, "moved to trash");
 

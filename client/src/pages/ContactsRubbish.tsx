@@ -1,5 +1,5 @@
 /**
- * Rubbish Bin Contacts List Page
+ * Rubbish Contacts List Page
  *
  * Displays trashed contacts with options to:
  * - Restore to active
@@ -9,9 +9,10 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Building2, Loader2, RotateCcw, Trash2, User } from "@/components/ui/Icon";
+import { ArrowLeft, Building2, Loader2, Trash2, User } from "@/components/ui/Icon";
 import { Link } from "wouter";
 import { useState } from "react";
+import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -23,6 +24,9 @@ export default function ContactsRubbish() {
   // Permanent delete dialog
   const [deletePermanentlyDialogOpen, setDeletePermanentlyDialogOpen] = useState(false);
   const [deletePermanentlyTargetId, setDeletePermanentlyTargetId] = useState<number | null>(null);
+  
+  // Empty rubbish dialog
+  const [emptyRubbishDialogOpen, setEmptyRubbishDialogOpen] = useState(false);
 
   const invalidateContactLists = () => {
     utils.contacts.list.invalidate();
@@ -52,6 +56,29 @@ export default function ContactsRubbish() {
     },
   });
 
+  const handleItemAction = (action: ItemAction, contactId: number) => {
+    switch (action) {
+      case "restore":
+        restoreFromRubbishMutation.mutate({ id: contactId });
+        break;
+      case "deletePermanently":
+        setDeletePermanentlyTargetId(contactId);
+        setDeletePermanentlyDialogOpen(true);
+        break;
+    }
+  };
+
+  const handleEmptyRubbish = () => {
+    if (trashedContacts.length === 0) return;
+    
+    // Delete all contacts one by one
+    trashedContacts.forEach((contact) => {
+      deletePermanentlyMutation.mutate({ id: contact.id });
+    });
+    
+    setEmptyRubbishDialogOpen(false);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -75,32 +102,12 @@ export default function ContactsRubbish() {
               </div>
             </div>
           </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => restoreFromRubbishMutation.mutate({ id: contact.id })}
-            disabled={restoreFromRubbishMutation.isPending}
-            className="gap-2"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Restore
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => {
-              setDeletePermanentlyTargetId(contact.id);
-              setDeletePermanentlyDialogOpen(true);
-            }}
-            className="gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete permanently
-          </Button>
+          <ItemActionsMenu
+            actions={["restore", "deletePermanently"]}
+            onAction={(action) => handleItemAction(action, contact.id)}
+          />
         </div>
-      </div>
-    </Card>
+      </Card>
     );
   };
 
@@ -110,7 +117,7 @@ export default function ContactsRubbish() {
         title={
           <span className="flex items-center gap-3">
             <Trash2 className="h-8 w-8 text-muted-foreground" />
-            Rubbish Bin
+            Rubbish
           </span>
         }
         subtitle="Deleted contacts. Items here can be restored or permanently deleted."
@@ -121,6 +128,19 @@ export default function ContactsRubbish() {
             </Button>
           </Link>
         }
+        primaryAction={
+          trashedContacts.length > 0 ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setEmptyRubbishDialogOpen(true)}
+              disabled={deletePermanentlyMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Empty rubbish
+            </Button>
+          ) : undefined
+        }
       />
 
       {/* Rubbish Items List */}
@@ -128,7 +148,7 @@ export default function ContactsRubbish() {
         {trashedContacts.length === 0 ? (
           <Card className="p-8 text-center">
             <Trash2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-gray-400 mb-4">Rubbish bin is empty.</p>
+            <p className="text-gray-400 mb-4">Rubbish is empty.</p>
             <Link href="/contacts">
               <Button variant="outline">
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -156,6 +176,18 @@ export default function ContactsRubbish() {
         title="Delete permanently"
         description="This action cannot be undone."
         confirmLabel="Delete permanently"
+        isDeleting={deletePermanentlyMutation.isPending}
+      />
+
+      <DeleteConfirmDialog
+        open={emptyRubbishDialogOpen}
+        onOpenChange={(open) => {
+          setEmptyRubbishDialogOpen(open);
+        }}
+        onConfirm={handleEmptyRubbish}
+        title="Empty rubbish"
+        description={`This will permanently delete all ${trashedContacts.length} contact(s) in the rubbish. This action cannot be undone.`}
+        confirmLabel="Empty rubbish"
         isDeleting={deletePermanentlyMutation.isPending}
       />
     </div>

@@ -49,7 +49,7 @@ export default function ProjectsArchived() {
 
   const moveProjectToTrashMutation = trpc.projects.moveProjectToTrash.useMutation({
     onSuccess: () => {
-      toast.success("Deleted. You can restore this later from the Rubbish bin.");
+      toast.success("Deleted. You can restore this later from the Rubbish.");
       invalidateProjectLists();
     },
     onError: (error) => {
@@ -197,7 +197,7 @@ export default function ProjectsArchived() {
           moveProjectToTrashMutation.mutate({ projectId: deleteToRubbishTargetId });
         }}
         title="Delete"
-        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        description={"Are you sure?\nYou can restore this later from the Rubbish."}
         confirmLabel="Delete"
         isDeleting={moveProjectToTrashMutation.isPending}
       />

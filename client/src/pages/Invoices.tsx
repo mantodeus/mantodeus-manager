@@ -222,6 +222,10 @@ export default function Invoices() {
     setSelectedIds(newSelected);
   };
 
+  const handleSelectAll = () => {
+    setSelectedIds(new Set(invoices.map(i => i.id)));
+  };
+
   const handleBatchArchive = () => {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
@@ -503,13 +507,15 @@ export default function Invoices() {
       {isMultiSelectMode && (
         <MultiSelectBar
           selectedCount={selectedIds.size}
+          totalCount={invoices.length}
+          onSelectAll={handleSelectAll}
+          onDuplicate={handleBatchDuplicate}
+          onArchive={handleBatchArchive}
+          onDelete={handleBatchDelete}
           onCancel={() => {
             setIsMultiSelectMode(false);
             setSelectedIds(new Set());
           }}
-          onDuplicate={handleBatchDuplicate}
-          onArchive={handleBatchArchive}
-          onDelete={handleBatchDelete}
         />
       )}
 
@@ -594,7 +600,7 @@ export default function Invoices() {
           moveToTrashMutation.mutate({ id: moveToRubbishTargetId });
         }}
         title="Delete invoice"
-        description="Delete this draft invoice? You can restore it later from the Rubbish bin."
+        description="Delete this draft invoice? You can restore it later from the Rubbish."
         confirmLabel="Delete"
         isDeleting={moveToTrashMutation.isPending}
       />

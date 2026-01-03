@@ -44,7 +44,7 @@ export default function ContactsArchived() {
 
   const deleteToRubbishMutation = trpc.contacts.delete.useMutation({
     onSuccess: () => {
-      toast.success("Deleted. You can restore this later from the Rubbish bin.");
+      toast.success("Deleted. You can restore this later from the Rubbish.");
       invalidateContactLists();
     },
     onError: (error) => {
@@ -178,7 +178,7 @@ export default function ContactsArchived() {
           deleteToRubbishMutation.mutate({ id: deleteToRubbishTargetId });
         }}
         title="Delete"
-        description={"Are you sure?\nYou can restore this later from the Rubbish bin."}
+        description={"Are you sure?\nYou can restore this later from the Rubbish."}
         confirmLabel="Delete"
         isDeleting={deleteToRubbishMutation.isPending}
       />

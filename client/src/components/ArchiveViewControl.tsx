@@ -1,7 +1,7 @@
 /**
  * ArchiveViewControl Component
  * 
- * A subtle toggle control to reveal/hide sections like rubbish bin.
+ * A subtle toggle control to reveal/hide sections like rubbish.
  * Used for nested entities (e.g., files within a project) where
  * separate routes aren't practical.
  * 
@@ -16,9 +16,9 @@ interface ArchiveViewControlProps {
   isExpanded: boolean;
   /** Callback when the toggle is clicked */
   onToggle: () => void;
-  /** Label when collapsed (default: "View rubbish bin") */
+  /** Label when collapsed (default: "View rubbish") */
   collapsedLabel?: string;
-  /** Label when expanded (default: "Hide rubbish bin") */
+  /** Label when expanded (default: "Hide rubbish") */
   expandedLabel?: string;
   /** Optional additional className */
   className?: string;
@@ -27,8 +27,8 @@ interface ArchiveViewControlProps {
 export function ArchiveViewControl({
   isExpanded,
   onToggle,
-  collapsedLabel = "View rubbish bin",
-  expandedLabel = "Hide rubbish bin",
+  collapsedLabel = "View rubbish",
+  expandedLabel = "Hide rubbish",
   className = "",
 }: ArchiveViewControlProps) {
   return (

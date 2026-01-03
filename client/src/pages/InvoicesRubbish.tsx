@@ -40,6 +40,9 @@ export default function InvoicesRubbish() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  
+  // Empty rubbish dialog
+  const [emptyRubbishDialogOpen, setEmptyRubbishDialogOpen] = useState(false);
 
   const getStatusBadge = (invoice: any) => {
     const { status, sentAt, paidAt, dueDate } = invoice;
@@ -75,6 +78,19 @@ export default function InvoicesRubbish() {
     }
   };
 
+  const handleEmptyRubbish = () => {
+    if (trashedInvoices.length === 0) return;
+    
+    // Delete all draft invoices one by one
+    trashedInvoices.forEach((invoice) => {
+      if (invoice.status === "draft") {
+        deleteMutation.mutate({ id: invoice.id });
+      }
+    });
+    
+    setEmptyRubbishDialogOpen(false);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -89,7 +105,7 @@ export default function InvoicesRubbish() {
         title={
           <span className="flex items-center gap-3">
             <Trash2 className="h-8 w-8 text-muted-foreground" />
-            Rubbish Bin
+            Rubbish
           </span>
         }
         subtitle="Deleted invoices. Items here can be restored or permanently deleted."
@@ -100,11 +116,24 @@ export default function InvoicesRubbish() {
             </Button>
           </Link>
         }
+        primaryAction={
+          trashedInvoices.length > 0 ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setEmptyRubbishDialogOpen(true)}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Empty rubbish
+            </Button>
+          ) : undefined
+        }
       />
 
       {trashedInvoices.length === 0 ? (
         <Card className="p-8 text-center">
-          <p className="text-muted-foreground">Rubbish bin is empty.</p>
+          <p className="text-muted-foreground">Rubbish is empty.</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -163,6 +192,18 @@ export default function InvoicesRubbish() {
         title="Delete permanently"
         description="This action is PERMANENT and cannot be undone. The invoice will be deleted forever."
         confirmLabel="Delete permanently"
+        isDeleting={deleteMutation.isPending}
+      />
+
+      <DeleteConfirmDialog
+        open={emptyRubbishDialogOpen}
+        onOpenChange={(open) => {
+          setEmptyRubbishDialogOpen(open);
+        }}
+        onConfirm={handleEmptyRubbish}
+        title="Empty rubbish"
+        description={`This will permanently delete all draft invoices in the rubbish (${trashedInvoices.filter(i => i.status === "draft").length} draft invoice(s)). This action cannot be undone.`}
+        confirmLabel="Empty rubbish"
         isDeleting={deleteMutation.isPending}
       />
     </div>
