@@ -90,6 +90,16 @@ export function ItemActionsMenu({
 
     // Track if we're currently pressing to apply CSS
     let isPressing = false;
+    let pressTimeout: NodeJS.Timeout | null = null;
+
+    // Helper to restore user-select
+    const restoreUserSelect = () => {
+      cardElement.style.userSelect = '';
+      (cardElement.style as any).webkitUserSelect = '';
+      (cardElement.style as any).mozUserSelect = '';
+      (cardElement.style as any).msUserSelect = '';
+      isPressing = false;
+    };
 
     // Apply pointer event handlers for long-press
     const pointerDownHandler = (e: PointerEvent) => {
@@ -117,6 +127,12 @@ export function ItemActionsMenu({
         }
       }
       
+      // Clear any existing timeout
+      if (pressTimeout) {
+        clearTimeout(pressTimeout);
+        pressTimeout = null;
+      }
+      
       // Apply CSS to prevent selection
       isPressing = true;
       cardElement.style.userSelect = 'none';
@@ -130,24 +146,28 @@ export function ItemActionsMenu({
     const pointerUpHandler = (e: PointerEvent) => {
       longPressHandlers.onPointerUp?.(e as any);
       
-      // Restore user-select after a delay
-      setTimeout(() => {
-        if (!isPressing) {
-          cardElement.style.userSelect = '';
-          (cardElement.style as any).webkitUserSelect = '';
-          (cardElement.style as any).mozUserSelect = '';
-          (cardElement.style as any).msUserSelect = '';
-        }
-      }, 100);
+      // Clear any existing timeout
+      if (pressTimeout) {
+        clearTimeout(pressTimeout);
+        pressTimeout = null;
+      }
+      
+      // Restore user-select after a short delay to ensure gesture completes
+      pressTimeout = setTimeout(() => {
+        restoreUserSelect();
+      }, 150);
     };
     
     const pointerCancelHandler = (e: PointerEvent) => {
       longPressHandlers.onPointerCancel?.(e as any);
-      isPressing = false;
-      cardElement.style.userSelect = '';
-      (cardElement.style as any).webkitUserSelect = '';
-      (cardElement.style as any).mozUserSelect = '';
-      (cardElement.style as any).msUserSelect = '';
+      
+      // Clear any existing timeout
+      if (pressTimeout) {
+        clearTimeout(pressTimeout);
+        pressTimeout = null;
+      }
+      
+      restoreUserSelect();
     };
     
     // Prevent text selection - use CAPTURE phase to catch it early
@@ -225,7 +245,13 @@ export function ItemActionsMenu({
       menuRef.current?.open(e);
     };
 
-    // Apply event listeners - use CAPTURE phase for selectstart to catch it early
+    // Ensure pointer events work on the entire card (not blocked by children)
+    // This allows long-press to work anywhere on the item
+    const originalPointerEvents = cardElement.style.pointerEvents;
+    cardElement.style.pointerEvents = 'auto';
+    
+    // Apply event listeners - use CAPTURE phase to catch events early
+    // This ensures handlers work even if child elements stop propagation
     cardElement.addEventListener('pointerdown', pointerDownHandler, true);
     cardElement.addEventListener('pointermove', pointerMoveHandler, true);
     cardElement.addEventListener('pointerup', pointerUpHandler, true);
