@@ -43,7 +43,7 @@ export function ItemActionsMenu({
   const menuRef = useRef<{ open: (event?: PointerEvent | React.MouseEvent) => void } | null>(null);
 
   // Long-press handler
-  const { longPressHandlers } = useLongPress({
+  const { longPressHandlers, reset: resetLongPress } = useLongPress({
     onLongPress: (event) => {
       menuRef.current?.open(event);
     },
@@ -247,15 +247,19 @@ export function ItemActionsMenu({
       cardElement.removeEventListener('dragstart', dragStartHandler, true);
       cardElement.removeEventListener('mousedown', mouseDownHandler, true);
       
-      // Clean up CSS
-      isPressing = false;
-      cardElement.style.userSelect = '';
-      (cardElement.style as any).webkitUserSelect = '';
-      (cardElement.style as any).mozUserSelect = '';
-      (cardElement.style as any).msUserSelect = '';
+      // Clear any pending timeout
+      if (pressTimeout) {
+        clearTimeout(pressTimeout);
+        pressTimeout = null;
+      }
+      
+      // Clean up CSS and reset gesture state
+      restoreUserSelect();
+      resetLongPress();
+      cardElement.style.pointerEvents = originalPointerEvents;
       cardElement.classList.remove('has-context-menu');
     };
-  }, [disabled, longPressHandlers]);
+  }, [disabled, longPressHandlers, resetLongPress]);
 
   if (!onAction || typeof onAction !== 'function') {
     console.error('ItemActionsMenu: onAction prop is required and must be a function');

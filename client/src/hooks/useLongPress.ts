@@ -247,6 +247,12 @@ export function useLongPress({
     [gestureState]
   );
 
+  // Reset function to explicitly reset gesture state (called when menu closes)
+  const reset = useCallback(() => {
+    cancelLongPress();
+    setGestureState("idle");
+  }, [cancelLongPress]);
+
   return {
     longPressHandlers: {
       onPointerDown: handlePointerDown,
@@ -264,6 +270,7 @@ export function useLongPress({
     },
     gestureState,
     cancelLongPress,
+    reset, // Expose reset method
     isPressing: gestureState === "pressing",
   };
 }

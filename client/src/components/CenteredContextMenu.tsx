@@ -229,12 +229,15 @@ export const CenteredContextMenu = React.forwardRef<
 
   const closeMenu = useCallback(() => {
     setIsOpen(false);
+    setIsPressing(false);
+    // Reset long-press gesture state immediately
+    resetLongPress();
     // Delay clearing rect to allow exit animation
     setTimeout(() => {
       setItemRect(null);
       itemRef.current = null;
     }, 220);
-  }, []);
+  }, [resetLongPress]);
 
   // Expose open method via ref
   React.useImperativeHandle(ref, () => ({
@@ -255,7 +258,7 @@ export const CenteredContextMenu = React.forwardRef<
   );
 
   // Long-press handler (mobile) with visual feedback
-  const { longPressHandlers, gestureState } = useLongPress({
+  const { longPressHandlers, gestureState, reset: resetLongPress } = useLongPress({
     onLongPress: (event) => {
       openMenu(event);
     },
