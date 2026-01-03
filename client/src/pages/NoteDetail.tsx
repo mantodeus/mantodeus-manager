@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText, CheckCircle2, AlertCircle } from "@/components/ui/Icon";
+import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText } from "@/components/ui/Icon";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
 import { SimpleMarkdownEditor } from "@/components/SimpleMarkdownEditor";
 import { toast } from "sonner";
@@ -119,7 +119,6 @@ export default function NoteDetail() {
   const [body, setBody] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("none");
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const titleInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -159,8 +158,6 @@ export default function NoteDetail() {
       // #endregion
       
       updateInFlightRef.current = false;
-      setSaveStatus("saved");
-      
       // Update last saved content (DO NOT overwrite editor state)
       lastSavedContentRef.current = {
         title: debouncedTitle.trim(),
@@ -174,11 +171,6 @@ export default function NoteDetail() {
       // to avoid overwriting editor content
       utils.notes.list.invalidate();
       utils.notes.getById.invalidate({ id: noteId });
-      
-      // Reset saved status after 2 seconds
-      setTimeout(() => {
-        setSaveStatus((prev) => (prev === "saved" ? "idle" : prev));
-      }, 2000);
       
       // If another save was pending, trigger it now
       if (pendingSaveRef.current) {
@@ -197,12 +189,7 @@ export default function NoteDetail() {
       // #endregion
       
       updateInFlightRef.current = false;
-      setSaveStatus("error");
       toast.error(err.message || "Failed to save note");
-      // Reset error status after 3 seconds
-      setTimeout(() => {
-        setSaveStatus((prev) => (prev === "error" ? "idle" : prev));
-      }, 3000);
     },
   });
 
@@ -290,8 +277,6 @@ export default function NoteDetail() {
     fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:254',message:'autosave triggering mutation',data:{noteId,title:currentContent.title,bodyLength:currentContent.body.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
     updateInFlightRef.current = true;
-    setSaveStatus("saving");
-    
     updateMutation.mutate({
       id: noteId,
       title: currentContent.title,
@@ -357,7 +342,6 @@ export default function NoteDetail() {
       return;
     }
 
-    setSaveStatus("saving");
     updateMutation.mutate({
       id: noteId,
       title: title.trim(),
@@ -579,28 +563,6 @@ export default function NoteDetail() {
             <p className="text-muted-foreground text-sm">
               {new Date(note.updatedAt).toLocaleDateString()}
             </p>
-            {isEditMode && saveStatus !== "idle" && (
-              <div className="flex items-center gap-1 text-xs">
-                {saveStatus === "saving" && (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                    <span className="text-muted-foreground">Saving...</span>
-                  </>
-                )}
-                {saveStatus === "saved" && (
-                  <>
-                    <CheckCircle2 className="h-3 w-3 text-primary" />
-                    <span className="text-primary">Saved</span>
-                  </>
-                )}
-                {saveStatus === "error" && (
-                  <>
-                    <AlertCircle className="h-3 w-3 text-destructive" />
-                    <span className="text-destructive">Error</span>
-                  </>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>

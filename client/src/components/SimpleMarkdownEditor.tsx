@@ -329,15 +329,14 @@ export function SimpleMarkdownEditor({
       if (window.visualViewport) {
         const viewport = window.visualViewport;
         const windowHeight = window.innerHeight;
-        // Calculate keyboard height: difference between window height and visual viewport
-        const keyboardOffset = Math.max(0, windowHeight - viewport.height);
-        if (keyboardOffset > 50) {
-          // Keyboard is open - store the height
-          setKeyboardHeight(keyboardOffset);
-        } else {
-          // Keyboard is closed
-          setKeyboardHeight(0);
-        }
+        // Calculate keyboard height from the visual viewport bottom (accounts for scroll offset).
+        const keyboardOffset = Math.max(
+          0,
+          Math.round(windowHeight - (viewport.height + viewport.offsetTop))
+        );
+        const nextHeight = keyboardOffset > 50 ? keyboardOffset : 0;
+        // Avoid re-render churn from tiny viewport changes while typing/scrolling.
+        setKeyboardHeight((prev) => (prev === nextHeight ? prev : nextHeight));
       } else {
         // Fallback for browsers without visual viewport API
         const currentHeight = window.innerHeight;

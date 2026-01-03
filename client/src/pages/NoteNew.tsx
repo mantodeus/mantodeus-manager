@@ -11,10 +11,9 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Save, Loader2, Paperclip, Trash2, FileText, Image as ImageIcon, User, Briefcase, CheckCircle2, AlertCircle } from "@/components/ui/Icon";
+import { ArrowLeft, Save, Loader2, Paperclip, FileText, Image as ImageIcon } from "@/components/ui/Icon";
 import { SimpleMarkdownEditor } from "@/components/SimpleMarkdownEditor";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
 import { PageHeader } from "@/components/PageHeader";
 import {
@@ -42,7 +41,6 @@ export default function NoteNew() {
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
   const [files, setFiles] = useState<NoteFile[]>([]);
   const [noteId, setNoteId] = useState<number | null>(null);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
@@ -86,8 +84,6 @@ export default function NoteNew() {
       
       createInFlightRef.current = false;
       setNoteId(data.id);
-      setSaveStatus("saved");
-      
       // Update last saved content
       lastSavedContentRef.current = {
         title: debouncedTitle.trim() || "Untitled Note",
@@ -97,11 +93,6 @@ export default function NoteNew() {
       };
       
       utils.notes.list.invalidate();
-      
-      // Reset saved status after 2 seconds
-      setTimeout(() => {
-        setSaveStatus((prev) => (prev === "saved" ? "idle" : prev));
-      }, 2000);
       
       // If another save was pending, trigger it now
       if (pendingSaveRef.current) {
@@ -121,11 +112,7 @@ export default function NoteNew() {
       // #endregion
       
       createInFlightRef.current = false;
-      setSaveStatus("error");
       toast.error(`Failed to create note: ${error.message}`);
-      setTimeout(() => {
-        setSaveStatus((prev) => (prev === "error" ? "idle" : prev));
-      }, 3000);
     },
   });
 
@@ -135,8 +122,6 @@ export default function NoteNew() {
       console.log(`[NOTES_NEW] ${timestamp} | UPDATE_SUCCESS | note: ${noteId}`);
       
       updateInFlightRef.current = false;
-      setSaveStatus("saved");
-      
       // Update last saved content
       lastSavedContentRef.current = {
         title: debouncedTitle.trim() || "Untitled Note",
@@ -146,11 +131,6 @@ export default function NoteNew() {
       };
       
       utils.notes.list.invalidate();
-      
-      // Reset saved status after 2 seconds
-      setTimeout(() => {
-        setSaveStatus((prev) => (prev === "saved" ? "idle" : prev));
-      }, 2000);
       
       // If another save was pending, trigger it now
       if (pendingSaveRef.current) {
@@ -166,11 +146,7 @@ export default function NoteNew() {
       console.error(`[NOTES_NEW] ${timestamp} | UPDATE_ERROR | note: ${noteId} | error: ${error.message}`);
       
       updateInFlightRef.current = false;
-      setSaveStatus("error");
       toast.error(`Failed to save note: ${error.message}`);
-      setTimeout(() => {
-        setSaveStatus((prev) => (prev === "error" ? "idle" : prev));
-      }, 3000);
     },
   });
 
@@ -247,8 +223,6 @@ export default function NoteNew() {
     // #endregion
     
     updateInFlightRef.current = true;
-    setSaveStatus("saving");
-    
     updateNoteMutation.mutate({
       id: noteId,
       title: currentContent.title,
@@ -306,8 +280,6 @@ export default function NoteNew() {
     // #endregion
     
     createInFlightRef.current = true;
-    setSaveStatus("saving");
-    
     createNoteMutation.mutate({
       title: debouncedTitle.trim() || "Untitled Note",
       content: debouncedContent.trim() || undefined,
@@ -380,36 +352,12 @@ export default function NoteNew() {
           </Button>
         </Link>
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Note title (optional)"
-              className="text-3xl font-regular border-none shadow-none px-0 focus-visible:ring-0 h-auto"
-            />
-            {saveStatus !== "idle" && (
-              <div className="flex items-center gap-1 text-xs">
-                {saveStatus === "saving" && (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                    <span className="text-muted-foreground">Saving...</span>
-                  </>
-                )}
-                {saveStatus === "saved" && (
-                  <>
-                    <CheckCircle2 className="h-3 w-3 text-primary" />
-                    <span className="text-primary">Saved</span>
-                  </>
-                )}
-                {saveStatus === "error" && (
-                  <>
-                    <AlertCircle className="h-3 w-3 text-destructive" />
-                    <span className="text-destructive">Error</span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Note title (optional)"
+            className="text-3xl font-regular border-none shadow-none px-0 focus-visible:ring-0 h-auto"
+          />
         </div>
       </div>
 
