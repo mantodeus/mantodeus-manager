@@ -60,6 +60,20 @@ export function useLongPress({
       // Only handle primary pointer (left mouse button or touch)
       if (e.button !== 0 && e.button !== undefined) return;
       
+      // Don't interfere with inputs, buttons, links, or other interactive elements
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON' ||
+        target.tagName === 'A' ||
+        target.isContentEditable ||
+        target.closest('input, textarea, select, button, a, [contenteditable]')
+      ) {
+        return; // Let these elements work normally
+      }
+      
       // Prevent default to avoid text selection and other browser behaviors
       e.preventDefault();
       e.stopPropagation();

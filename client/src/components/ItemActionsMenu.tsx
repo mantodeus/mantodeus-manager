@@ -85,6 +85,21 @@ export function ItemActionsMenu({
     // Apply pointer event handlers for long-press
     const pointerDownHandler = (e: PointerEvent) => {
       if (e.button !== 0 && e.button !== undefined) return;
+      
+      // Don't interfere with inputs, buttons, links, or other interactive elements
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON' ||
+        target.tagName === 'A' ||
+        target.isContentEditable ||
+        target.closest('input, textarea, select, button, a, [contenteditable]')
+      ) {
+        return; // Let these elements work normally
+      }
+      
       // Prevent text selection immediately
       if (document.getSelection) {
         const selection = document.getSelection();
@@ -95,13 +110,32 @@ export function ItemActionsMenu({
       longPressHandlers.onPointerDown?.(e as any);
     };
     
-    // Prevent text selection
+    // Prevent text selection - but only for non-interactive elements
     const selectStartHandler = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable ||
+        target.closest('input, textarea, select, [contenteditable]')
+      ) {
+        return; // Allow selection in inputs
+      }
       e.preventDefault();
       e.stopPropagation();
     };
     
     const dragStartHandler = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.closest('input, textarea, select')
+      ) {
+        return; // Allow drag in inputs
+      }
       e.preventDefault();
       e.stopPropagation();
     };
@@ -125,14 +159,8 @@ export function ItemActionsMenu({
       menuRef.current?.open(e);
     };
 
-    // Apply CSS to prevent text selection
-    const originalUserSelect = cardElement.style.userSelect;
-    const originalWebkitUserSelect = (cardElement.style as any).webkitUserSelect;
-    const originalTouchAction = cardElement.style.touchAction;
-    
-    cardElement.style.userSelect = 'none';
-    (cardElement.style as any).webkitUserSelect = 'none';
-    cardElement.style.touchAction = 'manipulation';
+    // Don't apply user-select: none globally - it breaks inputs
+    // Only prevent selection during actual long-press via event handlers
 
     cardElement.addEventListener('pointerdown', pointerDownHandler);
     cardElement.addEventListener('pointermove', pointerMoveHandler);
@@ -152,11 +180,6 @@ export function ItemActionsMenu({
       cardElement.removeEventListener('contextmenu', contextMenuHandler);
       cardElement.removeEventListener('selectstart', selectStartHandler);
       cardElement.removeEventListener('dragstart', dragStartHandler);
-      
-      // Restore original styles
-      cardElement.style.userSelect = originalUserSelect;
-      (cardElement.style as any).webkitUserSelect = originalWebkitUserSelect;
-      cardElement.style.touchAction = originalTouchAction;
     };
   }, [disabled, longPressHandlers]);
 

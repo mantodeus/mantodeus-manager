@@ -411,35 +411,45 @@ export const CenteredContextMenu = React.forwardRef<
           transition: "opacity 180ms ease-out, transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
           transform: isPressing && !isOpen ? "scale(0.97)" : "scale(1)",
           transformOrigin: "center center",
-          userSelect: isPressing || isOpen ? "none" : "auto",
-          WebkitUserSelect: isPressing || isOpen ? "none" : "auto",
-          MozUserSelect: isPressing || isOpen ? "none" : "auto",
-          msUserSelect: isPressing || isOpen ? "none" : "auto",
-          touchAction: "manipulation", // Prevent double-tap zoom and text selection on mobile
         }}
         onContextMenu={handleContextMenu}
         onSelectStart={(e) => {
-          // Prevent text selection during press
-          if (isPressing || isOpen) {
+          // Prevent text selection during press - but allow in inputs
+          const target = e.target as HTMLElement;
+          if (
+            isPressing || isOpen
+          ) {
+            // Allow selection in inputs, textareas, and contenteditable
+            if (
+              target.tagName === 'INPUT' ||
+              target.tagName === 'TEXTAREA' ||
+              target.tagName === 'SELECT' ||
+              target.isContentEditable ||
+              target.closest('input, textarea, select, [contenteditable]')
+            ) {
+              return; // Allow selection in these elements
+            }
             e.preventDefault();
           }
         }}
         onDragStart={(e) => {
-          // Prevent drag during press
+          // Prevent drag during press - but allow in inputs
+          const target = e.target as HTMLElement;
           if (isPressing || isOpen) {
+            if (
+              target.tagName === 'INPUT' ||
+              target.tagName === 'TEXTAREA' ||
+              target.tagName === 'SELECT' ||
+              target.closest('input, textarea, select')
+            ) {
+              return; // Allow drag in inputs
+            }
             e.preventDefault();
           }
         }}
         {...(!isOpen && !disabled ? longPressHandlers : {})}
       >
-        <div 
-          ref={itemRef}
-          style={{
-            userSelect: isPressing || isOpen ? "none" : "auto",
-            WebkitUserSelect: isPressing || isOpen ? "none" : "auto",
-            pointerEvents: isPressing || isOpen ? "none" : "auto",
-          }}
-        >
+        <div ref={itemRef}>
           {children}
         </div>
       </div>
