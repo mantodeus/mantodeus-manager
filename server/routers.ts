@@ -1113,6 +1113,19 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    duplicate: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getContactById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Contact not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to duplicate this contact" });
+        }
+        return await db.duplicateContact(input.id, ctx.user.id);
+      }),
+
     restore: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
@@ -1599,6 +1612,19 @@ export const appRouter = router({
         }
         await db.archiveNote(input.id);
         return { success: true };
+      }),
+
+    duplicate: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getNoteById(input.id);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+        }
+        if (ctx.user.role !== "admin" && existing.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to duplicate this note" });
+        }
+        return await db.duplicateNote(input.id, ctx.user.id);
       }),
 
     restore: protectedProcedure

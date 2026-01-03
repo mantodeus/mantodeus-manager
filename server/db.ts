@@ -923,6 +923,44 @@ export async function updateContact(id: number, data: Partial<InsertContact>) {
   }
 }
 
+/**
+ * Duplicate a contact
+ */
+export async function duplicateContact(contactId: number, userId: number) {
+  const original = await getContactById(contactId);
+  if (!original) {
+    throw new Error("Contact not found");
+  }
+
+  const result = await createContact({
+    name: addCopyToName(original.name),
+    clientName: addCopyToName(original.clientName || original.name),
+    type: original.type,
+    contactPerson: original.contactPerson,
+    email: original.email,
+    phone: original.phone,
+    phoneNumber: original.phoneNumber,
+    address: original.address,
+    streetName: original.streetName,
+    streetNumber: original.streetNumber,
+    postalCode: original.postalCode,
+    city: original.city,
+    country: original.country,
+    vatStatus: original.vatStatus,
+    vatNumber: original.vatNumber,
+    taxNumber: original.taxNumber,
+    leitwegId: original.leitwegId,
+    latitude: original.latitude,
+    longitude: original.longitude,
+    notes: original.notes,
+    emails: original.emails,
+    phoneNumbers: original.phoneNumbers,
+    createdBy: userId,
+  });
+
+  return { success: true, id: result[0].id };
+}
+
 export async function deleteContact(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1822,6 +1860,60 @@ export async function updateInvoice(id: number, data: Partial<InsertInvoice> & {
   return getInvoiceById(id);
 }
 
+/**
+ * Duplicate an invoice with all its items
+ */
+export async function duplicateInvoice(invoiceId: number, userId: number) {
+  const original = await getInvoiceById(invoiceId);
+  if (!original) {
+    throw new Error("Invoice not found");
+  }
+
+  // Get invoice items
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+
+  // Create duplicate invoice with "copy" in name/number
+  const invoiceName = original.invoiceName || original.invoiceNumber || "Invoice";
+  const duplicateName = addCopyToName(invoiceName);
+  
+  const result = await createInvoice({
+    userId,
+    contactId: original.contactId,
+    clientId: original.clientId,
+    jobId: original.jobId,
+    invoiceNumber: null, // Will be auto-generated
+    invoiceName: duplicateName,
+    status: "draft", // Always draft when duplicating
+    type: original.type === "cancellation" ? "standard" : original.type, // Don't duplicate cancellation type
+    issueDate: new Date(),
+    dueDate: original.dueDate,
+    notes: original.notes,
+    servicePeriodStart: original.servicePeriodStart,
+    servicePeriodEnd: original.servicePeriodEnd,
+    referenceNumber: original.referenceNumber,
+    partialInvoice: original.partialInvoice,
+    subtotal: original.subtotal,
+    vatAmount: original.vatAmount,
+    total: original.total,
+    items: items.map(item => ({
+      name: item.name || item.description || "",
+      description: item.description || null,
+      category: item.category || null,
+      quantity: Number(item.quantity),
+      unitPrice: Number(item.unitPrice),
+      currency: item.currency || "EUR",
+    })),
+  });
+
+  if (!result || !result.id) {
+    throw new Error("Failed to create duplicate invoice");
+  }
+
+  return { success: true, id: result.id };
+}
+
 export async function deleteInvoice(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -2136,6 +2228,39 @@ export async function updateExpense(id: number, updates: Partial<InsertExpense>,
   await db.update(expenses).set(updateData).where(eq(expenses.id, id));
   
   return await getExpenseById(id);
+}
+
+/**
+ * Duplicate an expense
+ */
+export async function duplicateExpense(expenseId: number, userId: number) {
+  const original = await getExpenseById(expenseId);
+  if (!original) {
+    throw new Error("Expense not found");
+  }
+
+  const result = await createExpense({
+    description: addCopyToName(original.description),
+    category: original.category,
+    grossAmountCents: original.grossAmountCents,
+    currency: original.currency,
+    businessUsePct: original.businessUsePct,
+    status: "needs_review", // Always needs review when duplicating
+    paymentStatus: "unpaid", // Reset payment status
+    paymentDate: null, // Reset payment date
+    expenseDate: original.expenseDate,
+    supplierName: original.supplierName,
+    vatAmountCents: original.vatAmountCents,
+    netAmountCents: original.netAmountCents,
+    vatRate: original.vatRate,
+    createdBy: userId,
+  });
+
+  if (!result || !result.id) {
+    throw new Error("Failed to create duplicate expense");
+  }
+
+  return { success: true, id: result.id };
 }
 
 export async function setExpenseStatus(
@@ -2487,6 +2612,33 @@ export async function updateNote(id: number, data: Partial<InsertNote>) {
   if (!db) throw new Error("Database not available");
   
   return db.update(notes).set(data).where(eq(notes.id, id));
+}
+
+/**
+ * Duplicate a note
+ */
+export async function duplicateNote(noteId: number, userId: number) {
+  const original = await getNoteById(noteId);
+  if (!original) {
+    throw new Error("Note not found");
+  }
+
+  const result = await createNote({
+    title: addCopyToName(original.title),
+    content: original.content,
+    tags: original.tags,
+    jobId: original.jobId,
+    contactId: original.contactId,
+    createdBy: userId,
+  });
+
+  // createNote returns a Drizzle result, extract insertId
+  const insertId = Array.isArray(result) ? (result[0] as any)?.insertId : (result as any)?.insertId;
+  if (!insertId) {
+    throw new Error("Failed to create duplicate note: no insert ID returned");
+  }
+
+  return { success: true, id: insertId };
 }
 
 export async function deleteNote(id: number) {
@@ -3149,6 +3301,64 @@ export async function restoreProjectFromTrash(projectId: number) {
       eq(projects.id, projectId),
       isNotNull(projects.trashedAt)
     ));
+}
+
+/**
+ * Helper function to add "copy" to a name
+ */
+function addCopyToName(name: string | null): string {
+  if (!name) return "Copy";
+  if (name.toLowerCase().endsWith(" copy")) {
+    return name;
+  }
+  return `${name} copy`;
+}
+
+/**
+ * Duplicate a project with all its data
+ */
+export async function duplicateProject(projectId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const original = await getProjectById(projectId);
+  if (!original) {
+    throw new Error("Project not found");
+  }
+
+  // Create duplicate project with "copy" in name
+  const duplicateProject = await createProject({
+    name: addCopyToName(original.name),
+    client: original.client,
+    clientId: original.clientId,
+    description: original.description,
+    startDate: original.startDate,
+    endDate: original.endDate,
+    address: original.address,
+    geo: original.geo,
+    scheduledDates: original.scheduledDates,
+    status: original.status,
+    createdBy: userId,
+  });
+
+  const newProjectId = duplicateProject[0].id;
+
+  // Duplicate all jobs for this project
+  const jobs = await getProjectJobsByProjectId(projectId);
+  for (const job of jobs) {
+    await createProjectJob({
+      projectId: newProjectId,
+      title: addCopyToName(job.title),
+      category: job.category,
+      description: job.description,
+      assignedUsers: job.assignedUsers,
+      status: job.status,
+      startTime: job.startTime,
+      endTime: job.endTime,
+    });
+  }
+
+  return { success: true, id: newProjectId };
 }
 
 // ===== PROJECT JOBS QUERIES =====

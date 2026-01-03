@@ -64,12 +64,11 @@ function DropdownMenuContent({
     };
   }, []);
 
-  // Enable auto-scroll on mobile only
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  // Enable auto-scroll on all devices to prevent dropdowns from being cropped
   useAutoScrollOnOpen({
     isOpen,
     menuRef,
-    enabled: isMobile,
+    enabled: true,
     scrollBuffer: 12,
   });
 

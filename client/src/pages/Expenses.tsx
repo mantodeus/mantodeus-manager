@@ -141,6 +141,16 @@ export default function Expenses() {
     },
   });
 
+  const duplicateExpenseMutation = trpc.expenses.duplicate.useMutation({
+    onSuccess: () => {
+      toast.success("Expense duplicated");
+      utils.expenses.list.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to duplicate expense");
+    },
+  });
+
   const applyFieldMutation = trpc.expenses.applyProposedFields.useMutation({
     onSuccess: (_, variables) => {
       toast.success("Field applied");
@@ -305,6 +315,16 @@ export default function Expenses() {
     const ids = Array.from(selectedIds);
     ids.forEach((id) => {
       markInOrderMutation.mutate({ id, status: "in_order" });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchDuplicate = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      duplicateExpenseMutation.mutate({ id });
     });
     setSelectedIds(new Set());
     setIsMultiSelectMode(false);
@@ -643,16 +663,8 @@ export default function Expenses() {
             setIsMultiSelectMode(false);
             setSelectedIds(new Set());
           }}
-          actions={[
-            {
-              label: "Mark as In Order",
-              icon: CheckCircle2,
-              onClick: handleBatchMarkInOrder,
-              variant: "default",
-              disabled: markInOrderMutation.isPending,
-            },
-            createDeleteAction(handleBatchDelete, deleteMutation.isPending),
-          ]}
+          onDuplicate={handleBatchDuplicate}
+          onDelete={handleBatchDelete}
         />
       )}
     </div>

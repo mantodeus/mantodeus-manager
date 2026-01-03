@@ -312,6 +312,13 @@
     z-index: -1;
   }
 
+  /* Increase opacity on desktop to match mobile visibility */
+  @media (min-width: 768px) {
+    .glass-panel::before {
+      opacity: 0.98;
+    }
+  }
+
   /* Glass context menu - Mantodeus design language */
   .glass-context-menu {
     background: rgba(15, 18, 25, 0.72);
@@ -323,6 +330,13 @@
     padding: 8px;
     min-width: 180px;
     animation: contextMenuIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* Increase opacity on desktop to match mobile visibility */
+  @media (min-width: 768px) {
+    .glass-context-menu {
+      background: rgba(15, 18, 25, 0.92);
+    }
   }
 
   @keyframes contextMenuIn {
@@ -343,8 +357,6 @@
     gap: 10px !important;
     padding: 10px 12px !important;
     border-radius: 10px !important;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
     font-size: 12px;
     font-weight: 300;
     color: rgba(255, 255, 255, 0.9);
@@ -413,8 +425,6 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     padding: 10px 14px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
     font-size: 12px;
     font-weight: 300;
     color: rgba(255, 255, 255, 0.9);

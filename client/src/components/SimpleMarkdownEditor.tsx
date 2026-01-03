@@ -1,18 +1,16 @@
 /**
- * Simple Markdown Editor Component
+ * Simple Markdown Editor Component (WYSIWYG)
  * 
- * Apple Notes-style editor:
- * - Plain textarea (no rich text, no contentEditable)
- * - Markdown stored as raw text
+ * WYSIWYG editor that:
+ * - Shows formatted text (NO markdown syntax visible)
+ * - Stores markdown behind the scenes
  * - Formatting toolbar with limited markdown subset
  * - Enter key inserts newlines correctly
  * - Lists auto-continue on Enter
- * - Empty list item exits list
  */
 
 import { useRef, useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Bold, Italic, List, Check as CheckIcon, Code } from "@/components/ui/Icon";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
 import { cn } from "@/lib/utils";
@@ -71,6 +69,225 @@ function ListOrderedIcon({ className }: { className?: string }) {
   );
 }
 
+// Convert HTML/DOM to markdown
+function htmlToMarkdown(element: HTMLElement | null): string {
+  if (!element) return "";
+  
+  let markdown = "";
+  const nodes = Array.from(element.childNodes);
+  let inList = false;
+  let listType: "ul" | "ol" | null = null;
+  
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent || "";
+      if (inList) {
+        // Text nodes in lists are handled by list items
+        continue;
+      }
+      markdown += text;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement;
+      const tagName = el.tagName.toLowerCase();
+      
+      if (tagName === "ul") {
+        if (inList && listType !== "ul") {
+          markdown += "\n";
+        }
+        inList = true;
+        listType = "ul";
+        const items = Array.from(el.querySelectorAll(":scope > li"));
+        for (const item of items) {
+          const checkbox = item.querySelector('input[type="checkbox"]');
+          const itemText = processInlineMarkdown(item);
+          if (checkbox) {
+            const isChecked = (checkbox as HTMLInputElement).checked;
+            markdown += `- [${isChecked ? "x" : " "}] ${itemText}\n`;
+          } else {
+            markdown += `- ${itemText}\n`;
+          }
+        }
+        inList = false;
+        listType = null;
+      } else if (tagName === "ol") {
+        if (inList && listType !== "ol") {
+          markdown += "\n";
+        }
+        inList = true;
+        listType = "ol";
+        const items = Array.from(el.querySelectorAll(":scope > li"));
+        items.forEach((item, index) => {
+          const itemText = processInlineMarkdown(item);
+          markdown += `${index + 1}. ${itemText}\n`;
+        });
+        inList = false;
+        listType = null;
+      } else if (tagName === "li") {
+        // Handled by parent ul/ol
+        continue;
+      } else if (tagName === "div" || tagName === "p") {
+        if (inList) {
+          markdown += "\n";
+          inList = false;
+          listType = null;
+        }
+        const inner = processInlineMarkdown(el);
+        if (inner.trim() || i === nodes.length - 1) {
+          markdown += inner;
+          if (i < nodes.length - 1) {
+            markdown += "\n";
+          }
+        }
+      } else if (tagName === "br") {
+        if (!inList) {
+          markdown += "\n";
+        }
+      } else {
+        // Inline elements are handled by processInlineMarkdown
+        if (!inList) {
+          markdown += processInlineMarkdown(el);
+        }
+      }
+    }
+  }
+  
+  return markdown.trim();
+}
+
+// Process inline markdown formatting in an element
+function processInlineMarkdown(element: HTMLElement): string {
+  let result = "";
+  const nodes = Array.from(element.childNodes);
+  
+  for (const node of nodes) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      result += node.textContent || "";
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement;
+      const tagName = el.tagName.toLowerCase();
+      const inner = processInlineMarkdown(el);
+      
+      if (tagName === "strong" || tagName === "b") {
+        result += `**${inner}**`;
+      } else if (tagName === "em" || tagName === "i") {
+        result += `*${inner}*`;
+      } else if (tagName === "del" || tagName === "s") {
+        result += `~~${inner}~~`;
+      } else if (tagName === "code") {
+        result += `\`${inner}\``;
+      } else if (tagName === "input" && (el as HTMLInputElement).type === "checkbox") {
+        // Skip checkbox input, it's handled by list item
+        continue;
+      } else {
+        result += inner;
+      }
+    }
+  }
+  
+  return result;
+}
+
+// Convert markdown to HTML for display
+function markdownToHtml(markdown: string): string {
+  if (!markdown) return "";
+  
+  // Use a temporary div to render markdown and extract HTML
+  const tempDiv = document.createElement("div");
+  tempDiv.className = "prose prose-sm dark:prose-invert max-w-none";
+  
+  // Create a wrapper to render SimpleMarkdown component output
+  // Since we can't directly render React components here, we'll parse manually
+  const lines = markdown.split("\n");
+  const elements: string[] = [];
+  let inList = false;
+  let listType: "bullet" | "numbered" | "checkbox" | null = null;
+  let listItems: string[] = [];
+  
+  const flushList = () => {
+    if (listItems.length > 0) {
+      if (listType === "numbered") {
+        elements.push(`<ol>${listItems.join("")}</ol>`);
+      } else {
+        elements.push(`<ul>${listItems.join("")}</ul>`);
+      }
+      listItems = [];
+      listType = null;
+      inList = false;
+    }
+  };
+  
+  const processInline = (text: string): string => {
+    // Process inline markdown: code, bold, strikethrough, italic
+    let result = text;
+    
+    // Code (highest priority)
+    result = result.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Bold
+    result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    
+    // Strikethrough
+    result = result.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    
+    // Italic (must come after bold to avoid conflicts)
+    result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+    
+    return result;
+  };
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Checkbox list
+    if (/^-\s+\[([ x])\]\s+/.test(trimmed)) {
+      flushList();
+      inList = true;
+      listType = "checkbox";
+      const content = trimmed.replace(/^-\s+\[([ x])\]\s+/, "");
+      listItems.push(`<li><input type="checkbox" ${trimmed.includes("[x]") ? "checked" : ""} disabled> ${processInline(content)}</li>`);
+      continue;
+    }
+    
+    // Bullet list
+    if (/^-\s+/.test(trimmed)) {
+      if (!inList || listType !== "bullet") {
+        flushList();
+        inList = true;
+        listType = "bullet";
+      }
+      const content = trimmed.replace(/^-\s+/, "");
+      listItems.push(`<li>${processInline(content)}</li>`);
+      continue;
+    }
+    
+    // Numbered list
+    if (/^\d+\.\s+/.test(trimmed)) {
+      if (!inList || listType !== "numbered") {
+        flushList();
+        inList = true;
+        listType = "numbered";
+      }
+      const content = trimmed.replace(/^\d+\.\s+/, "");
+      listItems.push(`<li>${processInline(content)}</li>`);
+      continue;
+    }
+    
+    // Regular line
+    flushList();
+    if (trimmed) {
+      elements.push(`<div>${processInline(trimmed)}</div>`);
+    } else {
+      elements.push(`<div><br></div>`);
+    }
+  }
+  
+  flushList();
+  
+  return elements.join("");
+}
+
 export function SimpleMarkdownEditor({
   content,
   onChange,
@@ -78,36 +295,12 @@ export function SimpleMarkdownEditor({
   className,
   autoFocus = false,
 }: SimpleMarkdownEditorProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
-  
-  // Sync scroll between textarea and preview
-  const handleScroll = () => {
-    if (textareaRef.current && previewRef.current) {
-      requestAnimationFrame(() => {
-        if (textareaRef.current && previewRef.current) {
-          previewRef.current.scrollTop = textareaRef.current.scrollTop;
-          previewRef.current.scrollLeft = textareaRef.current.scrollLeft;
-        }
-      });
-    }
-  };
-  
-  // Also sync on content changes
-  useEffect(() => {
-    if (textareaRef.current && previewRef.current) {
-      requestAnimationFrame(() => {
-        if (textareaRef.current && previewRef.current) {
-          previewRef.current.scrollTop = textareaRef.current.scrollTop;
-          previewRef.current.scrollLeft = textareaRef.current.scrollLeft;
-        }
-      });
-    }
-  }, [content]);
+  const isUpdatingRef = useRef(false);
 
   // Detect mobile for toolbar positioning
   useEffect(() => {
@@ -124,21 +317,16 @@ export function SimpleMarkdownEditor({
     if (!isMobile) return;
 
     const updateKeyboardHeight = () => {
-      // Use visual viewport API if available (modern mobile browsers)
       if (window.visualViewport) {
         const viewport = window.visualViewport;
         const windowHeight = window.innerHeight;
         const keyboardOffset = Math.max(0, windowHeight - (viewport.height + viewport.offsetTop));
-        // Only update if difference is significant (keyboard is open)
         if (keyboardOffset > 50) {
-          // Keyboard is open - position toolbar at bottom of visual viewport
           setKeyboardHeight(keyboardOffset);
         } else {
-          // Keyboard is closed - position at bottom of screen
           setKeyboardHeight(0);
         }
       } else {
-        // Fallback: detect based on window height changes
         const currentHeight = window.innerHeight;
         const storedHeight = sessionStorage.getItem('viewport-height');
         if (storedHeight) {
@@ -147,7 +335,6 @@ export function SimpleMarkdownEditor({
             setKeyboardHeight(heightDiff);
           } else {
             setKeyboardHeight(0);
-            // Update stored height when keyboard closes
             sessionStorage.setItem('viewport-height', currentHeight.toString());
           }
         } else {
@@ -157,10 +344,8 @@ export function SimpleMarkdownEditor({
       }
     };
 
-    // Initial check
     updateKeyboardHeight();
 
-    // Listen to visual viewport changes
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', updateKeyboardHeight);
       window.visualViewport.addEventListener('scroll', updateKeyboardHeight);
@@ -178,11 +363,71 @@ export function SimpleMarkdownEditor({
     };
   }, [isMobile]);
 
+  // Update editor HTML when markdown content changes (from props)
+  useEffect(() => {
+    if (!editorRef.current || isUpdatingRef.current) return;
+    
+    const html = markdownToHtml(content || "");
+    const currentHtml = editorRef.current.innerHTML.trim();
+    const normalizedHtml = html.trim();
+    
+    // Only update if content actually changed (avoid loops)
+    if (currentHtml !== normalizedHtml && normalizedHtml !== "") {
+      isUpdatingRef.current = true;
+      const selection = window.getSelection();
+      let savedRange: Range | null = null;
+      
+      // Save cursor position
+      if (selection && selection.rangeCount > 0) {
+        savedRange = selection.getRangeAt(0).cloneRange();
+      }
+      
+      editorRef.current.innerHTML = normalizedHtml || "";
+      
+      // Try to restore cursor position
+      if (savedRange && editorRef.current.contains(savedRange.startContainer)) {
+        try {
+          selection?.removeAllRanges();
+          selection?.addRange(savedRange);
+        } catch {
+          // If restoration fails, place cursor at end
+          const newRange = document.createRange();
+          newRange.selectNodeContents(editorRef.current);
+          newRange.collapse(false);
+          selection?.removeAllRanges();
+          selection?.addRange(newRange);
+        }
+      }
+      
+      setTimeout(() => {
+        isUpdatingRef.current = false;
+      }, 50);
+    } else if (content === "" && editorRef.current.innerHTML.trim() !== "") {
+      // Handle empty content
+      isUpdatingRef.current = true;
+      editorRef.current.innerHTML = "";
+      setTimeout(() => {
+        isUpdatingRef.current = false;
+      }, 50);
+    }
+  }, [content]);
+
+  // Initialize editor content on mount
+  useEffect(() => {
+    if (editorRef.current && !editorRef.current.innerHTML && content) {
+      isUpdatingRef.current = true;
+      editorRef.current.innerHTML = markdownToHtml(content);
+      setTimeout(() => {
+        isUpdatingRef.current = false;
+      }, 50);
+    }
+  }, []); // Only run on mount
+
   // Auto-focus
   useEffect(() => {
-    if (autoFocus && textareaRef.current) {
+    if (autoFocus && editorRef.current) {
       setTimeout(() => {
-        textareaRef.current?.focus();
+        editorRef.current?.focus();
         setIsFocused(true);
       }, 100);
     }
@@ -194,333 +439,179 @@ export function SimpleMarkdownEditor({
   };
 
   const handleBlur = () => {
-    // Delay blur to allow toolbar button clicks
     setTimeout(() => {
-      if (document.activeElement !== textareaRef.current) {
+      if (document.activeElement !== editorRef.current) {
         setIsFocused(false);
       }
     }, 200);
   };
 
-  // Get selection range
-  const getSelection = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return { start: 0, end: 0, text: "" };
+  // Handle content changes
+  const handleInput = () => {
+    if (isUpdatingRef.current || !editorRef.current) return;
     
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value.substring(start, end);
-    
-    return { start, end, text };
+    const html = editorRef.current.innerHTML;
+    const markdown = htmlToMarkdown(editorRef.current);
+    onChange(markdown);
   };
 
-  // Insert text at cursor position
-  const insertText = (before: string, after: string = "", selectText: string = "") => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const { start, end } = getSelection();
-    const currentValue = textarea.value;
-    const beforeText = currentValue.substring(0, start);
-    const afterText = currentValue.substring(end);
-    
-    const newValue = beforeText + before + selectText + after + afterText;
-    onChange(newValue);
-
-    // Restore cursor position
-    setTimeout(() => {
-      const newCursorPos = start + before.length + selectText.length + after.length;
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-      textarea.focus();
-    }, 0);
+  // Formatting handlers using document.execCommand
+  const execCommand = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+    handleInput();
   };
 
-  // Wrap selected text with markdown syntax
-  const wrapSelection = (before: string, after: string = before) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const { start, end, text } = getSelection();
-    const currentValue = textarea.value;
-    const beforeText = currentValue.substring(0, start);
-    const afterText = currentValue.substring(end);
-    
-    // If text is selected, wrap it
-    if (text) {
-      const newValue = beforeText + before + text + after + afterText;
-      onChange(newValue);
-      
-      // Use requestAnimationFrame for better cursor placement
-      requestAnimationFrame(() => {
-        const newCursorPos = start + before.length + text.length + after.length;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-        textarea.focus();
-        setIsFocused(true);
-      });
-    } else {
-      // If no text is selected, insert syntax and place cursor in middle
-      const newValue = beforeText + before + after + afterText;
-      onChange(newValue);
-      
-      requestAnimationFrame(() => {
-        const newCursorPos = start + before.length;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-        textarea.focus();
-        setIsFocused(true);
-      });
+  const handleBold = () => execCommand("bold");
+  const handleItalic = () => execCommand("italic");
+  const handleStrikethrough = () => execCommand("strikeThrough");
+  const handleCode = () => {
+    // Wrap selection in <code> tag
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const selectedText = range.toString();
+      if (selectedText) {
+        const code = document.createElement("code");
+        code.textContent = selectedText;
+        range.deleteContents();
+        range.insertNode(code);
+        handleInput();
+      }
     }
   };
 
-  // Formatting button handlers
-  const handleBold = () => wrapSelection("**", "**");
-  const handleItalic = () => wrapSelection("*", "*");
-  const handleStrikethrough = () => wrapSelection("~~", "~~");
-  const handleCode = () => wrapSelection("`", "`");
-  
   const handleBulletList = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const { start } = getSelection();
-    const currentValue = textarea.value;
-    const lines = currentValue.split("\n");
-    let currentLine = 0;
-    let charCount = 0;
-    
-    // Find the line containing the cursor
-    for (let i = 0; i < lines.length; i++) {
-      const lineLength = lines[i].length;
-      const lineStart = charCount;
-      const lineEnd = charCount + lineLength;
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      let node = range.commonAncestorContainer;
       
-      // Cursor is in this line if it's between lineStart and lineEnd (inclusive at end for newline)
-      if (start >= lineStart && start <= lineEnd) {
-        currentLine = i;
-        break;
+      // Find the containing block element
+      while (node && node.nodeType !== Node.ELEMENT_NODE) {
+        node = node.parentNode;
       }
-      charCount += lineLength + 1; // +1 for newline
-    }
-    
-    const line = lines[currentLine];
-    const wasBullet = line.trim().startsWith("- ");
-    const indent = line.match(/^(\s*)/)?.[1] || "";
-    
-    if (wasBullet) {
-      // Remove bullet
-      lines[currentLine] = line.replace(/^(\s*)- /, "$1");
-    } else {
-      // Add bullet
-      lines[currentLine] = indent + "- " + line.trimStart();
-    }
-    
-    const newValue = lines.join("\n");
-    onChange(newValue);
-    
-    // Calculate accurate cursor position
-    requestAnimationFrame(() => {
-      let newCursorPos = start;
-      if (wasBullet) {
-        // Removed bullet: move cursor back
-        newCursorPos = Math.max(0, start - 2);
-      } else {
-        // Added bullet: move cursor forward
-        newCursorPos = start + 2;
-      }
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-      textarea.focus();
-      setIsFocused(true);
-    });
-  };
-  
-  const handleNumberedList = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const { start } = getSelection();
-    const currentValue = textarea.value;
-    const lines = currentValue.split("\n");
-    let currentLine = 0;
-    let charCount = 0;
-    
-    // Find the line containing the cursor
-    for (let i = 0; i < lines.length; i++) {
-      const lineLength = lines[i].length;
-      const lineStart = charCount;
-      const lineEnd = charCount + lineLength;
       
-      // Cursor is in this line if it's between lineStart and lineEnd (inclusive at end for newline)
-      if (start >= lineStart && start <= lineEnd) {
-        currentLine = i;
-        break;
-      }
-      charCount += lineLength + 1;
-    }
-    
-    const line = lines[currentLine];
-    const wasNumbered = /^\s*\d+\.\s/.test(line);
-    const indent = line.match(/^(\s*)/)?.[1] || "";
-    
-    if (wasNumbered) {
-      // Remove numbering
-      lines[currentLine] = line.replace(/^(\s*)\d+\.\s/, "$1");
-    } else {
-      // Add numbering
-      lines[currentLine] = indent + "1. " + line.trimStart();
-    }
-    
-    const newValue = lines.join("\n");
-    onChange(newValue);
-    
-    // Calculate accurate cursor position
-    requestAnimationFrame(() => {
-      let newCursorPos = start;
-      if (wasNumbered) {
-        // Find how many chars were removed
-        const match = line.match(/^(\s*)(\d+)\.\s/);
-        if (match) {
-          const removedLength = match[0].length;
-          newCursorPos = Math.max(0, start - removedLength);
+      if (node) {
+        const el = node as HTMLElement;
+        if (el.tagName.toLowerCase() === "ul") {
+          // Convert to regular div
+          const parent = el.parentNode;
+          if (parent) {
+            const div = document.createElement("div");
+            div.innerHTML = el.innerHTML.replace(/<li>/g, "").replace(/<\/li>/g, "<br>");
+            parent.replaceChild(div, el);
+          }
+        } else {
+          // Convert to list
+          const text = el.textContent || "";
+          const ul = document.createElement("ul");
+          const li = document.createElement("li");
+          li.textContent = text;
+          ul.appendChild(li);
+          el.parentNode?.replaceChild(ul, el);
         }
-      } else {
-        // Added "1. ": move cursor forward
-        newCursorPos = start + 3;
+        handleInput();
       }
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-      textarea.focus();
-      setIsFocused(true);
-    });
+    }
   };
-  
-  const handleCheckbox = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
 
-    const { start } = getSelection();
-    const currentValue = textarea.value;
-    const lines = currentValue.split("\n");
-    let currentLine = 0;
-    let charCount = 0;
-    
-    // Find the line containing the cursor
-    for (let i = 0; i < lines.length; i++) {
-      const lineLength = lines[i].length;
-      const lineStart = charCount;
-      const lineEnd = charCount + lineLength;
+  const handleNumberedList = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      let node = range.commonAncestorContainer;
       
-      // Cursor is in this line if it's between lineStart and lineEnd (inclusive at end for newline)
-      if (start >= lineStart && start <= lineEnd) {
-        currentLine = i;
-        break;
+      while (node && node.nodeType !== Node.ELEMENT_NODE) {
+        node = node.parentNode;
       }
-      charCount += lineLength + 1;
+      
+      if (node) {
+        const el = node as HTMLElement;
+        if (el.tagName.toLowerCase() === "ol") {
+          const parent = el.parentNode;
+          if (parent) {
+            const div = document.createElement("div");
+            div.innerHTML = el.innerHTML.replace(/<li>/g, "").replace(/<\/li>/g, "<br>");
+            parent.replaceChild(div, el);
+          }
+        } else {
+          const text = el.textContent || "";
+          const ol = document.createElement("ol");
+          const li = document.createElement("li");
+          li.textContent = text;
+          ol.appendChild(li);
+          el.parentNode?.replaceChild(ol, el);
+        }
+        handleInput();
+      }
     }
-    
-    const line = lines[currentLine];
-    const hasCheckbox = line.trim().startsWith("- [ ] ");
-    const hasBullet = line.trim().startsWith("- ");
-    const indent = line.match(/^(\s*)/)?.[1] || "";
-    
-    if (hasCheckbox) {
-      // Remove checkbox, keep bullet
-      lines[currentLine] = line.replace(/^(\s*)- \[ \] /, "$1- ");
-    } else if (hasBullet) {
-      // Add checkbox to existing bullet
-      lines[currentLine] = line.replace(/^(\s*)- /, "$1- [ ] ");
-    } else {
-      // Add bullet with checkbox
-      lines[currentLine] = indent + "- [ ] " + line.trimStart();
+  };
+
+  const handleCheckbox = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      let node = range.commonAncestorContainer;
+      
+      while (node && node.nodeType !== Node.ELEMENT_NODE) {
+        node = node.parentNode;
+      }
+      
+      if (node) {
+        const el = node as HTMLElement;
+        if (el.tagName.toLowerCase() === "li" && el.parentElement?.tagName.toLowerCase() === "ul") {
+          const checkbox = el.querySelector('input[type="checkbox"]');
+          if (checkbox) {
+            checkbox.remove();
+            el.textContent = el.textContent?.replace(/^\[[ x]\]\s*/, "") || "";
+          } else {
+            const text = el.textContent || "";
+            el.innerHTML = `<input type="checkbox" disabled> ${text}`;
+          }
+        } else {
+          const text = el.textContent || "";
+          const ul = document.createElement("ul");
+          const li = document.createElement("li");
+          li.innerHTML = `<input type="checkbox" disabled> ${text}`;
+          ul.appendChild(li);
+          el.parentNode?.replaceChild(ul, el);
+        }
+        handleInput();
+      }
     }
-    
-    const newValue = lines.join("\n");
-    onChange(newValue);
-    
-    requestAnimationFrame(() => {
-      textarea.focus();
-      setIsFocused(true);
-    });
   };
 
   // Handle Enter key for list continuation
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter") {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-
-      const { start } = getSelection();
-      const currentValue = textarea.value;
-      const lines = currentValue.split("\n");
-      let currentLine = 0;
-      let charCount = 0;
-      
-      // Find the line containing the cursor
-      for (let i = 0; i < lines.length; i++) {
-        const lineLength = lines[i].length;
-        const lineStart = charCount;
-        const lineEnd = charCount + lineLength;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        let node = range.commonAncestorContainer;
         
-        // Cursor is in this line if it's between lineStart and lineEnd (inclusive at end for newline)
-        if (start >= lineStart && start <= lineEnd) {
-          currentLine = i;
-          break;
+        while (node && node.nodeType !== Node.ELEMENT_NODE) {
+          node = node.parentNode;
         }
-        charCount += lineLength + 1;
-      }
-      
-      const line = lines[currentLine];
-      
-      // Check if we're in a bullet list
-      const bulletMatch = line.match(/^(\s*)- (\[ \] )?(.*)$/);
-      if (bulletMatch) {
-        const [, indent, checkbox, content] = bulletMatch;
-        // If line is empty, exit list
-        if (!content.trim()) {
-          // Don't prevent default - let Enter insert newline and exit list
-          return;
-        }
-        // Continue list
-        e.preventDefault();
-        const newLine = indent + "- " + (checkbox || "");
-        const newValue = currentValue.substring(0, start) + "\n" + newLine + currentValue.substring(start);
-        onChange(newValue);
         
-        requestAnimationFrame(() => {
-          const newCursorPos = start + 1 + newLine.length;
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-          textarea.focus();
-        });
-        return;
-      }
-      
-      // Check if we're in a numbered list
-      const numberedMatch = line.match(/^(\s*)(\d+)\.\s(.*)$/);
-      if (numberedMatch) {
-        const [, indent, num, content] = numberedMatch;
-        // If line is empty, exit list
-        if (!content.trim()) {
-          return;
+        if (node) {
+          const el = node as HTMLElement;
+          if (el.tagName.toLowerCase() === "li") {
+            const text = el.textContent?.trim() || "";
+            if (!text) {
+              // Exit list on empty line
+              return;
+            }
+            // Continue list - handled by browser default
+          }
         }
-        // Continue list with next number
-        e.preventDefault();
-        const nextNum = parseInt(num) + 1;
-        const newLine = indent + nextNum + ". ";
-        const newValue = currentValue.substring(0, start) + "\n" + newLine + currentValue.substring(start);
-        onChange(newValue);
-        
-        requestAnimationFrame(() => {
-          const newCursorPos = start + 1 + newLine.length;
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-          textarea.focus();
-        });
-        return;
       }
-      
-      // Default: Enter inserts newline (normal behavior)
     }
   };
 
   const handleToolbarPointerDown = (event: ReactPointerEvent) => {
     event.preventDefault();
-    textareaRef.current?.focus();
+    editorRef.current?.focus();
   };
 
   const showToolbar = isMobile ? isFocused : true;
@@ -531,58 +622,43 @@ export function SimpleMarkdownEditor({
   return (
     <div className={cn("relative", className)}>
       <div ref={containerRef}>
-        {/* Editor Container with Live Preview */}
-        <div className="border rounded-md bg-background relative overflow-hidden">
-          {/* Live Preview Layer (rendered markdown) */}
-          <div
-            ref={previewRef}
-            className={cn(
-              "absolute inset-0 px-4 py-3 text-sm pointer-events-none overflow-auto",
-              isMobile ? "min-h-[300px]" : "min-h-[400px]"
-            )}
-            style={{
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              lineHeight: '1.5',
-            }}
-          >
-            {content ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none [&_strong]:font-semibold [&_em]:italic [&_del]:line-through [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-0 [&_ul]:my-0 [&_ol]:list-decimal [&_ol]:list-inside [&_ol]:ml-0 [&_ol]:my-0 [&_li]:ml-0 [&_p]:my-0">
-                <SimpleMarkdown>{content}</SimpleMarkdown>
-              </div>
-            ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
-            )}
-          </div>
-          
-          {/* Textarea Layer (transparent text, visible caret) */}
-          <Textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            onScroll={handleScroll}
-            placeholder=""
-            className={cn(
-              "relative resize-none border-none shadow-none focus-visible:ring-0 px-4 py-3 text-sm",
-              "bg-transparent caret-foreground",
-              isMobile ? "min-h-[300px]" : "min-h-[400px]"
-            )}
-            style={{ 
-              whiteSpace: "pre-wrap",
-              color: 'transparent',
-              textShadow: '0 0 0 transparent',
-              WebkitTextFillColor: 'transparent',
-              lineHeight: '1.5',
-            }}
-          />
-        </div>
+        {/* WYSIWYG Editor - contentEditable div showing formatted text */}
+        <div
+          ref={editorRef}
+          contentEditable
+          onInput={handleInput}
+          onKeyDown={handleKeyDown}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          className={cn(
+            "border rounded-md bg-background px-4 py-3 text-sm",
+            "focus:outline-none focus:ring-2 focus:ring-ring",
+            "prose prose-sm dark:prose-invert max-w-none",
+            "[&_strong]:font-semibold [&_em]:italic [&_del]:line-through",
+            "[&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono",
+            "[&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-0 [&_ul]:my-0",
+            "[&_ol]:list-decimal [&_ol]:list-inside [&_ol]:ml-0 [&_ol]:my-0",
+            "[&_li]:ml-0 [&_p]:my-0 [&_div]:my-0",
+            isMobile ? "min-h-[300px]" : "min-h-[400px]"
+          )}
+          style={{
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            lineHeight: "1.5",
+          }}
+          data-placeholder={placeholder}
+          suppressContentEditableWarning
+        />
+        <style>{`
+          [contenteditable][data-placeholder]:empty:before {
+            content: attr(data-placeholder);
+            color: hsl(var(--muted-foreground));
+            pointer-events: none;
+          }
+        `}</style>
       </div>
 
-      {/* Formatting Toolbar - Fixed outside scrollable container, truly independent */}
-      {/* On mobile when focused, use portal-like positioning to escape all scroll contexts */}
+      {/* Formatting Toolbar */}
       {showToolbar && (
         <div
           className={cn(
@@ -697,4 +773,3 @@ export function SimpleMarkdownEditor({
     </div>
   );
 }
-

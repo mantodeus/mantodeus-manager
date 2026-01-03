@@ -460,6 +460,20 @@ export const invoiceRouter = router({
       return { success: true };
     }),
 
+  duplicate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      return await db.duplicateInvoice(input.id, userId);
+    }),
+
   archive: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {

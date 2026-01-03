@@ -165,17 +165,7 @@ export default function Jobs() {
                   }
                 }}
               >
-                {isMultiSelectMode && (
-                  <div className="absolute top-2 left-2 z-10">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelection(job.id)}
-                      className="h-5 w-5 rounded border-2 border-primary accent-primary"
-                    />
-                  </div>
-                )}
-                <Link href={`/jobs/${job.id}`}>
+                <Link href={isMultiSelectMode ? "#" : `/jobs/${job.id}`} onClick={(e) => isMultiSelectMode && e.preventDefault()}>
                   <Card 
                     className={`hover:shadow-lg transition-all cursor-pointer h-full ${
                       isSelected ? 'ring-2 ring-primary' : ''

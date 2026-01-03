@@ -26,8 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Building2, ChevronDown, Loader2, Mail, MapPin, Phone, Plus, Search, User, Users, X } from "@/components/ui/Icon";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Building2, Loader2, Mail, MapPin, Phone, Plus, Search, User, Users, X } from "@/components/ui/Icon";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { useEffect, useRef, useState } from "react";
@@ -45,7 +44,6 @@ export default function Contacts() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [returnTo, setReturnTo] = useState<string | null>(null);
-  const [expandedContactId, setExpandedContactId] = useState<number | null>(null);
   const [previewContactId, setPreviewContactId] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +100,15 @@ export default function Contacts() {
     },
     onError: (error) => {
       toast.error("Failed to delete contact: " + error.message);
+    },
+  });
+  const duplicateContactMutation = trpc.contacts.duplicate.useMutation({
+    onSuccess: () => {
+      toast.success("Contact duplicated");
+      invalidateContactLists();
+    },
+    onError: (error) => {
+      toast.error("Failed to duplicate contact: " + error.message);
     },
   });
 
@@ -325,7 +332,7 @@ export default function Contacts() {
         handleEdit(contact);
         break;
       case "duplicate":
-        toast.info("Duplicate is coming soon.");
+        duplicateContactMutation.mutate({ id: contactId });
         break;
       case "select":
         setIsMultiSelectMode(true);
@@ -347,7 +354,13 @@ export default function Contacts() {
   };
 
   const handleBatchDuplicate = () => {
-    toast.info("Batch duplicate is coming soon.");
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      duplicateContactMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
   };
 
   useEffect(() => {
@@ -408,115 +421,47 @@ export default function Contacts() {
   };
 
   const renderContactRow = (contact: typeof activeContacts[0]) => {
-    const isExpanded = expandedContactId === contact.id;
     const displayName = getDisplayName(contact);
-    const previewAddress = getPreviewAddress(contact);
-    const mapAddress = getMapAddress(contact);
-    
-    // Get emails and phone numbers from new array format or fallback to single values
-    const emails = Array.isArray(contact.emails) 
-      ? contact.emails 
-      : (contact.email ? [{ label: "Email", value: contact.email }] : []);
-    const phoneNumbers = Array.isArray(contact.phoneNumbers)
-      ? contact.phoneNumbers
-      : (contact.phoneNumber || contact.phone ? [{ label: "Phone", value: contact.phoneNumber || contact.phone || "" }] : []);
     
     const ContactIcon = contact.type === "business" ? Building2 : User;
+
+    const handleRowClick = () => {
+      if (isMultiSelectMode) {
+        toggleSelection(contact.id);
+      } else {
+        setPreviewContactId(contact.id);
+      }
+    };
 
     return (
       <div
         key={contact.id}
-        className={`rounded-lg border ${selectedIds.has(contact.id) ? "item-selected" : ""}`}
+        className={`rounded-lg border ${selectedIds.has(contact.id) ? "item-selected" : ""} ${isMultiSelectMode ? "cursor-pointer" : ""}`}
+        onClick={handleRowClick}
       >
         <div className="flex items-center gap-3 px-4 py-3">
-          {isMultiSelectMode && (
-            <Checkbox
-              checked={selectedIds.has(contact.id)}
-              onCheckedChange={() => toggleSelection(contact.id)}
-              onClick={(e) => e.stopPropagation()}
-            />
-          )}
           <div className="flex-1 min-w-0 flex items-center gap-2">
             <ContactIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
             <button
               type="button"
-              onClick={() => setPreviewContactId(contact.id)}
-              className="truncate text-base font-regular hover:text-primary transition-colors text-left"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isMultiSelectMode) {
+                  setPreviewContactId(contact.id);
+                }
+              }}
+              className="text-base font-regular hover:text-primary transition-colors text-left break-words"
             >
               {displayName}
             </button>
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-11 w-11"
-              aria-expanded={isExpanded}
-              onClick={() =>
-                setExpandedContactId(isExpanded ? null : contact.id)
-              }
-            >
-              <ChevronDown
-                className={`h-5 w-5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-              />
-            </Button>
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
             <ItemActionsMenu
               onAction={(action) => handleItemAction(action, contact.id)}
               actions={["edit", "duplicate", "select", "archive", "delete"]}
               triggerClassName="h-11 w-11 text-muted-foreground hover:text-foreground"
               size="lg"
             />
-          </div>
-        </div>
-
-        <div
-          className={`grid transition-[grid-template-rows] duration-200 ease-out ${
-            isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-          }`}
-        >
-          <div className="overflow-hidden">
-            <div className="flex flex-col gap-2 px-4 pb-3">
-              {previewAddress && (
-                <button
-                  type="button"
-                  className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  onClick={() => {
-                    if (!mapAddress) return;
-                    setLocation(`/maps?address=${encodeURIComponent(mapAddress)}`);
-                  }}
-                >
-                  <MapPin className="h-4 w-4" />
-                  <span className="truncate">{previewAddress}</span>
-                </button>
-              )}
-              {emails.map((emailItem, idx) => (
-                <a
-                  key={idx}
-                  href={`mailto:${emailItem.value}`}
-                  className="flex min-h-11 w-full gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-muted-foreground/70 mb-1 font-medium">{emailItem.label}</div>
-                    <span className="break-all">{emailItem.value}</span>
-                  </div>
-                </a>
-              ))}
-              {phoneNumbers.map((phoneItem, idx) => (
-                <a
-                  key={idx}
-                  href={`tel:${phoneItem.value}`}
-                  className="flex min-h-11 w-full gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <Phone className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-muted-foreground/70 mb-1 font-medium">{phoneItem.label}</div>
-                    <span className="break-all">{phoneItem.value}</span>
-                  </div>
-                </a>
-              ))}
-            </div>
           </div>
         </div>
       </div>
@@ -937,7 +882,7 @@ export default function Contacts() {
         
         return (
           <Dialog open={!!previewContactId} onOpenChange={(open) => !open && setPreviewContactId(null)}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="h-full w-full max-w-full top-0 left-0 right-0 bottom-0 translate-x-0 translate-y-0 rounded-none md:max-w-2xl md:max-h-[90vh] md:top-[50%] md:left-[50%] md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-lg md:h-auto overflow-y-auto">
               <DialogHeader>
                 <div className="flex items-center gap-3">
                   <ContactIcon className="h-6 w-6 text-primary" />

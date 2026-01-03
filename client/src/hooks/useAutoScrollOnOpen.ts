@@ -2,7 +2,8 @@
  * useAutoScrollOnOpen Hook
  * 
  * Automatically scrolls the page/container when a dropdown menu opens near the bottom
- * to ensure the menu is fully visible above the bottom tab bar and safe area.
+ * to ensure the menu is fully visible. On mobile, accounts for bottom tab bar and safe area.
+ * On desktop, ensures menu is not cropped at the viewport bottom.
  * 
  * This hook measures the menu position and height, calculates if it would be clipped,
  * and smoothly scrolls just enough to reveal the full menu.

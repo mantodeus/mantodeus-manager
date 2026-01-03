@@ -26,7 +26,6 @@ import { formatProjectSchedule } from "@/lib/dateFormat";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { ScrollRevealFooter } from "@/components/ScrollRevealFooter";
 import { PageHeader } from "@/components/PageHeader";
-import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
 
 type ProjectListItem = RouterOutputs["projects"]["list"][number];
@@ -128,13 +127,23 @@ export default function Projects() {
     }
   };
 
+  const duplicateProjectMutation = trpc.projects.duplicate.useMutation({
+    onSuccess: () => {
+      toast.success("Project duplicated");
+      invalidateProjectLists();
+    },
+    onError: (error) => {
+      toast.error(`Failed to duplicate project: ${error.message}`);
+    },
+  });
+
   const handleItemAction = (action: ItemAction, projectId: number) => {
     switch (action) {
       case "edit":
         window.location.href = `/projects/${projectId}`;
         break;
       case "duplicate":
-        toast.info("Duplicate is coming soon.");
+        duplicateProjectMutation.mutate({ projectId });
         break;
       case "select":
         setIsMultiSelectMode(true);
@@ -166,6 +175,16 @@ export default function Projects() {
     const ids = Array.from(selectedIds);
     ids.forEach((id) => {
       archiveProjectMutation.mutate({ projectId: id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchDuplicate = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      duplicateProjectMutation.mutate({ projectId: id });
     });
     setSelectedIds(new Set());
     setIsMultiSelectMode(false);
@@ -250,14 +269,6 @@ export default function Projects() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
-                  {isMultiSelectMode && (
-                    <Checkbox
-                      checked={selectedIds.has(project.id)}
-                      onCheckedChange={() => toggleSelection(project.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="mr-2"
-                    />
-                  )}
                   <Building2 className="h-5 w-5 text-muted-foreground" />
                   <CardTitle className="text-xl">{project.name}</CardTitle>
                 </div>
@@ -383,10 +394,9 @@ export default function Projects() {
             setIsMultiSelectMode(false);
             setSelectedIds(new Set());
           }}
-          actions={[
-            createArchiveAction(handleBatchArchive, archiveProjectMutation.isPending),
-            createDeleteAction(handleBatchDelete, moveProjectToTrashMutation.isPending),
-          ]}
+          onDuplicate={handleBatchDuplicate}
+          onArchive={handleBatchArchive}
+          onDelete={handleBatchDelete}
         />
       )}
 

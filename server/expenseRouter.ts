@@ -432,6 +432,16 @@ export const expenseRouter = router({
     }),
 
   /**
+   * Duplicate an expense
+   */
+  duplicate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await validateExpenseOwnership(input.id, ctx.user.id, ctx.user.role);
+      return await db.duplicateExpense(input.id, ctx.user.id);
+    }),
+
+  /**
    * Update an expense
    * Payment field edits never affect status
    * Accounting field changes reset status to needs_review if currently in_order

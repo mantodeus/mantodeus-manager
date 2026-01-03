@@ -495,6 +495,16 @@ export const projectsRouter = router({
     }),
 
   /**
+   * Duplicate a project with all its jobs
+   */
+  duplicate: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await requireProjectAccess(ctx.user, input.projectId, "duplicate");
+      return await db.duplicateProject(input.projectId, ctx.user.id);
+    }),
+
+  /**
    * Nested jobs router
    * Accessed as: projects.jobs.list, projects.jobs.create, etc.
    */

@@ -14,7 +14,6 @@ import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialo
 import { useIsMobile } from "@/hooks/useMobile";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { Link, useLocation } from "wouter";
-import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
 
 function formatCurrency(amount: number | string) {
@@ -94,6 +93,14 @@ export default function Invoices() {
   const moveToTrashMutation = trpc.invoices.moveToTrash.useMutation({
     onSuccess: () => {
       toast.success("Invoice deleted");
+      refetch();
+      refetchNeedsReview();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const duplicateInvoiceMutation = trpc.invoices.duplicate.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice duplicated");
       refetch();
       refetchNeedsReview();
     },
@@ -220,6 +227,16 @@ export default function Invoices() {
     const ids = Array.from(selectedIds);
     ids.forEach((id) => {
       archiveMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchDuplicate = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      duplicateInvoiceMutation.mutate({ id });
     });
     setSelectedIds(new Set());
     setIsMultiSelectMode(false);
@@ -427,14 +444,6 @@ export default function Invoices() {
                 <Card className="p-3 sm:p-4 hover:shadow-sm transition-all">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      {isMultiSelectMode && (
-                        <Checkbox
-                          checked={selectedIds.has(invoice.id)}
-                          onCheckedChange={() => toggleSelection(invoice.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="mt-0.5"
-                        />
-                      )}
                       <FileText className="w-5 h-5 text-accent mt-0.5 shrink-0" />
                       <div className="min-w-0">
                         <div className="font-light text-base leading-tight break-words">{displayName}</div>
@@ -461,7 +470,7 @@ export default function Invoices() {
                               navigate(`/invoices/${invoice.id}`);
                             }
                             if (action === "duplicate") {
-                              toast.info("Duplicate is coming soon.");
+                              duplicateInvoiceMutation.mutate({ id: invoice.id });
                             }
                             if (action === "select") {
                               setIsMultiSelectMode(true);
@@ -498,10 +507,9 @@ export default function Invoices() {
             setIsMultiSelectMode(false);
             setSelectedIds(new Set());
           }}
-          actions={[
-            createArchiveAction(handleBatchArchive, archiveMutation.isPending),
-            createDeleteAction(handleBatchDelete, moveToTrashMutation.isPending),
-          ]}
+          onDuplicate={handleBatchDuplicate}
+          onArchive={handleBatchArchive}
+          onDelete={handleBatchDelete}
         />
       )}
 

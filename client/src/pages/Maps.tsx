@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { MapPin, Search, X, Users } from "@/components/ui/Icon";
@@ -859,21 +858,21 @@ export default function Maps() {
           ) : (
             <div className="space-y-3 max-h-[550px] overflow-y-auto">
               {locations.map((location) => {
+                const handleCardClick = () => {
+                  if (isMultiSelectMode) {
+                    toggleSelection(location.id);
+                  }
+                };
+
                 return (
                   <Card
                     key={location.id}
                     className={`p-4 transition-all ${
                       selectedIds.has(location.id) ? "item-selected" : ""
-                    }`}
+                    } ${isMultiSelectMode ? "cursor-pointer" : ""}`}
+                    onClick={handleCardClick}
                   >
                     <div className="flex items-start gap-3">
-                      {isMultiSelectMode && (
-                        <Checkbox
-                          checked={selectedIds.has(location.id)}
-                          onCheckedChange={() => toggleSelection(location.id)}
-                          className="mt-1"
-                        />
-                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -881,7 +880,12 @@ export default function Maps() {
                             <div className="flex-1 min-w-0">
                               <h3
                                 className="text-sm cursor-pointer hover:text-accent transition-colors"
-                                onClick={() => centerMapOnLocation(location)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isMultiSelectMode) {
+                                    centerMapOnLocation(location);
+                                  }
+                                }}
                               >
                                 {location.name}
                               </h3>
@@ -893,12 +897,14 @@ export default function Maps() {
                             </div>
                           </div>
                           {!isMultiSelectMode && (
-                            <ItemActionsMenu
-                              onAction={(action) => handleItemAction(action, location.id)}
-                              actions={["edit", "duplicate", "select", "archive", "delete"]}
-                              triggerClassName="text-muted-foreground hover:text-foreground"
-                              size="sm"
-                            />
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <ItemActionsMenu
+                                onAction={(action) => handleItemAction(action, location.id)}
+                                actions={["edit", "duplicate", "select", "archive", "delete"]}
+                                triggerClassName="text-muted-foreground hover:text-foreground"
+                                size="sm"
+                              />
+                            </div>
                           )}
                         </div>
                         <div className="flex flex-col gap-1 text-xs">

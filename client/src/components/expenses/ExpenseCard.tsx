@@ -12,7 +12,6 @@ import { Receipt, FileText } from "@/components/ui/Icon";
 import { Link } from "wouter";
 import { getCategoryLabel } from "./CategorySelect";
 import { formatCurrency } from "@/lib/currencyFormat";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface ExpenseCardProps {
   expense: {
@@ -83,14 +82,6 @@ export function ExpenseCard({ expense, onAction, showVoid = false, isMultiSelect
           <CardHeader>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                {isMultiSelectMode && (
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={onToggleSelection}
-                    onClick={(e) => e.stopPropagation()}
-                    className="mr-2"
-                  />
-                )}
                 <div className="flex-1 min-w-0">
                   <CardTitle className="text-lg line-clamp-2">
                     {expense.description || "Untitled Expense"}

@@ -37,7 +37,6 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Search, Tag, FileText, Loader2, SlidersHorizontal, X } from "@/components/ui/Icon";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
@@ -144,6 +143,15 @@ export default function Notes() {
       toast.error(`Failed to delete note: ${error.message}`);
     },
   });
+  const duplicateNoteMutation = trpc.notes.duplicate.useMutation({
+    onSuccess: () => {
+      toast.success("Note duplicated");
+      invalidateNoteLists();
+    },
+    onError: (error) => {
+      toast.error(`Failed to duplicate note: ${error.message}`);
+    },
+  });
 
   const invalidateNoteLists = () => {
     utils.notes.list.invalidate();
@@ -170,7 +178,7 @@ export default function Notes() {
         navigate(`/notes/${note.id}`);
         break;
       case "duplicate":
-        toast.info("Duplicate is coming soon.");
+        duplicateNoteMutation.mutate({ id: noteId });
         break;
       case "select":
         setIsMultiSelectMode(true);
@@ -192,7 +200,13 @@ export default function Notes() {
   };
 
   const handleBatchDuplicate = () => {
-    toast.info("Batch duplicate is coming soon.");
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      duplicateNoteMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
   };
 
   const toggleSelection = (noteId: number) => {
@@ -333,14 +347,6 @@ export default function Notes() {
         onClick={handleCardClick}
       >
         <div className="flex items-start gap-3 mb-3">
-          {isMultiSelectMode && (
-            <Checkbox
-              checked={selectedIds.has(note.id)}
-              onCheckedChange={() => toggleSelection(note.id)}
-              onClick={(e) => e.stopPropagation()}
-              className="mt-1"
-            />
-          )}
           <div className="flex-1 min-w-0">
             <h3 className="text-lg line-clamp-1">
               {note.title}
