@@ -2608,11 +2608,11 @@ export async function createNote(data: InsertNote) {
   if (!db) throw new Error("Database not available");
   
   // Always exclude clientCreationKey from insert since the column may not exist yet
-  // The idempotency check in the router will still work (it checks before calling createNote)
-  // This is safer than trying to insert it and catching errors
+  // Use raw SQL to explicitly exclude the column from the INSERT statement
   const { clientCreationKey, ...insertData } = data;
   
   try {
+    // Try with Drizzle first (normal path)
     const result = await db.insert(notes).values(insertData);
     // Extract insertId from Drizzle result (same pattern as createImage, createExpense, etc.)
     const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
@@ -2626,10 +2626,39 @@ export async function createNote(data: InsertNote) {
     return [{ id: Number(insertId) }];
   } catch (error: any) {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2620',message:'createNote error',data:{errorMessage:error?.message,errorCode:error?.code,errorStack:error?.stack?.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2627',message:'createNote error - trying raw SQL',data:{errorMessage:error?.message?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
     // #endregion
-    // Re-throw error (no retry needed since we're not using clientCreationKey)
-    throw error;
+    // If Drizzle insert failed (likely due to clientCreationKey column), use raw SQL
+    // Raw SQL explicitly excludes clientCreationKey column
+    try {
+      const rawResult = await db.execute(sql`
+        INSERT INTO notes (title, content, tags, jobId, contactId, archivedAt, trashedAt, createdBy, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      `, [
+        insertData.title,
+        insertData.content ?? null,
+        insertData.tags ?? null,
+        insertData.jobId ?? null,
+        insertData.contactId ?? null,
+        insertData.archivedAt ?? null,
+        insertData.trashedAt ?? null,
+        insertData.createdBy,
+      ]);
+      const insertId = (rawResult as any)[0]?.insertId || (rawResult as any).insertId;
+      if (!insertId) {
+        throw new Error("Failed to create note: no insert ID returned from raw SQL");
+      }
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2642',message:'createNote raw SQL success',data:{insertId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
+      return [{ id: Number(insertId) }];
+    } catch (rawError: any) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2646',message:'createNote raw SQL also failed',data:{errorMessage:rawError?.message?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
+      // If raw SQL also failed, throw the original error (more informative)
+      throw error;
+    }
   }
 }
 
