@@ -1316,7 +1316,7 @@ export async function getInvoicesByUserId(userId: number) {
         // Exclude invoices that need review
         or(isNull(invoices.needsReview), eq(invoices.needsReview, false))
       ))
-      .orderBy(desc(invoices.issueDate), desc(invoices.createdAt));
+      .orderBy(desc(invoices.createdAt), desc(invoices.uploadedAt));
   } catch (queryError: any) {
     // Log error using proper logger if available, otherwise re-throw
     throw queryError;

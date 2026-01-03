@@ -44,7 +44,18 @@ export default function InvoiceDetail() {
   }, [previewUrl]);
 
   const handlePreviewPDF = async () => {
-    if (!invoiceId) return;
+    if (!invoiceId || !invoice) return;
+    
+    // For uploaded invoices, use the original PDF from S3
+    if (invoice.source === "uploaded" && invoice.originalPdfS3Key) {
+      const fileName = invoice.invoiceName || invoice.originalFileName || invoice.invoiceNumber || "invoice.pdf";
+      setPreviewFileName(fileName);
+      setPreviewModalOpen(true);
+      // PDFPreviewModal will use fileKey to fetch via file-proxy
+      return;
+    }
+    
+    // For created invoices, generate PDF
     try {
       const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
       if (!session?.access_token) {
@@ -186,6 +197,7 @@ export default function InvoiceDetail() {
           setPreviewUrl(null);
         }}
         fileUrl={previewUrl ?? undefined}
+        fileKey={invoice?.originalPdfS3Key ?? undefined}
         fileName={previewFileName}
         fullScreen={isMobile}
       />

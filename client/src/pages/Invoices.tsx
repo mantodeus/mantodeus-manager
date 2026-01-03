@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound } from "@/components/ui/Icon";
-import { useEffect, useState } from "react";
+import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X } from "@/components/ui/Icon";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
@@ -16,6 +16,9 @@ import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { Link, useLocation } from "wouter";
 import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
 import { BulkInvoiceUploadDialog } from "@/components/invoices/BulkInvoiceUploadDialog";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function formatCurrency(amount: number | string) {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -24,6 +27,24 @@ function formatCurrency(amount: number | string) {
     currency: "EUR",
   }).format(num || 0);
 }
+
+type FilterState = {
+  project: string;
+  client: string;
+  time: "all" | "week" | "month" | "year";
+};
+
+const defaultFilters: FilterState = {
+  project: "all",
+  client: "all",
+  time: "all",
+};
+
+// Month names for date search
+const monthNames = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december"
+];
 
 export default function Invoices() {
   const isMobile = useIsMobile();
@@ -50,6 +71,15 @@ export default function Invoices() {
   } | null>(null);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [draftFilters, setDraftFilters] = useState<FilterState>(defaultFilters);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -57,6 +87,7 @@ export default function Invoices() {
   const { data: invoices = [], refetch } = trpc.invoices.list.useQuery();
   const { data: needsReviewInvoices = [], refetch: refetchNeedsReview } = trpc.invoices.listNeedsReview.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: projects = [] } = trpc.projects.list.useQuery();
   const { data: companySettings } = trpc.settings.get.useQuery();
   const issueMutation = trpc.invoices.issue.useMutation({
     onSuccess: () => {
@@ -160,6 +191,25 @@ export default function Invoices() {
     onError: (err) => toast.error(err.message),
   });
 
+  // Auto-focus search input on mobile when search opens
+  useEffect(() => {
+    if (isSearchOpen && isMobile) {
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+        if (searchInputRef.current) {
+          searchInputRef.current.click();
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isSearchOpen, isMobile]);
+
+  useEffect(() => {
+    if (isFilterOpen) {
+      setDraftFilters(filters);
+    }
+  }, [isFilterOpen, filters]);
+
   useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -167,6 +217,110 @@ export default function Invoices() {
       }
     };
   }, [previewUrl]);
+
+  const applySearch = () => {
+    setSearchQuery(searchDraft.trim());
+    setIsSearchOpen(false);
+  };
+
+  const clearSearch = () => {
+    setSearchDraft("");
+    setSearchQuery("");
+    setIsSearchOpen(false);
+  };
+
+  const clearDraftFilters = () => {
+    setDraftFilters(defaultFilters);
+  };
+
+  const applyFilters = () => {
+    setFilters(draftFilters);
+    setIsFilterOpen(false);
+  };
+
+  // Get client name for an invoice
+  const getInvoiceClient = (invoice: any) => {
+    if (invoice.clientId || invoice.contactId) {
+      const contact = contacts.find(
+        (c) => c.id === invoice.clientId || c.id === invoice.contactId
+      );
+      return contact?.name || contact?.clientName || null;
+    }
+    return null;
+  };
+
+  // Filter invoices helper
+  const filterInvoices = (invoices: any[]) => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const lastWeek = new Date(startOfToday);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    
+    const lastMonth = new Date(startOfToday);
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    
+    const lastYear = new Date(startOfToday);
+    lastYear.setFullYear(lastYear.getFullYear() - 1);
+
+    return invoices.filter((invoice) => {
+      // Search matching - client name, date (month), amount
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = !searchQuery || (() => {
+        // Client name match
+        const clientName = getInvoiceClient(invoice) || "";
+        if (clientName.toLowerCase().includes(searchLower)) return true;
+
+        // Date month match (e.g., "October")
+        if (invoice.issueDate) {
+          const issueDate = new Date(invoice.issueDate);
+          const monthName = issueDate.toLocaleDateString("en-US", { month: "long" }).toLowerCase();
+          if (monthName.includes(searchLower)) return true;
+        }
+
+        // Amount match (exact or partial numeric value)
+        const totalStr = invoice.total?.toString() || "";
+        const totalNum = parseFloat(totalStr);
+        if (!isNaN(totalNum)) {
+          const searchNum = parseFloat(searchLower);
+          if (!isNaN(searchNum)) {
+            // Check if search number appears in total (e.g., "500" matches "1500", "500.50", etc.)
+            if (totalStr.includes(searchLower) || totalNum === searchNum) return true;
+          }
+        }
+
+        // Invoice number match
+        if (invoice.invoiceNumber?.toLowerCase().includes(searchLower)) return true;
+        if (invoice.invoiceName?.toLowerCase().includes(searchLower)) return true;
+
+        return false;
+      })();
+
+      // Project filter (for now, invoices don't have direct projectId, so we'll use "all" or "unassigned")
+      const matchesProject = filters.project === "all" || 
+        (filters.project === "unassigned" ? !invoice.jobId : false);
+
+      // Client filter
+      const matchesClient =
+        filters.client === "all" ||
+        (filters.client === "unassigned"
+          ? !invoice.clientId && !invoice.contactId
+          : invoice.clientId?.toString() === filters.client || invoice.contactId?.toString() === filters.client);
+
+      // Time filter (based on issueDate)
+      const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
+      const matchesTime =
+        filters.time === "all" ||
+        (issueDate &&
+          ((filters.time === "week" && issueDate >= lastWeek) ||
+           (filters.time === "month" && issueDate >= lastMonth) ||
+           (filters.time === "year" && issueDate >= lastYear)));
+
+      return matchesSearch && matchesProject && matchesClient && matchesTime;
+    });
+  };
+
+  const filteredInvoices = filterInvoices(invoices);
 
   const handlePreviewPDF = async (invoiceId: number, fileName: string) => {
     try {
@@ -249,7 +403,7 @@ export default function Invoices() {
   };
 
   const handleSelectAll = () => {
-    setSelectedIds(new Set(invoices.map(i => i.id)));
+    setSelectedIds(new Set(filteredInvoices.map(i => i.id)));
   };
 
   const handleBatchArchive = () => {
@@ -343,11 +497,245 @@ export default function Invoices() {
     return DocumentCurrencyEuro;
   };
 
+  const hasActiveFilters =
+    searchQuery ||
+    filters.project !== "all" ||
+    filters.client !== "all" ||
+    filters.time !== "all";
+
+  // Search overlay - full screen at top on mobile
+  const searchSlot = (
+    <>
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <div className="flex flex-col h-full">
+            {/* Search input at top */}
+            <div className="flex items-center gap-2 p-4 border-b">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  ref={searchInputRef}
+                  placeholder="Search client, date (e.g., October), amount..."
+                  value={searchDraft}
+                  onChange={(e) => setSearchDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      applySearch();
+                    }
+                    if (e.key === "Escape") {
+                      setIsSearchOpen(false);
+                    }
+                  }}
+                  className="pl-10 pr-10"
+                  autoFocus
+                />
+                {searchDraft && (
+                  <button
+                    onClick={() => setSearchDraft("")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsSearchOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Search suggestions/results preview */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {searchDraft && (
+                <div className="space-y-2">
+                  {(() => {
+                    const searchLower = searchDraft.toLowerCase();
+                    return filteredInvoices
+                      .filter((invoice) => {
+                        const clientName = getInvoiceClient(invoice) || "";
+                        if (clientName.toLowerCase().includes(searchLower)) return true;
+                        if (invoice.issueDate) {
+                          const issueDate = new Date(invoice.issueDate);
+                          const monthName = issueDate.toLocaleDateString("en-US", { month: "long" }).toLowerCase();
+                          if (monthName.includes(searchLower)) return true;
+                        }
+                        const totalStr = invoice.total?.toString() || "";
+                        const searchNum = parseFloat(searchLower);
+                        if (!isNaN(searchNum) && totalStr.includes(searchLower)) return true;
+                        if (invoice.invoiceNumber?.toLowerCase().includes(searchLower)) return true;
+                        if (invoice.invoiceName?.toLowerCase().includes(searchLower)) return true;
+                        return false;
+                      })
+                      .slice(0, 10)
+                      .map((invoice) => {
+                        const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
+                        const clientName = getInvoiceClient(invoice);
+                        const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
+                        return (
+                          <Card
+                            key={invoice.id}
+                            className="p-3 cursor-pointer hover:bg-accent"
+                            onClick={() => {
+                              if (invoice.source === "uploaded" && invoice.status === "draft") {
+                                setUploadedInvoiceId(invoice.id);
+                                setUploadedParsedData(null);
+                                setUploadReviewDialogOpen(true);
+                              } else {
+                                navigate(`/invoices/${invoice.id}`);
+                              }
+                              setIsSearchOpen(false);
+                            }}
+                          >
+                            <div className="font-medium">{displayName}</div>
+                            {clientName && (
+                              <div className="text-sm text-muted-foreground">{clientName}</div>
+                            )}
+                            {issueDate && (
+                              <div className="text-sm text-muted-foreground">
+                                {issueDate.toLocaleDateString("de-DE")}
+                              </div>
+                            )}
+                          </Card>
+                        );
+                      });
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Search invoices"
+        onClick={() => setIsSearchOpen(true)}
+      >
+        <Search className="size-6" />
+      </Button>
+    </>
+  );
+
+  const filterSlot = (
+    <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Filter invoices">
+          <SlidersHorizontal className="size-6" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="p-0">
+        <SheetHeader>
+          <SheetTitle>Filters</SheetTitle>
+        </SheetHeader>
+        <div className="px-4 pb-4 overflow-y-auto space-y-4 pt-4">
+          {/* Project Filter */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Project</div>
+            <Select
+              value={draftFilters.project}
+              onValueChange={(value) =>
+                setDraftFilters((prev) => ({ ...prev, project: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All projects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Projects</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {projects.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    No projects available
+                  </div>
+                ) : (
+                  projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id.toString()}>
+                      {project.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Client Filter */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Client</div>
+            <Select
+              value={draftFilters.client}
+              onValueChange={(value) =>
+                setDraftFilters((prev) => ({ ...prev, client: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All clients" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Clients</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {contacts.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    No contacts available
+                  </div>
+                ) : (
+                  contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id.toString()}>
+                      {contact.name || contact.clientName}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Time Filter (Issue Date) */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Time</div>
+            <Select
+              value={draftFilters.time}
+              onValueChange={(value) =>
+                setDraftFilters((prev) => ({
+                  ...prev,
+                  time: value as FilterState["time"],
+                }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Any time" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any time</SelectItem>
+                <SelectItem value="week">Last week</SelectItem>
+                <SelectItem value="month">Last month</SelectItem>
+                <SelectItem value="year">Last year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <SheetFooter>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="flex-1" onClick={clearDraftFilters}>
+              Clear all
+            </Button>
+            <Button className="flex-1" onClick={applyFilters}>
+              Apply filters
+            </Button>
+          </div>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Invoices"
         subtitle="Create, edit, and manage invoices"
+        searchSlot={searchSlot}
+        filterSlot={filterSlot}
       />
 
       {/* Top-of-Page Action Row */}
@@ -439,13 +827,26 @@ export default function Invoices() {
         </div>
       )}
 
-      {invoices.length === 0 ? (
+      {filteredInvoices.length === 0 ? (
         <Card className="p-8 text-center">
-          <p className="text-muted-foreground">No invoices found. Create your first invoice to get started.</p>
+          <p className="text-muted-foreground">
+            {hasActiveFilters
+              ? "No invoices found matching your filters"
+              : "No invoices found. Create your first invoice to get started."}
+          </p>
+          {!hasActiveFilters && (
+            <Button
+              onClick={() => navigate("/invoices/new")}
+              variant="outline"
+              className="mt-4"
+            >
+              Create your first invoice
+            </Button>
+          )}
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {invoices.map((invoice) => {
+          {filteredInvoices.map((invoice) => {
             const linkedContact = contacts.find(
               (contact: { id: number }) => contact.id === invoice.clientId || contact.id === invoice.contactId
             );
@@ -547,7 +948,7 @@ export default function Invoices() {
       {isMultiSelectMode && (
         <MultiSelectBar
           selectedCount={selectedIds.size}
-          totalCount={invoices.length}
+          totalCount={filteredInvoices.length}
           onSelectAll={handleSelectAll}
           onDuplicate={handleBatchDuplicate}
           onArchive={handleBatchArchive}

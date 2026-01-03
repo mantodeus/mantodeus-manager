@@ -355,9 +355,15 @@ export const invoiceRouter = router({
 
       const totals = calculateTotals(normalizedItems);
 
+      // Sync invoiceName with invoiceNumber when invoiceNumber changes
+      const invoiceName = (input.invoiceNumber?.trim() && input.invoiceNumber.trim() !== invoice.invoiceNumber)
+        ? invoiceNumber
+        : invoice.invoiceName;
+
       const updated = await db.updateInvoice(invoice.id, {
         clientId: input.clientId ?? invoice.clientId,
         invoiceNumber,
+        invoiceName,
         invoiceCounter,
         invoiceYear,
         issueDate,

@@ -916,7 +916,7 @@ export default function Contacts() {
                   <div className="flex-1 flex items-center gap-3 min-w-0">
                     <ContactIcon className="h-6 w-6 text-primary flex-shrink-0" />
                     <DialogTitle className="text-2xl truncate">{displayName}</DialogTitle>
-                  </div>
+                </div>
                   
                   {/* Edit and Close buttons (top right) */}
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -941,13 +941,13 @@ export default function Contacts() {
                   </div>
                 </div>
                 {!isMobile && (
-                  <DialogDescription>
-                    {contact.contactPerson 
-                      ? `Contact person: ${contact.contactPerson}` 
-                      : contact.type === "business" 
-                        ? "Business contact" 
-                        : "Personal contact"}
-                  </DialogDescription>
+                <DialogDescription>
+                  {contact.contactPerson 
+                    ? `Contact person: ${contact.contactPerson}` 
+                    : contact.type === "business" 
+                      ? "Business contact" 
+                      : "Personal contact"}
+                </DialogDescription>
                 )}
               </DialogHeader>
               
@@ -1071,15 +1071,15 @@ export default function Contacts() {
 
               {/* Footer - only show on desktop */}
               {!isMobile && (
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => {
-                    handleEdit(contact);
-                    setPreviewContactId(null);
-                  }}>
-                    Edit Contact
-                  </Button>
-                  <Button onClick={() => setPreviewContactId(null)}>Close</Button>
-                </DialogFooter>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => {
+                  handleEdit(contact);
+                  setPreviewContactId(null);
+                }}>
+                  Edit Contact
+                </Button>
+                <Button onClick={() => setPreviewContactId(null)}>Close</Button>
+              </DialogFooter>
               )}
             </DialogContent>
           </Dialog>

@@ -23,7 +23,6 @@ import { Loader2, FileText, Eye } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { useIsMobile } from "@/hooks/useMobile";
-import { useState, useEffect } from "react";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -69,7 +68,18 @@ export function InvoiceUploadReviewDialog({
   }, [previewUrl]);
 
   const handlePreviewPDF = async () => {
-    if (!invoiceId) return;
+    if (!invoiceId || !invoice) return;
+    
+    // For uploaded invoices, use the original PDF from S3
+    if (invoice.source === "uploaded" && invoice.originalPdfS3Key) {
+      const fileName = invoice.invoiceName || invoice.originalFileName || invoice.invoiceNumber || "invoice.pdf";
+      setPreviewFileName(fileName);
+      setPreviewModalOpen(true);
+      // PDFPreviewModal will use fileKey to fetch via file-proxy
+      return;
+    }
+    
+    // For created invoices, generate PDF
     try {
       const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
       if (!session?.access_token) {
@@ -217,9 +227,11 @@ export function InvoiceUploadReviewDialog({
               <FileText className="h-5 w-5 text-primary" />
               Review Invoice
             </DialogTitle>
-            <Button variant="outline" size="icon" onClick={handlePreviewPDF}>
-              <Eye className="h-4 w-4" />
-            </Button>
+            {!isMobile && (
+              <Button variant="outline" size="icon" onClick={handlePreviewPDF}>
+                <Eye className="h-4 w-4" />
+              </Button>
+            )}
           </div>
           <DialogDescription>
             We've extracted these details from the PDF. Please review and confirm before saving.
@@ -280,22 +292,37 @@ export function InvoiceUploadReviewDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button 
-            variant="outline" 
-            onClick={handleCancel} 
-            disabled={confirmMutation.isPending || cancelMutation.isPending}
-          >
-            {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSave} 
-            disabled={confirmMutation.isPending || cancelMutation.isPending || !isFormValid}
-          >
-            {confirmMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Invoice
-          </Button>
+        <DialogFooter className={isMobile ? "flex-col gap-2" : ""}>
+          <div className={isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"}>
+            <Button 
+              onClick={handleSave} 
+              disabled={confirmMutation.isPending || cancelMutation.isPending || !isFormValid}
+              className={isMobile ? "w-full" : ""}
+            >
+              {confirmMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+            {isMobile && (
+              <Button
+                variant="outline"
+                onClick={handlePreviewPDF}
+                disabled={confirmMutation.isPending || cancelMutation.isPending}
+                className="w-full"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+            )}
+            <Button 
+              variant="outline" 
+              onClick={handleCancel} 
+              disabled={confirmMutation.isPending || cancelMutation.isPending}
+              className={isMobile ? "w-full" : ""}
+            >
+              {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Close
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
 
@@ -309,6 +336,7 @@ export function InvoiceUploadReviewDialog({
           setPreviewUrl(null);
         }}
         fileUrl={previewUrl ?? undefined}
+        fileKey={invoice?.originalPdfS3Key ?? undefined}
         fileName={previewFileName}
         fullScreen={isMobile}
       />

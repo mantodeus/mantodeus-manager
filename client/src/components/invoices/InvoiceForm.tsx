@@ -484,7 +484,7 @@ export function InvoiceForm({
         </Button>
         <Button type="submit" className="flex-1" disabled={isLoading || !isDraft}>
           {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-          {isCreate ? "Save Invoice (Draft)" : "Save Changes"}
+          {isCreate ? "Save" : "Save"}
         </Button>
       </div>
 
