@@ -239,6 +239,74 @@ export const CenteredContextMenu = React.forwardRef<
     }, 220);
   }, [resetLongPress]);
 
+  // Prevent background scrolling when menu is open (Apple-style behavior)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Store original body styles and scroll position
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalBodyPosition = document.body.style.position;
+    const originalBodyWidth = document.body.style.width;
+    const originalBodyTop = document.body.style.top;
+    const scrollY = window.scrollY;
+
+    // Lock body scroll
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.top = `-${scrollY}px`;
+
+    // Also prevent scroll events on window
+    const preventScroll = (e: Event) => {
+      // Allow scrolling within the menu itself
+      const target = e.target as HTMLElement;
+      if (
+        menuRef.current &&
+        (menuRef.current.contains(target) || menuRef.current === target)
+      ) {
+        return; // Allow scrolling in menu
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    // Prevent touchmove on body (mobile scroll prevention)
+    const preventTouchMove = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      // Allow touchmove within the menu
+      if (
+        menuRef.current &&
+        (menuRef.current.contains(target) || menuRef.current === target)
+      ) {
+        return; // Allow touch scrolling in menu
+      }
+      e.preventDefault();
+    };
+
+    // Prevent wheel events on window (desktop scroll prevention)
+    window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+    window.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true });
+    document.body.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+    document.body.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true });
+
+    return () => {
+      // Restore original body styles
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.position = originalBodyPosition;
+      document.body.style.width = originalBodyWidth;
+      document.body.style.top = originalBodyTop;
+
+      // Restore scroll position
+      window.scrollTo(0, scrollY);
+
+      // Remove event listeners
+      window.removeEventListener('wheel', preventScroll, { capture: true } as any);
+      window.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
+      document.body.removeEventListener('wheel', preventScroll, { capture: true } as any);
+      document.body.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
+    };
+  }, [isOpen]);
+
   // Expose open method via ref
   React.useImperativeHandle(ref, () => ({
     open: openMenu,
@@ -499,6 +567,9 @@ export const CenteredContextMenu = React.forwardRef<
               style={{
                 ...menuStyle,
                 animation: "menuSlideUp 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+                maxHeight: "70vh", // Allow menu to scroll if it has many items
+                overflowY: "auto", // Enable scrolling within menu
+                overscrollBehavior: "contain", // Prevent scroll chaining to background
               }}
             >
               {groupedActions.primary.length === 0 &&
