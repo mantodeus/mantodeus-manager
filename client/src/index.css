@@ -524,8 +524,8 @@
   }
 
   .bottom-tab-bar {
-    height: calc(56px + env(safe-area-inset-bottom) + 12px);
-    padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
+    height: calc(56px + env(safe-area-inset-bottom) + 8px);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
     transform: translateY(calc(-1 * var(--bottom-tab-extra-offset)));
     /* Force prevent text selection on entire tab bar */
     -webkit-user-select: none;
@@ -533,6 +533,24 @@
     -ms-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
+  }
+
+  /* PWA (standalone mode) - extra space for home swipe gesture on iOS */
+  @media (display-mode: standalone) {
+    .bottom-tab-bar {
+      height: calc(56px + env(safe-area-inset-bottom) + 20px);
+      padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+    }
+  }
+
+  /* iOS Safari PWA detection (fallback for older iOS) */
+  @supports (-webkit-touch-callout: none) {
+    @media (display-mode: standalone) {
+      .bottom-tab-bar {
+        height: calc(56px + env(safe-area-inset-bottom) + 20px);
+        padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+      }
+    }
   }
 
   /* Ensure tab buttons never allow text selection */

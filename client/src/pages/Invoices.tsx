@@ -855,15 +855,23 @@ export default function Invoices() {
                 (invoice.filename ? invoice.filename.replace(/\.[^/.]+$/, "") : null) ||
                 "Untitled invoice";
               const displayTotal = formatCurrency(invoice.total);
+              
+              const handleNeedsReviewClick = () => {
+                if (isMultiSelectMode) {
+                  toggleSelection(invoice.id);
+                } else {
+                  // Instantly open review dialog for uploaded invoices
+                  setUploadedInvoiceId(invoice.id);
+                  setUploadedParsedData(null);
+                  setUploadReviewDialogOpen(true);
+                }
+              };
+              
               return (
                 <div
                   key={`needs-review-${invoice.id}`}
-                  onClick={() => {
-                    if (isMultiSelectMode) {
-                      toggleSelection(invoice.id);
-                    }
-                  }}
-                  className={`${isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected rounded-lg" : ""}`}
+                  onClick={handleNeedsReviewClick}
+                  className={`${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected rounded-lg" : ""}`}
                 >
                   <Card className="p-3 sm:p-4 hover:shadow-sm transition-all">
                     <div className="flex items-start justify-between gap-3">
@@ -956,8 +964,8 @@ export default function Invoices() {
               if (isMultiSelectMode) {
                 toggleSelection(invoice.id);
               } else {
-                // For uploaded invoices that have been saved once (draft mode), open review dialog
-                if (invoice.source === "uploaded" && invoice.status === "draft") {
+                // For all uploaded invoices, instantly open review/edit dialog
+                if (invoice.source === "uploaded") {
                   setUploadedInvoiceId(invoice.id);
                   setUploadedParsedData(null);
                   setUploadReviewDialogOpen(true);

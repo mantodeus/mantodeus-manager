@@ -103,11 +103,13 @@ function DropdownMenuContent({
   }, []);
 
   // Enable auto-scroll on all devices to prevent dropdowns from being cropped
+  // Use larger buffer on mobile to account for tab bar
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   useAutoScrollOnOpen({
     isOpen,
     menuRef,
     enabled: true,
-    scrollBuffer: 12,
+    scrollBuffer: isMobile ? 24 : 12, // Larger buffer on mobile for tab bar clearance
   });
 
   return (

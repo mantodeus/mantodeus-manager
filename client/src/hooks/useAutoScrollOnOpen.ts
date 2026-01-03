@@ -139,25 +139,61 @@ export function useAutoScrollOnOpen({
 
       // Measure menu position and dimensions
       const menuRect = menuElement.getBoundingClientRect();
+      const menuTop = menuRect.top;
       const menuBottom = menuRect.bottom;
+      const menuHeight = menuRect.height;
 
       // Get viewport dimensions
       const viewportHeight = window.innerHeight;
+      const viewportTop = 0;
 
       // Calculate bottom obstruction (tab bar + safe area)
       const bottomObstruction = getBottomObstructionHeight();
       const availableBottomSpace = viewportHeight - bottomObstruction;
 
-      // Check if menu would be clipped
-      const wouldBeClipped = menuBottom > availableBottomSpace;
+      // Check if menu bottom would be clipped by tab bar or viewport
+      const bottomClipped = menuBottom > availableBottomSpace;
+      
+      // Also check if menu top would be clipped (shouldn't happen, but safety check)
+      const topClipped = menuTop < viewportTop;
 
-      if (wouldBeClipped) {
-        // Find the scroll container
-        // For portal-rendered menus, we typically scroll the window
-        const scrollContainer = findScrollContainer(menuElement);
+      // Find the scroll container
+      // For portal-rendered menus, we typically scroll the window
+      const scrollContainer = findScrollContainer(menuElement);
+
+      if (bottomClipped) {
+        // Menu bottom is hidden - scroll down to reveal it
+        // Calculate how much we need to scroll to show the bottom of the menu
+        const scrollAmount = menuBottom - availableBottomSpace + scrollBuffer;
         
-        // Perform smooth scroll
-        scrollToRevealMenu(scrollContainer, menuBottom, availableBottomSpace, scrollBuffer);
+        if (scrollContainer === window) {
+          window.scrollBy({
+            top: scrollAmount,
+            behavior: 'smooth',
+          });
+        } else {
+          const element = scrollContainer as HTMLElement;
+          element.scrollBy({
+            top: scrollAmount,
+            behavior: 'smooth',
+          });
+        }
+      } else if (topClipped) {
+        // Menu top is hidden - scroll up to reveal it
+        const scrollAmount = menuTop - viewportTop - scrollBuffer;
+        
+        if (scrollContainer === window) {
+          window.scrollBy({
+            top: scrollAmount,
+            behavior: 'smooth',
+          });
+        } else {
+          const element = scrollContainer as HTMLElement;
+          element.scrollBy({
+            top: scrollAmount,
+            behavior: 'smooth',
+          });
+        }
       }
     };
 
@@ -168,8 +204,10 @@ export function useAutoScrollOnOpen({
         timeoutId = setTimeout(() => {
           performScroll();
           // Also check again after a short delay in case positioning takes longer
-          setTimeout(performScroll, 50);
-        }, 10);
+          // Use longer delay on mobile where positioning might take more time
+          const isMobile = window.innerWidth < 768;
+          setTimeout(performScroll, isMobile ? 100 : 50);
+        }, 20);
       });
     });
 

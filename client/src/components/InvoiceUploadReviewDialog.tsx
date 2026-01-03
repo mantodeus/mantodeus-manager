@@ -236,8 +236,8 @@ export function InvoiceUploadReviewDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
-        "sm:max-w-[500px]",
-        isMobile && "!grid-rows-[auto_1fr_auto] max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)]"
+        "sm:max-w-[500px] flex flex-col",
+        isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
       )}>
         <DialogHeader className={cn("flex-shrink-0", isMobile && "px-0")}>
           <div className="flex items-center justify-between">

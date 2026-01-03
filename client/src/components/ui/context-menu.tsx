@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/Icon";
+import { useAutoScrollOnOpen } from "@/hooks/useAutoScrollOnOpen";
 
 import { cn } from "@/lib/utils";
 
@@ -95,9 +96,49 @@ function ContextMenuContent({
   className,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  // Watch for open state changes via data-state attribute
+  React.useEffect(() => {
+    if (!contentRef.current) return;
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-state') {
+          const element = mutation.target as HTMLElement;
+          setIsOpen(element.getAttribute('data-state') === 'open');
+        }
+      });
+    });
+
+    observer.observe(contentRef.current, {
+      attributes: true,
+      attributeFilter: ['data-state'],
+    });
+
+    // Initial check
+    setIsOpen(contentRef.current.getAttribute('data-state') === 'open');
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  // Enable auto-scroll to prevent context menus from being cropped
+  // Use larger buffer on mobile to account for tab bar
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  useAutoScrollOnOpen({
+    isOpen,
+    menuRef: contentRef,
+    enabled: true,
+    scrollBuffer: isMobile ? 24 : 12, // Larger buffer on mobile for tab bar clearance
+  });
+
   return (
     <ContextMenuPrimitive.Portal>
       <ContextMenuPrimitive.Content
+        ref={contentRef}
         data-slot="context-menu-content"
         className={cn(
           "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 max-h-(--radix-context-menu-content-available-height) min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-md",
