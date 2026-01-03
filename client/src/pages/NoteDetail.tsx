@@ -154,6 +154,9 @@ export default function NoteDetail() {
     onSuccess: () => {
       const timestamp = new Date().toISOString();
       console.log(`[NOTES_DETAIL] ${timestamp} | UPDATE_SUCCESS | note: ${noteId}`);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:154',message:'update mutation success',data:{noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       
       updateInFlightRef.current = false;
       setSaveStatus("saved");
@@ -189,6 +192,9 @@ export default function NoteDetail() {
     onError: (err) => {
       const timestamp = new Date().toISOString();
       console.error(`[NOTES_DETAIL] ${timestamp} | UPDATE_ERROR | note: ${noteId} | error: ${err.message}`);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:189',message:'update mutation error',data:{noteId,errorMessage:err.message,errorCode:err.data?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       
       updateInFlightRef.current = false;
       setSaveStatus("error");
@@ -204,9 +210,23 @@ export default function NoteDetail() {
   useEffect(() => {
     const timestamp = new Date().toISOString();
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:204',message:'autosave effect triggered',data:{isEditMode,noteId,hasNote:!!note,debouncedTitle:debouncedTitle.trim(),debouncedBodyLength:debouncedBody.trim().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
     // Rule 3.1: Autosave may run only if in edit mode and valid note id exists
-    if (!isEditMode || !noteId) return;
-    if (!note) return; // Don't autosave until note is loaded
+    if (!isEditMode || !noteId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:208',message:'autosave skipped - not in edit mode or no noteId',data:{isEditMode,noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
+    if (!note) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:209',message:'autosave skipped - note not loaded',data:{noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      return; // Don't autosave until note is loaded
+    }
     
     // Rule 3.1: Skip if no changes exist
     const currentContent = {
@@ -225,6 +245,9 @@ export default function NoteDetail() {
         currentContent.contactId !== lastSavedContentRef.current.contactId;
       
       if (!hasChanges) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:228',message:'autosave skipped - no changes since last save',data:{noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         return; // No changes since last save
       }
     } else {
@@ -236,6 +259,9 @@ export default function NoteDetail() {
         currentContent.contactId !== (note.contactId?.toString() || "none");
       
       if (!hasChanges) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:239',message:'autosave skipped - no changes from original',data:{noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         return; // No changes from original
       }
     }
@@ -243,15 +269,26 @@ export default function NoteDetail() {
     // Rule 3.3: Concurrency control - at most one save in flight
     if (updateInFlightRef.current) {
       console.log(`[NOTES_DETAIL] ${timestamp} | AUTOSAVE_SKIP | note: ${noteId} | reason: save_in_flight`);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:245',message:'autosave skipped - save in flight',data:{noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       pendingSaveRef.current = true; // Mark that another save is pending
       return;
     }
     
     // Rule 3.1: Don't autosave if title is empty
-    if (!debouncedTitle.trim()) return;
+    if (!debouncedTitle.trim()) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:251',message:'autosave skipped - empty title',data:{noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
     
     // All checks passed - perform autosave
     console.log(`[NOTES_DETAIL] ${timestamp} | AUTOSAVE_TRIGGER | note: ${noteId}`);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:254',message:'autosave triggering mutation',data:{noteId,title:currentContent.title,bodyLength:currentContent.body.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     updateInFlightRef.current = true;
     setSaveStatus("saving");
     
@@ -350,13 +387,24 @@ export default function NoteDetail() {
   };
 
   const handleFileUpload = async (files: File[]) => {
-    if (!noteId || files.length === 0) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:352',message:'handleFileUpload entry',data:{noteId,filesCount:files.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    if (!noteId || files.length === 0) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:354',message:'handleFileUpload skipped',data:{noteId,filesCount:files.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
 
     let successCount = 0;
     let failureCount = 0;
 
     for (const file of files) {
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:360',message:'file upload starting',data:{noteId,filename:file.name,fileSize:file.size,mimeType:file.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         const { uploadUrl, s3Key } = await uploadFileMutation.mutateAsync({
           noteId,
           filename: file.name,
@@ -385,8 +433,14 @@ export default function NoteDetail() {
         });
 
         successCount += 1;
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:387',message:'file upload success',data:{noteId,filename:file.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
       } catch (error) {
         console.error("Failed to upload file:", file.name, error);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:389',message:'file upload error',data:{noteId,filename:file.name,errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         failureCount += 1;
       }
     }
@@ -402,6 +456,9 @@ export default function NoteDetail() {
     if (successCount > 0) {
       await refetch();
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:404',message:'handleFileUpload exit',data:{noteId,successCount,failureCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
   };
 
   const handleFileDelete = (fileId: number) => {

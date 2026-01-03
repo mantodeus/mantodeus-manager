@@ -2424,8 +2424,16 @@ async function safeNoteQuery<T>(queryFn: () => Promise<T>): Promise<T> {
 }
 
 export async function getNotesByUser(userId: number) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2426',message:'getNotesByUser entry',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
   const db = await getDb();
-  if (!db) return [];
+  if (!db) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2428',message:'getNotesByUser no db',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    return [];
+  }
   
   try {
     const results = await safeNoteQuery(async () => {
@@ -2439,12 +2447,22 @@ export async function getNotesByUser(userId: number) {
         ))
         .orderBy(desc(notes.updatedAt));
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2441',message:'getNotesByUser query success',data:{userId,resultCount:results.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     const fileCounts = await getNoteFileCountsByNoteIds(results.map((note) => note.id));
-    return results.map((note) => ({
+    const mapped = results.map((note) => ({
       ...note,
       fileCount: fileCounts.get(note.id) ?? 0,
     }));
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2446',message:'getNotesByUser exit',data:{userId,returnCount:mapped.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    return mapped;
   } catch (error: any) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2447',message:'getNotesByUser error',data:{userId,errorMessage:error?.message,errorCode:error?.code,isRetry:error?.message==='RETRY_WITH_EXPLICIT_COLUMNS'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     if (error?.message === "RETRY_WITH_EXPLICIT_COLUMNS") {
       const results = await db
         .select(selectNoteColumns)
@@ -2583,24 +2601,76 @@ export async function getNoteByClientCreationKey(clientCreationKey: string, user
 }
 
 export async function createNote(data: InsertNote) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2603',message:'createNote entry',data:{hasClientCreationKey:!!data.clientCreationKey,title:data.title},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Remove clientCreationKey if it's null/undefined to avoid issues if column doesn't exist
-  // This prevents Drizzle from trying to insert NULL into a non-existent column
+  // Always try without clientCreationKey first if it's provided, since the column might not exist
+  // This is safer than trying with it and catching errors
   const { clientCreationKey, ...dataWithoutKey } = data;
+  
+  // If clientCreationKey is provided, try with it first, but fall back to without it
+  // If clientCreationKey is null/undefined, just use dataWithoutKey
   const insertData = clientCreationKey != null ? data : dataWithoutKey;
   
   try {
-    return db.insert(notes).values(insertData);
+    const result = await db.insert(notes).values(insertData);
+    // Extract insertId from Drizzle result (same pattern as createImage, createExpense, etc.)
+    const insertId = Array.isArray(result) ? result[0]?.insertId : (result as any).insertId;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2616',message:'createNote success',data:{insertId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
+    // Return in format expected by callers: [{ id: insertId }]
+    return [{ id: Number(insertId) }];
   } catch (error: any) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2620',message:'createNote error',data:{errorMessage:error?.message,errorCode:error?.code,errorStack:error?.stack?.substring(0,500),hasClientCreationKey:!!clientCreationKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
     // Handle case where clientCreationKey column doesn't exist yet
-    // Remove clientCreationKey from data and retry
-    if (error?.message?.includes("clientCreationKey") || 
-        error?.message?.includes("Unknown column") ||
-        error?.code === "ER_BAD_FIELD_ERROR") {
-      console.log("[Database] clientCreationKey column not found, creating note without it (migration not run yet)");
-      return db.insert(notes).values(dataWithoutKey);
+    // Check error message more thoroughly (Drizzle wraps MySQL errors)
+    const errorMessage = String(error?.message || '');
+    const errorString = JSON.stringify(error || {});
+    const cause = (error as any)?.cause;
+    const causeMessage = cause ? String(cause?.message || '') : '';
+    
+    // Check multiple sources for column error indicators
+    const isColumnError = 
+      errorMessage.includes("clientCreationKey") || 
+      errorMessage.includes("Unknown column") ||
+      errorMessage.includes("doesn't exist") ||
+      errorMessage.includes("ER_BAD_FIELD_ERROR") ||
+      error?.code === "ER_BAD_FIELD_ERROR" ||
+      errorString.includes("clientCreationKey") ||
+      causeMessage.includes("clientCreationKey") ||
+      causeMessage.includes("Unknown column") ||
+      causeMessage.includes("ER_BAD_FIELD_ERROR");
+    
+    // If we tried with clientCreationKey and got an error, retry without it as fallback
+    // This handles cases where the column doesn't exist (common during migrations)
+    if (clientCreationKey != null && insertData === data) {
+      console.log("[Database] Error creating note with clientCreationKey, retrying without it (column may not exist)");
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2638',message:'createNote retry without clientCreationKey',data:{originalError:errorMessage.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
+      try {
+        const retryResult = await db.insert(notes).values(dataWithoutKey);
+        const insertId = Array.isArray(retryResult) ? retryResult[0]?.insertId : (retryResult as any).insertId;
+        if (!insertId) {
+          throw new Error("Failed to create note: no insert ID returned");
+        }
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2645',message:'createNote retry success',data:{insertId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        return [{ id: Number(insertId) }];
+      } catch (retryError: any) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2650',message:'createNote retry failed',data:{errorMessage:retryError?.message,errorCode:retryError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        // If retry also failed, throw the original error (more informative)
+        throw error;
+      }
     }
     // Re-throw other errors
     throw error;
@@ -2608,10 +2678,17 @@ export async function createNote(data: InsertNote) {
 }
 
 export async function updateNote(id: number, data: Partial<InsertNote>) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2610',message:'updateNote entry',data:{id,dataKeys:Object.keys(data)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return db.update(notes).set(data).where(eq(notes.id, id));
+  const result = await db.update(notes).set(data).where(eq(notes.id, id));
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2614',message:'updateNote exit',data:{id,affectedRows:result?.[0]?.affectedRows},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
+  return result;
 }
 
 /**
@@ -2649,11 +2726,14 @@ export async function deleteNote(id: number) {
 }
 
 export async function getArchivedNotesByUser(userId: number) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2651',message:'getArchivedNotesByUser entry',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
   const db = await getDb();
   if (!db) return [];
   
   try {
-    return await safeNoteQuery(async () => {
+    const results = await safeNoteQuery(async () => {
       return db
         .select()
         .from(notes)
@@ -2664,9 +2744,16 @@ export async function getArchivedNotesByUser(userId: number) {
         ))
         .orderBy(desc(notes.archivedAt), desc(notes.updatedAt));
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2665',message:'getArchivedNotesByUser exit',data:{userId,resultCount:results.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    return results;
   } catch (error: any) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2667',message:'getArchivedNotesByUser error',data:{userId,errorMessage:error?.message,errorCode:error?.code,isRetry:error?.message==='RETRY_WITH_EXPLICIT_COLUMNS'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     if (error?.message === "RETRY_WITH_EXPLICIT_COLUMNS") {
-      return db
+      const results = await db
         .select(selectNoteColumns)
         .from(notes)
         .where(and(
@@ -2675,17 +2762,21 @@ export async function getArchivedNotesByUser(userId: number) {
           isNull(notes.trashedAt)
         ))
         .orderBy(desc(notes.archivedAt), desc(notes.updatedAt));
+      return results;
     }
     throw error;
   }
 }
 
 export async function getTrashedNotesByUser(userId: number) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2683',message:'getTrashedNotesByUser entry',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
   const db = await getDb();
   if (!db) return [];
   
   try {
-    return await safeNoteQuery(async () => {
+    const results = await safeNoteQuery(async () => {
       return db
         .select()
         .from(notes)
@@ -2695,9 +2786,16 @@ export async function getTrashedNotesByUser(userId: number) {
         ))
         .orderBy(desc(notes.trashedAt), desc(notes.updatedAt));
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2696',message:'getTrashedNotesByUser exit',data:{userId,resultCount:results.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    return results;
   } catch (error: any) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2698',message:'getTrashedNotesByUser error',data:{userId,errorMessage:error?.message,errorCode:error?.code,isRetry:error?.message==='RETRY_WITH_EXPLICIT_COLUMNS'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     if (error?.message === "RETRY_WITH_EXPLICIT_COLUMNS") {
-      return db
+      const results = await db
         .select(selectNoteColumns)
         .from(notes)
         .where(and(
@@ -2705,49 +2803,78 @@ export async function getTrashedNotesByUser(userId: number) {
           isNotNull(notes.trashedAt)
         ))
         .orderBy(desc(notes.trashedAt), desc(notes.updatedAt));
+      return results;
     }
     throw error;
   }
 }
 
 export async function archiveNote(id: number) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2713',message:'archiveNote entry',data:{id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return db
+  const result = await db
     .update(notes)
     .set({ archivedAt: new Date() })
     .where(and(eq(notes.id, id), isNull(notes.archivedAt), isNull(notes.trashedAt)));
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2720',message:'archiveNote exit',data:{id,affectedRows:result?.[0]?.affectedRows},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  return result;
 }
 
 export async function restoreArchivedNote(id: number) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2723',message:'restoreArchivedNote entry',data:{id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return db
+  const result = await db
     .update(notes)
     .set({ archivedAt: null })
     .where(and(eq(notes.id, id), isNotNull(notes.archivedAt), isNull(notes.trashedAt)));
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2730',message:'restoreArchivedNote exit',data:{id,affectedRows:result?.[0]?.affectedRows},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  return result;
 }
 
 export async function moveNoteToTrash(id: number) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2733',message:'moveNoteToTrash entry',data:{id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return db
+  const result = await db
     .update(notes)
     .set({ trashedAt: new Date() })
     .where(and(eq(notes.id, id), isNull(notes.trashedAt)));
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2740',message:'moveNoteToTrash exit',data:{id,affectedRows:result?.[0]?.affectedRows},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  return result;
 }
 
 export async function restoreNoteFromTrash(id: number) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2743',message:'restoreNoteFromTrash entry',data:{id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return db
+  const result = await db
     .update(notes)
     .set({ trashedAt: null })
     .where(and(eq(notes.id, id), isNotNull(notes.trashedAt)));
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'db.ts:2750',message:'restoreNoteFromTrash exit',data:{id,affectedRows:result?.[0]?.affectedRows},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  return result;
 }
 
 // ===== NOTE FILES QUERIES =====
