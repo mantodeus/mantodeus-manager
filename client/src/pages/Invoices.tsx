@@ -15,6 +15,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { Link, useLocation } from "wouter";
 import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
+import { BulkInvoiceUploadDialog } from "@/components/invoices/BulkInvoiceUploadDialog";
 
 function formatCurrency(amount: number | string) {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -47,6 +48,7 @@ export default function Invoices() {
     totalAmount: string | null;
     invoiceNumber: string | null;
   } | null>(null);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
   // Multi-select state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -122,6 +124,29 @@ export default function Invoices() {
     },
     onError: (err) => {
       toast.error("Failed to upload invoice: " + err.message);
+    },
+  });
+  const bulkUploadMutation = trpc.invoices.uploadInvoicesBulk.useMutation({
+    onSuccess: (data) => {
+      const successCount = data.success;
+      const errorCount = data.errors?.length || 0;
+      if (errorCount === 0) {
+        toast.success(`Successfully uploaded ${successCount} invoice${successCount !== 1 ? "s" : ""}`);
+      } else {
+        toast.warning(
+          `Uploaded ${successCount} invoice${successCount !== 1 ? "s" : ""}, ${errorCount} failed`
+        );
+        if (data.errors) {
+          data.errors.forEach((err) => {
+            toast.error(`${err.filename}: ${err.error}`);
+          });
+        }
+      }
+      refetch();
+      refetchNeedsReview();
+    },
+    onError: (err) => {
+      toast.error("Failed to upload invoices: " + err.message);
     },
   });
   const needsReviewDeleteMutation = trpc.invoices.cancelUploadedInvoice.useMutation({
@@ -256,6 +281,40 @@ export default function Invoices() {
     setIsMultiSelectMode(false);
   };
 
+  const handleBulkUpload = async (files: File[]) => {
+    try {
+      // Convert files to base64
+      const fileData = await Promise.all(
+        files.map(async (file) => {
+          const reader = new FileReader();
+          return new Promise<{
+            filename: string;
+            mimeType: string;
+            fileSize: number;
+            base64Data: string;
+          }>((resolve, reject) => {
+            reader.onload = () => {
+              const base64 = reader.result as string;
+              const base64Data = base64.split(",")[1];
+              resolve({
+                filename: file.name,
+                mimeType: file.type,
+                fileSize: file.size,
+                base64Data,
+              });
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+
+      bulkUploadMutation.mutate({ files: fileData });
+    } catch (error) {
+      toast.error("Failed to process files");
+    }
+  };
+
   const getStatusBadge = (invoice: any) => {
     const { status, sentAt, paidAt } = invoice;
 
@@ -283,55 +342,13 @@ export default function Invoices() {
 
       {/* Top-of-Page Action Row */}
       <div className="flex items-center justify-end gap-2 pb-2 border-b">
-        <input
-          type="file"
-          accept=".pdf,application/pdf"
-          id="invoice-upload-input"
-          className="hidden"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-
-            if (!file.type.includes("pdf")) {
-              toast.error("Please select a PDF file");
-              return;
-            }
-
-            try {
-              // Convert to base64
-              const reader = new FileReader();
-              reader.onload = async () => {
-                const result = reader.result as string;
-                const base64Data = result.split(",")[1];
-
-                await uploadInvoiceMutation.mutateAsync({
-                  filename: file.name,
-                  base64Data,
-                  mimeType: file.type,
-                });
-              };
-              reader.onerror = () => {
-                toast.error("Failed to read file");
-              };
-              reader.readAsDataURL(file);
-            } catch (error) {
-              console.error(error);
-              toast.error("Failed to upload invoice");
-            }
-
-            // Reset input
-            e.target.value = "";
-          }}
-        />
         <Button
           variant="outline"
-          onClick={() => {
-            document.getElementById("invoice-upload-input")?.click();
-          }}
-          disabled={uploadInvoiceMutation.isPending}
+          onClick={() => setBulkUploadOpen(true)}
+          disabled={bulkUploadMutation.isPending}
           className="h-10 whitespace-nowrap"
         >
-          {uploadInvoiceMutation.isPending ? (
+          {bulkUploadMutation.isPending ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : (
             <Upload className="w-4 h-4 mr-2" />
@@ -638,6 +655,14 @@ export default function Invoices() {
         description={`This will create a new cancellation invoice that reverses invoice ${cancellationTarget?.invoiceNumber ?? ""}. The original invoice will remain unchanged.`}
         confirmLabel="Create cancellation invoice"
         isDeleting={createCancellationMutation.isPending}
+      />
+
+      {/* Bulk Upload Dialog */}
+      <BulkInvoiceUploadDialog
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        onUpload={handleBulkUpload}
+        isUploading={bulkUploadMutation.isPending}
       />
     </div>
   );

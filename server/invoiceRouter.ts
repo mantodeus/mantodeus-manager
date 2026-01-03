@@ -808,6 +808,130 @@ export const invoiceRouter = router({
       };
     }),
 
+  uploadInvoicesBulk: protectedProcedure
+    .input(
+      z.object({
+        files: z
+          .array(
+            z.object({
+              filename: z.string().min(1),
+              mimeType: z.string(),
+              fileSize: z.number().int().positive(),
+              base64Data: z.string(),
+            })
+          )
+          .min(1, "At least one file is required")
+          .max(10, "Maximum 10 files per request"),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const createdInvoiceIds: number[] = [];
+      const errors: Array<{ filename: string; error: string }> = [];
+      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+      // Process each file independently
+      for (const file of input.files) {
+        let invoiceId: number | null = null;
+        try {
+          // Validate file size
+          if (file.fileSize > MAX_FILE_SIZE) {
+            throw new Error(
+              `File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`
+            );
+          }
+
+          // Validate MIME type (must be PDF)
+          const mimeType = file.mimeType || "application/pdf";
+          if (!mimeType.includes("pdf")) {
+            throw new Error("File must be a PDF");
+          }
+
+          // Validate base64 data
+          const pdfBuffer = Buffer.from(file.base64Data, "base64");
+          if (pdfBuffer.length === 0) {
+            throw new Error("Invalid base64 data");
+          }
+
+          // Parse PDF to extract invoice data
+          const parsedData = await parseInvoicePdf(pdfBuffer);
+
+          // Generate S3 key
+          const fileKey = generateFileKey("invoices", userId, file.filename);
+
+          // Upload PDF to S3
+          await storagePut(fileKey, pdfBuffer, mimeType);
+
+          // Use parsed date or current date
+          const issueDate = parsedData.invoiceDate || new Date();
+
+          const originalFileName = file.filename;
+          const invoiceName = deriveInvoiceNameFromFilename(originalFileName);
+          if (!invoiceName) {
+            throw new Error("Invoice name cannot be empty");
+          }
+
+          // Check for unique invoice name (skip if duplicate, but don't fail the whole batch)
+          try {
+            await db.ensureUniqueInvoiceName(userId, invoiceName);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Invoice name must be unique";
+            throw new Error(message);
+          }
+
+          // Create invoice with needsReview flag
+          const uploadedAt = new Date();
+          const created = await db.createInvoice({
+            userId,
+            clientId: null,
+            status: "draft",
+            issueDate,
+            dueDate: null,
+            subtotal: parsedData.totalAmount || "0.00",
+            vatAmount: "0.00",
+            total: parsedData.totalAmount || "0.00",
+            source: "uploaded",
+            needsReview: parsedData.needsReview,
+            originalPdfS3Key: fileKey,
+            originalFileName,
+            invoiceName,
+            uploadedAt,
+            pdfFileKey: fileKey,
+            filename: file.filename,
+            fileKey: fileKey,
+            fileSize: pdfBuffer.length,
+            mimeType,
+            uploadDate: uploadedAt,
+            uploadedBy: userId,
+            items: [], // Empty items - user can add in review
+          });
+
+          invoiceId = created.id;
+          createdInvoiceIds.push(created.id);
+        } catch (error) {
+          // If invoice was created but something else failed, try to clean up
+          if (invoiceId) {
+            try {
+              await db.deleteInvoice(invoiceId);
+            } catch (cleanupError) {
+              console.error("[Invoice Bulk Upload] Failed to cleanup invoice:", cleanupError);
+            }
+          }
+
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          errors.push({
+            filename: file.filename,
+            error: errorMessage,
+          });
+        }
+      }
+
+      return {
+        success: createdInvoiceIds.length,
+        errors: errors.length > 0 ? errors : undefined,
+      };
+    }),
+
   // TEMPORARY DEBUG ENDPOINT - Remove after diagnosis
   debug: protectedProcedure.query(async ({ ctx }) => {
     const userId = db.getUserIdFromUser(ctx.user);
