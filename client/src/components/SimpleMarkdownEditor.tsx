@@ -616,7 +616,9 @@ export function SimpleMarkdownEditor({
 
   const showToolbar = isMobile ? isFocused : true;
   const toolbarBottom = isMobile
-    ? (keyboardHeight > 0 ? `${keyboardHeight}px` : "0px")
+    ? (keyboardHeight > 0 
+        ? `${keyboardHeight}px` 
+        : `var(--bottom-safe-area, 0px)`)
     : "var(--notes-action-bar-height, 0px)";
 
   return (

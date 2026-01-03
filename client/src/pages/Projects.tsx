@@ -19,7 +19,6 @@ import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { Plus, MapPin, Calendar, Loader2, Building2, FolderOpen } from "@/components/ui/Icon";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { CreateProjectDialog } from "@/components/CreateProjectDialog";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
@@ -32,11 +31,9 @@ type ProjectListItem = RouterOutputs["projects"]["list"][number];
 
 export default function Projects() {
   const [location, setLocation] = useLocation();
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   
   const { data: activeProjects, isLoading: activeLoading } = trpc.projects.list.useQuery();
   const utils = trpc.useUtils();
-  const [prefillClientId, setPrefillClientId] = useState<number | null>(null);
 
   // Delete confirmation dialogs
   const [deleteToRubbishDialogOpen, setDeleteToRubbishDialogOpen] = useState(false);
@@ -55,36 +52,21 @@ export default function Projects() {
     const shouldOpen = url.searchParams.get("openCreateProject");
     const prefillParam = url.searchParams.get("prefillClientId");
 
-    if (prefillParam) {
-      const parsed = parseInt(prefillParam, 10);
-      if (!Number.isNaN(parsed)) {
-        setPrefillClientId(parsed);
-        setCreateDialogOpen(true);
-      }
-    } else if (shouldOpen === "1") {
-      setCreateDialogOpen(true);
-    }
-
-    if (shouldOpen || prefillParam) {
+    if (shouldOpen === "1" || prefillParam) {
+      // Navigate to new project page with prefill if needed
+      const newPath = prefillParam 
+        ? `/projects/new?prefillClientId=${prefillParam}`
+        : "/projects/new";
+      setLocation(newPath);
+      
+      // Clean up URL params
       url.searchParams.delete("openCreateProject");
       url.searchParams.delete("prefillClientId");
       const nextSearch = url.searchParams.toString();
       const nextHref = nextSearch ? `${url.pathname}?${nextSearch}${url.hash}` : `${url.pathname}${url.hash}`;
       window.history.replaceState(null, "", nextHref);
     }
-  }, [location]);
-
-  const handlePrefillConsumed = () => setPrefillClientId(null);
-
-  const handleRequestAddContact = () => {
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.set("openCreateProject", "1");
-    const returnToPath = currentUrl.searchParams.toString()
-      ? `${currentUrl.pathname}?${currentUrl.searchParams.toString()}`
-      : currentUrl.pathname;
-    setCreateDialogOpen(false);
-    setLocation(`/contacts?returnTo=${encodeURIComponent(returnToPath)}`);
-  };
+  }, [location, setLocation]);
 
   const invalidateProjectLists = () => {
     utils.projects.list.invalidate();
@@ -360,10 +342,12 @@ export default function Projects() {
 
       {/* Top-of-Page Action Row */}
       <div className="flex items-center justify-end gap-2 pb-2 border-b">
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          New
-        </Button>
+        <Link href="/projects/new">
+          <Button>
+            <Plus className="h-4 w-4 mr-1" />
+            New
+          </Button>
+        </Link>
       </div>
 
       {/* Active Projects Grid */}
@@ -373,10 +357,12 @@ export default function Projects() {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-4">No projects yet. Create your first project to get started.</p>
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" />
-                New
-              </Button>
+              <Link href="/projects/new">
+                <Button>
+                  <Plus className="h-4 w-4 mr-1" />
+                  New
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         ) : (
@@ -406,14 +392,6 @@ export default function Projects() {
           }}
         />
       )}
-
-      <CreateProjectDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        prefillClientId={prefillClientId ?? undefined}
-        onPrefillConsumed={handlePrefillConsumed}
-        onRequestAddContact={handleRequestAddContact}
-      />
 
       {/* Archive Confirmation Dialog */}
       <DeleteConfirmDialog

@@ -212,7 +212,7 @@ export function ExpenseForm({
   };
 
   return (
-    <div className="px-4 pt-4 pb-24 max-w-[640px] mx-auto w-full space-y-6">
+    <div className="px-4 pt-4 max-w-[640px] mx-auto w-full space-y-6" style={{ paddingBottom: 'calc(var(--bottom-safe-area, 0px) + 6rem)' }}>
       {/* Basic Information */}
       <div className="space-y-4">
         <div className="grid gap-2">
@@ -385,7 +385,7 @@ export function ExpenseForm({
       {showActions && (
         <>
           <Separator />
-          <div className="sticky bottom-0 z-10 -mx-4 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] bg-background/95 backdrop-blur border-t md:static md:mx-0 md:px-0 md:pt-0 md:pb-0 md:border-0">
+          <div className="sticky z-10 -mx-4 px-4 pt-4 bg-background/95 backdrop-blur border-t md:static md:mx-0 md:px-0 md:pt-0 md:pb-0 md:border-0" style={{ bottom: 'var(--bottom-safe-area, 0px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 onClick={handleSave}

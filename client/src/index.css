@@ -527,6 +527,16 @@
     .app-content {
       padding-bottom: calc(var(--bottom-safe-area) + 1rem) !important;
     }
+    
+    /* Ensure all scrollable containers respect bottom safe area */
+    .app-content > * {
+      min-height: 0;
+    }
+    
+    /* Prevent content from being hidden behind tab bar */
+    .app-content > div:last-child {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
   }
 
   @supports (-webkit-touch-callout: none) {

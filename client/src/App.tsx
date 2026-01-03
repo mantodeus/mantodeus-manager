@@ -13,6 +13,7 @@ import ProjectsArchived from "./pages/ProjectsArchived";
 import ProjectsRubbish from "./pages/ProjectsRubbish";
 import ProjectDetail from "./pages/ProjectDetail";
 import ProjectJobDetail from "./pages/ProjectJobDetail";
+import ProjectNew from "./pages/ProjectNew";
 import Reports from "./pages/Reports";
 import Calendar from "./components/Calendar";
 import Contacts from "./pages/Contacts";
@@ -100,6 +101,11 @@ function Router() {
       <Route path="/projects/rubbish">
         <DashboardLayout>
           <ProjectsRubbish />
+        </DashboardLayout>
+      </Route>
+      <Route path="/projects/new">
+        <DashboardLayout>
+          <ProjectNew />
         </DashboardLayout>
       </Route>
       <Route path="/projects/:id">

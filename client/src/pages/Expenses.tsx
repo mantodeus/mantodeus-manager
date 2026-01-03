@@ -525,7 +525,7 @@ export default function Expenses() {
       </div>
 
       {/* Needs Review Section */}
-      <div className="space-y-4 pb-24 md:pb-4">
+      <div className="space-y-4 md:pb-4" style={{ paddingBottom: 'calc(var(--bottom-safe-area, 0px) + 6rem)' }}>
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Needs Review</h2>
           <Badge variant="outline">{needsReview.length}</Badge>
