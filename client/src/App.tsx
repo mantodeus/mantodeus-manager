@@ -41,32 +41,62 @@ import InspectionUnitDetail from "./pages/InspectionUnitDetail";
 import Expenses from "./pages/Expenses";
 import ExpenseDetail from "./pages/ExpenseDetail";
 import ScanReceipt from "./pages/ScanReceipt";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { initializeTheme } from "@/lib/theme";
+
+const LAST_ROUTE_KEY = "mantodeus-last-route";
+
+// Routes that should not be saved/restored
+const EXCLUDED_ROUTES = ["/login", "/404", "/"];
 
 function Router() {
   const { user, loading } = useAuth();
   const [location, setLocation] = useLocation();
+  const [hasRestoredRoute, setHasRestoredRoute] = useState(false);
 
-  // Handle routing based on auth state - no redirects, just set location
-  // Note: useEffect must be called unconditionally (before any early returns)
-  // to comply with React's Rules of Hooks
+  // Save current route to localStorage when it changes (for authenticated users only)
   useEffect(() => {
-    // Don't redirect while still loading
-    if (loading) return;
+    if (!user || loading) return;
+    if (EXCLUDED_ROUTES.includes(location)) return;
+    
+    try {
+      localStorage.setItem(LAST_ROUTE_KEY, location);
+    } catch (error) {
+      console.warn("[Router] Failed to save last route:", error);
+    }
+  }, [location, user, loading]);
+
+  // Restore last route on app startup (only once)
+  useEffect(() => {
+    if (loading || hasRestoredRoute) return;
     
     if (!user) {
       // Not authenticated - ensure we're on login page
       if (location !== "/login") {
         setLocation("/login");
       }
-    } else {
-      // Authenticated - if on login page, go to projects
-      if (location === "/login") {
+      setHasRestoredRoute(true);
+      return;
+    }
+
+    // Authenticated - restore last route or default to projects
+    if (location === "/login" || location === "/") {
+      try {
+        const lastRoute = localStorage.getItem(LAST_ROUTE_KEY);
+        if (lastRoute && !EXCLUDED_ROUTES.includes(lastRoute)) {
+          setLocation(lastRoute);
+        } else {
+          setLocation("/projects");
+        }
+      } catch (error) {
+        console.warn("[Router] Failed to restore last route:", error);
         setLocation("/projects");
       }
+      setHasRestoredRoute(true);
+    } else {
+      setHasRestoredRoute(true);
     }
-  }, [user, loading, location, setLocation]);
+  }, [user, loading, location, setLocation, hasRestoredRoute]);
 
   // Show loading screen during initial auth check
   if (loading) {

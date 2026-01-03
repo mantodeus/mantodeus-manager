@@ -88,7 +88,7 @@ queryClient.getMutationCache().subscribe(event => {
 let cachedAccessToken: string | null = null;
 
 // Listen for auth state changes and cache the token
-supabase.auth.onAuthStateChange((event, session) => {
+supabase.auth.onAuthStateChange(async (event, session) => {
   cachedAccessToken = session?.access_token ?? null;
   
   // On sign out, clear query cache to prevent stale data
@@ -96,15 +96,50 @@ supabase.auth.onAuthStateChange((event, session) => {
     queryClient.clear();
   }
   
-  // On sign in, invalidate auth query to update user state
-  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+  // On sign in or token refresh, ensure backend session cookie is set
+  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+    if (session?.access_token) {
+      try {
+        await fetch("/api/auth/callback", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            access_token: session.access_token,
+          }),
+        });
+      } catch (error) {
+        console.warn("[Auth] Failed to sync backend session:", error);
+      }
+    }
+    // Invalidate auth query to update user state
     queryClient.invalidateQueries({ queryKey: [['auth', 'me']] });
   }
 });
 
-// Initialize the cached token on startup (async, but only once)
-supabase.auth.getSession().then(({ data: { session } }) => {
+// Initialize the cached token on startup and restore backend session
+supabase.auth.getSession().then(async ({ data: { session } }) => {
   cachedAccessToken = session?.access_token ?? null;
+  
+  // If we have a Supabase session, ensure the backend session cookie is set
+  if (session?.access_token) {
+    try {
+      await fetch("/api/auth/callback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          access_token: session.access_token,
+        }),
+      });
+    } catch (error) {
+      console.warn("[Auth] Failed to restore backend session:", error);
+    }
+  }
 });
 
 const trpcClient = trpc.createClient({

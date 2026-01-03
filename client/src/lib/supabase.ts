@@ -35,6 +35,7 @@ export const supabase = (() => {
         autoRefreshToken: true,
         detectSessionInUrl: true,
         storageKey: "mantodeus-supabase-auth",
+        storage: typeof window !== "undefined" ? window.localStorage : undefined,
       },
     });
   }
