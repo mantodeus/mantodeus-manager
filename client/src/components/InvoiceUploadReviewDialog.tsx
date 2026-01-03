@@ -125,6 +125,19 @@ export function InvoiceUploadReviewDialog({
       toast.error("Failed to save invoice: " + error.message);
     },
   });
+  const updateMutation = trpc.invoices.update.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice updated");
+      onOpenChange(false);
+      // Invalidate and refetch invoice list
+      utils.invoices.list.invalidate();
+      utils.invoices.listNeedsReview.invalidate();
+      onSuccess?.();
+    },
+    onError: (error) => {
+      toast.error("Failed to update invoice: " + error.message);
+    },
+  });
   const cancelMutation = trpc.invoices.cancelUploadedInvoice.useMutation({
     onSuccess: () => {
       toast.success("Upload cancelled");
@@ -182,7 +195,7 @@ export function InvoiceUploadReviewDialog({
   );
 
   const handleSave = async () => {
-    if (!invoiceId) return;
+    if (!invoiceId || !invoice) return;
 
     // Validate required fields
     if (!issueDate) {
@@ -195,13 +208,27 @@ export function InvoiceUploadReviewDialog({
       return;
     }
 
-    await confirmMutation.mutateAsync({
-      id: invoiceId,
-      clientId: clientId !== "none" ? parseInt(clientId, 10) : null,
-      invoiceNumber: invoiceNumber || undefined,
-      issueDate: new Date(issueDate),
-      totalAmount: String(totalAmount), // Ensure it's always a string
-    });
+    // If invoice needs review, use confirm mutation
+    // Otherwise, use regular update mutation for already-confirmed uploaded invoices
+    if (invoice.needsReview) {
+      await confirmMutation.mutateAsync({
+        id: invoiceId,
+        clientId: clientId !== "none" ? parseInt(clientId, 10) : null,
+        invoiceNumber: invoiceNumber || undefined,
+        issueDate: new Date(issueDate),
+        totalAmount: String(totalAmount), // Ensure it's always a string
+      });
+    } else {
+      // For already-confirmed uploaded invoices, use update mutation
+      // Note: update mutation doesn't accept totalAmount directly, so we calculate from existing items or use subtotal
+      await updateMutation.mutateAsync({
+        id: invoiceId,
+        invoiceNumber: invoiceNumber || invoice.invoiceNumber,
+        clientId: clientId !== "none" ? parseInt(clientId, 10) : undefined,
+        issueDate: new Date(issueDate),
+        // Update mutation will preserve existing items and totals for uploaded invoices
+      });
+    }
   };
 
   const handleCancel = async () => {
@@ -210,7 +237,14 @@ export function InvoiceUploadReviewDialog({
       return;
     }
 
-    // Delete the invoice and S3 file
+    // For already-confirmed invoices, just close the dialog
+    // Only delete if the invoice still needs review (unconfirmed upload)
+    if (invoice && !invoice.needsReview) {
+      onOpenChange(false);
+      return;
+    }
+
+    // Delete the invoice and S3 file (only for unconfirmed uploads)
     await cancelMutation.mutateAsync({ id: invoiceId });
   };
 
@@ -221,7 +255,7 @@ export function InvoiceUploadReviewDialog({
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              Review Invoice
+              {invoice?.needsReview ? "Review Invoice" : "Edit Invoice"}
             </DialogTitle>
             {!isMobile && (
               <Button variant="outline" size="icon" onClick={handlePreviewPDF}>
@@ -230,7 +264,9 @@ export function InvoiceUploadReviewDialog({
             )}
           </div>
           <DialogDescription>
-            We've extracted these details from the PDF. Please review and confirm before saving.
+            {invoice?.needsReview 
+              ? "We've extracted these details from the PDF. Please review and confirm before saving."
+              : "Edit invoice metadata. The PDF document cannot be modified."}
           </DialogDescription>
         </DialogHeader>
 
@@ -284,7 +320,13 @@ export function InvoiceUploadReviewDialog({
               onChange={(e) => setTotalAmount(e.target.value)}
               placeholder="0.00"
               required
+              disabled={!invoice?.needsReview}
             />
+            {!invoice?.needsReview && (
+              <p className="text-xs text-muted-foreground">
+                Total amount cannot be changed for confirmed uploaded invoices. The amount is preserved from the original PDF.
+              </p>
+            )}
           </div>
         </div>
 
@@ -292,17 +334,17 @@ export function InvoiceUploadReviewDialog({
           <div className={isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"}>
             <Button 
               onClick={handleSave} 
-              disabled={confirmMutation.isPending || cancelMutation.isPending || !isFormValid}
+              disabled={(confirmMutation.isPending || updateMutation.isPending || cancelMutation.isPending) || !isFormValid}
               className={isMobile ? "w-full" : ""}
             >
-              {confirmMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save
+              {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {invoice?.needsReview ? "Save" : "Update"}
             </Button>
             {isMobile && (
               <Button
                 variant="outline"
                 onClick={handlePreviewPDF}
-                disabled={confirmMutation.isPending || cancelMutation.isPending}
+                disabled={confirmMutation.isPending || updateMutation.isPending || cancelMutation.isPending}
                 className="w-full"
               >
                 <Eye className="h-4 w-4 mr-2" />
@@ -312,11 +354,11 @@ export function InvoiceUploadReviewDialog({
             <Button 
               variant="outline" 
               onClick={handleCancel} 
-              disabled={confirmMutation.isPending || cancelMutation.isPending}
+              disabled={confirmMutation.isPending || updateMutation.isPending || cancelMutation.isPending}
               className={isMobile ? "w-full" : ""}
             >
               {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Close
+              {invoice?.needsReview ? "Cancel" : "Close"}
             </Button>
           </div>
         </DialogFooter>

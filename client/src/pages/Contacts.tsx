@@ -901,7 +901,8 @@ export default function Contacts() {
               <DialogHeader className={cn(
                 isMobile ? "px-4 py-3 border-b border-border flex-shrink-0" : ""
               )}>
-                <div className="flex items-center justify-between gap-3">
+                {/* Title Section - Back button and title on one line */}
+                <div className="flex items-center gap-3">
                   {/* Back arrow (left) */}
                   <Button
                     variant="ghost"
@@ -916,30 +917,30 @@ export default function Contacts() {
                   <div className="flex-1 flex items-center gap-3 min-w-0">
                     <ContactIcon className="h-6 w-6 text-primary flex-shrink-0" />
                     <DialogTitle className="text-2xl break-words">{displayName}</DialogTitle>
-                </div>
-                  
-                  {/* Edit and Close buttons (top right) */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        handleEdit(contact);
-                        setPreviewContactId(null);
-                      }}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setPreviewContactId(null)}
-                      className={isMobile ? "hidden" : ""}
-                    >
-                      <X className="h-5 w-5" />
-                    </Button>
                   </div>
                 </div>
+                
+                {/* Action Row - Edit button on next line */}
+                <div className="flex items-center justify-end gap-2 pb-2 border-b mt-2">
+                  <Button
+                    onClick={() => {
+                      handleEdit(contact);
+                      setPreviewContactId(null);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setPreviewContactId(null)}
+                    className={isMobile ? "hidden" : ""}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+                
                 {!isMobile && (
                 <DialogDescription>
                   {contact.contactPerson 
