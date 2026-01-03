@@ -478,6 +478,8 @@ export const CenteredContextMenu = React.forwardRef<
               style={{
                 ...previewStyle,
                 animation: "previewAppear 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+                borderRadius: "0.75rem", // Match card border-radius (rounded-xl = 0.75rem)
+                overflow: "hidden",
               }}
             >
               <div
@@ -486,6 +488,8 @@ export const CenteredContextMenu = React.forwardRef<
                   boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)",
                   borderRadius: "inherit",
                   overflow: "hidden",
+                  border: "none", // Ensure no border
+                  outline: "none", // Ensure no outline
                 }}
                 dangerouslySetInnerHTML={{
                   __html: itemRef.current.outerHTML,
