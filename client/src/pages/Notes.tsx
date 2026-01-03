@@ -247,8 +247,10 @@ export default function Notes() {
     setIsSearchOpen(false);
   };
 
-  const clearDraftFilters = () => {
+  const revertFilters = () => {
+    setFilters(defaultFilters);
     setDraftFilters(defaultFilters);
+    setIsFilterOpen(false);
   };
 
   const applyFilters = () => {
@@ -682,15 +684,13 @@ export default function Notes() {
             </Select>
           </div>
         </div>
-        <SheetFooter>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="flex-1" onClick={clearDraftFilters}>
-              Clear all
-            </Button>
-            <Button className="flex-1" onClick={applyFilters}>
-              Apply filters
-            </Button>
-          </div>
+        <SheetFooter className="flex-row justify-end gap-2">
+          <Button variant="outline" onClick={revertFilters}>
+            Revert
+          </Button>
+          <Button onClick={applyFilters}>
+            Apply
+          </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

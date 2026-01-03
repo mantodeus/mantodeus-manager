@@ -96,7 +96,7 @@ export function BottomTabBar() {
           </div>
         )}
 
-        <div className="flex h-14 items-center justify-center gap-8 px-4">
+        <div className="flex h-14 items-center justify-center gap-12 px-4">
           {TABS.map((tab) => {
             const isActive = tab.id === activeTab;
             const Icon = tab.icon;
