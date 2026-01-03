@@ -1,7 +1,7 @@
 /**
  * ItemActionsMenu Component
  * 
- * A reusable three-dot (kebab) menu for item actions.
+ * A reusable three-dot (kebab) menu for item actions with Apple-style centered context menu.
  * 
  * STRICT ORDER (non-negotiable):
  * 1. Edit
@@ -11,27 +11,21 @@
  * 5. Delete
  * 
  * Only visibility may change based on permissions/state — order never changes.
+ * 
+ * Now uses CenteredContextMenu for Apple Maps/Files-style interaction:
+ * - Item lifts up when menu opens
+ * - Menu appears centered below preview
+ * - Background blurs and dims
+ * - Supports both button tap and long-press
  */
 
-import { useState, useCallback, useMemo } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useCallback, useMemo } from "react";
+import { CenteredContextMenu, CenteredContextMenuAction } from "@/components/CenteredContextMenu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Trash2, Copy, CheckCircle2, Archive, RotateCcw, Trash, Eye, DollarSign, XCircle } from "@/components/ui/Icon";
+import { MoreVertical } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 
-export type ItemAction =
-  | "edit"
-  | "duplicate"
-  | "select"
-  | "archive"
-  | "delete"
-  | "restore"
-  | "deletePermanently";
+export type ItemAction = CenteredContextMenuAction;
 
 interface ItemActionsMenuProps {
   /** Callback when an action is selected */
@@ -58,91 +52,6 @@ export function ItemActionsMenu({
   size = "sm",
   disabled = false,
 }: ItemActionsMenuProps) {
-  const [open, setOpen] = useState(false);
-
-  const actionConfig = {
-    view: { icon: Eye, label: "View", variant: "default" as const },
-    edit: { icon: Edit, label: "Edit", variant: "default" as const },
-    delete: { icon: Trash2, label: "Delete", variant: "destructive" as const },
-    duplicate: { icon: Copy, label: "Duplicate", variant: "default" as const },
-    select: { icon: CheckCircle2, label: "Select", variant: "default" as const },
-    archive: { icon: Archive, label: "Archive", variant: "default" as const },
-    restore: { icon: RotateCcw, label: "Restore", variant: "default" as const },
-    moveToTrash: { icon: Trash, label: "Delete", variant: "destructive" as const },
-    deletePermanently: { icon: Trash2, label: "Delete permanently", variant: "destructive" as const },
-    revertToDraft: { icon: RotateCcw, label: "Mark as not sent", variant: "destructive" as const },
-    revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" as const },
-    markAsPaid: { icon: DollarSign, label: "Mark as paid", variant: "default" as const },
-    markAsInOrder: { icon: CheckCircle2, label: "Mark as In Order", variant: "default" as const },
-    void: { icon: XCircle, label: "Void", variant: "destructive" as const },
-  };
-  const handleAction = useCallback(
-    (action: ItemAction) => {
-      try {
-        onAction(action);
-        setOpen(false);
-      } catch (error) {
-        console.error("Error handling action:", error);
-        setOpen(false);
-      }
-    },
-    [onAction]
-  );
-
-  // Separate standard actions from rubbish actions
-  const standardActions = (actions || []).filter((action) => 
-    STANDARD_ACTION_ORDER.includes(action)
-  );
-  const rubbishActions = (actions || []).filter((action) => 
-    RUBBISH_ACTION_ORDER.includes(action)
-  );
-
-  // Enforce strict order: filter to only standard actions, then sort by STANDARD_ACTION_ORDER
-  const validStandardActions = STANDARD_ACTION_ORDER.filter((action) => 
-    standardActions.includes(action)
-  );
-  
-  // Enforce strict order for rubbish actions
-  const validRubbishActions = RUBBISH_ACTION_ORDER.filter((action) => 
-    rubbishActions.includes(action)
-  );
-
-  // Group actions logically: Primary, Mode, Lifecycle, Destructive, Rubbish
-  const groupedActions = useMemo(() => {
-    const groups: {
-      primary: ItemAction[];
-      mode: ItemAction[];
-      lifecycle: ItemAction[];
-      destructive: ItemAction[];
-      rubbish: ItemAction[];
-    } = {
-      primary: [],
-      mode: [],
-      lifecycle: [],
-      destructive: [],
-      rubbish: [],
-    };
-
-    validStandardActions.forEach((action) => {
-      if (action === "edit" || action === "duplicate") {
-        groups.primary.push(action);
-      } else if (action === "select") {
-        groups.mode.push(action);
-      } else if (action === "archive") {
-        groups.lifecycle.push(action);
-      } else if (action === "delete") {
-        groups.destructive.push(action);
-      }
-    });
-
-    // Rubbish actions go in their own group
-    validRubbishActions.forEach((action) => {
-      groups.rubbish.push(action);
-    });
-
-    return groups;
-  }, [validStandardActions, validRubbishActions]);
-
   const sizeClasses = {
     sm: "h-7 w-7",
     md: "h-8 w-8",
@@ -160,99 +69,34 @@ export function ItemActionsMenu({
     return null;
   }
 
-  const renderActionItem = (action: ItemAction) => {
-    const config = actionConfig[action];
-    if (!config) return null;
-    const Icon = config.icon;
-    const isDestructive = config.variant === "destructive";
-    
-    return (
-      <DropdownMenuItem
-        key={action}
-        variant={config.variant}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleAction(action);
-        }}
-        className={cn(
-          "cursor-pointer",
-          isDestructive && "delete"
-        )}
-      >
-        <Icon className="h-4 w-4" />
-        <span>{config.label}</span>
-      </DropdownMenuItem>
-    );
-  };
+  const triggerButton = (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn(sizeClasses[size], triggerClassName)}
+      disabled={disabled}
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+    >
+      <MoreVertical className={iconSizes[size]} />
+      <span className="sr-only">More actions</span>
+    </Button>
+  );
 
+  // CenteredContextMenu needs to wrap the item to create the preview.
+  // Since ItemActionsMenu is used as a button inside items, we need a different approach.
+  // We'll use a wrapper that finds the parent item element.
+  
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            sizeClasses[size],
-            triggerClassName
-          )}
-          disabled={disabled}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          <MoreVertical className={iconSizes[size]} />
-          <span className="sr-only">More actions</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        side="right"
-        align="start"
-        sideOffset={8}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {validStandardActions.length === 0 && validRubbishActions.length === 0 ? (
-          <DropdownMenuItem disabled className="text-xs uppercase">
-            No actions available
-          </DropdownMenuItem>
-        ) : (
-          <>
-            {/* Primary: Edit, Duplicate */}
-            {groupedActions.primary.length > 0 && (
-              <div className="menu-group">
-                {groupedActions.primary.map(renderActionItem)}
-              </div>
-            )}
-
-            {/* Mode: Select */}
-            {groupedActions.mode.length > 0 && (
-              <div className="menu-group">
-                {groupedActions.mode.map(renderActionItem)}
-              </div>
-            )}
-
-            {/* Lifecycle: Archive */}
-            {groupedActions.lifecycle.length > 0 && (
-              <div className="menu-group">
-                {groupedActions.lifecycle.map(renderActionItem)}
-              </div>
-            )}
-
-            {/* Rubbish: Restore, Delete Permanently */}
-            {groupedActions.rubbish.length > 0 && (
-              <div className="menu-group">
-                {groupedActions.rubbish.map(renderActionItem)}
-              </div>
-            )}
-
-            {/* Destructive: Delete (isolated with extra spacing) */}
-            {groupedActions.destructive.length > 0 && (
-              <div className="menu-group destructive">
-                {groupedActions.destructive.map(renderActionItem)}
-              </div>
-            )}
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <CenteredContextMenu
+      onAction={onAction}
+      actions={actions}
+      disabled={disabled}
+      triggerButton={triggerButton}
+    >
+      {/* This div will be used to find the parent item */}
+      <div style={{ display: "none" }} />
+    </CenteredContextMenu>
   );
 }
