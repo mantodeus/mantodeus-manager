@@ -85,7 +85,25 @@ export function ItemActionsMenu({
     // Apply pointer event handlers for long-press
     const pointerDownHandler = (e: PointerEvent) => {
       if (e.button !== 0 && e.button !== undefined) return;
+      // Prevent text selection immediately
+      if (document.getSelection) {
+        const selection = document.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+        }
+      }
       longPressHandlers.onPointerDown?.(e as any);
+    };
+    
+    // Prevent text selection
+    const selectStartHandler = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    
+    const dragStartHandler = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
     };
     const pointerMoveHandler = (e: PointerEvent) => {
       longPressHandlers.onPointerMove?.(e as any);
@@ -107,12 +125,23 @@ export function ItemActionsMenu({
       menuRef.current?.open(e);
     };
 
+    // Apply CSS to prevent text selection
+    const originalUserSelect = cardElement.style.userSelect;
+    const originalWebkitUserSelect = (cardElement.style as any).webkitUserSelect;
+    const originalTouchAction = cardElement.style.touchAction;
+    
+    cardElement.style.userSelect = 'none';
+    (cardElement.style as any).webkitUserSelect = 'none';
+    cardElement.style.touchAction = 'manipulation';
+
     cardElement.addEventListener('pointerdown', pointerDownHandler);
     cardElement.addEventListener('pointermove', pointerMoveHandler);
     cardElement.addEventListener('pointerup', pointerUpHandler);
     cardElement.addEventListener('pointercancel', pointerCancelHandler);
     cardElement.addEventListener('click', clickHandler);
     cardElement.addEventListener('contextmenu', contextMenuHandler);
+    cardElement.addEventListener('selectstart', selectStartHandler);
+    cardElement.addEventListener('dragstart', dragStartHandler);
 
     return () => {
       cardElement.removeEventListener('pointerdown', pointerDownHandler);
@@ -121,6 +150,13 @@ export function ItemActionsMenu({
       cardElement.removeEventListener('pointercancel', pointerCancelHandler);
       cardElement.removeEventListener('click', clickHandler);
       cardElement.removeEventListener('contextmenu', contextMenuHandler);
+      cardElement.removeEventListener('selectstart', selectStartHandler);
+      cardElement.removeEventListener('dragstart', dragStartHandler);
+      
+      // Restore original styles
+      cardElement.style.userSelect = originalUserSelect;
+      (cardElement.style as any).webkitUserSelect = originalWebkitUserSelect;
+      cardElement.style.touchAction = originalTouchAction;
     };
   }, [disabled, longPressHandlers]);
 

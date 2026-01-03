@@ -64,6 +64,14 @@ export function useLongPress({
       e.preventDefault();
       e.stopPropagation();
 
+      // Prevent text selection
+      if (document.getSelection) {
+        const selection = document.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+        }
+      }
+
       const x = e.clientX;
       const y = e.clientY;
 
@@ -203,6 +211,12 @@ export function useLongPress({
       onPointerCancel: handlePointerCancel,
       onClick: handleClick,
       onTouchStart: handleClick, // Also prevent touch events
+      onSelectStart: handleSelectStart,
+      onDragStart: (e: React.DragEvent) => {
+        if (gestureState !== "idle") {
+          e.preventDefault();
+        }
+      },
     },
     gestureState,
     cancelLongPress,

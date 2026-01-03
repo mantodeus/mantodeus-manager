@@ -411,11 +411,37 @@ export const CenteredContextMenu = React.forwardRef<
           transition: "opacity 180ms ease-out, transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
           transform: isPressing && !isOpen ? "scale(0.97)" : "scale(1)",
           transformOrigin: "center center",
+          userSelect: isPressing || isOpen ? "none" : "auto",
+          WebkitUserSelect: isPressing || isOpen ? "none" : "auto",
+          MozUserSelect: isPressing || isOpen ? "none" : "auto",
+          msUserSelect: isPressing || isOpen ? "none" : "auto",
+          touchAction: "manipulation", // Prevent double-tap zoom and text selection on mobile
         }}
         onContextMenu={handleContextMenu}
+        onSelectStart={(e) => {
+          // Prevent text selection during press
+          if (isPressing || isOpen) {
+            e.preventDefault();
+          }
+        }}
+        onDragStart={(e) => {
+          // Prevent drag during press
+          if (isPressing || isOpen) {
+            e.preventDefault();
+          }
+        }}
         {...(!isOpen && !disabled ? longPressHandlers : {})}
       >
-        <div ref={itemRef}>{children}</div>
+        <div 
+          ref={itemRef}
+          style={{
+            userSelect: isPressing || isOpen ? "none" : "auto",
+            WebkitUserSelect: isPressing || isOpen ? "none" : "auto",
+            pointerEvents: isPressing || isOpen ? "none" : "auto",
+          }}
+        >
+          {children}
+        </div>
       </div>
 
       {/* Render menu in portal when open */}
