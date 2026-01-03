@@ -10,17 +10,17 @@
  */
 export function getLogoPath(): string {
   if (typeof window === "undefined") {
-    return "/logo-green.png"; // Default for SSR
+    return "/logo_green.PNG"; // Default for SSR
   }
 
   const theme = document.documentElement.getAttribute("data-theme");
   
   if (theme === "orchid-mantis") {
-    return "/logo-pink.png";
+    return "/logo_pink.PNG";
   }
   
   // Default to green for green-mantis or any other theme
-  return "/logo-green.png";
+  return "/logo_green.PNG";
 }
 
 /**

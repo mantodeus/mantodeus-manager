@@ -9,8 +9,8 @@ const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/logo-green.png',
-  '/logo-pink.png',
+  '/logo_green.PNG',
+  '/logo_pink.PNG',
 ];
 
 // Install event - cache core assets and skip waiting immediately

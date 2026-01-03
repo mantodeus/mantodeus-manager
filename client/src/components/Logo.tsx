@@ -33,6 +33,13 @@ export function Logo({ className, alt = "Logo", ...props }: LogoProps) {
       src={logoPath}
       alt={alt}
       className={className}
+      onError={(e) => {
+        // Fallback to legacy logo if new logos fail to load
+        const target = e.target as HTMLImageElement;
+        if (target.src && !target.src.includes('/mantodeus-logo.png')) {
+          target.src = '/mantodeus-logo.png';
+        }
+      }}
       {...props}
     />
   );
