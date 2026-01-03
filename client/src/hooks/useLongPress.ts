@@ -1,133 +1,68 @@
 /**
  * useLongPress Hook
  * 
- * Detects long-press gestures (400-500ms) with scroll cancellation.
- * Designed for Apple Maps/Files-style context menu activation.
+ * Reliable long-press detection with gesture state machine.
+ * Prevents tap/click events once long-press threshold is crossed.
  * 
- * Cancels on:
- * - Scroll movement > 10px
- * - Touch move > 10px
- * - Early release
+ * Gesture States: idle → pressing → long-press → menu-open
+ * 
+ * Uses pointer events for cross-platform support.
  */
 
 import { useCallback, useRef, useState, useEffect } from "react";
 
 interface UseLongPressOptions {
   /** Callback when long-press is detected */
-  onLongPress: (event: TouchEvent | MouseEvent) => void;
-  /** Duration in milliseconds (default: 450ms) */
+  onLongPress: (event: PointerEvent) => void;
+  /** Duration in milliseconds (default: 550ms) */
   duration?: number;
-  /** Movement threshold in pixels to cancel (default: 10px) */
+  /** Movement threshold in pixels to cancel (default: 8px) */
   threshold?: number;
   /** Whether to enable haptic feedback on supported devices */
   hapticFeedback?: boolean;
+  /** Callback when press starts (for visual feedback) */
+  onPressStart?: () => void;
 }
+
+type GestureState = "idle" | "pressing" | "long-press" | "menu-open";
 
 export function useLongPress({
   onLongPress,
-  duration = 450,
-  threshold = 10,
+  duration = 550,
+  threshold = 8,
   hapticFeedback = false,
+  onPressStart,
 }: UseLongPressOptions) {
-  const [isLongPressing, setIsLongPressing] = useState(false);
+  const [gestureState, setGestureState] = useState<GestureState>("idle");
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const startPos = useRef<{ x: number; y: number } | null>(null);
   const startScrollPos = useRef<{ x: number; y: number } | null>(null);
   const hasScrolled = useRef(false);
+  const pointerId = useRef<number | null>(null);
+  const elementRef = useRef<HTMLElement | null>(null);
 
   const cancelLongPress = useCallback(() => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
-    setIsLongPressing(false);
+    if (gestureState !== "idle") {
+      setGestureState("idle");
+    }
     startPos.current = null;
     startScrollPos.current = null;
     hasScrolled.current = false;
-  }, []);
+    pointerId.current = null;
+  }, [gestureState]);
 
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      const touch = e.touches[0];
-      if (!touch) return;
-
-      const x = touch.clientX;
-      const y = touch.clientY;
-
-      startPos.current = { x, y };
-      startScrollPos.current = {
-        x: window.scrollX || window.pageXOffset,
-        y: window.scrollY || window.pageYOffset,
-      };
-      hasScrolled.current = false;
-      setIsLongPressing(false);
-
-      longPressTimer.current = setTimeout(() => {
-        // Check if we've scrolled too much
-        if (hasScrolled.current) {
-          cancelLongPress();
-          return;
-        }
-
-        setIsLongPressing(true);
-        
-        // Create a synthetic event for consistency
-        const syntheticEvent = new TouchEvent("touchstart", {
-          bubbles: true,
-          cancelable: true,
-          touches: e.touches,
-        });
-
-        onLongPress(syntheticEvent as any);
-
-        // Haptic feedback on supported devices
-        if (hapticFeedback && navigator.vibrate) {
-          navigator.vibrate(50);
-        }
-      }, duration);
-    },
-    [onLongPress, duration, hapticFeedback, cancelLongPress]
-  );
-
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      const touch = e.touches[0];
-      if (!touch || !startPos.current || !startScrollPos.current) return;
-
-      // Check scroll movement
-      const scrollX = window.scrollX || window.pageXOffset;
-      const scrollY = window.scrollY || window.pageYOffset;
-      const scrollDeltaX = Math.abs(scrollX - startScrollPos.current.x);
-      const scrollDeltaY = Math.abs(scrollY - startScrollPos.current.y);
-
-      if (scrollDeltaX > threshold || scrollDeltaY > threshold) {
-        hasScrolled.current = true;
-        cancelLongPress();
-        return;
-      }
-
-      // Check touch movement
-      const deltaX = Math.abs(touch.clientX - startPos.current.x);
-      const deltaY = Math.abs(touch.clientY - startPos.current.y);
-
-      if (deltaX > threshold || deltaY > threshold) {
-        cancelLongPress();
-      }
-    },
-    [threshold, cancelLongPress]
-  );
-
-  const handleTouchEnd = useCallback(() => {
-    // Only cancel if we haven't triggered the long press yet
-    if (!isLongPressing) {
-      cancelLongPress();
-    }
-  }, [isLongPressing, cancelLongPress]);
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      // Only handle right-click for long press on mouse
-      if (e.button !== 2) return;
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      // Only handle primary pointer (left mouse button or touch)
+      if (e.button !== 0 && e.button !== undefined) return;
+      
+      // Prevent default to avoid text selection and other browser behaviors
+      e.preventDefault();
+      e.stopPropagation();
 
       const x = e.clientX;
       const y = e.clientY;
@@ -138,23 +73,49 @@ export function useLongPress({
         y: window.scrollY || window.pageYOffset,
       };
       hasScrolled.current = false;
-      setIsLongPressing(false);
+      pointerId.current = e.pointerId;
+      elementRef.current = e.currentTarget as HTMLElement;
+      
+      setGestureState("pressing");
+      onPressStart?.();
 
       longPressTimer.current = setTimeout(() => {
+        // Check if we've scrolled too much
         if (hasScrolled.current) {
           cancelLongPress();
           return;
         }
 
-        setIsLongPressing(true);
-        onLongPress(e.nativeEvent);
+        // Long-press detected - prevent tap/click
+        setGestureState("long-press");
+        
+        // Create native PointerEvent for callback
+        const nativeEvent = new PointerEvent("pointerdown", {
+          bubbles: true,
+          cancelable: true,
+          pointerId: e.pointerId,
+          clientX: x,
+          clientY: y,
+          button: 0,
+        });
+
+        onLongPress(nativeEvent);
+
+        // Haptic feedback on supported devices
+        if (hapticFeedback && navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+
+        setGestureState("menu-open");
       }, duration);
     },
-    [onLongPress, duration, cancelLongPress]
+    [onLongPress, duration, hapticFeedback, cancelLongPress, onPressStart]
   );
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      // Only handle the pointer we're tracking
+      if (pointerId.current !== null && e.pointerId !== pointerId.current) return;
       if (!startPos.current || !startScrollPos.current) return;
 
       // Check scroll movement
@@ -169,7 +130,7 @@ export function useLongPress({
         return;
       }
 
-      // Check mouse movement
+      // Check pointer movement
       const deltaX = Math.abs(e.clientX - startPos.current.x);
       const deltaY = Math.abs(e.clientY - startPos.current.y);
 
@@ -180,16 +141,33 @@ export function useLongPress({
     [threshold, cancelLongPress]
   );
 
-  const handleMouseUp = useCallback(() => {
-    if (!isLongPressing) {
-      cancelLongPress();
-    }
-  }, [isLongPressing, cancelLongPress]);
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      // Only handle the pointer we're tracking
+      if (pointerId.current !== null && e.pointerId !== pointerId.current) return;
 
-  // Track scroll events globally
+      // If we reached long-press state, prevent click/tap
+      if (gestureState === "long-press" || gestureState === "menu-open") {
+        e.preventDefault();
+        e.stopPropagation();
+        // Don't cancel - menu is open
+        return;
+      }
+
+      // Otherwise, cancel and allow normal tap
+      cancelLongPress();
+    },
+    [gestureState, cancelLongPress]
+  );
+
+  const handlePointerCancel = useCallback(() => {
+    cancelLongPress();
+  }, [cancelLongPress]);
+
+  // Track scroll events globally to cancel long-press
   useEffect(() => {
     const handleScroll = () => {
-      if (startScrollPos.current) {
+      if (startScrollPos.current && gestureState === "pressing") {
         const scrollX = window.scrollX || window.pageXOffset;
         const scrollY = window.scrollY || window.pageYOffset;
         const scrollDeltaX = Math.abs(scrollX - startScrollPos.current.x);
@@ -204,19 +182,29 @@ export function useLongPress({
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [threshold, cancelLongPress]);
+  }, [threshold, cancelLongPress, gestureState]);
+
+  // Prevent click/tap if long-press was activated
+  const handleClick = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      if (gestureState === "long-press" || gestureState === "menu-open") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    [gestureState]
+  );
 
   return {
     longPressHandlers: {
-      onTouchStart: handleTouchStart,
-      onTouchMove: handleTouchMove,
-      onTouchEnd: handleTouchEnd,
-      onMouseDown: handleMouseDown,
-      onMouseMove: handleMouseMove,
-      onMouseUp: handleMouseUp,
+      onPointerDown: handlePointerDown,
+      onPointerMove: handlePointerMove,
+      onPointerUp: handlePointerUp,
+      onPointerCancel: handlePointerCancel,
+      onClick: handleClick,
+      onTouchStart: handleClick, // Also prevent touch events
     },
-    isLongPressing,
+    gestureState,
     cancelLongPress,
   };
 }
-

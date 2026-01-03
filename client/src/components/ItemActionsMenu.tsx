@@ -1,29 +1,17 @@
 /**
  * ItemActionsMenu Component
  * 
- * A reusable three-dot (kebab) menu for item actions with Apple-style centered context menu.
+ * Applies context menu handlers to parent card/item element.
  * 
- * STRICT ORDER (non-negotiable):
- * 1. Edit
- * 2. Duplicate
- * 3. Select
- * 4. Archive
- * 5. Delete
+ * NO THREE-DOT BUTTON - uses long-press (mobile) or right-click (desktop).
  * 
- * Only visibility may change based on permissions/state — order never changes.
- * 
- * Now uses CenteredContextMenu for Apple Maps/Files-style interaction:
- * - Item lifts up when menu opens
- * - Menu appears centered below preview
- * - Background blurs and dims
- * - Supports both button tap and long-press
+ * This component finds the parent card and applies handlers to it.
+ * It renders nothing visible - just applies event handlers.
  */
 
-import { useCallback, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import { CenteredContextMenu, CenteredContextMenuAction } from "@/components/CenteredContextMenu";
-import { Button } from "@/components/ui/button";
-import { MoreVertical } from "@/components/ui/Icon";
-import { cn } from "@/lib/utils";
+import { useLongPress } from "@/hooks/useLongPress";
 
 export type ItemAction = CenteredContextMenuAction;
 
@@ -32,69 +20,127 @@ interface ItemActionsMenuProps {
   onAction: (action: ItemAction) => void;
   /** Available actions to show in the menu (order is enforced) */
   actions?: ItemAction[];
-  /** Additional className for the trigger button */
-  triggerClassName?: string;
-  /** Size of the trigger button */
-  size?: "sm" | "md" | "lg";
   /** Whether the menu is disabled */
   disabled?: boolean;
+  /** Custom className (kept for backward compatibility, but not used) */
+  triggerClassName?: string;
+  /** Size (kept for backward compatibility, but not used) */
+  size?: "sm" | "md" | "lg";
 }
 
-// STRICT ORDER - This order must never change
-const STANDARD_ACTION_ORDER: ItemAction[] = ["edit", "duplicate", "select", "archive", "delete"];
-// Rubbish actions order (for trashed items)
-const RUBBISH_ACTION_ORDER: ItemAction[] = ["restore", "deletePermanently"];
-
+/**
+ * This component applies context menu handlers to the parent card element.
+ * It renders nothing - just a marker that applies handlers via useEffect.
+ */
 export function ItemActionsMenu({
   onAction,
   actions = ["edit", "delete"],
-  triggerClassName,
-  size = "sm",
   disabled = false,
+  triggerClassName,
+  size,
 }: ItemActionsMenuProps) {
-  const sizeClasses = {
-    sm: "h-7 w-7",
-    md: "h-8 w-8",
-    lg: "h-9 w-9",
+  const containerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<{ open: (event?: PointerEvent | React.MouseEvent) => void } | null>(null);
+
+  // Long-press handler
+  const { longPressHandlers } = useLongPress({
+    onLongPress: (event) => {
+      menuRef.current?.open(event);
+    },
+    duration: 550,
+    hapticFeedback: true,
+  });
+
+  // Right-click handler
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    menuRef.current?.open(e.nativeEvent);
   };
 
-  const iconSizes = {
-    sm: "h-3.5 w-3.5",
-    md: "h-4 w-4",
-    lg: "h-4 w-4",
-  };
+  // Apply handlers to parent card element
+  useEffect(() => {
+    if (disabled || !containerRef.current) return;
+
+    const findParentCard = (): HTMLElement | null => {
+      let current: HTMLElement | null = containerRef.current?.parentElement || null;
+      let depth = 0;
+      while (current && depth < 10) {
+        if (
+          current.getAttribute('data-slot') === 'card' ||
+          current.classList.contains('card') ||
+          current.hasAttribute('data-item')
+        ) {
+          return current;
+        }
+        current = current.parentElement;
+        depth++;
+      }
+      return null;
+    };
+
+    const cardElement = findParentCard();
+    if (!cardElement) return;
+
+    // Apply pointer event handlers for long-press
+    const pointerDownHandler = (e: PointerEvent) => {
+      if (e.button !== 0 && e.button !== undefined) return;
+      longPressHandlers.onPointerDown?.(e as any);
+    };
+    const pointerMoveHandler = (e: PointerEvent) => {
+      longPressHandlers.onPointerMove?.(e as any);
+    };
+    const pointerUpHandler = (e: PointerEvent) => {
+      longPressHandlers.onPointerUp?.(e as any);
+    };
+    const pointerCancelHandler = (e: PointerEvent) => {
+      longPressHandlers.onPointerCancel?.(e as any);
+    };
+    const clickHandler = (e: MouseEvent) => {
+      longPressHandlers.onClick?.(e as any);
+    };
+
+    // Apply right-click handler
+    const contextMenuHandler = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      menuRef.current?.open(e);
+    };
+
+    cardElement.addEventListener('pointerdown', pointerDownHandler);
+    cardElement.addEventListener('pointermove', pointerMoveHandler);
+    cardElement.addEventListener('pointerup', pointerUpHandler);
+    cardElement.addEventListener('pointercancel', pointerCancelHandler);
+    cardElement.addEventListener('click', clickHandler);
+    cardElement.addEventListener('contextmenu', contextMenuHandler);
+
+    return () => {
+      cardElement.removeEventListener('pointerdown', pointerDownHandler);
+      cardElement.removeEventListener('pointermove', pointerMoveHandler);
+      cardElement.removeEventListener('pointerup', pointerUpHandler);
+      cardElement.removeEventListener('pointercancel', pointerCancelHandler);
+      cardElement.removeEventListener('click', clickHandler);
+      cardElement.removeEventListener('contextmenu', contextMenuHandler);
+    };
+  }, [disabled, longPressHandlers]);
 
   if (!onAction || typeof onAction !== 'function') {
     console.error('ItemActionsMenu: onAction prop is required and must be a function');
     return null;
   }
 
-  const triggerButton = (
-    <Button
-      variant="ghost"
-      size="icon"
-      className={cn(sizeClasses[size], triggerClassName)}
-      disabled={disabled}
-      type="button"
-    >
-      <MoreVertical className={iconSizes[size]} />
-      <span className="sr-only">More actions</span>
-    </Button>
-  );
-
-  // CenteredContextMenu needs to wrap the item to create the preview.
-  // Since ItemActionsMenu is used as a button inside items, we need a different approach.
-  // We'll use a wrapper that finds the parent item element.
-  
+  // Render invisible marker and menu system
   return (
-    <CenteredContextMenu
-      onAction={onAction}
-      actions={actions}
-      disabled={disabled}
-      triggerButton={triggerButton}
-    >
-      {/* This div will be used to find the parent item */}
-      <div style={{ display: "none" }} />
-    </CenteredContextMenu>
+    <>
+      <div ref={containerRef} style={{ display: 'none' }} />
+      <CenteredContextMenu
+        ref={menuRef}
+        onAction={onAction}
+        actions={actions}
+        disabled={disabled}
+      >
+        <div style={{ display: "none" }} />
+      </CenteredContextMenu>
+    </>
   );
 }

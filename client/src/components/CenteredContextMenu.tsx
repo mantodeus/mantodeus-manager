@@ -3,14 +3,13 @@
  * 
  * Apple-style centered context menu with floating item preview.
  * 
- * Features:
- * - Item lifts up and scales when menu opens
- * - Menu appears centered below the floating preview
- * - Background blurs and dims
- * - Supports both three-dot button tap and long-press
- * - Smooth spring-like animations
+ * Interaction Model:
+ * - Mobile: Long-press (550ms) opens menu, single tap = primary action
+ * - Desktop: Right-click opens menu, single click = primary action
+ * - No three-dot button (removed for cleaner UI)
  * 
- * Design inspired by Apple Files and Apple Maps on iOS.
+ * Animation: Transform-only, preview appears instantly at final position
+ * Z-index: Preview (top) > Menu > Overlay > Background
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
@@ -39,10 +38,8 @@ interface CenteredContextMenuProps {
   onAction: (action: CenteredContextMenuAction) => void;
   /** Available actions to show in the menu */
   actions?: CenteredContextMenuAction[];
-  /** The item element to wrap (will be lifted when menu opens) */
+  /** The item element to wrap */
   children: React.ReactElement;
-  /** Optional three-dot button trigger */
-  triggerButton?: React.ReactNode;
   /** Whether the menu is disabled */
   disabled?: boolean;
   /** Custom className for the menu container */
@@ -78,89 +75,101 @@ const STANDARD_ACTION_ORDER: CenteredContextMenuAction[] = [
 ];
 const RUBBISH_ACTION_ORDER: CenteredContextMenuAction[] = ["restore", "deletePermanently"];
 
-export function CenteredContextMenu({
+export const CenteredContextMenu = React.forwardRef<
+  { open: (event?: PointerEvent | React.MouseEvent) => void },
+  CenteredContextMenuProps
+>(({
   onAction,
   actions = ["edit", "delete"],
   children,
-  triggerButton,
   disabled = false,
   menuClassName,
-}: CenteredContextMenuProps) {
+}, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [itemRect, setItemRect] = useState<DOMRect | null>(null);
   const itemRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
-  // Calculate menu position (centered horizontally, below preview)
-  const menuPosition = useMemo(() => {
-    if (!itemRect) return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
-
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const menuHeight = 200; // Approximate menu height
-    const previewHeight = itemRect.height * 0.94; // Scaled preview height
-    const spacing = 16; // Space between preview and menu
-
-    // Center horizontally
-    const left = viewportWidth / 2;
-    
-    // Position menu below preview, centered vertically in remaining space
-    const previewTop = viewportHeight / 2 - previewHeight / 2 - menuHeight / 2 - spacing / 2;
-    const menuTop = previewTop + previewHeight + spacing;
-
-    return {
-      top: `${menuTop}px`,
-      left: `${left}px`,
-      transform: "translateX(-50%)",
-    };
-  }, [itemRect]);
-
-  // Calculate preview position (centered, lifted up)
-  const previewPosition = useMemo(() => {
-    if (!itemRect) return { top: "50%", left: "50%", transform: "translate(-50%, -50%) scale(0.94)" };
+  // Calculate preview position (centered, above menu) - INSTANT positioning
+  const previewStyle = useMemo(() => {
+    if (!itemRect) return null;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const menuHeight = 200; // Approximate menu height
     const spacing = 16;
+    const scale = 0.94;
 
     // Center horizontally
     const left = viewportWidth / 2;
     
     // Center preview above menu
-    const previewHeight = itemRect.height * 0.94;
+    const previewHeight = itemRect.height * scale;
     const totalHeight = previewHeight + spacing + menuHeight;
     const top = viewportHeight / 2 - totalHeight / 2;
 
     return {
+      position: "fixed" as const,
       top: `${top}px`,
       left: `${left}px`,
+      width: `${itemRect.width}px`,
+      height: `${itemRect.height}px`,
       transform: "translateX(-50%) scale(0.94)",
+      transformOrigin: "center center",
+      zIndex: 1001,
+      pointerEvents: "none" as const,
     };
   }, [itemRect]);
 
-  const openMenu = useCallback((event?: Event | React.SyntheticEvent) => {
+  // Calculate menu position (centered horizontally, below preview)
+  const menuStyle = useMemo(() => {
+    if (!itemRect) return null;
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const menuHeight = 200;
+    const previewHeight = itemRect.height * 0.94;
+    const spacing = 16;
+
+    // Center horizontally
+    const left = viewportWidth / 2;
+    
+    // Position menu below preview
+    const previewTop = viewportHeight / 2 - previewHeight / 2 - menuHeight / 2 - spacing / 2;
+    const menuTop = previewTop + previewHeight + spacing;
+
+    return {
+      position: "fixed" as const,
+      top: `${menuTop}px`,
+      left: `${left}px`,
+      transform: "translateX(-50%)",
+      zIndex: 1002,
+      maxWidth: "280px",
+      width: "auto",
+    };
+  }, [itemRect]);
+
+  const openMenu = useCallback((event?: PointerEvent | React.MouseEvent) => {
     if (disabled) return;
 
-    // Find the item element - look for parent card/item
+    // Find the item element
     const findItemElement = (): HTMLElement | null => {
       // If we have an event, use it to find the element
       if (event) {
         const target = (event.target as HTMLElement) || (event.currentTarget as HTMLElement);
         if (target) {
-          // Look for parent card/item - try multiple selectors
-          // Card component uses data-slot="card", so check for that first
+          // Look for parent card/item
           const parent = target.closest(
             '[data-slot="card"], .card, [data-item], li, .item-card, [class*="Card"], [role="article"], article'
           );
           if (parent) return parent as HTMLElement;
           
-          // Also try going up a few levels to find a card-like element
+          // Try going up a few levels
           let current: HTMLElement | null = target.parentElement;
           let depth = 0;
           while (current && depth < 5) {
-            // Check if this element looks like a card (has padding, border, etc.)
             if (
               current.getAttribute('data-slot') === 'card' ||
               current.classList.contains('card') ||
@@ -174,7 +183,6 @@ export function CenteredContextMenu({
               styles.boxShadow !== 'none' ||
               styles.padding !== '0px'
             ) {
-              // This might be a card-like container
               return current;
             }
             current = current.parentElement;
@@ -192,15 +200,6 @@ export function CenteredContextMenu({
         return itemRef.current;
       }
       
-      // Last resort: try active element
-      const activeElement = document.activeElement as HTMLElement;
-      if (activeElement) {
-        const parent = activeElement.closest(
-          '[data-slot="card"], .card, [data-item], li, .item-card, [class*="Card"], [role="article"], article'
-        );
-        if (parent) return parent as HTMLElement;
-      }
-      
       return null;
     };
 
@@ -210,11 +209,6 @@ export function CenteredContextMenu({
       const rect = element.getBoundingClientRect();
       setItemRect(rect);
       setIsOpen(true);
-    } else {
-      console.warn('CenteredContextMenu: Could not find parent item element', {
-        itemRef: itemRef.current,
-        event,
-      });
     }
   }, [disabled]);
 
@@ -224,8 +218,18 @@ export function CenteredContextMenu({
     setTimeout(() => {
       setItemRect(null);
       itemRef.current = null;
-    }, 300);
+    }, 220);
   }, []);
+
+  // Expose open method via ref
+  React.useImperativeHandle(ref, () => ({
+    open: openMenu,
+  }));
+
+  // Expose open method via ref
+  React.useImperativeHandle(ref, () => ({
+    open: openMenu,
+  }));
 
   const handleAction = useCallback(
     (action: CenteredContextMenuAction) => {
@@ -235,14 +239,24 @@ export function CenteredContextMenu({
     [onAction, closeMenu]
   );
 
-  // Long-press handler
+  // Long-press handler (mobile)
   const { longPressHandlers } = useLongPress({
     onLongPress: (event) => {
       openMenu(event);
     },
-    duration: 450,
+    duration: 550,
     hapticFeedback: true,
   });
+
+  // Right-click handler (desktop)
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openMenu(e.nativeEvent);
+    },
+    [openMenu]
+  );
 
   // Close on escape key
   useEffect(() => {
@@ -267,6 +281,8 @@ export function CenteredContextMenu({
       if (
         menuRef.current &&
         !menuRef.current.contains(target) &&
+        previewRef.current &&
+        !previewRef.current.contains(target) &&
         wrapperRef.current &&
         !wrapperRef.current.contains(target)
       ) {
@@ -363,135 +379,112 @@ export function CenteredContextMenu({
         ref={wrapperRef}
         style={{
           opacity: isOpen ? 0 : 1,
-          transition: "opacity 200ms ease-out",
+          transition: "opacity 180ms ease-out",
         }}
-        {...(!isOpen ? longPressHandlers : {})}
+        onContextMenu={handleContextMenu}
+        {...(!isOpen && !disabled ? longPressHandlers : {})}
       >
         <div ref={itemRef}>{children}</div>
       </div>
 
-      {triggerButton && (
-        <div
-          data-trigger-button
-          onClick={(e) => {
-            e.stopPropagation();
-            openMenu(e.nativeEvent);
-          }}
-          {...(!isOpen ? longPressHandlers : {})}
-        >
-          {React.isValidElement(triggerButton)
-            ? React.cloneElement(triggerButton as React.ReactElement, {
-                onClick: (e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  openMenu(e.nativeEvent);
-                },
-              })
-            : triggerButton}
-        </div>
-      )}
-
       {/* Render menu in portal when open */}
       {isOpen &&
         itemRect &&
+        itemRef.current &&
+        previewStyle &&
+        menuStyle &&
         createPortal(
           <>
-            {/* Background overlay with blur */}
+            {/* Background overlay with blur - z-index 1000 */}
             <div
-              className="fixed inset-0 z-[100] backdrop-blur-md bg-black/20"
+              className="fixed inset-0 backdrop-blur-md bg-black/20"
               onClick={closeMenu}
               style={{
-                animation: "fadeIn 200ms ease-out",
+                zIndex: 1000,
+                animation: "fadeIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               }}
             />
 
-            {/* Floating item preview */}
-            {itemRef.current && (
-              <div
-                className="fixed z-[101] pointer-events-none"
-                style={{
-                  ...previewPosition,
-                  width: `${itemRect.width}px`,
-                  height: `${itemRect.height}px`,
-                  animation: "itemLift 300ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-                }}
-              >
-                <div
-                  className="w-full h-full"
-                  style={{
-                    transform: "scale(0.94)",
-                    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)",
-                    borderRadius: "inherit",
-                    overflow: "hidden",
-                  }}
-                  dangerouslySetInnerHTML={{
-                    __html: itemRef.current.outerHTML,
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Centered menu */}
+            {/* Floating item preview - z-index 1001, appears instantly at final position */}
             <div
-              ref={menuRef}
-              className={cn("fixed z-[102] glass-context-menu", menuClassName)}
+              ref={previewRef}
               style={{
-                ...menuPosition,
-                animation: "menuSlideUp 300ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-                maxWidth: "280px",
-                width: "auto",
+                ...previewStyle,
+                animation: "previewAppear 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               }}
             >
-        {groupedActions.primary.length === 0 &&
-        groupedActions.mode.length === 0 &&
-        groupedActions.lifecycle.length === 0 &&
-        groupedActions.destructive.length === 0 &&
-        groupedActions.rubbish.length === 0 ? (
-          <div className="glass-menu-item text-muted-foreground text-xs uppercase">
-            No actions available
-          </div>
-        ) : (
-          <>
-            {/* Primary: Edit, Duplicate */}
-            {groupedActions.primary.length > 0 && (
-              <div className="menu-group">
-                {groupedActions.primary.map(renderActionItem)}
-              </div>
-            )}
+              <div
+                className="w-full h-full"
+                style={{
+                  boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)",
+                  borderRadius: "inherit",
+                  overflow: "hidden",
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: itemRef.current.outerHTML,
+                }}
+              />
+            </div>
 
-            {/* Mode: Select */}
-            {groupedActions.mode.length > 0 && (
-              <div className="menu-group">
-                {groupedActions.mode.map(renderActionItem)}
-              </div>
-            )}
+            {/* Centered menu - z-index 1002 */}
+            <div
+              ref={menuRef}
+              className={cn("glass-context-menu", menuClassName)}
+              style={{
+                ...menuStyle,
+                animation: "menuSlideUp 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              }}
+            >
+              {groupedActions.primary.length === 0 &&
+              groupedActions.mode.length === 0 &&
+              groupedActions.lifecycle.length === 0 &&
+              groupedActions.destructive.length === 0 &&
+              groupedActions.rubbish.length === 0 ? (
+                <div className="glass-menu-item text-muted-foreground text-xs uppercase">
+                  No actions available
+                </div>
+              ) : (
+                <>
+                  {/* Primary: Edit, Duplicate */}
+                  {groupedActions.primary.length > 0 && (
+                    <div className="menu-group">
+                      {groupedActions.primary.map(renderActionItem)}
+                    </div>
+                  )}
 
-            {/* Lifecycle: Archive */}
-            {groupedActions.lifecycle.length > 0 && (
-              <div className="menu-group">
-                {groupedActions.lifecycle.map(renderActionItem)}
-              </div>
-            )}
+                  {/* Mode: Select */}
+                  {groupedActions.mode.length > 0 && (
+                    <div className="menu-group">
+                      {groupedActions.mode.map(renderActionItem)}
+                    </div>
+                  )}
 
-            {/* Rubbish: Restore, Delete Permanently */}
-            {groupedActions.rubbish.length > 0 && (
-              <div className="menu-group">
-                {groupedActions.rubbish.map(renderActionItem)}
-              </div>
-            )}
+                  {/* Lifecycle: Archive */}
+                  {groupedActions.lifecycle.length > 0 && (
+                    <div className="menu-group">
+                      {groupedActions.lifecycle.map(renderActionItem)}
+                    </div>
+                  )}
 
-            {/* Destructive: Delete (isolated with extra spacing) */}
-            {groupedActions.destructive.length > 0 && (
-              <div className="menu-group destructive">
-                {groupedActions.destructive.map(renderActionItem)}
-              </div>
-            )}
-          </>
-            )}
-          </div>
+                  {/* Rubbish: Restore, Delete Permanently */}
+                  {groupedActions.rubbish.length > 0 && (
+                    <div className="menu-group">
+                      {groupedActions.rubbish.map(renderActionItem)}
+                    </div>
+                  )}
+
+                  {/* Destructive: Delete (isolated with extra spacing) */}
+                  {groupedActions.destructive.length > 0 && (
+                    <div className="menu-group destructive">
+                      {groupedActions.destructive.map(renderActionItem)}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </>,
           document.body
         )}
     </>
   );
 }
-
