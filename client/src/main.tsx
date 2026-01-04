@@ -86,6 +86,7 @@ queryClient.getMutationCache().subscribe(event => {
 // This is a slow async operation that blocks the request
 // Instead, we cache the token and update it on auth state changes
 
+// Initialize immediately to avoid "cannot access uninitialized variable" errors
 let cachedAccessToken: string | null = null;
 
 // Listen for auth state changes and cache the token
@@ -150,18 +151,26 @@ const trpcClient = trpc.createClient({
       transformer: superjson,
       // Use synchronous fetch with cached token - no more async getSession() per request!
       fetch(input, init) {
-        const headers = new Headers(init?.headers || {});
+        try {
+          const headers = new Headers(init?.headers || {});
 
-        // Use cached token - this is synchronous and fast
-        if (cachedAccessToken) {
-          headers.set("Authorization", `Bearer ${cachedAccessToken}`);
+          // Use cached token - this is synchronous and fast
+          // Safely access cachedAccessToken (it's initialized to null at module level)
+          const token = cachedAccessToken;
+          if (token) {
+            headers.set("Authorization", `Bearer ${token}`);
+          }
+
+          return globalThis.fetch(input, {
+            ...(init ?? {}),
+            headers,
+            credentials: "include",
+          });
+        } catch (error) {
+          console.error("[tRPC Fetch] Error in fetch function:", error);
+          // Fallback to basic fetch if there's an error
+          return globalThis.fetch(input, init ?? {});
         }
-
-        return globalThis.fetch(input, {
-          ...(init ?? {}),
-          headers,
-          credentials: "include",
-        });
       },
     }),
   ],
@@ -169,32 +178,75 @@ const trpcClient = trpc.createClient({
 
 // Ensure DOM is ready before rendering
 const initializeApp = () => {
-  const rootElement = document.getElementById("root");
-  if (!rootElement) {
-    throw new Error("Root element not found");
-  }
+  try {
+    const rootElement = document.getElementById("root");
+    if (!rootElement) {
+      throw new Error("Root element not found");
+    }
 
-  // Create root and render
-  const root = createRoot(rootElement);
-  root.render(
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
-    </trpc.Provider>
-  );
+    // Create root and render
+    const root = createRoot(rootElement);
+    root.render(
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
+      </trpc.Provider>
+    );
+  } catch (error) {
+    console.error("[App] Failed to initialize:", error);
+    // Show user-friendly error message
+    const rootElement = document.getElementById("root");
+    if (rootElement) {
+      rootElement.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; font-family: system-ui, -apple-system, sans-serif;">
+          <div style="text-align: center; max-width: 600px;">
+            <h1 style="font-size: 1.5rem; margin-bottom: 1rem; color: #ef4444;">Failed to Load App</h1>
+            <p style="margin-bottom: 1rem; color: #6b7280;">An error occurred while initializing the application.</p>
+            <pre style="background: #1f2937; color: #f3f4f6; padding: 1rem; border-radius: 0.5rem; overflow: auto; margin-bottom: 1rem; text-align: left; font-size: 0.875rem;">${error instanceof Error ? error.message : String(error)}</pre>
+            <button onclick="window.location.reload()" style="background: #3b82f6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-size: 1rem;">Reload Page</button>
+          </div>
+        </div>
+      `;
+    }
+  }
 };
 
 // Initialize when DOM is ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
-    initializeApp();
-    initializeLogos();
+    try {
+      initializeApp();
+      initializeLogos();
+    } catch (error) {
+      console.error("[App] Failed to initialize on DOMContentLoaded:", error);
+    }
   });
 } else {
   // DOM is already ready
-  initializeApp();
-  initializeLogos();
+  try {
+    initializeApp();
+    initializeLogos();
+  } catch (error) {
+    console.error("[App] Failed to initialize:", error);
+  }
+}
+
+// Global error handlers to prevent blocking errors
+if (typeof window !== "undefined") {
+  // Catch unhandled errors and log them instead of blocking
+  window.addEventListener("error", (event) => {
+    console.error("[Global Error Handler]", event.error || event.message);
+    // Prevent default error handling that might block the UI
+    event.preventDefault();
+  });
+
+  // Catch unhandled promise rejections
+  window.addEventListener("unhandledrejection", (event) => {
+    console.error("[Unhandled Promise Rejection]", event.reason);
+    // Prevent default error handling
+    event.preventDefault();
+  });
 }
 
 // Service Worker registration

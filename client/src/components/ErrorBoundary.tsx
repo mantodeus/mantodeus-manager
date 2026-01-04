@@ -47,23 +47,37 @@ class ErrorBoundary extends Component<Props, State> {
               </div>
             )}
 
-            <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
+            <div className="p-4 w-full rounded bg-muted overflow-auto mb-6 max-h-64">
               <pre className="text-sm text-muted-foreground whitespace-break-spaces">
                 {this.state.error?.stack}
               </pre>
             </div>
 
-            <button
-              onClick={() => window.location.reload()}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg",
-                "bg-primary text-primary-foreground",
-                "hover:opacity-90 cursor-pointer"
-              )}
-            >
-              <RotateCcw size={16} />
-              Reload Page
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false, error: null });
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg",
+                  "bg-muted text-muted-foreground",
+                  "hover:bg-muted/80 cursor-pointer border border-border"
+                )}
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg",
+                  "bg-primary text-primary-foreground",
+                  "hover:opacity-90 cursor-pointer"
+                )}
+              >
+                <RotateCcw size={16} />
+                Reload Page
+              </button>
+            </div>
           </div>
         </div>
       );
