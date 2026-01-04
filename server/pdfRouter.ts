@@ -286,13 +286,79 @@ export const pdfRouter = router({
         });
       } else if (input.documentType === 'invoice') {
         const invoice = await db.getInvoiceById(input.referenceId);
-        if (!invoice || !invoice.fileKey) {
+        if (!invoice) {
           throw new TRPCError({
             code: "NOT_FOUND",
-            message: "Invoice not found or has no file",
+            message: "Invoice not found",
           });
         }
-        s3Key = invoice.fileKey;
+
+        // Validate: dueDate and totalAmount > 0 required before sending
+        if (!invoice.dueDate) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invoice must have a due date before it can be sent",
+          });
+        }
+        const total = Number(invoice.total || 0);
+        if (total <= 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invoice total must be greater than 0",
+          });
+        }
+
+        // Always regenerate PDF with latest invoice data (per spec)
+        const companySettings = await db.getCompanySettingsByUserId(ctx.user.id);
+        if (!companySettings) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Company settings not found. Please configure your company settings first.",
+          });
+        }
+
+        // Get client contact if linked
+        let client = null;
+        if (invoice.contactId || invoice.clientId) {
+          const contact = await db.getContactById(invoice.contactId || invoice.clientId);
+          if (contact) {
+            client = {
+              name: contact.name,
+              address: contact.address,
+            };
+          }
+        }
+
+        const items = (invoice.items as Array<any> || []).map((item: any) => ({
+          description: item.name || item.description || "",
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+          total: Number(item.lineTotal ?? item.total ?? 0),
+        }));
+
+        // Generate PDF with latest data
+        const html = generateInvoiceHTML({
+          invoiceNumber: invoice.invoiceNumber || "DRAFT",
+          invoiceDate: invoice.issueDate || new Date(),
+          dueDate: invoice.dueDate || new Date(),
+          company: companySettings,
+          client,
+          items,
+          subtotal: Number(invoice.subtotal ?? 0),
+          vatAmount: Number(invoice.vatAmount ?? 0),
+          total: Number(invoice.total ?? 0),
+          notes: invoice.notes || undefined,
+          logoUrl: "",
+        });
+
+        const pdfBuffer = await renderPDF(html);
+
+        // Upload new PDF to S3
+        const timestamp = Date.now();
+        const fileKey = generateFileKey('pdfs', ctx.user.id, `invoice-${invoice.invoiceNumber || invoice.id}-${timestamp}.pdf`);
+        await storagePut(fileKey, pdfBuffer, 'application/pdf');
+
+        s3Key = fileKey;
       } else {
         throw new TRPCError({
           code: "NOT_IMPLEMENTED",
@@ -310,25 +376,51 @@ export const pdfRouter = router({
       // Create new share link
       const shareToken = nanoid(32);
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + (input.expiryHours || ENV.pdfExpiryDefaultHours));
+      // Default expiry: 30 days (720 hours) for invoices, or use provided expiryHours
+      const defaultExpiryHours = input.documentType === 'invoice' ? 720 : ENV.pdfExpiryDefaultHours;
+      expiresAt.setHours(expiresAt.getHours() + (input.expiryHours || defaultExpiryHours));
 
-      await db.createSharedDocument({
-        documentType: input.documentType,
-        referenceId: input.referenceId,
-        s3Key,
-        shareToken,
-        expiresAt,
-        createdBy: ctx.user.id,
-      });
+      try {
+        await db.createSharedDocument({
+          documentType: input.documentType,
+          referenceId: input.referenceId,
+          s3Key,
+          shareToken,
+          expiresAt,
+          createdBy: ctx.user.id,
+        });
 
-      const shareUrl = `${ENV.appUrl}/share/${shareToken}`;
+        // For invoices: Auto-set sentAt if null (only if share link creation succeeds)
+        if (input.documentType === 'invoice') {
+          const invoice = await db.getInvoiceById(input.referenceId);
+          if (invoice && !invoice.sentAt) {
+            // Update invoice with new PDF fileKey and set sentAt
+            await db.updateInvoice(input.referenceId, {
+              fileKey: s3Key,
+              pdfFileKey: s3Key,
+            });
+            await db.markInvoiceAsSent(input.referenceId);
+          } else if (invoice && invoice.sentAt) {
+            // Invoice already sent - just update fileKey with new PDF
+            await db.updateInvoice(input.referenceId, {
+              fileKey: s3Key,
+              pdfFileKey: s3Key,
+            });
+          }
+        }
 
-      return {
-        success: true,
-        shareUrl,
-        shareToken,
-        expiresAt,
-      };
+        const shareUrl = `${ENV.appUrl}/share/${shareToken}`;
+
+        return {
+          success: true,
+          shareUrl,
+          shareToken,
+          expiresAt,
+        };
+      } catch (error) {
+        // If share link creation fails, sentAt is NOT set (per spec)
+        throw error;
+      }
     }),
 
   /**

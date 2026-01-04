@@ -6,10 +6,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { trpc } from "@/lib/trpc";
-import { Eye, Loader2, PencilLine, Plus, X } from "@/components/ui/Icon";
+import { Eye, Loader2, PencilLine, Plus, X, Send, CheckCircle2, AlertCircle, Lock } from "@/components/ui/Icon";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { getInvoiceState, getDerivedValues, formatCurrency as formatCurrencyUtil } from "@/lib/invoiceState";
+import { AddPaymentDialog } from "./AddPaymentDialog";
+import { ShareInvoiceDialog } from "./ShareInvoiceDialog";
+import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
+import { useIsMobile } from "@/hooks/useMobile";
+import { cn } from "@/lib/utils";
 
 export type InvoiceLineItem = {
   name: string;
@@ -42,13 +49,8 @@ const defaultLineItem: InvoiceLineItem = {
   currency: "EUR",
 };
 
-function formatCurrency(amount: number | string) {
-  const num = typeof amount === "string" ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-  }).format(num || 0);
-}
+// Use formatCurrency from invoiceState utils
+const formatCurrency = formatCurrencyUtil;
 
 // Helper to normalize empty strings to undefined (required for Radix Select)
 function normalizeSelectValue(value: string | undefined | null): string | undefined {
@@ -170,15 +172,28 @@ export function InvoiceForm({
   });
 
   const invoice = getInvoiceQuery.data ?? null;
+  const isMobile = useIsMobile();
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
 
   if (!isCreate && !invoice) {
     return <div className="text-sm text-muted-foreground">Loading invoice...</div>;
   }
 
+  // Get invoice state using timestamp-based logic
+  const invoiceState = invoice ? getInvoiceState(invoice) : (isCreate ? 'DRAFT' : null);
+  const derivedValues = invoice ? getDerivedValues(invoice) : { outstanding: 0, isPaid: false, isPartial: false, isOverdue: false };
+
   const isLoading = createMutation.isPending || updateMutation.isPending;
   const isCancellation = invoice?.type === "cancellation";
   const isCancelledOriginal = Boolean(invoice?.isCancelled);
-  const isDraft = (isCreate || invoice?.status === "draft") && !isCancelledOriginal;
+  
+  // Use state-based logic instead of status field
+  const isDraft = invoiceState === 'DRAFT' || isCreate;
+  const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
+  const isPaid = invoiceState === 'PAID';
+  const isReadOnly = isSent || isPaid;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,8 +252,208 @@ export function InvoiceForm({
 
   const editingItem = itemEditor.index !== null ? items[itemEditor.index] : defaultLineItem;
 
+  // Mutations for lifecycle actions
+  const utils = trpc.useUtils();
+  const revertToDraftMutation = trpc.invoices.revertToDraft.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice reverted to draft");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      onSuccess?.();
+    },
+    onError: (error) => toast.error(error.message || "Failed to revert invoice"),
+  });
+  const revertToSentMutation = trpc.invoices.revertToSent.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice reverted to sent");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      onSuccess?.();
+    },
+    onError: (error) => toast.error(error.message || "Failed to revert invoice"),
+  });
+
+  const handleSend = () => {
+    if (!invoice) return;
+    // Validate before sending
+    if (!formState.dueDate) {
+      toast.error("Invoice must have a due date before it can be sent");
+      return;
+    }
+    const total = totals.total;
+    if (total <= 0) {
+      toast.error("Invoice total must be greater than 0");
+      return;
+    }
+    setShareDialogOpen(true);
+  };
+
+  const handleRevertToDraft = () => {
+    if (!invoiceId) return;
+    revertToDraftMutation.mutate({ id: invoiceId, confirmed: true });
+    setRevertDialogOpen(false);
+  };
+
+  const handleRevertToSent = () => {
+    if (!invoiceId) return;
+    revertToSentMutation.mutate({ id: invoiceId, confirmed: true });
+    setRevertDialogOpen(false);
+  };
+
+  // Header button logic
+  const getHeaderButtons = () => {
+    if (isCreate) return null;
+    
+    return (
+      <div className="flex items-center gap-2">
+        {/* Preview button - always visible */}
+        {onPreview && (
+          <Button
+            type="button"
+            variant="outline"
+            size={isMobile ? "sm" : "icon"}
+            onClick={onPreview}
+            disabled={isLoading}
+            className={cn(isMobile && "gap-2")}
+          >
+            <Eye className="h-4 w-4" />
+            {isMobile && "Preview"}
+          </Button>
+        )}
+        
+        {/* Lifecycle button - Send/Sent/Paid */}
+        {invoiceState === 'DRAFT' && (
+          <Button
+            type="button"
+            onClick={handleSend}
+            disabled={isLoading || !formState.dueDate || totals.total <= 0}
+            size={isMobile ? "sm" : "default"}
+            className={cn(isMobile && "gap-2")}
+          >
+            <Send className="h-4 w-4" />
+            {isMobile ? "Send" : "Send"}
+          </Button>
+        )}
+        {invoiceState === 'SENT' && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled
+            size={isMobile ? "sm" : "default"}
+            className={cn(isMobile && "gap-2")}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {isMobile ? "Sent" : "Sent"}
+          </Button>
+        )}
+        {invoiceState === 'PARTIAL' && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled
+            size={isMobile ? "sm" : "default"}
+            className={cn(isMobile && "gap-2")}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {isMobile ? "Sent" : "Sent"}
+          </Button>
+        )}
+        {invoiceState === 'PAID' && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled
+            size={isMobile ? "sm" : "default"}
+            className={cn(isMobile && "gap-2")}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {isMobile ? "Paid" : "Paid"}
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <form onSubmit={handleSave} className="space-y-8 w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="space-y-6 w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+      {/* Header with lifecycle buttons */}
+      {!isCreate && (
+        <div className="flex items-center justify-between gap-4 pb-4 border-b">
+          <div className="flex items-center gap-2">
+            {isReadOnly && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Lock className="h-4 w-4" />
+                <span>This invoice is locked because it has been sent.</span>
+              </div>
+            )}
+          </div>
+          {getHeaderButtons()}
+        </div>
+      )}
+
+      {/* Warning banners */}
+      {invoice && (
+        <>
+          {!invoice.sentAt && !invoice.needsReview && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                This invoice has not been sent yet.
+              </AlertDescription>
+            </Alert>
+          )}
+          {invoice.sentAt && !invoice.paidAt && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                This invoice has been sent but not paid yet.
+              </AlertDescription>
+            </Alert>
+          )}
+          {derivedValues.isOverdue && invoice.dueDate && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                This invoice is overdue by {Math.floor((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} day{Math.floor((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24)) !== 1 ? 's' : ''}.
+              </AlertDescription>
+            </Alert>
+          )}
+        </>
+      )}
+
+      {/* Payments section - only shown when sent */}
+      {invoice && isSent && (
+        <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Payments</h3>
+            {!isPaid && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPaymentDialogOpen(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Payment
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <div className="text-muted-foreground">Total</div>
+              <div className="font-semibold">{formatCurrency(invoice.total)}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Paid</div>
+              <div className="font-semibold">{formatCurrency(invoice.amountPaid || 0)}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Outstanding</div>
+              <div className="font-semibold">{formatCurrency(derivedValues.outstanding)}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <form id="invoice-form" onSubmit={handleSave} className="space-y-8">
       {isCancellation && (
         <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
           <div className="flex items-center gap-2">
@@ -277,7 +492,7 @@ export function InvoiceForm({
                 value={formState.invoiceNumber}
                 onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
                 placeholder="RE-2025-0007"
-                disabled={!isDraft}
+                disabled={isReadOnly}
               />
               <p className="text-xs text-muted-foreground">
                 Invoice numbers must be unique and sequential (German tax requirement).
@@ -294,7 +509,7 @@ export function InvoiceForm({
                     clientId: normalized === undefined || val === "none" ? undefined : normalized,
                   }));
                 }}
-                disabled={!isDraft}
+                disabled={isReadOnly}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a client" />
@@ -317,7 +532,7 @@ export function InvoiceForm({
                 type="date"
                 value={formState.issueDate}
                 onChange={(e) => setFormState((prev) => ({ ...prev, issueDate: e.target.value }))}
-                disabled={!isDraft}
+                disabled={isReadOnly}
               />
             </div>
             <div className="space-y-2">
@@ -328,7 +543,7 @@ export function InvoiceForm({
                 onChange={(e) =>
                   setFormState((prev) => ({ ...prev, dueDate: e.target.value || undefined }))
                 }
-                disabled={!isDraft}
+                disabled={isReadOnly}
               />
             </div>
             <div className="space-y-2">
@@ -337,7 +552,7 @@ export function InvoiceForm({
                 value={formState.referenceNumber ?? ""}
                 onChange={(e) => setFormState((prev) => ({ ...prev, referenceNumber: e.target.value }))}
                 placeholder="Optional reference"
-                disabled={!isDraft}
+                disabled={isReadOnly}
               />
             </div>
           </div>
@@ -354,7 +569,7 @@ export function InvoiceForm({
                 onChange={(e) =>
                   setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
                 }
-                disabled={!isDraft}
+                disabled={isReadOnly}
                 className="w-full"
               />
               <span className="text-muted-foreground text-sm">→</span>
@@ -364,7 +579,7 @@ export function InvoiceForm({
                 onChange={(e) =>
                   setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
                 }
-                disabled={!isDraft}
+                disabled={isReadOnly}
                 className="w-full"
               />
             </div>
@@ -389,7 +604,7 @@ export function InvoiceForm({
             <Label>Line Items</Label>
             <p className="text-xs text-muted-foreground">Add services or products via the dedicated modal.</p>
           </div>
-          {isDraft && (
+          {!isReadOnly && (
             <Button type="button" variant="outline" onClick={() => openItemEditor(null)} className="gap-2">
               <Plus className="w-4 h-4" />
               Add Line Item
@@ -436,7 +651,7 @@ export function InvoiceForm({
                 {formatCurrency(item.quantity * item.unitPrice)}
               </div>
               <div className="lg:col-span-1 mt-2 flex justify-end gap-1 lg:mt-0">
-                {isDraft && (
+                {!isReadOnly && (
                   <>
                     <Button variant="ghost" size="icon" onClick={() => openItemEditor(index)}>
                       <PencilLine className="w-4 h-4" />
@@ -482,29 +697,99 @@ export function InvoiceForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
+      </form>
+
+      {/* Footer buttons */}
+      <div className="flex flex-col gap-2 pt-4 border-t">
         <div className="flex gap-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={onClose} disabled={isLoading}>
+          <Button 
+            type="button" 
+            variant="destructive" 
+            className="flex-1" 
+            onClick={onClose} 
+            disabled={isLoading}
+          >
             Cancel
           </Button>
-          <Button type="submit" className="flex-1" disabled={isLoading || !isDraft}>
-            {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            {isCreate ? "Save" : "Save"}
-          </Button>
+          {!isReadOnly && (
+            <Button 
+              type="submit" 
+              form="invoice-form" 
+              className="flex-1" 
+              disabled={isLoading}
+            >
+              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {isCreate ? "Save" : "Update"}
+            </Button>
+          )}
         </div>
-        {showPreview && onPreview && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onPreview}
-            disabled={isLoading}
-            className="w-full"
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Preview
-          </Button>
+        
+        {/* Revert buttons - only in footer */}
+        {invoice && !isCreate && (
+          <>
+            {invoiceState === 'SENT' && Number(invoice.amountPaid || 0) === 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRevertDialogOpen(true)}
+                disabled={isLoading || revertToDraftMutation.isPending}
+                className="w-full"
+              >
+                {revertToDraftMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Not Sent
+              </Button>
+            )}
+            {invoiceState === 'PAID' && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRevertDialogOpen(true)}
+                disabled={isLoading || revertToSentMutation.isPending}
+                className="w-full"
+              >
+                {revertToSentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Not Paid
+              </Button>
+            )}
+          </>
         )}
       </div>
+
+      {/* Dialogs */}
+      {invoiceId && (
+        <>
+          <ShareInvoiceDialog
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+            invoiceId={invoiceId}
+            onSuccess={() => {
+              utils.invoices.get.invalidate({ id: invoiceId });
+              onSuccess?.();
+            }}
+          />
+          <AddPaymentDialog
+            open={paymentDialogOpen}
+            onOpenChange={setPaymentDialogOpen}
+            invoiceId={invoiceId}
+            outstanding={derivedValues.outstanding}
+            onSuccess={() => {
+              utils.invoices.get.invalidate({ id: invoiceId });
+              onSuccess?.();
+            }}
+          />
+          <RevertInvoiceStatusDialog
+            open={revertDialogOpen}
+            onOpenChange={setRevertDialogOpen}
+            currentStatus={invoiceState === 'PAID' ? 'paid' : 'open'}
+            targetStatus={invoiceState === 'PAID' ? 'open' : 'draft'}
+            invoiceNumber={invoice.invoiceNumber}
+            invoiceAmount={invoice.total}
+            onConfirm={invoiceState === 'PAID' ? handleRevertToSent : handleRevertToDraft}
+            isReverting={revertToDraftMutation.isPending || revertToSentMutation.isPending}
+          />
+        </>
+      )}
+    </div>
 
       <LineItemModal
         open={itemEditor.open}
@@ -512,9 +797,6 @@ export function InvoiceForm({
         item={editingItem}
         onSave={handleSaveItem}
       />
-    </form>
-  );
-}
 
 function LineItemModal({
   open,

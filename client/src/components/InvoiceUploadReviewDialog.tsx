@@ -2,7 +2,8 @@
  * Invoice Upload Review Dialog
  * 
  * Dialog for reviewing and confirming uploaded PDF invoice data.
- * User must confirm extracted data before invoice appears in list.
+ * Per spec: Review state has only Preview button in header, Save/Cancel in footer.
+ * No lifecycle actions allowed in review state.
  */
 
 import { useState, useEffect } from "react";
@@ -10,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -23,6 +23,9 @@ import { Loader2, FileText, Eye } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
+import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "@/components/ui/Icon";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -56,7 +59,6 @@ export function InvoiceUploadReviewDialog({
     { enabled: !!invoiceId }
   );
 
-
   const handlePreviewPDF = async () => {
     if (!invoiceId || !invoice) return;
     
@@ -64,12 +66,11 @@ export function InvoiceUploadReviewDialog({
     if (invoice.source === "uploaded" && invoice.originalPdfS3Key) {
       const fileName = invoice.invoiceName || invoice.originalFileName || invoice.invoiceNumber || "invoice.pdf";
       const fileUrl = `/api/file-proxy?key=${encodeURIComponent(invoice.originalPdfS3Key)}&filename=${encodeURIComponent(fileName)}`;
-      // Open in new tab - browser will show native preview with URL bar, close, and share options
       window.open(fileUrl, '_blank');
       return;
     }
     
-    // For created invoices, generate PDF and open in new tab (native browser preview)
+    // For created invoices, generate PDF and open in new tab
     try {
       const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
       if (!session?.access_token) {
@@ -89,7 +90,6 @@ export function InvoiceUploadReviewDialog({
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      // Open in new tab - browser will show native preview with URL bar, close, and share options
       window.open(url, '_blank');
     } catch (error) {
       console.error('Preview error:', error);
@@ -102,7 +102,6 @@ export function InvoiceUploadReviewDialog({
     onSuccess: () => {
       toast.success("Invoice saved");
       onOpenChange(false);
-      // Invalidate and refetch invoice list
       utils.invoices.list.invalidate();
       utils.invoices.listNeedsReview.invalidate();
       onSuccess?.();
@@ -115,7 +114,6 @@ export function InvoiceUploadReviewDialog({
     onSuccess: () => {
       toast.success("Invoice updated");
       onOpenChange(false);
-      // Invalidate and refetch invoice list
       utils.invoices.list.invalidate();
       utils.invoices.listNeedsReview.invalidate();
       onSuccess?.();
@@ -154,7 +152,6 @@ export function InvoiceUploadReviewDialog({
           ? new Date(invoice.issueDate).toISOString().split("T")[0]
           : ""
       );
-      // Ensure totalAmount is always a string
       setTotalAmount(invoice.total ? String(invoice.total) : "");
       setClientId(invoice.clientId?.toString() || "none");
     }
@@ -180,6 +177,10 @@ export function InvoiceUploadReviewDialog({
     new Date(issueDate).toString() !== "Invalid Date"
   );
 
+  // Get invoice state
+  const invoiceState = invoice ? getInvoiceState(invoice) : null;
+  const isReview = invoiceState === 'REVIEW';
+
   const handleSave = async () => {
     if (!invoiceId || !invoice) return;
 
@@ -202,16 +203,15 @@ export function InvoiceUploadReviewDialog({
         clientId: clientId !== "none" ? parseInt(clientId, 10) : null,
         invoiceNumber: invoiceNumber || undefined,
         issueDate: new Date(issueDate),
-        totalAmount: String(totalAmount), // Ensure it's always a string
+        totalAmount: String(totalAmount),
       });
     } else {
-      // For already-confirmed uploaded invoices, use update mutation with totalAmount
       await updateMutation.mutateAsync({
         id: invoiceId,
         invoiceNumber: invoiceNumber || invoice.invoiceNumber,
         clientId: clientId !== "none" ? parseInt(clientId, 10) : undefined,
         issueDate: new Date(issueDate),
-        totalAmount: String(totalAmount), // Allow updating total for uploaded invoices
+        totalAmount: String(totalAmount),
       });
     }
   };
@@ -233,6 +233,8 @@ export function InvoiceUploadReviewDialog({
     await cancelMutation.mutateAsync({ id: invoiceId });
   };
 
+  const isLoading = confirmMutation.isPending || updateMutation.isPending || cancelMutation.isPending;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
@@ -240,31 +242,54 @@ export function InvoiceUploadReviewDialog({
         isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
       )}>
         <DialogHeader className={cn("flex-shrink-0", isMobile && "px-0")}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              {invoice?.needsReview ? "Review Invoice" : "Edit Invoice"}
+              {isReview ? "Review Invoice" : "Edit Invoice"}
             </DialogTitle>
-            {!isMobile && (
-              <Button variant="outline" size="icon" onClick={handlePreviewPDF}>
-                <Eye className="h-4 w-4" />
-              </Button>
-            )}
+            {/* Header: Preview button (only lifecycle action in review) */}
+            <Button 
+              variant="outline" 
+              size={isMobile ? "sm" : "icon"}
+              onClick={handlePreviewPDF}
+              disabled={isLoading}
+              className={cn(isMobile && "gap-2")}
+            >
+              <Eye className="h-4 w-4" />
+              {isMobile && "Preview"}
+            </Button>
           </div>
-          <DialogDescription>
-            {invoice?.needsReview 
-              ? "We've extracted these details from the PDF. Please review and confirm before saving."
-              : "Edit invoice metadata. The PDF document cannot be modified."}
-          </DialogDescription>
         </DialogHeader>
 
         <div className={cn(
           "space-y-4 py-4",
           isMobile && "overflow-y-auto min-h-0 pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
         )}>
+          {/* Warning banners */}
+          {invoice && !isReview && (
+            <>
+              {!invoice.sentAt && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    This invoice has not been sent yet.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {invoice.sentAt && !invoice.paidAt && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    This invoice has been sent but not paid yet.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="client">Client</Label>
-            <Select value={clientId} onValueChange={setClientId}>
+            <Select value={clientId} onValueChange={setClientId} disabled={!isReview}>
               <SelectTrigger id="client">
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
@@ -286,6 +311,7 @@ export function InvoiceUploadReviewDialog({
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
               placeholder="Auto-generated if empty"
+              disabled={!isReview}
             />
           </div>
 
@@ -297,6 +323,7 @@ export function InvoiceUploadReviewDialog({
               value={issueDate}
               onChange={(e) => setIssueDate(e.target.value)}
               required
+              disabled={!isReview}
             />
           </div>
 
@@ -311,41 +338,32 @@ export function InvoiceUploadReviewDialog({
               onChange={(e) => setTotalAmount(e.target.value)}
               placeholder="0.00"
               required
+              disabled={!isReview}
             />
           </div>
         </div>
 
+        {/* Footer: Save and Cancel only (per spec) */}
         <DialogFooter className={cn(
           isMobile ? "flex-col gap-2 flex-shrink-0" : ""
         )}>
           <div className={isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"}>
             <Button 
               onClick={handleSave} 
-              disabled={(confirmMutation.isPending || updateMutation.isPending || cancelMutation.isPending) || !isFormValid}
+              disabled={isLoading || !isFormValid}
               className={isMobile ? "w-full" : ""}
             >
               {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {invoice?.needsReview ? "Save" : "Update"}
+              {isReview ? "Save" : "Update"}
             </Button>
-            {isMobile && (
-              <Button
-                variant="outline"
-                onClick={handlePreviewPDF}
-                disabled={confirmMutation.isPending || updateMutation.isPending || cancelMutation.isPending}
-                className="w-full"
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
-            )}
             <Button 
-              variant="outline" 
+              variant="destructive" 
               onClick={handleCancel} 
-              disabled={confirmMutation.isPending || updateMutation.isPending || cancelMutation.isPending}
+              disabled={isLoading}
               className={isMobile ? "w-full" : ""}
             >
               {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {invoice?.needsReview ? "Cancel" : "Close"}
+              Cancel
             </Button>
           </div>
         </DialogFooter>
@@ -353,4 +371,3 @@ export function InvoiceUploadReviewDialog({
     </Dialog>
   );
 }
-

@@ -96,6 +96,55 @@ function checkInvoiceNeedsReview(invoice: Awaited<ReturnType<typeof db.getInvoic
   }
 }
 
+/**
+ * Get invoice state based on timestamps + needsReview (NOT status field)
+ * This is the single source of truth for UI state logic
+ */
+function getInvoiceState(invoice: {
+  needsReview: boolean;
+  sentAt: Date | null;
+  paidAt: Date | null;
+  amountPaid: number | string | null;
+}) {
+  if (invoice.needsReview) return 'REVIEW';
+  if (!invoice.sentAt) return 'DRAFT';
+  if (invoice.paidAt) return 'PAID';
+  const amountPaid = Number(invoice.amountPaid || 0);
+  if (amountPaid > 0) return 'PARTIAL';
+  return 'SENT';
+}
+
+/**
+ * Get derived values for invoice (never stored)
+ */
+function getDerivedValues(invoice: {
+  total: number | string;
+  amountPaid: number | string | null;
+  sentAt: Date | null;
+  paidAt: Date | null;
+  dueDate: Date | null;
+}) {
+  const total = Number(invoice.total || 0);
+  const amountPaid = Number(invoice.amountPaid || 0);
+  const outstanding = Math.max(0, total - amountPaid);
+  const isPaid = outstanding <= 0;
+  const isPartial = amountPaid > 0 && outstanding > 0;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = invoice.dueDate ? new Date(invoice.dueDate) : null;
+  if (dueDate) dueDate.setHours(0, 0, 0, 0);
+  
+  const isOverdue = invoice.sentAt !== null && !isPaid && dueDate !== null && dueDate < today;
+  
+  return {
+    outstanding,
+    isPaid,
+    isPartial,
+    isOverdue,
+  };
+}
+
 function mapInvoiceToPayload(invoice: Awaited<ReturnType<typeof db.getInvoiceById>>) {
   if (!invoice) {
     return invoice;
@@ -108,12 +157,24 @@ function mapInvoiceToPayload(invoice: Awaited<ReturnType<typeof db.getInvoiceByI
     lineTotal: Number(item.lineTotal),
   }));
   
+  const amountPaid = Number(invoice.amountPaid || 0);
+  
   return {
     ...invoice,
     items,
     subtotal: Number(invoice.subtotal),
     vatAmount: Number(invoice.vatAmount),
     total: Number(invoice.total),
+    amountPaid,
+    // Add derived values
+    state: getInvoiceState(invoice),
+    ...getDerivedValues({
+      total: invoice.total,
+      amountPaid: invoice.amountPaid,
+      sentAt: invoice.sentAt,
+      paidAt: invoice.paidAt,
+      dueDate: invoice.dueDate,
+    }),
   };
 }
 
@@ -603,6 +664,135 @@ export const invoiceRouter = router({
       checkInvoiceNeedsReview(invoice, "reverted");
 
       await db.revertInvoiceStatus(invoice.id, input.targetStatus);
+      const updated = await db.getInvoiceById(invoice.id);
+      return mapInvoiceToPayload(updated);
+    }),
+
+  markAsSent: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      if (invoice.sentAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice has already been sent" });
+      }
+      checkInvoiceNeedsReview(invoice, "sent");
+
+      await db.markInvoiceAsSent(invoice.id);
+      const updated = await db.getInvoiceById(invoice.id);
+      return mapInvoiceToPayload(updated);
+    }),
+
+  revertToDraft: protectedProcedure
+    .input(z.object({ id: z.number(), confirmed: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!input.confirmed) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Confirmation is required to revert invoice status." });
+      }
+
+      const userId = ctx.user.id;
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      const cancellation = await db.getCancellationInvoiceByOriginalId(invoice.id);
+      if (cancellation?.sentAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled invoices are read-only." });
+      }
+
+      // Validate: can only revert to draft if no payments received
+      const amountPaid = Number(invoice.amountPaid || 0);
+      if (amountPaid > 0) {
+        throw new TRPCError({ 
+          code: "BAD_REQUEST", 
+          message: "Cannot revert to draft: invoice has received payments" 
+        });
+      }
+
+      if (!invoice.sentAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice is not in sent state" });
+      }
+
+      checkInvoiceNeedsReview(invoice, "reverted");
+
+      await db.revertInvoiceToDraft(invoice.id);
+      const updated = await db.getInvoiceById(input.id);
+      return mapInvoiceToPayload(updated);
+    }),
+
+  revertToSent: protectedProcedure
+    .input(z.object({ id: z.number(), confirmed: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!input.confirmed) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Confirmation is required to revert invoice status." });
+      }
+
+      const userId = ctx.user.id;
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      const cancellation = await db.getCancellationInvoiceByOriginalId(invoice.id);
+      if (cancellation?.sentAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled invoices are read-only." });
+      }
+
+      if (!invoice.paidAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice is not in paid state" });
+      }
+
+      checkInvoiceNeedsReview(invoice, "reverted");
+
+      await db.revertInvoiceToSent(invoice.id);
+      const updated = await db.getInvoiceById(input.id);
+      return mapInvoiceToPayload(updated);
+    }),
+
+  addInvoicePayment: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      amount: z.number().positive("Payment amount must be greater than 0"),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+      if (!invoice.sentAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can receive payments" });
+      }
+      if (invoice.paidAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice is already fully paid" });
+      }
+
+      const total = Number(invoice.total || 0);
+      const currentAmountPaid = Number(invoice.amountPaid || 0);
+      const outstanding = total - currentAmountPaid;
+
+      if (input.amount > outstanding) {
+        throw new TRPCError({ 
+          code: "BAD_REQUEST", 
+          message: `Payment amount (${input.amount.toFixed(2)}) exceeds outstanding balance (${outstanding.toFixed(2)})` 
+        });
+      }
+
+      await db.addInvoicePayment(invoice.id, input.amount);
       const updated = await db.getInvoiceById(invoice.id);
       return mapInvoiceToPayload(updated);
     }),

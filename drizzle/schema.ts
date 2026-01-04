@@ -358,6 +358,10 @@ export const invoices = mysqlTable("invoices", {
   subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull().default("0.00"),
   vatAmount: decimal("vatAmount", { precision: 12, scale: 2 }).notNull().default("0.00"),
   total: decimal("total", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  /** Total amount paid so far (for partial payments) */
+  amountPaid: decimal("amountPaid", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  /** Timestamp of last payment (optional tracking) */
+  lastPaymentAt: timestamp("lastPaymentAt"),
   /** Timestamp when invoice was archived (null if active) */
   archivedAt: timestamp("archivedAt"),
   /** Timestamp when invoice was moved to rubbish (null if not trashed) */
@@ -387,6 +391,8 @@ export const invoices = mysqlTable("invoices", {
   index("invoices_trashedAt_idx").on(table.trashedAt),
   index("invoices_sentAt_idx").on(table.sentAt),
   index("invoices_paidAt_idx").on(table.paidAt),
+  index("invoices_amountPaid_idx").on(table.amountPaid),
+  index("invoices_lastPaymentAt_idx").on(table.lastPaymentAt),
   uniqueIndex("invoices_cancelledInvoiceId_unique").on(table.cancelledInvoiceId),
 ]);
 
@@ -493,9 +499,14 @@ export const sharedDocuments = mysqlTable("shared_documents", {
   expiresAt: timestamp("expiresAt").notNull(),
   createdBy: int("createdBy").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  /** Whether this share link has been invalidated (e.g., invoice reverted to draft) */
+  invalidated: boolean("invalidated").default(false).notNull(),
+  /** Timestamp when share link was invalidated */
+  invalidatedAt: timestamp("invalidatedAt"),
 }, (table) => [
   index("shared_documents_shareToken_idx").on(table.shareToken),
   index("shared_documents_expiresAt_idx").on(table.expiresAt),
+  index("shared_documents_invalidated_idx").on(table.invalidated),
 ]);
 
 export type SharedDocument = typeof sharedDocuments.$inferSelect;

@@ -418,6 +418,11 @@ async function startServer() {
         return res.status(404).send("Document not found");
       }
       
+      // Check if invalidated
+      if (sharedDoc.invalidated) {
+        return res.status(410).send("This link has been invalidated");
+      }
+      
       // Check if expired
       if (new Date(sharedDoc.expiresAt) < new Date()) {
         return res.status(410).send("This link has expired");

@@ -173,6 +173,14 @@ async function ensureInvoiceSchema(db: any) {
       "ALTER TABLE `invoices` ADD COLUMN `paidAt` DATETIME NULL AFTER `sentAt`",
       isDuplicateColumnError
     );
+    await executeStatement(
+      "ALTER TABLE `invoices` ADD COLUMN `amountPaid` DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER `total`",
+      isDuplicateColumnError
+    );
+    await executeStatement(
+      "ALTER TABLE `invoices` ADD COLUMN `lastPaymentAt` DATETIME NULL AFTER `amountPaid`",
+      isDuplicateColumnError
+    );
 
     try {
     await db.execute(sql`
@@ -248,6 +256,26 @@ async function ensureInvoiceSchema(db: any) {
       "CREATE INDEX `invoices_paidAt_idx` ON `invoices` (`paidAt`)",
       isDuplicateIndexError
     );
+    await executeStatement(
+      "CREATE INDEX `invoices_amountPaid_idx` ON `invoices` (`amountPaid`)",
+      isDuplicateIndexError
+    );
+    await executeStatement(
+      "CREATE INDEX `invoices_lastPaymentAt_idx` ON `invoices` (`lastPaymentAt`)",
+      isDuplicateIndexError
+    );
+    
+    // Backfill: Set amountPaid = total for all paid invoices
+    try {
+      await db.execute(sql`
+        UPDATE invoices
+        SET amountPaid = total
+        WHERE paidAt IS NOT NULL AND (amountPaid = 0 OR amountPaid IS NULL)
+      `);
+    } catch (error) {
+      console.warn("[Database] Invoice backfill skipped:", error);
+    }
+    
     _invoiceSchemaReady = true;
   } catch (error) {
     console.error("[Database] Failed to ensure invoice schema:", error);
@@ -1638,6 +1666,8 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     subtotal: data.subtotal ?? "0.00",
     vatAmount: data.vatAmount ?? "0.00",
     total: data.total ?? "0.00",
+    amountPaid: data.amountPaid ?? "0.00",
+    lastPaymentAt: data.lastPaymentAt ?? null,
     pdfFileKey: data.pdfFileKey ?? null,
     filename: data.filename ?? null,
     fileKey: data.fileKey ?? null,
@@ -1993,6 +2023,136 @@ export async function revertInvoiceStatus(id: number, targetStatus: 'draft' | 'o
       .set({ status: targetStatus, paidAt: null })
       .where(eq(invoices.id, id));
   }
+}
+
+/**
+ * Mark invoice as sent (sets sentAt timestamp)
+ * Similar to issueInvoice but doesn't lock invoice number
+ */
+export async function markInvoiceAsSent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  return db
+    .update(invoices)
+    .set({ status: 'open', sentAt: new Date() })
+    .where(eq(invoices.id, id));
+}
+
+/**
+ * Revert invoice to draft (only if no payments received)
+ * Invalidates all share links for this invoice
+ */
+export async function revertInvoiceToDraft(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  // Check if invoice has received payments
+  const invoice = await getInvoiceById(id);
+  if (!invoice) {
+    throw new Error("Invoice not found");
+  }
+  
+  const amountPaid = Number(invoice.amountPaid || 0);
+  if (amountPaid > 0) {
+    throw new Error("Cannot revert to draft: invoice has received payments");
+  }
+
+  // Invalidate all share links for this invoice
+  await invalidateInvoiceShareLinks(id);
+
+  // Revert to draft: clear sentAt and paidAt
+  return db
+    .update(invoices)
+    .set({ status: 'draft', sentAt: null, paidAt: null })
+    .where(eq(invoices.id, id));
+}
+
+/**
+ * Revert invoice to sent state (from paid)
+ * Clears paidAt but keeps amountPaid
+ */
+export async function revertInvoiceToSent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  return db
+    .update(invoices)
+    .set({ status: 'open', paidAt: null })
+    .where(eq(invoices.id, id));
+}
+
+/**
+ * Add payment to invoice
+ * Validates amount <= outstanding
+ * Sets paidAt if fully paid
+ */
+export async function addInvoicePayment(id: number, amount: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  const invoice = await getInvoiceById(id);
+  if (!invoice) {
+    throw new Error("Invoice not found");
+  }
+
+  // Validation
+  if (amount <= 0) {
+    throw new Error("Payment amount must be greater than 0");
+  }
+
+  const total = Number(invoice.total || 0);
+  const currentAmountPaid = Number(invoice.amountPaid || 0);
+  const outstanding = total - currentAmountPaid;
+
+  if (amount > outstanding) {
+    throw new Error("Payment would exceed invoice total");
+  }
+
+  // Update amountPaid
+  const newAmountPaid = currentAmountPaid + amount;
+  const updateData: any = {
+    amountPaid: newAmountPaid.toString(),
+    lastPaymentAt: new Date(),
+  };
+
+  // If fully paid, set paidAt
+  if (newAmountPaid >= total) {
+    updateData.paidAt = new Date();
+    updateData.status = 'paid';
+  }
+
+  return db
+    .update(invoices)
+    .set(updateData)
+    .where(eq(invoices.id, id));
+}
+
+/**
+ * Invalidate all share links for an invoice
+ * Used when invoice is reverted to draft
+ */
+export async function invalidateInvoiceShareLinks(invoiceId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db
+    .update(sharedDocuments)
+    .set({
+      invalidated: true,
+      invalidatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(sharedDocuments.documentType, 'invoice'),
+        eq(sharedDocuments.referenceId, invoiceId),
+        eq(sharedDocuments.invalidated, false)
+      )
+    );
 }
 
 // ===== INVOICE ITEMS QUERIES =====

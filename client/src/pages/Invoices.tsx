@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X } from "@/components/ui/Icon";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
+import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -529,21 +530,31 @@ export default function Invoices() {
   };
 
   const getStatusBadge = (invoice: any) => {
-    const { status, sentAt, paidAt } = invoice;
-
-    if (paidAt) {
+    const invoiceState = getInvoiceState(invoice);
+    const derivedValues = getDerivedValues(invoice);
+    
+    // Badge priority: OVERDUE > PARTIAL > SENT/PAID
+    if (derivedValues.isOverdue) {
+      return <Badge variant="destructive" className="text-xs">OVERDUE</Badge>;
+    }
+    
+    if (invoiceState === 'PARTIAL') {
+      return <Badge variant="default" className="text-xs bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/50">PARTIAL</Badge>;
+    }
+    
+    if (invoiceState === 'PAID') {
       return <Badge variant="secondary" className="text-xs">PAID</Badge>;
     }
-
-    if (sentAt) {
-      return <Badge variant="default" className="text-xs">OPEN</Badge>;
+    
+    if (invoiceState === 'SENT') {
+      return <Badge variant="secondary" className="text-xs">SENT</Badge>;
     }
-
-    if (status === 'draft') {
+    
+    if (invoiceState === 'DRAFT') {
       return <Badge variant="outline" className="text-xs">DRAFT</Badge>;
     }
-
-    return <Badge variant="outline" className="text-xs">OPEN</Badge>;
+    
+    return null;
   };
 
   const getInvoiceIcon = () => {
