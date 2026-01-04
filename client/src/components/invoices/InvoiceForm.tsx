@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { trpc } from "@/lib/trpc";
-import { Eye, Loader2, PencilLine, Plus, X, Send, CheckCircle2, AlertCircle, Lock } from "@/components/ui/Icon";
+import { Eye, Loader2, PencilLine, Plus, X, Send, CheckCircle2, AlertCircle } from "@/components/ui/Icon";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues, formatCurrency as formatCurrencyUtil } from "@/lib/invoiceState";
@@ -380,8 +380,7 @@ export function InvoiceForm({
           <div className="flex items-center gap-2">
             {isReadOnly && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Lock className="h-4 w-4" />
-                <span>This invoice is locked because it has been sent.</span>
+                <span>🔒 This invoice is locked because it has been sent.</span>
               </div>
             )}
           </div>
@@ -789,7 +788,6 @@ export function InvoiceForm({
           />
         </>
       )}
-    </div>
 
       <LineItemModal
         open={itemEditor.open}
@@ -797,6 +795,9 @@ export function InvoiceForm({
         item={editingItem}
         onSave={handleSaveItem}
       />
+    </div>
+  );
+}
 
 function LineItemModal({
   open,
