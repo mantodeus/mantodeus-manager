@@ -54,24 +54,44 @@ export function BottomTabBar() {
     gesture.handlePointerDown(e);
   };
 
+
+  // Global handler to prevent text selection and ensure tab bar always receives events
+  const handleTabBarInteraction = (e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
+    // Immediately clear any text selection
+    if (window.getSelection) {
+      window.getSelection()?.removeAllRanges();
+    }
+    if (document.getSelection) {
+      document.getSelection()?.removeAllRanges();
+    }
+    
+    // Prevent default to stop text selection and other default behaviors
+    // But don't prevent on the tab bar container itself - let it bubble to buttons
+    if ((e.target as HTMLElement).closest('[data-tab-trigger]')) {
+      // Only prevent default on actual tab buttons
+      e.preventDefault();
+    }
+    e.stopPropagation();
+  };
+
   return (
     <div
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-[1000]',
+        'fixed bottom-0 left-0 right-0 z-[9999]', // Maximum z-index to ensure it's always on top
         'bg-background/95 backdrop-blur-md',
         'border-t border-border',
         'md:hidden', // Mobile only
         'bottom-tab-bar',
-        'select-none' // Prevent text selection on entire tab bar
+        'select-none', // Prevent text selection on entire tab bar
+        'pointer-events-auto' // Ensure tab bar always receives pointer events
       )}
-      onPointerDown={(e) => {
-        // If clicking anywhere on the tab bar, clear text selection
-        if (window.getSelection) {
-          window.getSelection()?.removeAllRanges();
-        }
-        if (document.getSelection) {
-          document.getSelection()?.removeAllRanges();
-        }
+      onPointerDown={handleTabBarInteraction}
+      onTouchStart={handleTabBarInteraction}
+      onMouseDown={handleTabBarInteraction}
+      style={{
+        touchAction: 'none', // Prevent default touch behaviors (scrolling, zooming, etc.)
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
       }}
     >
       <div className="relative">
@@ -121,19 +141,48 @@ export function BottomTabBar() {
                 onPointerMove={gesture.handlePointerMove}
                 onPointerUp={gesture.handlePointerUp}
                 onPointerCancel={gesture.handlePointerCancel}
+                onTouchStart={(e) => {
+                  // Prevent text selection and default touch behaviors
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (window.getSelection) {
+                    window.getSelection()?.removeAllRanges();
+                  }
+                  if (document.getSelection) {
+                    document.getSelection()?.removeAllRanges();
+                  }
+                  // Touch events will be automatically converted to pointer events by the browser
+                  // The pointer handlers will handle the gesture recognition
+                }}
+                onTouchMove={(e) => {
+                  // Prevent default scrolling/zooming
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onTouchEnd={(e) => {
+                  // Prevent default behaviors
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onTouchCancel={(e) => {
+                  // Prevent default behaviors
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
                 onMouseDown={(e) => {
                   // Also prevent text selection on mouse down (for desktop testing)
                   e.preventDefault();
+                  e.stopPropagation();
                   if (window.getSelection) {
                     window.getSelection()?.removeAllRanges();
                   }
                 }}
-                onTouchStart={(e) => {
-                  // Prevent text selection on touch start
-                  e.preventDefault();
-                  if (window.getSelection) {
-                    window.getSelection()?.removeAllRanges();
-                  }
+                style={{
+                  touchAction: 'none', // Prevent default touch behaviors (scrolling, zooming, etc.)
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                  pointerEvents: 'auto', // Ensure button always receives pointer events
                 }}
                 aria-label={`${tab.label} tab`}
                 aria-current={isActive ? 'page' : undefined}

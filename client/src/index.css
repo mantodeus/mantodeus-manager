@@ -605,11 +605,16 @@
     padding-bottom: env(safe-area-inset-bottom);
     transform: translateY(calc(-1 * var(--bottom-tab-extra-offset)));
     /* Force prevent text selection on entire tab bar */
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+    /* Ensure tab bar always receives pointer events and is on top */
+    pointer-events: auto !important;
+    touch-action: none !important;
+    z-index: 9999 !important;
+    position: fixed !important;
   }
 
   /* PWA (standalone mode) - extra space for home swipe gesture on iOS */
@@ -630,7 +635,7 @@
     }
   }
 
-  /* Ensure tab buttons never allow text selection */
+  /* Ensure tab buttons never allow text selection and always receive events */
   .bottom-tab-bar button,
   .bottom-tab-bar [data-tab-trigger] {
     -webkit-user-select: none !important;
@@ -638,6 +643,16 @@
     -ms-user-select: none !important;
     user-select: none !important;
     -webkit-touch-callout: none !important;
+    pointer-events: auto !important;
+    touch-action: none !important;
+    /* Prevent any default touch behaviors */
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  
+  /* Ensure all children of tab bar also don't interfere */
+  .bottom-tab-bar * {
+    pointer-events: auto !important;
+    touch-action: none !important;
   }
 
   /* Only show extra background space in PWA/app mode */
