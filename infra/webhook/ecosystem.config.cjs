@@ -1,4 +1,17 @@
 const path = require('path');
+const fs = require('fs');
+
+// Load .env file to get WEBHOOK_SECRET
+const envPath = '/srv/customer/sites/manager.mantodeus.com/.env';
+let webhookSecret = process.env.WEBHOOK_SECRET;
+
+if (!webhookSecret && fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  const match = envContent.match(/^WEBHOOK_SECRET=(.+)$/m);
+  if (match) {
+    webhookSecret = match[1].trim();
+  }
+}
 
 module.exports = {
   apps: [
@@ -16,6 +29,14 @@ module.exports = {
         NODE_ENV: 'production',
         // Ensure Node.js can find modules in the project's node_modules
         NODE_PATH: '/srv/customer/sites/manager.mantodeus.com/node_modules',
+        // Load WEBHOOK_SECRET from .env file or environment
+        WEBHOOK_SECRET: webhookSecret || '',
+        // Optional: override port if needed
+        WEBHOOK_PORT: process.env.WEBHOOK_PORT || '9000',
+        // Optional: override app path if needed
+        APP_PATH: process.env.APP_PATH || '/srv/customer/sites/manager.mantodeus.com',
+        // Optional: override PM2 app name if needed
+        PM2_APP_NAME: process.env.PM2_APP_NAME || 'mantodeus-manager',
       },
       interpreter: 'bash',
       error_file: '/srv/customer/.pm2/logs/webhook-listener-error.log',
