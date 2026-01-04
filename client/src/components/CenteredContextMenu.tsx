@@ -349,13 +349,12 @@ export const CenteredContextMenu = React.forwardRef<
         if (menuRef.current && menuRef.current.contains(target)) {
           return; // Let menu handle the event
         }
-        // CRITICAL: Allow events on the active item - don't block them
-        if (itemRef.current && (itemRef.current === target || itemRef.current.contains(target))) {
-          return; // Let active item handle the event
-        }
         // Don't close immediately after menu opens (prevent closing on long press release)
         const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
         if (timeSinceMenuOpen < 500) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           return; // Menu just opened, don't close on release
         }
         // Only close if this is a quick tap (not a long press release)
@@ -374,13 +373,12 @@ export const CenteredContextMenu = React.forwardRef<
         if (menuRef.current && menuRef.current.contains(target)) {
           return; // Let menu handle the event
         }
-        // CRITICAL: Allow events on the active item - don't block them
-        if (itemRef.current && (itemRef.current === target || itemRef.current.contains(target))) {
-          return; // Let active item handle the event
-        }
         // Don't close immediately after menu opens
         const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
         if (timeSinceMenuOpen < 500) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           return; // Menu just opened, don't close immediately
         }
         // Block everything else - close menu
@@ -406,16 +404,7 @@ export const CenteredContextMenu = React.forwardRef<
         if (menuRef.current && menuRef.current.contains(target)) {
           return; // Let menu handle the event
         }
-        // CRITICAL: Allow clicks on the active item
-        if (itemRef.current && (itemRef.current === target || itemRef.current.contains(target))) {
-          return; // Let active item handle the event
-        }
-        // Allow clicks on the blocker (it will close the menu)
-        if (target === blocker || blocker.contains(target)) {
-          return;
-        }
-        // Block all other clicks - these are card clicks that should be prevented
-        // This prevents cards from being clicked when menu is open
+        // Block all other clicks (including active item) to prevent background actions
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
