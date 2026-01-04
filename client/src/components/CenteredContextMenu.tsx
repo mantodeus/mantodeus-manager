@@ -227,6 +227,18 @@ export const CenteredContextMenu = React.forwardRef<
     }
   }, [disabled]);
 
+  // Long-press handler (mobile) with visual feedback
+  const { longPressHandlers, gestureState, reset: resetLongPress } = useLongPress({
+    onLongPress: (event) => {
+      openMenu(event);
+    },
+    onPressStart: () => {
+      setIsPressing(true);
+    },
+    duration: 500, // Reduced for better responsiveness
+    hapticFeedback: true,
+  });
+
   const closeMenu = useCallback(() => {
     setIsOpen(false);
     setIsPressing(false);
@@ -324,18 +336,6 @@ export const CenteredContextMenu = React.forwardRef<
     },
     [onAction, closeMenu]
   );
-
-  // Long-press handler (mobile) with visual feedback
-  const { longPressHandlers, gestureState, reset: resetLongPress } = useLongPress({
-    onLongPress: (event) => {
-      openMenu(event);
-    },
-    onPressStart: () => {
-      setIsPressing(true);
-    },
-    duration: 500, // Reduced for better responsiveness
-    hapticFeedback: true,
-  });
 
   // Update pressing state based on gesture
   useEffect(() => {
