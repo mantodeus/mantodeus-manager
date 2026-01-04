@@ -404,13 +404,20 @@
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
     transform-origin: center center;
     transition: transform 140ms ease-out, box-shadow 140ms ease-out;
   }
 
   .has-context-menu.context-menu-pressing {
-    transform: scale(0.985);
+    transform: scale(1.01);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+  }
+
+  .has-context-menu.context-menu-active {
+    position: relative;
+    z-index: 1003;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
   }
   
   /* But allow selection in inputs, textareas, etc. */

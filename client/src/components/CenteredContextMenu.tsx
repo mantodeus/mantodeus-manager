@@ -1,15 +1,15 @@
 /**
  * CenteredContextMenu Component
  * 
- * Apple-style centered context menu with floating item preview.
+ * Apple-style context menu anchored to the pressed item.
  * 
  * Interaction Model:
  * - Mobile: Long-press (550ms) opens menu, single tap = primary action
  * - Desktop: Right-click opens menu, single click = primary action
  * - No three-dot button (removed for cleaner UI)
  * 
- * Animation: Transform-only, preview appears instantly at final position
- * Z-index: Preview (top) > Menu > Overlay > Background
+ * Animation: Transform-only
+ * Z-index: Active item > Menu > Overlay > Background
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
@@ -95,69 +95,36 @@ export const CenteredContextMenu = React.forwardRef<
   const itemRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
 
-  // Calculate preview position (centered, above menu) - INSTANT positioning
-  const previewStyle = useMemo(() => {
-    if (!itemRect || !itemRef.current) return null;
-
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const menuHeight = 200; // Approximate menu height
-    const spacing = 16;
-    const scale = 0.94;
-
-    // Center horizontally
-    const left = viewportWidth / 2;
-    
-    // Center preview above menu
-    const previewHeight = itemRect.height * scale;
-    const totalHeight = previewHeight + spacing + menuHeight;
-    const top = viewportHeight / 2 - totalHeight / 2;
-
-    // Get the actual border-radius from the original element
-    const computedStyle = window.getComputedStyle(itemRef.current);
-    const borderRadius = computedStyle.borderRadius || "0.75rem";
-
-    return {
-      position: "fixed" as const,
-      top: `${top}px`,
-      left: `${left}px`,
-      width: `${itemRect.width}px`,
-      height: `${itemRect.height}px`,
-      transform: "translateX(-50%) scale(0.94)",
-      transformOrigin: "center center",
-      zIndex: 1001,
-      pointerEvents: "none" as const,
-      borderRadius: borderRadius,
-      overflow: "hidden" as const,
-    };
-  }, [itemRect]);
-
-  // Calculate menu position (centered horizontally, below preview)
+  // Calculate menu position (anchored above/below the pressed item)
   const menuStyle = useMemo(() => {
     if (!itemRect) return null;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const menuHeight = 200;
-    const previewHeight = itemRect.height * 0.94;
-    const spacing = 16;
+    const menuHeight = 200; // Approximate menu height
+    const menuWidth = 240; // Approximate menu width
+    const spacing = 12;
+    const edgePadding = 12;
 
-    // Center horizontally
-    const left = viewportWidth / 2;
-    
-    // Position menu below preview
-    const previewTop = viewportHeight / 2 - previewHeight / 2 - menuHeight / 2 - spacing / 2;
-    const menuTop = previewTop + previewHeight + spacing;
+    const centeredLeft = itemRect.left + itemRect.width / 2;
+    const left = Math.min(
+      Math.max(centeredLeft, edgePadding + menuWidth / 2),
+      viewportWidth - edgePadding - menuWidth / 2
+    );
+
+    const canShowBelow = viewportHeight - itemRect.bottom >= menuHeight + spacing;
+    const top = canShowBelow
+      ? itemRect.bottom + spacing
+      : Math.max(edgePadding, itemRect.top - spacing - menuHeight);
 
     return {
       position: "fixed" as const,
-      top: `${menuTop}px`,
+      top: `${top}px`,
       left: `${left}px`,
       transform: "translateX(-50%)",
       zIndex: 1002,
-      maxWidth: "280px",
+      maxWidth: "calc(100vw - 24px)",
       width: "auto",
     };
   }, [itemRect]);
@@ -221,6 +188,7 @@ export const CenteredContextMenu = React.forwardRef<
       setItemRect(rect);
       setIsOpen(true);
       onOpenChange?.(true);
+      element.classList.add("context-menu-active");
       setIsPressing(false);
       
       // Prevent accidental clicks - menu items become clickable after a delay
@@ -247,6 +215,9 @@ export const CenteredContextMenu = React.forwardRef<
     setIsOpen(false);
     onOpenChange?.(false);
     setIsPressing(false);
+    if (itemRef.current) {
+      itemRef.current.classList.remove("context-menu-active");
+    }
     // Reset long-press gesture state immediately
     resetLongPress();
     // Delay clearing rect to allow exit animation
@@ -384,8 +355,6 @@ export const CenteredContextMenu = React.forwardRef<
       if (
         menuRef.current &&
         !menuRef.current.contains(target) &&
-        previewRef.current &&
-        !previewRef.current.contains(target) &&
         wrapperRef.current &&
         !wrapperRef.current.contains(target)
       ) {
@@ -489,8 +458,7 @@ export const CenteredContextMenu = React.forwardRef<
       <div
         ref={wrapperRef}
         style={{
-          opacity: isOpen ? 0 : 1,
-          transition: "opacity 180ms ease-out, transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+          transition: "transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
           transform: isPressing && !isOpen ? "scale(0.97)" : "scale(1)",
           transformOrigin: "center center",
         }}
@@ -506,7 +474,6 @@ export const CenteredContextMenu = React.forwardRef<
       {isOpen &&
         itemRect &&
         itemRef.current &&
-        previewStyle &&
         menuStyle &&
         createPortal(
           <>
@@ -518,51 +485,6 @@ export const CenteredContextMenu = React.forwardRef<
                 animation: "fadeIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               }}
             />
-
-            {/* Floating item preview - z-index 1001, appears instantly at final position */}
-            <div
-              ref={previewRef}
-              style={{
-                ...previewStyle,
-                animation: "previewAppear 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-              }}
-            >
-              <div
-                className="w-full h-full"
-                style={{
-                  boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)",
-                  borderRadius: "inherit",
-                  overflow: "hidden",
-                  border: "none",
-                  outline: "none",
-                }}
-                dangerouslySetInnerHTML={{
-                  __html: (() => {
-                    // Clone the element and remove borders from Card elements to preserve rounded edges
-                    const clone = itemRef.current!.cloneNode(true) as HTMLElement;
-                    // Find and remove border from Card elements (data-slot="card" or class containing "card")
-                    const cardElements = clone.querySelectorAll('[data-slot="card"], .card, [class*="rounded"]');
-                    cardElements.forEach((card) => {
-                      if (card instanceof HTMLElement) {
-                        // Remove border styles that create rectangular appearance
-                        card.style.border = "none";
-                        card.style.borderWidth = "0";
-                        card.style.borderStyle = "none";
-                        card.style.borderColor = "transparent";
-                      }
-                    });
-                    // Also check the root element itself
-                    if (clone.hasAttribute('data-slot') && clone.getAttribute('data-slot') === 'card') {
-                      clone.style.border = "none";
-                      clone.style.borderWidth = "0";
-                      clone.style.borderStyle = "none";
-                      clone.style.borderColor = "transparent";
-                    }
-                    return clone.outerHTML;
-                  })(),
-                }}
-              />
-            </div>
 
             {/* Centered menu - z-index 1002 */}
             <div
