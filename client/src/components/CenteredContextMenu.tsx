@@ -328,6 +328,8 @@ export const CenteredContextMenu = React.forwardRef<
         pointer-events: auto;
         background: transparent;
       `;
+      // Make sure blocker doesn't cover the active item
+      blocker.style.pointerEvents = 'auto';
       
       // Block all events on the blocker, but allow menu interactions
       let touchStartTime = 0;
@@ -346,6 +348,10 @@ export const CenteredContextMenu = React.forwardRef<
         // CRITICAL: Allow events on menu - don't block them
         if (menuRef.current && menuRef.current.contains(target)) {
           return; // Let menu handle the event
+        }
+        // CRITICAL: Allow events on the active item - don't block them
+        if (itemRef.current && (itemRef.current === target || itemRef.current.contains(target))) {
+          return; // Let active item handle the event
         }
         // Don't close immediately after menu opens (prevent closing on long press release)
         const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
@@ -368,6 +374,10 @@ export const CenteredContextMenu = React.forwardRef<
         if (menuRef.current && menuRef.current.contains(target)) {
           return; // Let menu handle the event
         }
+        // CRITICAL: Allow events on the active item - don't block them
+        if (itemRef.current && (itemRef.current === target || itemRef.current.contains(target))) {
+          return; // Let active item handle the event
+        }
         // Don't close immediately after menu opens
         const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
         if (timeSinceMenuOpen < 500) {
@@ -389,21 +399,31 @@ export const CenteredContextMenu = React.forwardRef<
       document.body.appendChild(blocker);
       
       // Also add a global event listener in capture phase as backup
-      // But make sure menu events are allowed through
+      // This prevents any card clicks from going through
       const blockAllClicks = (e: MouseEvent | TouchEvent) => {
         const target = e.target as HTMLElement;
         // CRITICAL: Allow clicks on the menu itself
         if (menuRef.current && menuRef.current.contains(target)) {
           return; // Let menu handle the event
         }
+        // CRITICAL: Allow clicks on the active item
+        if (itemRef.current && (itemRef.current === target || itemRef.current.contains(target))) {
+          return; // Let active item handle the event
+        }
         // Allow clicks on the blocker (it will close the menu)
         if (target === blocker || blocker.contains(target)) {
           return;
         }
         // Block all other clicks - these are card clicks that should be prevented
+        // This prevents cards from being clicked when menu is open
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
+        // Close menu if clicking on background
+        const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
+        if (timeSinceMenuOpen >= 500) {
+          closeMenu();
+        }
       };
       
       document.addEventListener('click', blockAllClicks, true); // Capture phase
@@ -736,13 +756,13 @@ export const CenteredContextMenu = React.forwardRef<
               }}
             />
 
-            {/* Centered menu - z-index 9999 (above blocker) */}
+            {/* Centered menu - z-index 10001 (above active item) */}
             <div
               ref={menuRef}
               className={cn("glass-context-menu", menuClassName)}
               style={{
                 ...menuStyle,
-                zIndex: 9999,
+                zIndex: 10001,
                 animation: "menuSlideUp 260ms cubic-bezier(0.16, 1, 0.3, 1)",
                 overflowY: "auto", // Enable scrolling within menu
                 overscrollBehavior: "contain", // Prevent scroll chaining to background
