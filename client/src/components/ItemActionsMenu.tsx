@@ -41,10 +41,14 @@ export function ItemActionsMenu({
 }: ItemActionsMenuProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<{ open: (event?: PointerEvent | TouchEvent | React.MouseEvent) => void } | null>(null);
+  const cardElementRef = useRef<HTMLElement | null>(null);
 
   // Long-press handler
   const { longPressHandlers, reset: resetLongPress } = useLongPress({
     onLongPress: (event) => {
+      if (cardElementRef.current) {
+        cardElementRef.current.classList.remove('context-menu-pressing');
+      }
       menuRef.current?.open(event);
     },
     duration: 550,
@@ -92,6 +96,7 @@ export function ItemActionsMenu({
     
     // Add a class to identify this card for CSS targeting
     cardElement.classList.add('has-context-menu');
+    cardElementRef.current = cardElement;
 
     // Track if we're currently pressing to apply CSS
     let isPressing = false;
@@ -123,6 +128,10 @@ export function ItemActionsMenu({
       ) {
         return; // Let these elements work normally
       }
+
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+        cardElement.classList.add('context-menu-pressing');
+      }
       
       // Prevent text selection immediately - clear any existing selection
       if (document.getSelection) {
@@ -150,6 +159,7 @@ export function ItemActionsMenu({
     
     const pointerUpHandler = (e: PointerEvent) => {
       longPressHandlersRef.current.onPointerUp?.(e as any);
+      cardElement.classList.remove('context-menu-pressing');
       
       // Clear any existing timeout
       if (pressTimeout) {
@@ -165,6 +175,7 @@ export function ItemActionsMenu({
     
     const pointerCancelHandler = (e: PointerEvent) => {
       longPressHandlersRef.current.onPointerCancel?.(e as any);
+      cardElement.classList.remove('context-menu-pressing');
       
       // Clear any existing timeout
       if (pressTimeout) {
@@ -243,15 +254,30 @@ export function ItemActionsMenu({
       longPressHandlersRef.current.onClick?.(e as any);
     };
     const touchStartHandler = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON' ||
+        target.tagName === 'A' ||
+        target.isContentEditable ||
+        target.closest('input, textarea, select, button, a, [contenteditable]')
+      ) {
+        return;
+      }
+      cardElement.classList.add('context-menu-pressing');
       longPressHandlersRef.current.onTouchStart?.(e as any);
     };
     const touchMoveHandler = (e: TouchEvent) => {
       longPressHandlersRef.current.onTouchMove?.(e as any);
     };
     const touchEndHandler = (e: TouchEvent) => {
+      cardElement.classList.remove('context-menu-pressing');
       longPressHandlersRef.current.onTouchEnd?.(e as any);
     };
     const touchCancelHandler = (e: TouchEvent) => {
+      cardElement.classList.remove('context-menu-pressing');
       longPressHandlersRef.current.onTouchCancel?.(e as any);
     };
 
@@ -309,6 +335,10 @@ export function ItemActionsMenu({
       resetLongPress();
       cardElement.style.pointerEvents = originalPointerEvents;
       cardElement.classList.remove('has-context-menu');
+      cardElement.classList.remove('context-menu-pressing');
+      if (cardElementRef.current === cardElement) {
+        cardElementRef.current = null;
+      }
     };
   }, [disabled, resetLongPress]);
 
@@ -326,6 +356,14 @@ export function ItemActionsMenu({
         onAction={onAction}
         actions={actions}
         disabled={disabled}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetLongPress();
+            if (cardElementRef.current) {
+              cardElementRef.current.classList.remove('context-menu-pressing');
+            }
+          }
+        }}
       >
         <div style={{ display: "none" }} />
       </CenteredContextMenu>

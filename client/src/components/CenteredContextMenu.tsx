@@ -38,6 +38,8 @@ interface CenteredContextMenuProps {
   onAction: (action: CenteredContextMenuAction) => void;
   /** Available actions to show in the menu */
   actions?: CenteredContextMenuAction[];
+  /** Callback when the menu opens or closes */
+  onOpenChange?: (open: boolean) => void;
   /** The item element to wrap */
   children: React.ReactElement;
   /** Whether the menu is disabled */
@@ -81,6 +83,7 @@ export const CenteredContextMenu = React.forwardRef<
 >(({
   onAction,
   actions = ["edit", "delete"],
+  onOpenChange,
   children,
   disabled = false,
   menuClassName,
@@ -217,6 +220,7 @@ export const CenteredContextMenu = React.forwardRef<
       const rect = element.getBoundingClientRect();
       setItemRect(rect);
       setIsOpen(true);
+      onOpenChange?.(true);
       setIsPressing(false);
       
       // Prevent accidental clicks - menu items become clickable after a delay
@@ -225,7 +229,7 @@ export const CenteredContextMenu = React.forwardRef<
         setMenuItemsClickable(true);
       }, 300); // 300ms cooldown before items are clickable
     }
-  }, [disabled]);
+  }, [disabled, onOpenChange]);
 
   // Long-press handler (mobile) with visual feedback
   const { longPressHandlers, gestureState, reset: resetLongPress } = useLongPress({
@@ -241,6 +245,7 @@ export const CenteredContextMenu = React.forwardRef<
 
   const closeMenu = useCallback(() => {
     setIsOpen(false);
+    onOpenChange?.(false);
     setIsPressing(false);
     // Reset long-press gesture state immediately
     resetLongPress();
@@ -249,7 +254,7 @@ export const CenteredContextMenu = React.forwardRef<
       setItemRect(null);
       itemRef.current = null;
     }, 220);
-  }, [resetLongPress]);
+  }, [resetLongPress, onOpenChange]);
 
   // Prevent background scrolling when menu is open (Apple-style behavior)
   useEffect(() => {
