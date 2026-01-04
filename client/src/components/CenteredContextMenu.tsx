@@ -77,6 +77,30 @@ const STANDARD_ACTION_ORDER: CenteredContextMenuAction[] = [
 ];
 const RUBBISH_ACTION_ORDER: CenteredContextMenuAction[] = ["restore", "deletePermanently"];
 
+function getBottomObstructionHeight(): number {
+  const tabBar = document.querySelector(".bottom-tab-bar") as HTMLElement | null;
+  if (tabBar) {
+    const rect = tabBar.getBoundingClientRect();
+    const height = window.innerHeight - rect.top;
+    return Math.max(height, rect.height || 0);
+  }
+
+  const isMobile = window.innerWidth < 768;
+  if (isMobile) {
+    const isPWA =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+    const padding = isPWA ? 20 : 8;
+    const safeArea = parseInt(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("env(safe-area-inset-bottom)") || "0"
+    );
+    return 56 + padding + safeArea;
+  }
+
+  return 0;
+}
+
 export const CenteredContextMenu = React.forwardRef<
   { open: (event?: PointerEvent | TouchEvent | React.MouseEvent) => void },
   CenteredContextMenuProps
@@ -103,8 +127,10 @@ export const CenteredContextMenu = React.forwardRef<
     const viewportHeight = window.innerHeight;
     const spacing = 12;
     const edgePadding = 12;
+    const bottomObstruction = getBottomObstructionHeight();
 
-    const availableBelow = viewportHeight - itemRect.bottom - spacing - edgePadding;
+    const availableBelow =
+      viewportHeight - bottomObstruction - itemRect.bottom - spacing - edgePadding;
     const requiredShift = Math.max(0, menuHeight - availableBelow);
     if (requiredShift <= 0) return 0;
 
@@ -142,6 +168,7 @@ export const CenteredContextMenu = React.forwardRef<
     const menuWidth = 240; // Approximate menu width
     const spacing = 12;
     const edgePadding = 12;
+    const bottomObstruction = getBottomObstructionHeight();
 
     const centeredLeft = itemRect.left + itemRect.width / 2;
     const left = Math.min(
@@ -150,7 +177,8 @@ export const CenteredContextMenu = React.forwardRef<
     );
 
     const adjustedBottom = itemRect.bottom - menuShiftY;
-    const availableBelow = viewportHeight - adjustedBottom - spacing - edgePadding;
+    const availableBelow =
+      viewportHeight - bottomObstruction - adjustedBottom - spacing - edgePadding;
     const maxHeight = Math.max(120, availableBelow);
 
     return {
