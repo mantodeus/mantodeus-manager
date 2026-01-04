@@ -4,6 +4,9 @@ bash scripts/deploy-prod.sh
 npx pm2 start infra/webhook/ecosystem.config.cjs
 npx pm2 save
 
+npx pm2 list
+npx pm2 logs webhook-listener --lines 10
+
 
 rm -rf node_modules && npm install
 

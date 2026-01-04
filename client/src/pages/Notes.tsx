@@ -700,17 +700,16 @@ export default function Notes() {
       <PageHeader
         title="Notes"
         subtitle="Create and manage your notes"
+        actionsPlacement="right"
+        actions={
+          <Button onClick={() => navigate("/notes/new")} className="h-10 whitespace-nowrap">
+            <Plus className="w-4 h-4 mr-1" />
+            New
+          </Button>
+        }
         searchSlot={searchSlot}
         filterSlot={filterSlot}
       />
-
-      {/* Top-of-Page Action Row */}
-      <div className="flex items-center justify-end gap-2 pb-2 border-b">
-        <Button onClick={() => navigate("/notes/new")}>
-          <Plus className="mr-1 h-4 w-4" />
-          New
-        </Button>
-      </div>
 
       {/* Active Notes Grid */}
       <div className="space-y-4">

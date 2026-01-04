@@ -460,41 +460,42 @@ export default function Expenses() {
       <PageHeader
         title="Expenses"
         subtitle="Track and manage your business expenses"
-      />
-
-      {/* Top-of-Page Action Row */}
-      <div className="flex items-center justify-end gap-2 pb-2 border-b">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              <Upload className="h-4 w-4 mr-1" />
-              Upload
+        actionsPlacement="right"
+        actions={
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-10 whitespace-nowrap">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => navigate("/expenses/scan")}
+                  className="cursor-pointer"
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  <span>Scan</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setBulkUploadOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  <span>Upload files</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button asChild className="h-10 whitespace-nowrap">
+              <Link href="/expenses/new">
+                <Plus className="w-4 h-4 mr-1" />
+                New
+              </Link>
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => navigate("/expenses/scan")}
-              className="cursor-pointer"
-            >
-              <Camera className="h-4 w-4 mr-2" />
-              <span>Scan</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setBulkUploadOpen(true)}
-              className="cursor-pointer"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              <span>Upload files</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Link href="/expenses/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-1" />
-            New
-          </Button>
-        </Link>
-      </div>
+          </>
+        }
+      />
 
       {/* Header Cards */}
       <div className="grid gap-4 md:grid-cols-2">

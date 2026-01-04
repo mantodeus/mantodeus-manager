@@ -513,7 +513,6 @@ export const CenteredContextMenu = React.forwardRef<
             {/* Background overlay with blur - z-index 1000 */}
             <div
               className="fixed inset-0 backdrop-blur-md bg-black/20"
-              onClick={closeMenu}
               style={{
                 zIndex: 1000,
                 animation: "fadeIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",

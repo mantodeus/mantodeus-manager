@@ -613,20 +613,22 @@ export default function Contacts() {
       <PageHeader
         title="Contacts"
         subtitle="Manage your clients and contacts"
+        actionsPlacement="right"
+        actions={
+          <>
+            {isFormOpen && (
+              <Button variant="ghost" onClick={handleCloseForm} className="h-10 whitespace-nowrap">
+                Cancel
+              </Button>
+            )}
+            <Button onClick={handleNewContact} className="h-10 whitespace-nowrap">
+              <Plus className="w-4 h-4 mr-1" />
+              New
+            </Button>
+          </>
+        }
         searchSlot={searchSlot}
       />
-
-      <div className="flex items-center justify-end gap-2 pb-2 border-b">
-        {isFormOpen && (
-          <Button variant="ghost" onClick={handleCloseForm}>
-            Cancel
-          </Button>
-        )}
-        <Button onClick={handleNewContact}>
-          <Plus className="h-4 w-4 mr-1" />
-          New
-        </Button>
-      </div>
 
       {isFormOpen && (
         <div ref={formRef} className="rounded-lg border p-4">
