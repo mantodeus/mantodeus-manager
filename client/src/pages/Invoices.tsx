@@ -794,6 +794,7 @@ export default function Invoices() {
       <PageHeader
         title="Invoices"
         subtitle="Create, edit, and manage invoices"
+        actionsPlacement="right"
         actions={
           <>
             <Button
