@@ -293,21 +293,57 @@ export const CenteredContextMenu = React.forwardRef<
     }, 220);
   }, [resetLongPress, onOpenChange]);
 
-  // Disable all card interactions when menu is open
+  // Create a blocking overlay div directly in body when menu is open
   useEffect(() => {
     if (isOpen) {
       // Add class to body to disable all card clicks via CSS
       document.body.classList.add('context-menu-open');
-      // Also add a global event listener in capture phase to block all clicks
+      
+      // Create a blocking overlay div directly in body (not in portal)
+      // This ensures it's rendered immediately and captures all events
+      const blocker = document.createElement('div');
+      blocker.className = 'context-menu-blocker';
+      blocker.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9998;
+        pointer-events: auto;
+        background: transparent;
+      `;
+      
+      // Block all events on the blocker
+      const handleEvent = (e: Event) => {
+        const target = e.target as HTMLElement;
+        // Allow events on menu
+        if (menuRef.current && menuRef.current.contains(target)) {
+          return;
+        }
+        // Block everything else - close menu
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        closeMenu();
+      };
+      
+      blocker.addEventListener('click', handleEvent, true);
+      blocker.addEventListener('touchstart', handleEvent, true);
+      blocker.addEventListener('mousedown', handleEvent, true);
+      blocker.addEventListener('pointerdown', handleEvent, true);
+      
+      document.body.appendChild(blocker);
+      
+      // Also add a global event listener in capture phase as backup
       const blockAllClicks = (e: MouseEvent | TouchEvent) => {
         const target = e.target as HTMLElement;
         // Allow clicks on the menu itself
         if (menuRef.current && menuRef.current.contains(target)) {
           return;
         }
-        // Allow clicks on the overlay or any element inside it (it will close the menu)
-        if (target.classList.contains('context-menu-overlay') || 
-            target.closest('.context-menu-overlay')) {
+        // Allow clicks on the blocker (it will close the menu)
+        if (target === blocker || blocker.contains(target)) {
           return;
         }
         // Block all other clicks - these are card clicks that should be prevented
@@ -322,12 +358,13 @@ export const CenteredContextMenu = React.forwardRef<
       
       return () => {
         document.body.classList.remove('context-menu-open');
+        blocker.remove();
         document.removeEventListener('click', blockAllClicks, true);
         document.removeEventListener('touchstart', blockAllClicks, true);
         document.removeEventListener('mousedown', blockAllClicks, true);
       };
     }
-  }, [isOpen]);
+  }, [isOpen, closeMenu]);
 
   // Prevent background scrolling when menu is open (Apple-style behavior)
   useEffect(() => {
@@ -633,59 +670,30 @@ export const CenteredContextMenu = React.forwardRef<
         menuStyle &&
         createPortal(
           <>
-            {/* Background overlay with blur - z-index 1000 */}
+            {/* Background overlay with blur - z-index 9997 (below blocker) */}
             <div
               className="context-menu-overlay fixed inset-0 backdrop-blur-md bg-black/20"
               style={{
-                zIndex: 1000,
+                zIndex: 9997,
                 animation: "fadeIn 220ms ease-out",
-                pointerEvents: "auto", // Ensure overlay captures all pointer events
-              }}
-              onClick={(e) => {
-                // CRITICAL: Stop all clicks on background from reaching cards
-                e.preventDefault();
-                e.stopPropagation();
-                closeMenu();
-              }}
-              onMouseDown={(e) => {
-                // Stop mousedown events too - prevent card clicks
-                e.preventDefault();
-                e.stopPropagation();
-                // Close menu immediately on mousedown
-                closeMenu();
-              }}
-              onTouchStart={(e) => {
-                // Stop touch events - prevent card clicks
-                e.preventDefault();
-                e.stopPropagation();
-                // Close menu on touch
-                closeMenu();
-              }}
-              onTouchEnd={(e) => {
-                // Also stop touchend to prevent any lingering events
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onPointerDown={(e) => {
-                // Catch all pointer events (mouse, touch, pen)
-                e.preventDefault();
-                e.stopPropagation();
-                closeMenu();
+                pointerEvents: "none", // Let the blocker handle events
               }}
             />
 
-            {/* Centered menu - z-index 1002 */}
+            {/* Centered menu - z-index 9999 (above blocker) */}
             <div
               ref={menuRef}
               className={cn("glass-context-menu", menuClassName)}
               style={{
                 ...menuStyle,
+                zIndex: 9999,
                 animation: "menuSlideUp 260ms cubic-bezier(0.16, 1, 0.3, 1)",
                 overflowY: "auto", // Enable scrolling within menu
                 overscrollBehavior: "contain", // Prevent scroll chaining to background
+                pointerEvents: "auto", // Menu must be interactive
               }}
               onClick={(e) => {
-                // Stop all clicks inside menu from bubbling to card
+                // Stop all clicks inside menu from bubbling
                 e.stopPropagation();
               }}
               onMouseDown={(e) => {

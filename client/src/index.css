@@ -444,11 +444,14 @@
   body.context-menu-open .item-card,
   body.context-menu-open [class*="Card"],
   body.context-menu-open [role="article"],
-  body.context-menu-open article {
+  body.context-menu-open article,
+  body.context-menu-open a[href],
+  body.context-menu-open button {
     pointer-events: none !important;
   }
 
-  /* But allow the menu and overlay to work */
+  /* But allow the menu, blocker, and active item to work */
+  body.context-menu-open .context-menu-blocker,
   body.context-menu-open .context-menu-overlay,
   body.context-menu-open .glass-context-menu,
   body.context-menu-open .has-context-menu.context-menu-active {
