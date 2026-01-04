@@ -433,22 +433,46 @@ if ('serviceWorker' in navigator) {
       });
   };
 
-  // Unregister all existing service workers first, then register fresh
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    if (registrations.length > 0) {
-      console.log(`[SW] Found ${registrations.length} existing service worker(s), unregistering...`);
-      return Promise.all(registrations.map(reg => reg.unregister()));
+  // Delay service worker registration until after app loads
+  // This prevents the service worker from blocking the initial app load
+  const delayedSWRegistration = () => {
+    // Wait for app to be fully loaded before registering service worker
+    if (document.readyState === 'complete') {
+      // App already loaded, wait a bit more to ensure React has mounted
+      setTimeout(() => {
+        initializeServiceWorker();
+      }, 2000);
+    } else {
+      window.addEventListener('load', () => {
+        // Wait 2 seconds after page load to ensure app is fully initialized
+        setTimeout(() => {
+          initializeServiceWorker();
+        }, 2000);
+      });
     }
-  }).then(() => {
-    // Clear all caches before registering new service worker
-    return caches.keys().then((cacheNames) => {
-      return Promise.all(cacheNames.map((name) => caches.delete(name)));
+  };
+
+  const initializeServiceWorker = () => {
+    // Unregister all existing service workers first, then register fresh
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      if (registrations.length > 0) {
+        console.log(`[SW] Found ${registrations.length} existing service worker(s), unregistering...`);
+        return Promise.all(registrations.map(reg => reg.unregister()));
+      }
+    }).then(() => {
+      // Clear all caches before registering new service worker
+      return caches.keys().then((cacheNames) => {
+        return Promise.all(cacheNames.map((name) => caches.delete(name)));
+      });
+    }).then(() => {
+      // Small delay to ensure cleanup is complete
+      setTimeout(registerSW, 100);
+    }).catch((error) => {
+      console.error('[SW] Cleanup failed, attempting registration anyway:', error);
+      registerSW();
     });
-  }).then(() => {
-    // Small delay to ensure cleanup is complete
-    setTimeout(registerSW, 100);
-  }).catch((error) => {
-    console.error('[SW] Cleanup failed, attempting registration anyway:', error);
-    registerSW();
-  });
+  };
+
+  // Start delayed registration
+  delayedSWRegistration();
 }
