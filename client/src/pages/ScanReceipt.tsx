@@ -116,22 +116,30 @@ export default function ScanReceipt() {
 
       // Create a new expense if one doesn't exist
       if (!targetExpenseId || Number.isNaN(targetExpenseId)) {
-        const newExpense = await createExpenseMutation.mutateAsync({
-          supplierName: "Receipt Scan",
-          description: null,
-          expenseDate: new Date(),
-          // grossAmountCents is optional - will default to 1 cent on backend
-          currency: "EUR",
-          vatMode: "none",
-          vatRate: null,
-          vatAmountCents: null,
-          businessUsePct: 100,
-          category: "other",
-          paymentStatus: "unpaid",
-          paymentDate: null,
-          paymentMethod: null,
-        });
-        targetExpenseId = newExpense.id;
+        try {
+          const newExpense = await createExpenseMutation.mutateAsync({
+            supplierName: "Receipt Scan",
+            description: null,
+            expenseDate: new Date(),
+            // grossAmountCents is optional - will default to 1 cent on backend
+            currency: "EUR",
+            vatMode: "none",
+            vatRate: null,
+            vatAmountCents: null,
+            businessUsePct: 100,
+            category: "other",
+            paymentStatus: "unpaid",
+            paymentDate: null,
+            paymentMethod: null,
+          });
+          targetExpenseId = newExpense.id;
+        } catch (createErr) {
+          // Re-throw with a clearer error message
+          const createErrorMessage = createErr instanceof Error 
+            ? createErr.message 
+            : "Failed to create expense. Please check that all required fields are valid.";
+          throw new Error(`Failed to create expense: ${createErrorMessage}`);
+        }
       }
 
       const { uploadUrl, s3Key } = await uploadReceiptMutation.mutateAsync({
@@ -179,12 +187,16 @@ export default function ScanReceipt() {
       navigate(`/expenses/${targetExpenseId}`);
     } catch (err) {
       console.error("[ScanReceipt] Upload error:", err);
-      const errorMessage =
-        err instanceof DOMException && err.name === "AbortError"
-          ? "Upload timed out. Please try again."
-          : err instanceof Error
-          ? err.message
-          : "Failed to upload receipt";
+      let errorMessage = "Failed to upload receipt";
+      
+      if (err instanceof DOMException && err.name === "AbortError") {
+        errorMessage = "Upload timed out. Please try again.";
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === "object" && err !== null && "message" in err) {
+        errorMessage = String(err.message);
+      }
+      
       setError(errorMessage);
       setScanState("preview");
       toast.error(errorMessage);
@@ -253,11 +265,11 @@ export default function ScanReceipt() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!expenseId && (
-            <Alert variant="destructive">
+          {!expenseId && scanState === "idle" && (
+            <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Open this scanner from an expense to attach the scan.
+                A new expense will be created automatically when you upload the receipt.
               </AlertDescription>
             </Alert>
           )}
