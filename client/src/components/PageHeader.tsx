@@ -33,15 +33,15 @@ export function PageHeader({
         <div className="flex items-start gap-4 min-w-0 flex-1">
           {leading}
           {(title || subtitle || actions) && (
-            <div className="min-w-0 flex-1">
+            <div className="flex-1 min-w-0 flex flex-col">
               {title && <h1 className={resolvedTitleClassName}>{title}</h1>}
               {(subtitle || actions) && (
-                <div className="flex items-center justify-between gap-4 mt-1 w-full">
+                <div className="flex items-center justify-between gap-4 mt-1 flex-nowrap">
                   {subtitle && (
                     <p className="text-muted-foreground text-sm">{subtitle}</p>
                   )}
                   {actions && (
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 ml-auto">
                       {actions}
                     </div>
                   )}
@@ -49,7 +49,7 @@ export function PageHeader({
               )}
             </div>
           )}
-          {primaryAction && <div className="ml-auto">{primaryAction}</div>}
+          {primaryAction && <div className="ml-auto shrink-0">{primaryAction}</div>}
         </div>
         <div className="flex items-center gap-3 page-header-actions [&_svg]:size-6 shrink-0">
           {searchSlot ?? (
