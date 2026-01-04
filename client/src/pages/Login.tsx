@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { APP_TITLE } from "@/const";
 import { Logo } from "@/components/Logo";
 import { Loader2 } from "@/components/ui/Icon";
+import { clearAuthCache, hasStaleAuthData } from "@/lib/authCache";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,9 +15,32 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
+  const [hasStaleData, setHasStaleData] = useState(false);
+
+  // Check for stale auth data on mount
+  useEffect(() => {
+    setHasStaleData(hasStaleAuthData());
+  }, []);
 
   // Auth state changes are handled by App.tsx Router
   // No redirects needed here - let the app handle routing
+
+  const handleClearCache = async () => {
+    setClearingCache(true);
+    setError(null);
+    try {
+      await clearAuthCache();
+      setHasStaleData(false);
+      // Small delay to ensure cache is cleared
+      await new Promise(resolve => setTimeout(resolve, 500));
+      window.location.reload();
+    } catch (err) {
+      console.error("[Login] Error clearing cache:", err);
+      setError("Failed to clear cache. Please try clearing browser data manually.");
+      setClearingCache(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +95,11 @@ export default function Login() {
         );
       }
 
-      // Step 4: Force page reload to refresh auth state
+      // Step 4: Wait a moment to ensure cookie is set before redirect
+      // Some browsers need a small delay for the cookie to be properly set
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Step 5: Force page reload to refresh auth state
       // This ensures the tRPC client picks up the new session
       window.location.href = "/";
     } catch (err: any) {
@@ -133,7 +161,29 @@ export default function Login() {
                 {error}
               </div>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
+            {hasStaleData && (
+              <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md border">
+                <p className="mb-2">Having trouble logging in? You may have stale authentication data.</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearCache}
+                  disabled={clearingCache}
+                  className="w-full"
+                >
+                  {clearingCache ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Clearing cache...
+                    </>
+                  ) : (
+                    "Clear Auth Cache & Reload"
+                  )}
+                </Button>
+              </div>
+            )}
+            <Button type="submit" className="w-full" disabled={loading || clearingCache}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
