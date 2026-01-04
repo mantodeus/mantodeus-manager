@@ -27,9 +27,20 @@ export function PageHeader({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div />
-        <div className="flex items-center gap-3 page-header-actions [&_svg]:size-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4 min-w-0 flex-1">
+          {leading}
+          {(title || subtitle) && (
+            <div className="min-w-0">
+              {title && <h1 className={resolvedTitleClassName}>{title}</h1>}
+              {subtitle && (
+                <p className="text-muted-foreground text-sm">{subtitle}</p>
+              )}
+            </div>
+          )}
+          {primaryAction && <div className="ml-auto">{primaryAction}</div>}
+        </div>
+        <div className="flex items-center gap-3 page-header-actions [&_svg]:size-6 shrink-0">
           {searchSlot ?? (
             <Button variant="ghost" size="icon" aria-label="Search">
               <Search className="size-6" />
@@ -52,20 +63,6 @@ export function PageHeader({
           )}
         </div>
       </div>
-      {(title || subtitle || primaryAction || leading) && (
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            {leading}
-            <div>
-              {title && <h1 className={resolvedTitleClassName}>{title}</h1>}
-              {subtitle && (
-                <p className="text-muted-foreground text-sm">{subtitle}</p>
-              )}
-            </div>
-          </div>
-          {primaryAction}
-        </div>
-      )}
     </div>
   );
 }
