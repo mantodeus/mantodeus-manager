@@ -293,6 +293,41 @@ export const CenteredContextMenu = React.forwardRef<
     }, 220);
   }, [resetLongPress, onOpenChange]);
 
+  // Disable all card interactions when menu is open
+  useEffect(() => {
+    if (isOpen) {
+      // Add class to body to disable all card clicks via CSS
+      document.body.classList.add('context-menu-open');
+      // Also add a global event listener in capture phase to block all clicks
+      const blockAllClicks = (e: MouseEvent | TouchEvent) => {
+        const target = e.target as HTMLElement;
+        // Allow clicks on the menu itself
+        if (menuRef.current && menuRef.current.contains(target)) {
+          return;
+        }
+        // Allow clicks on the overlay (it will close the menu)
+        if (target.classList.contains('context-menu-overlay')) {
+          return;
+        }
+        // Block all other clicks
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      };
+      
+      document.addEventListener('click', blockAllClicks, true); // Capture phase
+      document.addEventListener('touchstart', blockAllClicks, true); // Capture phase
+      document.addEventListener('mousedown', blockAllClicks, true); // Capture phase
+      
+      return () => {
+        document.body.classList.remove('context-menu-open');
+        document.removeEventListener('click', blockAllClicks, true);
+        document.removeEventListener('touchstart', blockAllClicks, true);
+        document.removeEventListener('mousedown', blockAllClicks, true);
+      };
+    }
+  }, [isOpen]);
+
   // Prevent background scrolling when menu is open (Apple-style behavior)
   useEffect(() => {
     if (!isOpen) return;

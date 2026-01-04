@@ -436,6 +436,25 @@
     user-select: text;
   }
 
+  /* When context menu is open, disable all card clicks */
+  body.context-menu-open [data-slot="card"],
+  body.context-menu-open .card,
+  body.context-menu-open [data-item],
+  body.context-menu-open li,
+  body.context-menu-open .item-card,
+  body.context-menu-open [class*="Card"],
+  body.context-menu-open [role="article"],
+  body.context-menu-open article {
+    pointer-events: none !important;
+  }
+
+  /* But allow the menu and overlay to work */
+  body.context-menu-open .context-menu-overlay,
+  body.context-menu-open .glass-context-menu,
+  body.context-menu-open .has-context-menu.context-menu-active {
+    pointer-events: auto !important;
+  }
+
   /* Apple-style centered context menu animations - transform-only, no layout */
   @keyframes fadeIn {
     from {
