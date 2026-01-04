@@ -33,14 +33,14 @@ export function PageHeader({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-4">
-        <div className="flex items-end gap-4 min-w-0 flex-1">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4 min-w-0 flex-1">
           {leading}
           {(title || subtitle || showInlineActions) && (
-            <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
               {title && <h1 className={resolvedTitleClassName}>{title}</h1>}
               {(subtitle || showInlineActions) && (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-auto">
                   {subtitle && (
                     <p className="text-muted-foreground text-sm break-normal flex-1">
                       {subtitle}
