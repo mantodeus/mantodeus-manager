@@ -1,19 +1,17 @@
 // Service Worker for Mantodeus Manager PWA
 // Version number - increment this to force update
-const VERSION = 'v3.0.2'; // Force update: Fix PWA form interaction issues
+const VERSION = 'v3.1.0'; // Force update: Never cache JS/HTML to prevent stale app after deployments
 const CACHE_NAME = `mantodeus-${VERSION}`;
 const RUNTIME_CACHE = `mantodeus-runtime-${VERSION}`;
 
-// Assets to cache on install
+// Assets to cache on install (ONLY static images, NO HTML/JS)
 const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/logo_green.PNG',
   '/logo_pink.PNG',
 ];
 
-// Install event - cache core assets and skip waiting immediately
+// Install event - cache ONLY static assets, skip waiting immediately
 self.addEventListener('install', (event) => {
   console.log(`[SW ${VERSION}] Installing...`);
   event.waitUntil(
@@ -21,6 +19,11 @@ self.addEventListener('install', (event) => {
       .then((cache) => cache.addAll(PRECACHE_ASSETS))
       .then(() => {
         console.log(`[SW ${VERSION}] Installed, skipping waiting`);
+        return self.skipWaiting();
+      })
+      .catch((err) => {
+        console.error(`[SW ${VERSION}] Install failed:`, err);
+        // Still skip waiting even if cache fails
         return self.skipWaiting();
       })
   );
@@ -51,7 +54,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - NETWORK FIRST for everything to always get fresh content
+// Fetch event - NEVER cache HTML/JS/CSS, always fetch from network
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -75,49 +78,91 @@ self.addEventListener('fetch', (event) => {
     return; // Let Vite handle these directly, no service worker interception
   }
 
-  // Never cache POST, PUT, DELETE, PATCH requests (mutations)
+  // NEVER cache POST, PUT, DELETE, PATCH requests (mutations)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method)) {
     return; // Let browser handle directly, no caching
   }
 
-  // Never cache OPTIONS requests (CORS preflight)
+  // NEVER cache OPTIONS requests (CORS preflight)
   if (request.method === 'OPTIONS') {
     return;
   }
 
-  // Network first strategy for ALL requests
+  // NEVER cache critical app files - always fetch from network
+  const isCriticalFile = 
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname === '/' ||
+    url.pathname.startsWith('/assets/') ||
+    url.pathname.startsWith('/src/');
+
+  if (isCriticalFile) {
+    // For critical files, ALWAYS fetch from network, NO caching, NO fallback
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).catch((err) => {
+        console.error(`[SW ${VERSION}] Network fetch failed for critical file: ${url.pathname}`, err);
+        // Return error response instead of cached version
+        return new Response('Network error - please check your connection', {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: new Headers({
+            'Content-Type': 'text/plain',
+          }),
+        });
+      })
+    );
+    return;
+  }
+
+  // For non-critical files (images, fonts, etc.), use network-first with cache fallback
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-store' })
       .then((response) => {
-        // Only cache GET requests for static assets and API responses
+        // Only cache static assets (images, fonts) if they're successful
         if (response && response.ok && request.method === 'GET') {
-          const responseClone = response.clone();
-          const cacheName = url.pathname.startsWith('/api/') ? RUNTIME_CACHE : CACHE_NAME;
-          caches.open(cacheName).then((cache) => {
-            cache.put(request, responseClone);
-          });
+          const contentType = response.headers.get('content-type') || '';
+          const isStaticAsset = 
+            contentType.startsWith('image/') ||
+            contentType.startsWith('font/') ||
+            url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot)$/i);
+          
+          if (isStaticAsset) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
         }
         return response;
       })
       .catch(() => {
-        // Only fallback to cache if network fails (and it's a GET request)
+        // Only fallback to cache for static assets (images, fonts)
         if (request.method === 'GET') {
-          console.log(`[SW ${VERSION}] Network failed, trying cache for: ${url.pathname}`);
-          return caches.match(request).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            // Return offline page or error
-            return new Response('Offline - content not available', {
-              status: 503,
-              statusText: 'Service Unavailable',
-              headers: new Headers({
-                'Content-Type': 'text/plain',
-              }),
+          const contentType = request.headers.get('accept') || '';
+          const isStaticAsset = 
+            contentType.includes('image/') ||
+            contentType.includes('font/') ||
+            url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot)$/i);
+          
+          if (isStaticAsset) {
+            console.log(`[SW ${VERSION}] Network failed, trying cache for static asset: ${url.pathname}`);
+            return caches.match(request).then((cachedResponse) => {
+              if (cachedResponse) {
+                return cachedResponse;
+              }
+              // Return error for static assets if cache also fails
+              return new Response('Offline - content not available', {
+                status: 503,
+                statusText: 'Service Unavailable',
+                headers: new Headers({
+                  'Content-Type': 'text/plain',
+                }),
+              });
             });
-          });
+          }
         }
-        // For non-GET requests, just let them fail
+        // For non-static assets, just let them fail
         throw new Error('Network request failed');
       })
   );
