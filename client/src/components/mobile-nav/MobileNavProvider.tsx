@@ -13,7 +13,6 @@ import type {
   GestureState,
   Point,
 } from './types';
-import { GestureState as GestureStateEnum } from './types';
 
 const MobileNavContext = createContext<MobileNavContextValue | undefined>(
   undefined
@@ -23,8 +22,9 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   // § 2.2: Field is the default tab (not configurable)
   const [activeTab, setActiveTab] = useState<TabId>('field');
 
+  // Use string literal to avoid potential enum initialization issues
   const [gestureState, setGestureState] = useState<GestureState>(
-    GestureStateEnum.IDLE
+    'idle' as GestureState
   );
 
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
@@ -46,11 +46,12 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // Use string literals to avoid potential enum initialization issues during module evaluation
   const scrollerVisible =
-    gestureState === GestureStateEnum.HOLD_ACTIVE ||
-    gestureState === GestureStateEnum.DRAGGING ||
-    gestureState === GestureStateEnum.MOMENTUM ||
-    gestureState === GestureStateEnum.SNAPPING;
+    gestureState === 'hold_active' ||
+    gestureState === 'dragging' ||
+    gestureState === 'momentum' ||
+    gestureState === 'snapping';
 
   const value: MobileNavContextValue = {
     activeTab,
