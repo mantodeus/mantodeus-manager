@@ -168,7 +168,9 @@ export function ModuleScroller() {
     const itemHeight = firstItem.getBoundingClientRect().height;
     const virtualTop = Math.max(0, window.innerHeight - listRect.height);
     const relativeY = pointerPosition.y - virtualTop;
-    const rawIndex = Math.floor(relativeY / itemHeight);
+    // Increase responsiveness: multiply by 1.5 to make scrolling faster
+    const sensitivityMultiplier = 1.5;
+    const rawIndex = Math.floor((relativeY * sensitivityMultiplier) / itemHeight);
     const clampedIndex = Math.max(0, Math.min(modules.length - 1, rawIndex));
 
     if (clampedIndex !== highlightedIndex) {

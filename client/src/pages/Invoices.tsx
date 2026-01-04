@@ -334,6 +334,44 @@ export default function Invoices() {
 
   const filteredInvoices = filterInvoices(allInvoices);
 
+  // Calculate invoice totals for year and quarter
+  const { yearTotal, quarterTotal } = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
+    const quarterStart = new Date(currentYear, (currentQuarter - 1) * 3, 1);
+    const quarterEnd = new Date(currentYear, currentQuarter * 3, 0, 23, 59, 59);
+
+    let yearSum = 0;
+    let quarterSum = 0;
+
+    allInvoices.forEach((invoice) => {
+      // Only count active invoices (not archived or deleted)
+      if (invoice._status !== 'active') return;
+      
+      // Only count sent/paid invoices (not drafts)
+      if (!invoice.sentAt && !invoice.paidAt) return;
+
+      const total = parseFloat(invoice.total?.toString() || '0');
+      if (isNaN(total)) return;
+
+      const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
+      if (!issueDate) return;
+
+      if (issueDate.getFullYear() === currentYear) {
+        yearSum += total;
+        if (issueDate >= quarterStart && issueDate <= quarterEnd) {
+          quarterSum += total;
+        }
+      }
+    });
+
+    return {
+      yearTotal: yearSum,
+      quarterTotal: quarterSum,
+    };
+  }, [allInvoices]);
+
   const handlePreviewPDF = async (invoiceId: number, fileName: string) => {
     try {
       // Get the session token from Supabase
@@ -822,6 +860,30 @@ export default function Invoices() {
         filterSlot={filterSlot}
       />
 
+      {/* Total Cards */}
+      <div className="grid gap-3 md:grid-cols-2">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-base font-medium text-muted-foreground">
+              Total {new Date().getFullYear()}
+            </span>
+            <span className="text-xl font-semibold">
+              {formatCurrency(yearTotal)}
+            </span>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-base font-medium text-muted-foreground">
+              Q{Math.floor(new Date().getMonth() / 3) + 1} {new Date().getFullYear()}
+            </span>
+            <span className="text-xl font-semibold">
+              {formatCurrency(quarterTotal)}
+            </span>
+          </div>
+        </Card>
+      </div>
+
       {needsReviewInvoices.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -855,7 +917,8 @@ export default function Invoices() {
                 <Card
                   key={`needs-review-${invoice.id}`}
                   onClick={handleNeedsReviewClick}
-                  className={`p-3 sm:p-4 hover:shadow-sm transition-all md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
+                  data-item={invoice.id}
+                  className={`card p-3 sm:p-4 hover:shadow-sm transition-all md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
                 >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
@@ -961,7 +1024,8 @@ export default function Invoices() {
               <Card
                 key={invoice.id}
                 onClick={handleCardClick}
-                className={`p-3 sm:p-4 hover:shadow-sm transition-all md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
+                data-item={invoice.id}
+                className={`card p-3 sm:p-4 hover:shadow-sm transition-all md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
               >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">

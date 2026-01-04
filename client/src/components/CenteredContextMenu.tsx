@@ -117,6 +117,7 @@ export const CenteredContextMenu = React.forwardRef<
   const [menuItemsClickable, setMenuItemsClickable] = useState(false);
   const [itemRect, setItemRect] = useState<DOMRect | null>(null);
   const [menuHeight, setMenuHeight] = useState(200);
+  const menuOpenTimeRef = useRef(0);
   const itemRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -251,6 +252,7 @@ export const CenteredContextMenu = React.forwardRef<
       const rect = element.getBoundingClientRect();
       setItemRect(rect);
       setIsOpen(true);
+      menuOpenTimeRef.current = Date.now();
       onOpenChange?.(true);
       element.classList.add("context-menu-active");
       setIsPressing(false);
@@ -259,7 +261,7 @@ export const CenteredContextMenu = React.forwardRef<
       setMenuItemsClickable(false);
       setTimeout(() => {
         setMenuItemsClickable(true);
-      }, 300); // 300ms cooldown before items are clickable
+      }, 150); // Reduced cooldown for better responsiveness
     }
   }, [disabled, onOpenChange]);
 
@@ -267,6 +269,7 @@ export const CenteredContextMenu = React.forwardRef<
   const { longPressHandlers, gestureState, reset: resetLongPress } = useLongPress({
     onLongPress: (event) => {
       openMenu(event);
+      // Don't reset immediately - let the menu stay open
     },
     onPressStart: () => {
       setIsPressing(true);
@@ -279,6 +282,7 @@ export const CenteredContextMenu = React.forwardRef<
     setIsOpen(false);
     onOpenChange?.(false);
     setIsPressing(false);
+    menuOpenTimeRef.current = 0; // Reset menu open time
     if (itemRef.current) {
       itemRef.current.classList.remove("context-menu-active");
       itemRef.current.classList.remove("context-menu-shifted");
@@ -315,11 +319,44 @@ export const CenteredContextMenu = React.forwardRef<
       `;
       
       // Block all events on the blocker
-      const handleEvent = (e: Event) => {
+      // Only close on actual clicks/taps, not on touch start (which happens during long press release)
+      let touchStartTime = 0;
+      const handleTouchStart = (e: TouchEvent) => {
+        touchStartTime = Date.now();
+        // Don't close on touch start - wait for touch end
+      };
+      
+      const handleTouchEnd = (e: TouchEvent) => {
         const target = e.target as HTMLElement;
         // Allow events on menu
         if (menuRef.current && menuRef.current.contains(target)) {
           return;
+        }
+        // Don't close immediately after menu opens (prevent closing on long press release)
+        const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
+        if (timeSinceMenuOpen < 500) {
+          return; // Menu just opened, don't close on release
+        }
+        // Only close if this is a quick tap (not a long press release)
+        const touchDuration = Date.now() - touchStartTime;
+        if (touchDuration < 200) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          closeMenu();
+        }
+      };
+      
+      const handleClick = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        // Allow events on menu
+        if (menuRef.current && menuRef.current.contains(target)) {
+          return;
+        }
+        // Don't close immediately after menu opens
+        const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
+        if (timeSinceMenuOpen < 500) {
+          return; // Menu just opened, don't close immediately
         }
         // Block everything else - close menu
         e.preventDefault();
@@ -328,10 +365,10 @@ export const CenteredContextMenu = React.forwardRef<
         closeMenu();
       };
       
-      blocker.addEventListener('click', handleEvent, true);
-      blocker.addEventListener('touchstart', handleEvent, true);
-      blocker.addEventListener('mousedown', handleEvent, true);
-      blocker.addEventListener('pointerdown', handleEvent, true);
+      blocker.addEventListener('click', handleClick, true);
+      blocker.addEventListener('touchstart', handleTouchStart, true);
+      blocker.addEventListener('touchend', handleTouchEnd, true);
+      blocker.addEventListener('mousedown', handleClick, true);
       
       document.body.appendChild(blocker);
       

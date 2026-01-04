@@ -25,7 +25,8 @@ export function BottomTabBar() {
 
   const handleTabClick = (tabId: TabId) => {
     // Simple tap switches tabs (tap alone doesn't activate scroller)
-    if (gestureState === 'idle') {
+    // Allow clicks when idle or hold_pending (quick tap before gesture activates)
+    if (gestureState === 'idle' || gestureState === 'hold_pending') {
       setActiveTab(tabId);
       const lastUsedPath = lastUsedModuleByTab[tabId];
       const fallbackPath = MODULE_REGISTRY[tabId]?.[0]?.path;

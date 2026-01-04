@@ -31,6 +31,7 @@ export function useGestureRecognition() {
 
   const holdTimerRef = useRef<number | undefined>(undefined);
   const startPosRef = useRef<Point>({ x: 0, y: 0 });
+  const lastPosRef = useRef<Point>({ x: 0, y: 0 });
   const startTimeRef = useRef<number>(0);
   const lastScrollTimeRef = useRef<number>(0);
   const lastScrollYRef = useRef<number>(0);
@@ -89,6 +90,7 @@ export function useGestureRecognition() {
       }
 
       const currentPos = { x: clientX, y: clientY };
+      lastPosRef.current = currentPos;
 
       if (gestureState === 'hold_pending') {
         const dx = currentPos.x - startPosRef.current.x;
@@ -105,9 +107,27 @@ export function useGestureRecognition() {
           document.getSelection()?.removeAllRanges();
         }
 
+        // If movement is detected, check if it's primarily vertical
         if (distance > GESTURE_CONFIG.MOVEMENT_CANCEL_THRESHOLD) {
-          cancelGesture();
-          return;
+          const absDx = Math.abs(dx);
+          const absDy = Math.abs(dy);
+          
+          // If vertical movement is greater than horizontal, activate scroller immediately
+          if (absDy > absDx && absDy > 5) {
+            // Clear the hold timer since we're activating immediately
+            if (holdTimerRef.current) {
+              clearTimeout(holdTimerRef.current);
+              holdTimerRef.current = undefined;
+            }
+            triggerHaptic(HapticIntent.HOLD_RECOGNIZED);
+            setGestureState('hold_active');
+            setPointerPosition(currentPos);
+            return;
+          } else {
+            // Horizontal movement or too small - cancel gesture
+            cancelGesture();
+            return;
+          }
         }
       }
 
@@ -138,6 +158,14 @@ export function useGestureRecognition() {
         return;
       }
 
+      // Check if this was just a tap (no significant movement)
+      const distance = lastPosRef.current ? 
+        Math.sqrt(
+          Math.pow(lastPosRef.current.x - startPosRef.current.x, 2) + 
+          Math.pow(lastPosRef.current.y - startPosRef.current.y, 2)
+        ) : 0;
+      const wasJustTap = gestureState === 'hold_pending' && distance < 5;
+
       activePointerIdRef.current = null;
       removeWindowListeners();
       setPointerPosition(null);
@@ -148,6 +176,9 @@ export function useGestureRecognition() {
         const lastIndex = Math.max(0, MODULE_REGISTRY[activeTab].length - 1);
         setHighlightedIndex(prev => prev ?? lastIndex);
         setGestureState('snapping');
+      } else if (wasJustTap) {
+        // Just a tap - cancel gesture and let the click handler fire
+        cancelGesture();
       } else {
         cancelGesture();
       }
@@ -155,10 +186,12 @@ export function useGestureRecognition() {
     [
       isMobile,
       gestureState,
+      activeTab,
       cancelGesture,
       removeWindowListeners,
       setGestureState,
       setPointerPosition,
+      setHighlightedIndex,
     ]
   );
 
@@ -232,6 +265,7 @@ export function useGestureRecognition() {
       window.addEventListener('pointercancel', windowCancelHandlerRef.current);
 
       startPosRef.current = { x: e.clientX, y: e.clientY };
+      lastPosRef.current = { x: e.clientX, y: e.clientY };
       startTimeRef.current = Date.now();
       setPointerPosition(startPosRef.current);
       setGestureState('hold_pending');
