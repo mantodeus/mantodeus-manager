@@ -14,7 +14,7 @@
     <link rel="manifest" href="/manifest.json" />
     
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#030303" />
+    <meta name="theme-color" content="#0A0F14" />
     <meta name="description" content="Job management system for construction teams to log jobs, create reports, and manage tasks" />
     
     <!-- iOS PWA Support -->
@@ -48,9 +48,21 @@
         // Remove any .dark class from old theme system
         document.documentElement.classList.remove('dark');
         
-        // Set CSS variables immediately for Orchid Mantis
+        var root = document.documentElement.style;
+        
+        // Set background colors immediately for browser off-screen areas
         if (theme === 'orchid-mantis') {
-          var root = document.documentElement.style;
+          // Light mode - Orchid Mantis
+          root.backgroundColor = '#F2F1EE';
+          document.body && (document.body.style.backgroundColor = '#F2F1EE');
+          
+          // Update theme-color meta tag
+          var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+          if (themeColorMeta) {
+            themeColorMeta.setAttribute('content', '#F2F1EE');
+          }
+          
+          // Set CSS variables immediately for Orchid Mantis
           root.setProperty('--accent-solid', '#FF4FA3');
           root.setProperty('--accent-gradient', 'linear-gradient(135deg, #FF4FA3 0%, #FF78C7 50%, #E83D8C 100%)');
           root.setProperty('--primary', '#FF4FA3');
@@ -59,6 +71,16 @@
           root.setProperty('--chart-1', '#FF4FA3');
           root.setProperty('--chart-2', '#FF78C7');
           root.setProperty('--chart-3', '#E83D8C');
+        } else {
+          // Dark mode - Green Mantis
+          root.backgroundColor = '#0A0F14';
+          document.body && (document.body.style.backgroundColor = '#0A0F14');
+          
+          // Update theme-color meta tag
+          var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+          if (themeColorMeta) {
+            themeColorMeta.setAttribute('content', '#0A0F14');
+          }
         }
       })();
     </script>

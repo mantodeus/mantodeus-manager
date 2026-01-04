@@ -87,6 +87,14 @@ function updatePwaManifest(): void {
 
   const appIconPath = getAppIconPath();
   
+  // Get current theme to set appropriate colors
+  const theme = document.documentElement.getAttribute("data-theme");
+  const isOrchidMantis = theme === "orchid-mantis";
+  
+  // Theme colors: Green Mantis (dark) or Orchid Mantis (light)
+  const backgroundColor = isOrchidMantis ? "#F2F1EE" : "#0A0F14";
+  const themeColor = isOrchidMantis ? "#F2F1EE" : "#0A0F14";
+  
   // Base manifest structure
   const manifest = {
     name: "Mantodeus Manager",
@@ -94,8 +102,8 @@ function updatePwaManifest(): void {
     description: "Job management system for construction teams to log jobs, create reports, and manage tasks",
     start_url: "/",
     display: "standalone",
-    background_color: "#0a0a0a",
-    theme_color: "#030303",
+    background_color: backgroundColor,
+    theme_color: themeColor,
     orientation: "portrait-primary",
     icons: [
       {

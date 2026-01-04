@@ -241,6 +241,21 @@ export function applyTheme(themeName: ThemeName) {
   
   // Store preference
   localStorage.setItem('mantodeus.theme', themeName);
+  
+  // Update theme-color meta tag for browser UI (mobile pull-to-refresh background)
+  let themeColorMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!themeColorMeta) {
+    themeColorMeta = document.createElement('meta');
+    themeColorMeta.name = 'theme-color';
+    document.head.appendChild(themeColorMeta);
+  }
+  themeColorMeta.content = theme.tokens.bgPage;
+  
+  // Set HTML and body background colors to match theme (for off-screen areas)
+  root.style.backgroundColor = theme.tokens.bgPage;
+  if (document.body) {
+    document.body.style.backgroundColor = theme.tokens.bgPage;
+  }
 }
 
 /**
