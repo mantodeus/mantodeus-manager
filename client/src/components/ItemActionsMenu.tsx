@@ -40,7 +40,7 @@ export function ItemActionsMenu({
   size,
 }: ItemActionsMenuProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<{ open: (event?: PointerEvent | React.MouseEvent) => void } | null>(null);
+  const menuRef = useRef<{ open: (event?: PointerEvent | TouchEvent | React.MouseEvent) => void } | null>(null);
 
   // Long-press handler
   const { longPressHandlers, reset: resetLongPress } = useLongPress({
@@ -50,6 +50,11 @@ export function ItemActionsMenu({
     duration: 550,
     hapticFeedback: true,
   });
+  const longPressHandlersRef = useRef(longPressHandlers);
+
+  useEffect(() => {
+    longPressHandlersRef.current = longPressHandlers;
+  }, [longPressHandlers]);
 
   // Right-click handler
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -140,11 +145,11 @@ export function ItemActionsMenu({
       (cardElement.style as any).mozUserSelect = 'none';
       (cardElement.style as any).msUserSelect = 'none';
       
-      longPressHandlers.onPointerDown?.(e as any);
+      longPressHandlersRef.current.onPointerDown?.(e as any);
     };
     
     const pointerUpHandler = (e: PointerEvent) => {
-      longPressHandlers.onPointerUp?.(e as any);
+      longPressHandlersRef.current.onPointerUp?.(e as any);
       
       // Clear any existing timeout
       if (pressTimeout) {
@@ -159,7 +164,7 @@ export function ItemActionsMenu({
     };
     
     const pointerCancelHandler = (e: PointerEvent) => {
-      longPressHandlers.onPointerCancel?.(e as any);
+      longPressHandlersRef.current.onPointerCancel?.(e as any);
       
       // Clear any existing timeout
       if (pressTimeout) {
@@ -232,10 +237,22 @@ export function ItemActionsMenu({
       }
     };
     const pointerMoveHandler = (e: PointerEvent) => {
-      longPressHandlers.onPointerMove?.(e as any);
+      longPressHandlersRef.current.onPointerMove?.(e as any);
     };
     const clickHandler = (e: MouseEvent) => {
-      longPressHandlers.onClick?.(e as any);
+      longPressHandlersRef.current.onClick?.(e as any);
+    };
+    const touchStartHandler = (e: TouchEvent) => {
+      longPressHandlersRef.current.onTouchStart?.(e as any);
+    };
+    const touchMoveHandler = (e: TouchEvent) => {
+      longPressHandlersRef.current.onTouchMove?.(e as any);
+    };
+    const touchEndHandler = (e: TouchEvent) => {
+      longPressHandlersRef.current.onTouchEnd?.(e as any);
+    };
+    const touchCancelHandler = (e: TouchEvent) => {
+      longPressHandlersRef.current.onTouchCancel?.(e as any);
     };
 
     // Apply right-click handler
@@ -261,6 +278,10 @@ export function ItemActionsMenu({
     cardElement.addEventListener('selectstart', selectStartHandler, true); // CAPTURE phase
     cardElement.addEventListener('dragstart', dragStartHandler, true);
     cardElement.addEventListener('mousedown', mouseDownHandler, true); // Also catch mousedown
+    cardElement.addEventListener('touchstart', touchStartHandler, { capture: true, passive: false });
+    cardElement.addEventListener('touchmove', touchMoveHandler, true);
+    cardElement.addEventListener('touchend', touchEndHandler, { capture: true, passive: false });
+    cardElement.addEventListener('touchcancel', touchCancelHandler, { capture: true, passive: false });
 
     return () => {
       cardElement.removeEventListener('pointerdown', pointerDownHandler, true);
@@ -272,6 +293,10 @@ export function ItemActionsMenu({
       cardElement.removeEventListener('selectstart', selectStartHandler, true);
       cardElement.removeEventListener('dragstart', dragStartHandler, true);
       cardElement.removeEventListener('mousedown', mouseDownHandler, true);
+      cardElement.removeEventListener('touchstart', touchStartHandler, true);
+      cardElement.removeEventListener('touchmove', touchMoveHandler, true);
+      cardElement.removeEventListener('touchend', touchEndHandler, true);
+      cardElement.removeEventListener('touchcancel', touchCancelHandler, true);
       
       // Clear any pending timeout
       if (pressTimeout) {
@@ -285,7 +310,7 @@ export function ItemActionsMenu({
       cardElement.style.pointerEvents = originalPointerEvents;
       cardElement.classList.remove('has-context-menu');
     };
-  }, [disabled, longPressHandlers, resetLongPress]);
+  }, [disabled, resetLongPress]);
 
   if (!onAction || typeof onAction !== 'function') {
     console.error('ItemActionsMenu: onAction prop is required and must be a function');

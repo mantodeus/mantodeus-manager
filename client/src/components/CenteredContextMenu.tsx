@@ -76,7 +76,7 @@ const STANDARD_ACTION_ORDER: CenteredContextMenuAction[] = [
 const RUBBISH_ACTION_ORDER: CenteredContextMenuAction[] = ["restore", "deletePermanently"];
 
 export const CenteredContextMenu = React.forwardRef<
-  { open: (event?: PointerEvent | React.MouseEvent) => void },
+  { open: (event?: PointerEvent | TouchEvent | React.MouseEvent) => void },
   CenteredContextMenuProps
 >(({
   onAction,
@@ -159,7 +159,7 @@ export const CenteredContextMenu = React.forwardRef<
     };
   }, [itemRect]);
 
-  const openMenu = useCallback((event?: PointerEvent | React.MouseEvent) => {
+  const openMenu = useCallback((event?: PointerEvent | TouchEvent | React.MouseEvent) => {
     if (disabled) return;
 
     // Find the item element

@@ -55,7 +55,7 @@ export function useLongPress({
     startScrollPos.current = null;
     hasScrolled.current = false;
     pointerId.current = null;
-  }, [gestureState]);
+  }, []);
 
   const isInteractiveTarget = (target: HTMLElement | null) => {
     if (!target) return false;
