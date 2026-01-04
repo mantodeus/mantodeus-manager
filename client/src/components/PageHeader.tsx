@@ -33,42 +33,17 @@ export function PageHeader({
         <div className="flex items-start gap-4 min-w-0 flex-1">
           {leading}
           {(title || subtitle || actions) && (
-            <div className="flex-1 flex flex-col" style={{ minWidth: 0, width: '100%' }}>
+            <div className="flex-1 min-w-0">
               {title && <h1 className={resolvedTitleClassName}>{title}</h1>}
               {(subtitle || actions) && (
-                <div 
-                  className="flex items-center justify-between gap-4 mt-1" 
-                  style={{ 
-                    width: '100%', 
-                    flexDirection: 'row',
-                    display: 'flex',
-                    minWidth: '200px'
-                  }}
-                >
+                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2">
                   {subtitle && (
-                    <p 
-                      className="text-muted-foreground text-sm" 
-                      style={{ 
-                        whiteSpace: 'normal', 
-                        wordBreak: 'normal', 
-                        writingMode: 'horizontal-tb',
-                        direction: 'ltr',
-                        display: 'block',
-                        minWidth: 0,
-                        flex: '1 1 auto'
-                      }}
-                    >
+                    <p className="text-muted-foreground text-sm break-normal flex-1">
                       {subtitle}
                     </p>
                   )}
                   {actions && (
-                    <div 
-                      className="flex items-center gap-2" 
-                      style={{ 
-                        flexShrink: 0,
-                        flexGrow: 0
-                      }}
-                    >
+                    <div className="flex items-center gap-2 shrink-0">
                       {actions}
                     </div>
                   )}
