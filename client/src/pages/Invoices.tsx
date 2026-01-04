@@ -794,32 +794,32 @@ export default function Invoices() {
       <PageHeader
         title="Invoices"
         subtitle="Create, edit, and manage invoices"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setBulkUploadOpen(true)}
+              disabled={bulkUploadMutation.isPending}
+              className="h-10 whitespace-nowrap"
+            >
+              {bulkUploadMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-2" />
+              )}
+              Upload
+            </Button>
+            <Button asChild className="h-10 whitespace-nowrap">
+              <Link href="/invoices/new">
+                <Plus className="w-4 h-4 mr-1" />
+                New
+              </Link>
+            </Button>
+          </>
+        }
         searchSlot={searchSlot}
         filterSlot={filterSlot}
       />
-
-      {/* Top-of-Page Action Row */}
-      <div className="flex items-center justify-end gap-2 pb-2 border-b">
-        <Button
-          variant="outline"
-          onClick={() => setBulkUploadOpen(true)}
-          disabled={bulkUploadMutation.isPending}
-          className="h-10 whitespace-nowrap"
-        >
-          {bulkUploadMutation.isPending ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Upload className="w-4 h-4 mr-2" />
-          )}
-          Upload
-        </Button>
-        <Button asChild className="h-10 whitespace-nowrap">
-          <Link href="/invoices/new">
-            <Plus className="w-4 h-4 mr-1" />
-            New
-          </Link>
-        </Button>
-      </div>
 
       {needsReviewInvoices.length > 0 && (
         <div className="space-y-3">

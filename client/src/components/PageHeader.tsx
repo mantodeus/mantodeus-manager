@@ -7,6 +7,7 @@ type PageHeaderProps = {
   subtitle?: string | null;
   leading?: React.ReactNode;
   primaryAction?: React.ReactNode;
+  actions?: React.ReactNode; // Actions aligned with subtitle
   searchSlot?: React.ReactNode;
   filterSlot?: React.ReactNode;
   settingsSlot?: React.ReactNode;
@@ -18,6 +19,7 @@ export function PageHeader({
   subtitle,
   leading,
   primaryAction,
+  actions,
   searchSlot,
   filterSlot,
   settingsSlot,
@@ -30,11 +32,20 @@ export function PageHeader({
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4 min-w-0 flex-1">
           {leading}
-          {(title || subtitle) && (
-            <div className="min-w-0">
+          {(title || subtitle || actions) && (
+            <div className="min-w-0 flex-1">
               {title && <h1 className={resolvedTitleClassName}>{title}</h1>}
-              {subtitle && (
-                <p className="text-muted-foreground text-sm">{subtitle}</p>
+              {(subtitle || actions) && (
+                <div className="flex items-center gap-4 mt-1">
+                  {subtitle && (
+                    <p className="text-muted-foreground text-sm">{subtitle}</p>
+                  )}
+                  {actions && (
+                    <div className="flex items-center gap-2 shrink-0 ml-auto">
+                      {actions}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
