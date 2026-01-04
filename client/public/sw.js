@@ -43,13 +43,9 @@ self.addEventListener('activate', (event) => {
       );
     }).then(() => {
       console.log(`[SW ${VERSION}] All caches cleared, claiming clients`);
-      // Force reload all clients to get fresh content
-      return self.clients.matchAll().then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({ type: 'FORCE_RELOAD', version: VERSION });
-        });
-        return self.clients.claim();
-      });
+      // Don't force reload - let the app continue working
+      // The new service worker will be used on next page load
+      return self.clients.claim();
     })
   );
 });
