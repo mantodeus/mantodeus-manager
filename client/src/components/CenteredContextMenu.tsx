@@ -305,11 +305,12 @@ export const CenteredContextMenu = React.forwardRef<
         if (menuRef.current && menuRef.current.contains(target)) {
           return;
         }
-        // Allow clicks on the overlay (it will close the menu)
-        if (target.classList.contains('context-menu-overlay')) {
+        // Allow clicks on the overlay or any element inside it (it will close the menu)
+        if (target.classList.contains('context-menu-overlay') || 
+            target.closest('.context-menu-overlay')) {
           return;
         }
-        // Block all other clicks
+        // Block all other clicks - these are card clicks that should be prevented
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
