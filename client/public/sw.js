@@ -1,6 +1,6 @@
 // Service Worker for Mantodeus Manager PWA
 // Version number - increment this to force update
-const VERSION = 'v3.1.0'; // Force update: Never cache JS/HTML to prevent stale app after deployments
+const VERSION = 'v3.2.0'; // Force update: Add recovery mechanism and better cache invalidation
 const CACHE_NAME = `mantodeus-${VERSION}`;
 const RUNTIME_CACHE = `mantodeus-runtime-${VERSION}`;
 

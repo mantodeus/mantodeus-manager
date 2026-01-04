@@ -295,73 +295,160 @@ if (document.readyState === "loading") {
 // Additional error handlers (redundant but safe)
 // The main handlers are at the top of the file to catch module-level errors
 
-// Service Worker registration with aggressive update handling
+// Service Worker registration with aggressive update handling and recovery mechanism
 if ('serviceWorker' in navigator) {
-  // Register immediately, don't wait for load
-  navigator.serviceWorker.register('/sw.js', { 
-    updateViaCache: 'none', // Never use cache when checking for updates
-    scope: '/' 
-  })
-    .then((registration) => {
-      console.log('[SW] Service Worker registered:', registration.scope);
+  // Recovery function: unregister service worker and clear all caches
+  const emergencyRecovery = async () => {
+    console.warn('[SW] Emergency recovery: Unregistering service worker and clearing caches');
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(reg => reg.unregister()));
+      console.log('[SW] All service workers unregistered');
       
-      // Check for updates immediately
-      registration.update();
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
+      console.log('[SW] All caches cleared');
       
-      // Listen for updates
-      registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed') {
-              if (navigator.serviceWorker.controller) {
-                // New service worker available, reload to activate
-                console.log('[SW] New service worker available, reloading...');
-                // Clear all caches before reload
-                caches.keys().then((cacheNames) => {
-                  return Promise.all(cacheNames.map((name) => caches.delete(name)));
-                }).then(() => {
-                  window.location.reload();
-                });
-              } else {
-                // First install, no reload needed
-                console.log('[SW] Service worker installed for the first time');
-              }
-            }
-          });
-        }
-      });
-      
-      // Listen for messages from service worker
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'FORCE_RELOAD') {
-          console.log('[SW] Force reload requested, version:', event.data.version);
-          // Clear all caches before reload
-          caches.keys().then((cacheNames) => {
-            return Promise.all(cacheNames.map((name) => caches.delete(name)));
-          }).then(() => {
-            window.location.reload();
-          });
-        }
-      });
-      
-      // Periodically check for updates (every 5 minutes)
-      setInterval(() => {
-        registration.update();
-      }, 5 * 60 * 1000);
-      
-      // Check for updates when page becomes visible (user returns to app)
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-          registration.update();
-        }
-      });
-    })
-    .catch((error) => {
-      console.error('[SW] Service Worker registration failed:', error);
-      // If service worker fails, clear all caches to prevent stale content
-      caches.keys().then((cacheNames) => {
-        return Promise.all(cacheNames.map((name) => caches.delete(name)));
-      });
+      // Reload to get fresh content
+      window.location.reload();
+    } catch (err) {
+      console.error('[SW] Recovery failed:', err);
+    }
+  };
+
+  // Health check: detect if app is broken and recover
+  let healthCheckTimeout: ReturnType<typeof setTimeout> | null = null;
+  let appHealthCheckPassed = false;
+  
+  const checkAppHealth = () => {
+    if (appHealthCheckPassed) {
+      return; // App loaded successfully, no need to check
+    }
+    
+    // If document is still loading after 15 seconds, something is wrong
+    if (document.readyState === 'loading') {
+      console.warn('[SW] Document still loading after 15 seconds, attempting recovery...');
+      emergencyRecovery();
+      return;
+    }
+    
+    // Check if React root exists (app has mounted)
+    const reactRoot = document.getElementById('root');
+    if (!reactRoot || reactRoot.children.length === 0) {
+      console.warn('[SW] React app not mounted, attempting recovery...');
+      emergencyRecovery();
+      return;
+    }
+    
+    // If we get here, app seems healthy
+    appHealthCheckPassed = true;
+    if (healthCheckTimeout) {
+      clearTimeout(healthCheckTimeout);
+      healthCheckTimeout = null;
+    }
+  };
+
+  // Run health check after 15 seconds
+  healthCheckTimeout = setTimeout(checkAppHealth, 15000);
+  
+  // Also check when DOM is ready
+  if (document.readyState === 'complete') {
+    setTimeout(checkAppHealth, 2000); // Check after 2 seconds if already complete
+  } else {
+    window.addEventListener('load', () => {
+      setTimeout(checkAppHealth, 2000); // Check 2 seconds after load
     });
+  }
+
+  // Register service worker with cache-busting
+  const registerSW = () => {
+    // Add version and timestamp to force fresh fetch of service worker file
+    const swUrl = `/sw.js?v=3.2.0&t=${Date.now()}`;
+    
+    navigator.serviceWorker.register(swUrl, { 
+      updateViaCache: 'none', // Never use cache when checking for updates
+      scope: '/' 
+    })
+      .then((registration) => {
+        console.log('[SW] Service Worker registered:', registration.scope);
+        
+        // Check for updates immediately
+        registration.update();
+        
+        // Listen for updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed') {
+                if (navigator.serviceWorker.controller) {
+                  // New service worker available, reload to activate
+                  console.log('[SW] New service worker available, reloading...');
+                  // Clear all caches before reload
+                  caches.keys().then((cacheNames) => {
+                    return Promise.all(cacheNames.map((name) => caches.delete(name)));
+                  }).then(() => {
+                    window.location.reload();
+                  });
+                } else {
+                  // First install, no reload needed
+                  console.log('[SW] Service worker installed for the first time');
+                }
+              }
+            });
+          }
+        });
+        
+        // Listen for messages from service worker
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'FORCE_RELOAD') {
+            console.log('[SW] Force reload requested, version:', event.data.version);
+            // Clear all caches before reload
+            caches.keys().then((cacheNames) => {
+              return Promise.all(cacheNames.map((name) => caches.delete(name)));
+            }).then(() => {
+              window.location.reload();
+            });
+          }
+        });
+        
+        // Periodically check for updates (every 5 minutes)
+        setInterval(() => {
+          registration.update();
+        }, 5 * 60 * 1000);
+        
+        // Check for updates when page becomes visible (user returns to app)
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) {
+            registration.update();
+          }
+        });
+      })
+      .catch((error) => {
+        console.error('[SW] Service Worker registration failed:', error);
+        // If service worker fails, clear all caches to prevent stale content
+        caches.keys().then((cacheNames) => {
+          return Promise.all(cacheNames.map((name) => caches.delete(name)));
+        });
+      });
+  };
+
+  // Unregister all existing service workers first, then register fresh
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    if (registrations.length > 0) {
+      console.log(`[SW] Found ${registrations.length} existing service worker(s), unregistering...`);
+      return Promise.all(registrations.map(reg => reg.unregister()));
+    }
+  }).then(() => {
+    // Clear all caches before registering new service worker
+    return caches.keys().then((cacheNames) => {
+      return Promise.all(cacheNames.map((name) => caches.delete(name)));
+    });
+  }).then(() => {
+    // Small delay to ensure cleanup is complete
+    setTimeout(registerSW, 100);
+  }).catch((error) => {
+    console.error('[SW] Cleanup failed, attempting registration anyway:', error);
+    registerSW();
+  });
 }
