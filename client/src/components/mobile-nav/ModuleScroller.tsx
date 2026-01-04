@@ -12,8 +12,7 @@ import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useMobileNav } from './MobileNavProvider';
 import { MODULE_REGISTRY, DEPTH_OFFSET, VISUAL_HIERARCHY, FEATURES } from './constants';
-import { GestureState } from './types';
-import type { Module } from './types';
+import type { GestureState, Module } from './types';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
 
 /**
@@ -153,8 +152,8 @@ export function ModuleScroller() {
       !scrollerVisible ||
       !pointerPosition ||
       !listRef.current ||
-      (gestureState !== GestureState.HOLD_ACTIVE &&
-        gestureState !== GestureState.DRAGGING)
+      (gestureState !== 'hold_active' &&
+        gestureState !== 'dragging')
     ) {
       return;
     }
@@ -185,7 +184,7 @@ export function ModuleScroller() {
   ]);
   // Â§ 6.2: State Safety - navigation occurs only on release
   useEffect(() => {
-    if (gestureState === GestureState.SNAPPING && highlightedIndex !== null) {
+    if (gestureState === 'snapping' && highlightedIndex !== null) {
       const module = modules[highlightedIndex];
 
       if (module) {
@@ -196,7 +195,7 @@ export function ModuleScroller() {
 
       // Reset state
       setHighlightedIndex(null);
-      setGestureState(GestureState.IDLE);
+      setGestureState('idle');
     }
   }, [
     gestureState,

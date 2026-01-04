@@ -13,16 +13,16 @@ export type TabId = 'office' | 'field' | 'tools';
 
 /**
  * Gesture state machine
+ * Using union type instead of enum to avoid initialization issues
  */
-export enum GestureState {
-  IDLE = 'idle',
-  HOLD_PENDING = 'hold_pending',
-  HOLD_ACTIVE = 'hold_active',
-  DRAGGING = 'dragging',
-  MOMENTUM = 'momentum',
-  SNAPPING = 'snapping',
-  DISABLED = 'disabled', // Desktop mode
-}
+export type GestureState =
+  | 'idle'
+  | 'hold_pending'
+  | 'hold_active'
+  | 'dragging'
+  | 'momentum'
+  | 'snapping'
+  | 'disabled'; // Desktop mode
 
 /**
  * Point coordinates

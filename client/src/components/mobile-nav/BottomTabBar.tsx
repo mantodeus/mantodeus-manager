@@ -8,9 +8,8 @@ import { cn } from '@/lib/utils';
 import { useMobileNav } from './MobileNavProvider';
 import { useGestureRecognition } from './useGestureRecognition';
 import { MODULE_REGISTRY, TABS } from './constants';
-import { GestureState } from './types';
 import { useLocation } from 'wouter';
-import type { TabId } from './types';
+import type { GestureState, TabId } from './types';
 
 export function BottomTabBar() {
   const {
@@ -26,7 +25,7 @@ export function BottomTabBar() {
 
   const handleTabClick = (tabId: TabId) => {
     // Simple tap switches tabs (tap alone doesn't activate scroller)
-    if (gestureState === GestureState.IDLE) {
+    if (gestureState === 'idle') {
       setActiveTab(tabId);
       const lastUsedPath = lastUsedModuleByTab[tabId];
       const fallbackPath = MODULE_REGISTRY[tabId]?.[0]?.path;

@@ -7,8 +7,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/useMobile';
 import { useMobileNav } from './MobileNavProvider';
-import { GestureState } from './types';
-import type { Point, TabId } from './types';
+import type { GestureState, Point, TabId } from './types';
 import { GESTURE_CONFIG, HapticIntent, MODULE_REGISTRY } from './constants';
 
 /**
@@ -75,13 +74,13 @@ export function useGestureRecognition() {
     removeWindowListeners();
     activePointerIdRef.current = null;
     setPointerPosition(null);
-    setGestureState(GestureState.IDLE);
+    setGestureState('idle');
   }, [isMobile, removeWindowListeners, setGestureState, setPointerPosition]);
 
   const processPointerMove = useCallback(
     (clientX: number, clientY: number, pointerId: number) => {
       if (!isMobile) return;
-      if (gestureState === GestureState.IDLE) return;
+      if (gestureState === 'idle') return;
       if (
         activePointerIdRef.current !== null &&
         pointerId !== activePointerIdRef.current
@@ -91,7 +90,7 @@ export function useGestureRecognition() {
 
       const currentPos = { x: clientX, y: clientY };
 
-      if (gestureState === GestureState.HOLD_PENDING) {
+      if (gestureState === 'hold_pending') {
         const dx = currentPos.x - startPosRef.current.x;
         const dy = currentPos.y - startPosRef.current.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -113,10 +112,10 @@ export function useGestureRecognition() {
       }
 
       if (
-        gestureState === GestureState.HOLD_ACTIVE ||
-        gestureState === GestureState.DRAGGING
+        gestureState === 'hold_active' ||
+        gestureState === 'dragging'
       ) {
-        setGestureState(GestureState.DRAGGING);
+        setGestureState('dragging');
         setPointerPosition(currentPos);
       }
     },
@@ -143,12 +142,12 @@ export function useGestureRecognition() {
       removeWindowListeners();
       setPointerPosition(null);
 
-      if (gestureState === GestureState.DRAGGING) {
-        setGestureState(GestureState.SNAPPING);
-      } else if (gestureState === GestureState.HOLD_ACTIVE) {
+      if (gestureState === 'dragging') {
+        setGestureState('snapping');
+      } else if (gestureState === 'hold_active') {
         const lastIndex = Math.max(0, MODULE_REGISTRY[activeTab].length - 1);
         setHighlightedIndex(prev => prev ?? lastIndex);
-        setGestureState(GestureState.SNAPPING);
+        setGestureState('snapping');
       } else {
         cancelGesture();
       }
@@ -235,7 +234,7 @@ export function useGestureRecognition() {
       startPosRef.current = { x: e.clientX, y: e.clientY };
       startTimeRef.current = Date.now();
       setPointerPosition(startPosRef.current);
-      setGestureState(GestureState.HOLD_PENDING);
+      setGestureState('hold_pending');
 
       holdTimerRef.current = window.setTimeout(() => {
         const elapsed = Date.now() - startTimeRef.current;
@@ -247,7 +246,7 @@ export function useGestureRecognition() {
             GESTURE_CONFIG.HOLD_DURATION + GESTURE_CONFIG.HOLD_TOLERANCE
         ) {
           triggerHaptic(HapticIntent.HOLD_RECOGNIZED);
-          setGestureState(GestureState.HOLD_ACTIVE);
+          setGestureState('hold_active');
           setPointerPosition(startPosRef.current);
         }
       }, GESTURE_CONFIG.HOLD_DURATION);
