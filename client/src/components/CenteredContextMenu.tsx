@@ -97,7 +97,43 @@ export const CenteredContextMenu = React.forwardRef<
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Calculate menu position (anchored above/below the pressed item)
+  const menuShiftY = useMemo(() => {
+    if (!itemRect || !itemRef.current) return 0;
+
+    const viewportHeight = window.innerHeight;
+    const spacing = 12;
+    const edgePadding = 12;
+
+    const availableBelow = viewportHeight - itemRect.bottom - spacing - edgePadding;
+    const requiredShift = Math.max(0, menuHeight - availableBelow);
+    if (requiredShift <= 0) return 0;
+
+    const parent = itemRef.current.parentElement;
+    if (!parent) {
+      return Math.min(requiredShift, Math.max(0, itemRect.top - edgePadding));
+    }
+
+    const cardSelector =
+      '[data-slot="card"], .card, [data-item], li, .item-card, [class*="Card"], [role="article"], article';
+    const siblings = Array.from(parent.querySelectorAll(cardSelector))
+      .filter((node): node is HTMLElement => node instanceof HTMLElement);
+    const currentLeft = itemRect.left;
+    const sameColumn = siblings
+      .map((node) => ({ node, rect: node.getBoundingClientRect() }))
+      .filter(({ rect }) => Math.abs(rect.left - currentLeft) < rect.width / 2)
+      .sort((a, b) => a.rect.top - b.rect.top);
+
+    const currentIndex = sameColumn.findIndex(({ node }) => node === itemRef.current);
+    const prevRect = currentIndex > 0 ? sameColumn[currentIndex - 1].rect : null;
+    const step = prevRect ? itemRect.top - prevRect.top : itemRect.height + spacing;
+    const safeStep = step > 0 ? step : itemRect.height + spacing;
+    const snappedShift = Math.ceil(requiredShift / safeStep) * safeStep;
+    const maxShift = Math.max(0, itemRect.top - edgePadding);
+
+    return Math.min(snappedShift, maxShift);
+  }, [itemRect, menuHeight]);
+
+  // Calculate menu position (always below the pressed item)
   const menuStyle = useMemo(() => {
     if (!itemRect) return null;
 
@@ -113,17 +149,13 @@ export const CenteredContextMenu = React.forwardRef<
       viewportWidth - edgePadding - menuWidth / 2
     );
 
-    const availableBelow = viewportHeight - itemRect.bottom - spacing - edgePadding;
-    const availableAbove = itemRect.top - spacing - edgePadding;
-    const canFitBelow = availableBelow >= menuHeight;
-    const canFitAbove = availableAbove >= menuHeight;
-    const placeBelow = canFitBelow || (!canFitAbove && availableBelow >= availableAbove);
-    const maxHeight = Math.max(120, placeBelow ? availableBelow : availableAbove);
+    const adjustedBottom = itemRect.bottom - menuShiftY;
+    const availableBelow = viewportHeight - adjustedBottom - spacing - edgePadding;
+    const maxHeight = Math.max(120, availableBelow);
 
     return {
       position: "fixed" as const,
-      top: placeBelow ? `${itemRect.bottom + spacing}px` : undefined,
-      bottom: placeBelow ? undefined : `${viewportHeight - itemRect.top + spacing}px`,
+      top: `${adjustedBottom + spacing}px`,
       left: `${left}px`,
       transform: "translateX(-50%)",
       zIndex: 1002,
@@ -131,7 +163,7 @@ export const CenteredContextMenu = React.forwardRef<
       maxHeight: `${maxHeight}px`,
       width: "auto",
     };
-  }, [itemRect, menuHeight]);
+  }, [itemRect, menuHeight, menuShiftY]);
 
   const openMenu = useCallback((event?: PointerEvent | TouchEvent | React.MouseEvent) => {
     if (disabled) return;
@@ -221,6 +253,8 @@ export const CenteredContextMenu = React.forwardRef<
     setIsPressing(false);
     if (itemRef.current) {
       itemRef.current.classList.remove("context-menu-active");
+      itemRef.current.classList.remove("context-menu-shifted");
+      itemRef.current.style.removeProperty("--context-menu-shift");
     }
     // Reset long-press gesture state immediately
     resetLongPress();
@@ -353,6 +387,18 @@ export const CenteredContextMenu = React.forwardRef<
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, closeMenu]);
+
+  // Apply vertical shift so menu always has space below the item.
+  useEffect(() => {
+    if (!isOpen || !itemRef.current) return;
+    if (menuShiftY > 0) {
+      itemRef.current.classList.add("context-menu-shifted");
+      itemRef.current.style.setProperty("--context-menu-shift", `${-menuShiftY}px`);
+    } else {
+      itemRef.current.classList.remove("context-menu-shifted");
+      itemRef.current.style.removeProperty("--context-menu-shift");
+    }
+  }, [isOpen, menuShiftY]);
 
   // Measure menu height after render so spacing is consistent above/below.
   useEffect(() => {
