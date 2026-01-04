@@ -623,34 +623,49 @@ export const expenseRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      await validateExpenseOwnership(input.expenseId, ctx.user.id, ctx.user.role);
-
-      // Validate file size
-      if (input.fileSize > MAX_RECEIPT_SIZE) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `File size exceeds maximum of ${MAX_RECEIPT_SIZE / 1024 / 1024}MB`,
+      try {
+        console.log("[Expenses] uploadExpenseReceipt called:", {
+          expenseId: input.expenseId,
+          filename: input.filename,
+          mimeType: input.mimeType,
+          fileSize: input.fileSize,
+          userId: ctx.user.id,
         });
+
+        await validateExpenseOwnership(input.expenseId, ctx.user.id, ctx.user.role);
+
+        // Validate file size
+        if (input.fileSize > MAX_RECEIPT_SIZE) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `File size exceeds maximum of ${MAX_RECEIPT_SIZE / 1024 / 1024}MB`,
+          });
+        }
+
+        // Validate MIME type
+        if (!ALLOWED_MIME_TYPES.includes(input.mimeType as any)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Invalid file type. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`,
+          });
+        }
+
+        // Generate S3 key
+        const s3Key = generateExpenseReceiptKey(input.expenseId, input.filename);
+        console.log("[Expenses] Generated S3 key:", s3Key);
+
+        // Create presigned upload URL
+        const { uploadUrl } = await createPresignedUploadUrl(s3Key, input.mimeType, 15 * 60); // 15 minutes
+        console.log("[Expenses] Presigned URL created successfully");
+
+        return {
+          uploadUrl,
+          s3Key,
+        };
+      } catch (error) {
+        console.error("[Expenses] uploadExpenseReceipt failed:", error);
+        throw error;
       }
-
-      // Validate MIME type
-      if (!ALLOWED_MIME_TYPES.includes(input.mimeType as any)) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Invalid file type. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`,
-        });
-      }
-
-      // Generate S3 key
-      const s3Key = generateExpenseReceiptKey(input.expenseId, input.filename);
-
-      // Create presigned upload URL
-      const { uploadUrl } = await createPresignedUploadUrl(s3Key, input.mimeType, 15 * 60); // 15 minutes
-
-      return {
-        uploadUrl,
-        s3Key,
-      };
     }),
 
   /**
@@ -668,19 +683,31 @@ export const expenseRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      await validateExpenseOwnership(input.expenseId, ctx.user.id, ctx.user.role);
+      try {
+        console.log("[Expenses] registerReceipt called:", {
+          expenseId: input.expenseId,
+          s3Key: input.s3Key,
+          mimeType: input.mimeType,
+          originalFilename: input.originalFilename,
+          fileSize: input.fileSize,
+          userId: ctx.user.id,
+        });
 
-      // Check if this is the first receipt
-      const existingFiles = await db.getExpenseFilesByExpenseId(input.expenseId);
-      const isFirstReceipt = existingFiles.length === 0;
+        await validateExpenseOwnership(input.expenseId, ctx.user.id, ctx.user.role);
 
-      const file = await db.addExpenseFile({
-        expenseId: input.expenseId,
-        s3Key: input.s3Key,
-        mimeType: input.mimeType,
-        originalFilename: input.originalFilename,
-        fileSize: input.fileSize,
-      });
+        // Check if this is the first receipt
+        const existingFiles = await db.getExpenseFilesByExpenseId(input.expenseId);
+        const isFirstReceipt = existingFiles.length === 0;
+        console.log("[Expenses] Is first receipt:", isFirstReceipt, "Existing files:", existingFiles.length);
+
+        const file = await db.addExpenseFile({
+          expenseId: input.expenseId,
+          s3Key: input.s3Key,
+          mimeType: input.mimeType,
+          originalFilename: input.originalFilename,
+          fileSize: input.fileSize,
+        });
+        console.log("[Expenses] File registered in database, fileId:", file.id);
 
       // Apply autofill only if this is the first receipt
       if (isFirstReceipt) {
@@ -701,12 +728,14 @@ export const expenseRouter = router({
             }
           }
 
+          console.log("[Expenses] Applying autofill for first receipt");
           await applyExpenseAutofill(input.expenseId, {
             filename: input.originalFilename,
             userId: ctx.user.id,
             isFirstReceipt: true,
             pdfTotalCents,
           });
+          console.log("[Expenses] Autofill completed successfully");
         } catch (autofillError) {
           // Log but don't fail - autofill is best-effort
           console.error(
@@ -716,7 +745,12 @@ export const expenseRouter = router({
         }
       }
 
+      console.log("[Expenses] registerReceipt completed successfully, returning file");
       return file;
+      } catch (error) {
+        console.error("[Expenses] registerReceipt failed:", error);
+        throw error;
+      }
     }),
 
   /**

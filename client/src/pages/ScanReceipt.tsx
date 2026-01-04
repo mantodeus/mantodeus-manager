@@ -156,13 +156,16 @@ export default function ScanReceipt() {
         }
       }
 
+      console.log("[ScanReceipt] Step 1: Getting upload URL for expense:", targetExpenseId);
       const { uploadUrl, s3Key } = await uploadReceiptMutation.mutateAsync({
         expenseId: targetExpenseId,
         filename: fileToUpload.name,
         mimeType: fileToUpload.type,
         fileSize: fileToUpload.size,
       });
+      console.log("[ScanReceipt] Step 1 complete: Got upload URL, s3Key:", s3Key);
 
+      console.log("[ScanReceipt] Step 2: Uploading file to S3 (size:", fileToUpload.size, "bytes)");
       const controller = new AbortController();
       uploadControllerRef.current = controller;
       const uploadTimeoutId = window.setTimeout(() => controller.abort(), 25000);
@@ -177,9 +180,12 @@ export default function ScanReceipt() {
       }).finally(() => window.clearTimeout(uploadTimeoutId));
 
       if (!uploadResponse.ok) {
+        console.error("[ScanReceipt] S3 upload failed:", uploadResponse.status, uploadResponse.statusText);
         throw new Error(`Storage upload failed (${uploadResponse.status})`);
       }
+      console.log("[ScanReceipt] Step 2 complete: File uploaded to S3 successfully");
 
+      console.log("[ScanReceipt] Step 3: Registering receipt in database");
       await withTimeout(
         registerReceiptMutation.mutateAsync({
           expenseId: targetExpenseId,
@@ -191,13 +197,16 @@ export default function ScanReceipt() {
         20000,
         "Registering receipt timed out. Please try again."
       );
+      console.log("[ScanReceipt] Step 3 complete: Receipt registered successfully");
 
+      console.log("[ScanReceipt] Step 4: Invalidating queries and navigating");
       toast.success("Receipt uploaded successfully");
       if (originalPreviewUrl) {
         URL.revokeObjectURL(originalPreviewUrl);
       }
       await utils.expenses.getExpense.invalidate({ id: targetExpenseId });
       await utils.expenses.list.invalidate();
+      console.log("[ScanReceipt] Step 4: Navigating to /expenses/" + targetExpenseId);
       navigate(`/expenses/${targetExpenseId}`);
     } catch (err) {
       console.error("[ScanReceipt] Upload error:", err);
