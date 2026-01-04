@@ -113,18 +113,22 @@ export const CenteredContextMenu = React.forwardRef<
       viewportWidth - edgePadding - menuWidth / 2
     );
 
-    const canShowBelow = viewportHeight - itemRect.bottom >= menuHeight + spacing;
-    const top = canShowBelow
-      ? itemRect.bottom + spacing
-      : Math.max(edgePadding, itemRect.top - spacing - menuHeight);
+    const availableBelow = viewportHeight - itemRect.bottom - spacing - edgePadding;
+    const availableAbove = itemRect.top - spacing - edgePadding;
+    const canFitBelow = availableBelow >= menuHeight;
+    const canFitAbove = availableAbove >= menuHeight;
+    const placeBelow = canFitBelow || (!canFitAbove && availableBelow >= availableAbove);
+    const maxHeight = Math.max(120, placeBelow ? availableBelow : availableAbove);
 
     return {
       position: "fixed" as const,
-      top: `${top}px`,
+      top: placeBelow ? `${itemRect.bottom + spacing}px` : undefined,
+      bottom: placeBelow ? undefined : `${viewportHeight - itemRect.top + spacing}px`,
       left: `${left}px`,
       transform: "translateX(-50%)",
       zIndex: 1002,
       maxWidth: "calc(100vw - 24px)",
+      maxHeight: `${maxHeight}px`,
       width: "auto",
     };
   }, [itemRect, menuHeight]);
@@ -502,7 +506,6 @@ export const CenteredContextMenu = React.forwardRef<
               style={{
                 ...menuStyle,
                 animation: "menuSlideUp 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-                maxHeight: "70vh", // Allow menu to scroll if it has many items
                 overflowY: "auto", // Enable scrolling within menu
                 overscrollBehavior: "contain", // Prevent scroll chaining to background
               }}
