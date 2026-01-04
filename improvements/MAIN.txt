@@ -1,6 +1,9 @@
 cd /srv/customer/sites/manager.mantodeus.com
 bash scripts/deploy-prod.sh
 
+npx pm2 start infra/webhook/ecosystem.config.cjs
+npx pm2 save
+
 
 rm -rf node_modules && npm install
 
