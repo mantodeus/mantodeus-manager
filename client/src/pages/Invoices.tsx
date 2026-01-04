@@ -1020,8 +1020,9 @@ export default function Invoices() {
               if (isMultiSelectMode) {
                 toggleSelection(invoice.id);
               } else {
-                // For all uploaded invoices, instantly open review/edit dialog
-                if (invoice.source === "uploaded") {
+                // For uploaded invoices that need review, open review dialog
+                // For uploaded invoices that don't need review, navigate to detail page (full InvoiceForm)
+                if (invoice.source === "uploaded" && invoice.needsReview) {
                   setUploadedInvoiceId(invoice.id);
                   setUploadedParsedData(null);
                   setUploadReviewDialogOpen(true);

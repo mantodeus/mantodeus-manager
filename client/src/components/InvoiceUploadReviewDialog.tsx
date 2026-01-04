@@ -19,13 +19,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye, Send, CheckCircle2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "@/components/ui/Icon";
+import { ShareInvoiceDialog } from "./invoices/ShareInvoiceDialog";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -52,6 +53,8 @@ export function InvoiceUploadReviewDialog({
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [issueDate, setIssueDate] = useState<string>("");
   const [totalAmount, setTotalAmount] = useState<string>("");
+  const [dueDate, setDueDate] = useState<string>("");
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
@@ -154,6 +157,11 @@ export function InvoiceUploadReviewDialog({
       );
       setTotalAmount(invoice.total ? String(invoice.total) : "");
       setClientId(invoice.clientId?.toString() || "none");
+      setDueDate(
+        invoice.dueDate
+          ? new Date(invoice.dueDate).toISOString().split("T")[0]
+          : ""
+      );
     }
   }, [parsedData, invoice]);
 
@@ -180,6 +188,22 @@ export function InvoiceUploadReviewDialog({
   // Get invoice state
   const invoiceState = invoice ? getInvoiceState(invoice) : null;
   const isReview = invoiceState === 'REVIEW';
+  const isDraft = invoiceState === 'DRAFT';
+  
+  const handleSend = () => {
+    if (!invoice) return;
+    // Validate before sending
+    if (!dueDate && !invoice.dueDate) {
+      toast.error("Invoice must have a due date before it can be sent");
+      return;
+    }
+    const total = Number(invoice.total || 0);
+    if (total <= 0) {
+      toast.error("Invoice total must be greater than 0");
+      return;
+    }
+    setShareDialogOpen(true);
+  };
 
   const handleSave = async () => {
     if (!invoiceId || !invoice) return;
@@ -211,6 +235,7 @@ export function InvoiceUploadReviewDialog({
         invoiceNumber: invoiceNumber || invoice.invoiceNumber,
         clientId: clientId !== "none" ? parseInt(clientId, 10) : undefined,
         issueDate: new Date(issueDate),
+        dueDate: dueDate ? new Date(dueDate) : invoice.dueDate,
         totalAmount: String(totalAmount),
       });
     }
@@ -241,25 +266,61 @@ export function InvoiceUploadReviewDialog({
         "sm:max-w-[500px] flex flex-col",
         isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
       )}>
-        <DialogHeader className={cn("flex-shrink-0", isMobile && "px-0")}>
-          <div className="flex items-center justify-between gap-2">
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              {isReview ? "Review Invoice" : "Edit Invoice"}
-            </DialogTitle>
-            {/* Header: Preview button (only lifecycle action in review) */}
-            <Button 
-              variant="outline" 
-              size={isMobile ? "sm" : "icon"}
-              onClick={handlePreviewPDF}
-              disabled={isLoading}
-              className={cn(isMobile && "gap-2")}
-            >
-              <Eye className="h-4 w-4" />
-              {isMobile && "Preview"}
-            </Button>
-          </div>
+        <DialogHeader className={cn("flex-shrink-0 pr-10", isMobile && "px-0 pr-10")}>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            {isReview ? "Review Invoice" : "Edit Invoice"}
+          </DialogTitle>
         </DialogHeader>
+
+        {/* Header buttons: Preview and Send (when draft, not in review) */}
+        <div className="flex items-center justify-end gap-2 -mt-4 mb-2 pr-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handlePreviewPDF}
+            disabled={isLoading}
+            className="gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            Preview
+          </Button>
+          {/* Send button - only shown when draft and not in review */}
+          {!isReview && isDraft && (
+            <Button
+              size="sm"
+              onClick={handleSend}
+              disabled={isLoading || (!dueDate && !invoice?.dueDate) || Number(totalAmount || 0) <= 0}
+              className="gap-2"
+            >
+              <Send className="h-4 w-4" />
+              Send
+            </Button>
+          )}
+          {/* Sent/Paid button - shown when sent/paid */}
+          {invoiceState === 'SENT' && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              className="gap-2"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Sent
+            </Button>
+          )}
+          {invoiceState === 'PAID' && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              className="gap-2"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Paid
+            </Button>
+          )}
+        </div>
 
         <div className={cn(
           "space-y-4 py-4",
@@ -341,6 +402,23 @@ export function InvoiceUploadReviewDialog({
               disabled={!isReview}
             />
           </div>
+
+          {/* Due Date - required for sending */}
+          {!isReview && (
+            <div className="space-y-2">
+              <Label htmlFor="dueDate">Due Date *</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                required={!isReview}
+              />
+              <p className="text-xs text-muted-foreground">
+                Due date is required before sending the invoice
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer: Save and Cancel only (per spec) */}
@@ -368,6 +446,19 @@ export function InvoiceUploadReviewDialog({
           </div>
         </DialogFooter>
       </DialogContent>
+
+      {/* Share Invoice Dialog */}
+      {invoiceId && (
+        <ShareInvoiceDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          invoiceId={invoiceId}
+          onSuccess={() => {
+            utils.invoices.get.invalidate({ id: invoiceId });
+            onSuccess?.();
+          }}
+        />
+      )}
     </Dialog>
   );
 }
