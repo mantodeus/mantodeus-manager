@@ -512,7 +512,7 @@ export const CenteredContextMenu = React.forwardRef<
               className="fixed inset-0 backdrop-blur-md bg-black/20"
               style={{
                 zIndex: 1000,
-                animation: "fadeIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+                animation: "fadeIn 220ms ease-out",
               }}
             />
 
@@ -522,7 +522,7 @@ export const CenteredContextMenu = React.forwardRef<
               className={cn("glass-context-menu", menuClassName)}
               style={{
                 ...menuStyle,
-                animation: "menuSlideUp 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+                animation: "menuSlideUp 260ms cubic-bezier(0.16, 1, 0.3, 1)",
                 overflowY: "auto", // Enable scrolling within menu
                 overscrollBehavior: "contain", // Prevent scroll chaining to background
               }}

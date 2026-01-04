@@ -47,9 +47,6 @@ export function ItemActionsMenu({
   // Long-press handler
   const { longPressHandlers, reset: resetLongPress } = useLongPress({
     onLongPress: (event) => {
-      if (cardElementRef.current) {
-        cardElementRef.current.classList.remove('context-menu-pressing');
-      }
       menuRef.current?.open(event);
     },
     duration: 550,
