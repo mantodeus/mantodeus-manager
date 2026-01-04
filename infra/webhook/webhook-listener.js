@@ -166,7 +166,8 @@ app.post('/webhook', async (req, res) => {
 async function deploy(branch, commitId) {
   await log('info', 'Starting deployment', { branch, commitId });
   
-  const deployScript = path.join(APP_PATH, 'infra', 'deploy', 'deploy.sh');
+  // Use the proven working deploy script
+  const deployScript = path.join(APP_PATH, 'scripts', 'deploy-prod.sh');
   
   try {
     // Check if deploy script exists
@@ -178,14 +179,18 @@ async function deploy(branch, commitId) {
       // Use --frozen-lockfile to ensure reproducible builds
       const commands = [
         `cd ${APP_PATH}`,
+        'git fetch origin',
         'git pull origin main',
-        `pnpm install --frozen-lockfile || (` +
+        `npx pnpm install --frozen-lockfile || (` +
           `echo "First pnpm install failed, cleaning up..." && ` +
           `rm -rf node_modules && ` +
-          `pnpm install --frozen-lockfile` +
+          `npx pnpm install --frozen-lockfile` +
         `)`,
-        'pnpm build',
-        `pm2 restart ${PM2_APP_NAME}`,
+        'npx pnpm run db:generate',
+        'npx pnpm run db:migrate',
+        'npm run build',
+        `npx pm2 restart ${PM2_APP_NAME} || npx pm2 start dist/index.js --name ${PM2_APP_NAME}`,
+        'npx pm2 save',
       ].join(' && ');
       
       const { stdout, stderr } = await execAsync(commands, {
@@ -200,7 +205,7 @@ async function deploy(branch, commitId) {
       return;
     }
     
-    // Use deploy script
+    // Use deploy script (the proven working one)
     const { stdout, stderr } = await execAsync(`bash ${deployScript}`, {
       cwd: APP_PATH,
       maxBuffer: 10 * 1024 * 1024,
