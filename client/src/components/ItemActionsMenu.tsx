@@ -42,6 +42,7 @@ export function ItemActionsMenu({
   const containerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<{ open: (event?: PointerEvent | TouchEvent | React.MouseEvent) => void } | null>(null);
   const cardElementRef = useRef<HTMLElement | null>(null);
+  const isMenuOpenRef = useRef(false); // Track if menu is open to prevent card clicks
 
   // Long-press handler
   const { longPressHandlers, reset: resetLongPress } = useLongPress({
@@ -251,6 +252,12 @@ export function ItemActionsMenu({
       longPressHandlersRef.current.onPointerMove?.(e as any);
     };
     const clickHandler = (e: MouseEvent) => {
+      // If menu is open, prevent card clicks from triggering
+      if (isMenuOpenRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       longPressHandlersRef.current.onClick?.(e as any);
     };
     const touchStartHandler = (e: TouchEvent) => {
@@ -357,11 +364,16 @@ export function ItemActionsMenu({
         actions={actions}
         disabled={disabled}
         onOpenChange={(open) => {
+          isMenuOpenRef.current = open; // Track menu open state
           if (!open) {
             resetLongPress();
             if (cardElementRef.current) {
               cardElementRef.current.classList.remove('context-menu-pressing');
             }
+            // Add a small delay before allowing card clicks again
+            setTimeout(() => {
+              isMenuOpenRef.current = false;
+            }, 100);
           }
         }}
       >

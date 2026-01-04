@@ -311,8 +311,12 @@ export const CenteredContextMenu = React.forwardRef<
 
   const handleAction = useCallback(
     (action: CenteredContextMenuAction) => {
+      // Stop any event propagation before handling action
       onAction(action);
-      closeMenu();
+      // Close menu with a small delay to ensure event propagation is stopped
+      setTimeout(() => {
+        closeMenu();
+      }, 50);
     },
     [onAction, closeMenu]
   );
@@ -446,9 +450,22 @@ export const CenteredContextMenu = React.forwardRef<
     return (
       <button
         key={action}
-        onClick={() => {
+        onClick={(e) => {
+          // CRITICAL: Stop event propagation to prevent triggering card click
+          e.preventDefault();
+          e.stopPropagation();
+          
           if (!menuItemsClickable) return; // Prevent clicks during cooldown
           handleAction(action);
+        }}
+        onMouseDown={(e) => {
+          // Also stop on mousedown to prevent any interaction with card
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onTouchStart={(e) => {
+          // Stop touch events too
+          e.stopPropagation();
         }}
         disabled={!menuItemsClickable}
         className={cn(
@@ -508,6 +525,18 @@ export const CenteredContextMenu = React.forwardRef<
                 animation: "menuSlideUp 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
                 overflowY: "auto", // Enable scrolling within menu
                 overscrollBehavior: "contain", // Prevent scroll chaining to background
+              }}
+              onClick={(e) => {
+                // Stop all clicks inside menu from bubbling to card
+                e.stopPropagation();
+              }}
+              onMouseDown={(e) => {
+                // Stop mousedown events too
+                e.stopPropagation();
+              }}
+              onTouchStart={(e) => {
+                // Stop touch events
+                e.stopPropagation();
               }}
             >
               {groupedActions.primary.length === 0 &&
