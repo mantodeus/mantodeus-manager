@@ -65,6 +65,29 @@ if ! echo "$CURRENT_REMOTE" | grep -qE "git@github.com:mantodeus/mantodeus-manag
 fi
 echo "? Git remote: ${CURRENT_REMOTE}"
 echo ""
+
+# Step 4: Fetch and reset to latest main branch
+echo "▶ Fetching latest code from origin..."
+if ! git fetch origin; then
+  echo "❌ git fetch failed"
+  exit 1
+fi
+echo "✅ Fetched from origin"
+echo ""
+
+echo "▶ Resetting to origin/main..."
+if ! git reset --hard origin/main; then
+  echo "❌ git reset failed"
+  exit 1
+fi
+echo "✅ Reset to origin/main"
+echo ""
+
+# Get current commit for logging
+GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+echo "📦 Current commit: ${GIT_COMMIT}"
+echo ""
+
 # Step 5: Skip node_modules cleaning (run manually if needed: rm -rf node_modules)
 # Skipping automatic cleaning makes deployments faster
 # Only clean manually when switching package managers or fixing corruption
