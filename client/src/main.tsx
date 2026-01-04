@@ -295,9 +295,35 @@ if (document.readyState === "loading") {
 // Additional error handlers (redundant but safe)
 // The main handlers are at the top of the file to catch module-level errors
 
-// Service Worker registration
+// Service Worker registration with update handling
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(console.error);
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+      .then((registration) => {
+        console.log('[SW] Service Worker registered:', registration.scope);
+        
+        // Listen for updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New service worker available, reload to activate
+                console.log('[SW] New service worker available, reloading...');
+                window.location.reload();
+              }
+            });
+          }
+        });
+        
+        // Listen for messages from service worker
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'FORCE_RELOAD') {
+            console.log('[SW] Force reload requested, version:', event.data.version);
+            window.location.reload();
+          }
+        });
+      })
+      .catch(console.error);
   });
 }

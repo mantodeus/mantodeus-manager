@@ -1,6 +1,6 @@
 // Service Worker for Mantodeus Manager PWA
 // Version number - increment this to force update
-const VERSION = 'v3.0.1'; // Fixed: Skip Vite paths (@fs, @vite, @id)
+const VERSION = 'v3.0.2'; // Force update: Fix PWA form interaction issues
 const CACHE_NAME = `mantodeus-${VERSION}`;
 const RUNTIME_CACHE = `mantodeus-runtime-${VERSION}`;
 
@@ -31,17 +31,22 @@ self.addEventListener('activate', (event) => {
   console.log(`[SW ${VERSION}] Activating...`);
   event.waitUntil(
     caches.keys().then((cacheNames) => {
+      // Delete ALL old caches (not just non-matching ones) to force fresh content
       return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE)
-          .map((name) => {
-            console.log(`[SW ${VERSION}] Deleting old cache: ${name}`);
-            return caches.delete(name);
-          })
+        cacheNames.map((name) => {
+          console.log(`[SW ${VERSION}] Deleting cache: ${name}`);
+          return caches.delete(name);
+        })
       );
     }).then(() => {
-      console.log(`[SW ${VERSION}] Activated, claiming clients`);
-      return self.clients.claim();
+      console.log(`[SW ${VERSION}] All caches cleared, claiming clients`);
+      // Force reload all clients to get fresh content
+      return self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'FORCE_RELOAD', version: VERSION });
+        });
+        return self.clients.claim();
+      });
     })
   );
 });
