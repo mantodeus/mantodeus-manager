@@ -26,7 +26,7 @@ import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, File, Map
 import { DataExportImportDialog } from "./DataExportImportDialog";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { AppLoadingScreen } from './AppLoadingScreen';
 import { Button } from "./ui/button";
 import {
   MobileNavProvider,
@@ -72,7 +72,7 @@ export default function DashboardLayout({
   // Show loading screen during auth check or if not authenticated
   // Routing is handled by App.tsx, so we just show loading here
   if (loading || !user) {
-    return <DashboardLayoutSkeleton />
+    return <AppLoadingScreen />
   }
 
   if (isMobile) {

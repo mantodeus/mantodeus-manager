@@ -47,7 +47,18 @@ export function ItemActionsMenu({
   // Long-press handler
   const { longPressHandlers, reset: resetLongPress } = useLongPress({
     onLongPress: (event) => {
-      menuRef.current?.open(event);
+      // Pass both the event and the card element reference
+      if (cardElementRef.current) {
+        // Create a synthetic event that includes the card element
+        const syntheticEvent = {
+          ...event,
+          target: cardElementRef.current,
+          currentTarget: cardElementRef.current,
+        } as any;
+        menuRef.current?.open(syntheticEvent);
+      } else {
+        menuRef.current?.open(event);
+      }
     },
     duration: 550,
     hapticFeedback: true,

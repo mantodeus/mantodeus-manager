@@ -75,6 +75,7 @@ function ModuleItem({
   isNeighbor,
   offset,
   blur,
+  scrollerSide,
 }: {
   module: Module;
   index: number;
@@ -82,6 +83,7 @@ function ModuleItem({
   isNeighbor: boolean;
   offset: number;
   blur: number;
+  scrollerSide: 'left' | 'right' | 'center';
 }) {
   const Icon = module.icon;
 
@@ -94,11 +96,15 @@ function ModuleItem({
 
   const scale = isActive ? VISUAL_HIERARCHY.ACTIVE.scale : 1.0;
 
+  // Smaller gap for center tab (field)
+  const iconTextGap = scrollerSide === 'center' ? 'gap-1.5' : 'gap-2.5';
+
   return (
     <div
       data-module-item
       className={cn(
-        'module-item flex items-center gap-2.5 px-5 py-3',
+        'module-item flex items-center px-5 py-3',
+        iconTextGap,
         'gesture-surface',
         'cursor-pointer select-none',
         'transition-all duration-150 ease-out',
@@ -168,8 +174,8 @@ export function ModuleScroller() {
     const itemHeight = firstItem.getBoundingClientRect().height;
     const virtualTop = Math.max(0, window.innerHeight - listRect.height);
     const relativeY = pointerPosition.y - virtualTop;
-    // Increase responsiveness: multiply by 1.5 to make scrolling faster
-    const sensitivityMultiplier = 1.5;
+    // Tab-specific sensitivity: faster for field (center), slower for office/tools (sides)
+    const sensitivityMultiplier = activeTab === 'field' ? 2.0 : 1.2;
     const rawIndex = Math.floor((relativeY * sensitivityMultiplier) / itemHeight);
     const clampedIndex = Math.max(0, Math.min(modules.length - 1, rawIndex));
 
@@ -183,6 +189,7 @@ export function ModuleScroller() {
     modules.length,
     highlightedIndex,
     setHighlightedIndex,
+    activeTab,
   ]);
   // Â§ 6.2: State Safety - navigation occurs only on release
   useEffect(() => {
@@ -272,6 +279,7 @@ export function ModuleScroller() {
               isNeighbor={isNeighbor}
               offset={offset}
               blur={blur}
+              scrollerSide={scrollerSide}
             />
           );
         })}

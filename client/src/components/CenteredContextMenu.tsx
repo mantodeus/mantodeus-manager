@@ -199,32 +199,27 @@ export const CenteredContextMenu = React.forwardRef<
 
     // Find the item element
     const findItemElement = (): HTMLElement | null => {
-      // If we have an event, use it to find the element
+      // First, try to find from the event target
       if (event) {
         const target = (event.target as HTMLElement) || (event.currentTarget as HTMLElement);
         if (target) {
-          // Look for parent card/item
+          // Look for parent card/item - this is the most reliable method
           const parent = target.closest(
-            '[data-slot="card"], .card, [data-item], li, .item-card, [class*="Card"], [role="article"], article'
+            '[data-item], [data-slot="card"], .card, li, .item-card, [class*="Card"], [role="article"], article'
           );
-          if (parent) return parent as HTMLElement;
+          if (parent && parent instanceof HTMLElement) {
+            return parent;
+          }
           
-          // Try going up a few levels
+          // Try going up the DOM tree
           let current: HTMLElement | null = target.parentElement;
           let depth = 0;
-          while (current && depth < 5) {
+          while (current && depth < 10) {
+            // Check for explicit markers first
             if (
+              current.hasAttribute('data-item') ||
               current.getAttribute('data-slot') === 'card' ||
-              current.classList.contains('card') ||
-              current.hasAttribute('data-item')
-            ) {
-              return current;
-            }
-            const styles = window.getComputedStyle(current);
-            if (
-              styles.borderRadius !== '0px' ||
-              styles.boxShadow !== 'none' ||
-              styles.padding !== '0px'
+              current.classList.contains('card')
             ) {
               return current;
             }
@@ -234,12 +229,22 @@ export const CenteredContextMenu = React.forwardRef<
         }
       }
       
-      // Fallback: try the ref
+      // Fallback: try the ref (this should work if ItemActionsMenu found the card)
       if (itemRef.current) {
+        // Check if it's already a card
+        if (
+          itemRef.current.hasAttribute('data-item') ||
+          itemRef.current.classList.contains('card')
+        ) {
+          return itemRef.current;
+        }
+        // Try to find parent card
         const parent = itemRef.current.closest(
-          '[data-slot="card"], .card, [data-item], li, .item-card, [class*="Card"], [role="article"], article'
+          '[data-item], [data-slot="card"], .card, li, .item-card, [class*="Card"], [role="article"], article'
         );
-        if (parent) return parent as HTMLElement;
+        if (parent && parent instanceof HTMLElement) {
+          return parent;
+        }
         return itemRef.current;
       }
       
@@ -257,11 +262,11 @@ export const CenteredContextMenu = React.forwardRef<
       element.classList.add("context-menu-active");
       setIsPressing(false);
       
-      // Prevent accidental clicks - menu items become clickable after a delay
-      setMenuItemsClickable(false);
-      setTimeout(() => {
-        setMenuItemsClickable(true);
-      }, 150); // Reduced cooldown for better responsiveness
+      // Make menu items clickable immediately - no cooldown needed
+      // The blocker will prevent accidental card clicks
+      setMenuItemsClickable(true);
+    } else {
+      console.warn('CenteredContextMenu: Could not find item element', { event, itemRef: itemRef.current });
     }
   }, [disabled, onOpenChange]);
 
@@ -318,19 +323,23 @@ export const CenteredContextMenu = React.forwardRef<
         background: transparent;
       `;
       
-      // Block all events on the blocker
-      // Only close on actual clicks/taps, not on touch start (which happens during long press release)
+      // Block all events on the blocker, but allow menu interactions
       let touchStartTime = 0;
       const handleTouchStart = (e: TouchEvent) => {
+        const target = e.target as HTMLElement;
+        // Allow events on menu - don't block them
+        if (menuRef.current && menuRef.current.contains(target)) {
+          return;
+        }
         touchStartTime = Date.now();
         // Don't close on touch start - wait for touch end
       };
       
       const handleTouchEnd = (e: TouchEvent) => {
         const target = e.target as HTMLElement;
-        // Allow events on menu
+        // CRITICAL: Allow events on menu - don't block them
         if (menuRef.current && menuRef.current.contains(target)) {
-          return;
+          return; // Let menu handle the event
         }
         // Don't close immediately after menu opens (prevent closing on long press release)
         const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
@@ -347,11 +356,11 @@ export const CenteredContextMenu = React.forwardRef<
         }
       };
       
-      const handleClick = (e: MouseEvent) => {
+      const handleClick = (e: MouseEvent | TouchEvent) => {
         const target = e.target as HTMLElement;
-        // Allow events on menu
+        // CRITICAL: Allow events on menu - don't block them
         if (menuRef.current && menuRef.current.contains(target)) {
-          return;
+          return; // Let menu handle the event
         }
         // Don't close immediately after menu opens
         const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
@@ -365,19 +374,21 @@ export const CenteredContextMenu = React.forwardRef<
         closeMenu();
       };
       
-      blocker.addEventListener('click', handleClick, true);
+      // Use capture phase but allow menu events to pass through
+      blocker.addEventListener('click', handleClick as EventListener, true);
       blocker.addEventListener('touchstart', handleTouchStart, true);
       blocker.addEventListener('touchend', handleTouchEnd, true);
-      blocker.addEventListener('mousedown', handleClick, true);
+      blocker.addEventListener('mousedown', handleClick as EventListener, true);
       
       document.body.appendChild(blocker);
       
       // Also add a global event listener in capture phase as backup
+      // But make sure menu events are allowed through
       const blockAllClicks = (e: MouseEvent | TouchEvent) => {
         const target = e.target as HTMLElement;
-        // Allow clicks on the menu itself
+        // CRITICAL: Allow clicks on the menu itself
         if (menuRef.current && menuRef.current.contains(target)) {
-          return;
+          return; // Let menu handle the event
         }
         // Allow clicks on the blocker (it will close the menu)
         if (target === blocker || blocker.contains(target)) {
@@ -654,28 +665,30 @@ export const CenteredContextMenu = React.forwardRef<
           // CRITICAL: Stop event propagation to prevent triggering card click
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation();
           
-          if (!menuItemsClickable) return; // Prevent clicks during cooldown
           handleAction(action);
         }}
         onMouseDown={(e) => {
           // Also stop on mousedown to prevent any interaction with card
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation();
         }}
         onTouchStart={(e) => {
           // Stop touch events too
           e.stopPropagation();
+          e.stopImmediatePropagation();
         }}
-        disabled={!menuItemsClickable}
+        onTouchEnd={(e) => {
+          // Stop touch end events
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        }}
         className={cn(
-          "glass-menu-item w-full text-left transition-opacity",
-          isDestructive && "delete",
-          !menuItemsClickable && "opacity-50 pointer-events-none"
+          "glass-menu-item w-full text-left",
+          isDestructive && "delete"
         )}
-        style={{
-          pointerEvents: menuItemsClickable ? "auto" : "none",
-        }}
       >
         <Icon className="h-4 w-4" />
         <span>{config.label}</span>
