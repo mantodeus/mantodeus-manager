@@ -71,8 +71,9 @@ function Router() {
     if (loading || hasRestoredRoute) return;
     
     if (!user) {
-      // Not authenticated - ensure we're on login page
-      if (location !== "/login") {
+      // Not authenticated - only redirect to login if we're not already there
+      // Don't redirect from "/" to avoid loops during session restoration
+      if (location !== "/login" && location !== "/") {
         setLocation("/login");
       }
       setHasRestoredRoute(true);
@@ -80,7 +81,8 @@ function Router() {
     }
 
     // Authenticated - restore last route or default to projects
-    if (location === "/login" || location === "/") {
+    // Only redirect if we're on login page (not on "/" to allow natural routing)
+    if (location === "/login") {
       try {
         const lastRoute = localStorage.getItem(LAST_ROUTE_KEY);
         if (lastRoute && !EXCLUDED_ROUTES.includes(lastRoute)) {
@@ -99,12 +101,14 @@ function Router() {
   }, [user, loading, location, setLocation, hasRestoredRoute]);
 
   // Show loading screen during initial auth check
+  // Wait for auth to load before making routing decisions
   if (loading) {
     return <AppLoadingScreen />;
   }
 
-  // Show loading screen briefly while routing
-  if (!user && location !== "/login") {
+  // If not authenticated and not on login page, show loading while redirecting
+  // But allow "/" to load to let session restoration happen
+  if (!user && location !== "/login" && location !== "/") {
     return <AppLoadingScreen />;
   }
 

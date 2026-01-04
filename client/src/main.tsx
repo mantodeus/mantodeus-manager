@@ -141,11 +141,11 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     queryClient.clear();
   }
   
-  // On sign in or token refresh, ensure backend session cookie is set
+  // On sign in, token refresh, or initial session restore, ensure backend session cookie is set
   if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
     if (session?.access_token) {
       try {
-        await fetch("/api/auth/callback", {
+        const response = await fetch("/api/auth/callback", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -155,6 +155,9 @@ supabase.auth.onAuthStateChange(async (event, session) => {
             access_token: session.access_token,
           }),
         });
+        if (!response.ok) {
+          console.warn("[Auth] Failed to sync backend session:", response.statusText);
+        }
       } catch (error) {
         console.warn("[Auth] Failed to sync backend session:", error);
       }
