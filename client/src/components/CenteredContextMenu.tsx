@@ -363,32 +363,48 @@ export const CenteredContextMenu = React.forwardRef<
     }
   }, [isOpen, menuHeight]);
 
-  // Close on outside click
+  // Close on outside click - but the overlay div handles this directly
+  // This is kept as a fallback for edge cases
   useEffect(() => {
     if (!isOpen) return;
 
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node;
+      // Check if click is on the overlay background (not menu or item)
+      const isOverlay = (target as HTMLElement)?.classList?.contains('context-menu-overlay') ||
+        (target as HTMLElement)?.closest('.context-menu-overlay');
+      
+      if (isOverlay) {
+        // Overlay click - stop propagation and close
+        e.preventDefault();
+        e.stopPropagation();
+        closeMenu();
+        return;
+      }
+      
       if (
         menuRef.current &&
         !menuRef.current.contains(target) &&
         wrapperRef.current &&
         !wrapperRef.current.contains(target)
       ) {
+        // Click outside menu and item - close menu
+        e.preventDefault();
+        e.stopPropagation();
         closeMenu();
       }
     };
 
     // Use a slight delay to avoid immediate close on open
     const timeout = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("touchstart", handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside, true); // Use capture phase
+      document.addEventListener("touchstart", handleClickOutside, true); // Use capture phase
     }, 100);
 
     return () => {
       clearTimeout(timeout);
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside, true);
+      document.removeEventListener("touchstart", handleClickOutside, true);
     };
   }, [isOpen, closeMenu]);
 
@@ -509,10 +525,42 @@ export const CenteredContextMenu = React.forwardRef<
           <>
             {/* Background overlay with blur - z-index 1000 */}
             <div
-              className="fixed inset-0 backdrop-blur-md bg-black/20"
+              className="context-menu-overlay fixed inset-0 backdrop-blur-md bg-black/20"
               style={{
                 zIndex: 1000,
                 animation: "fadeIn 220ms ease-out",
+                pointerEvents: "auto", // Ensure overlay captures all pointer events
+              }}
+              onClick={(e) => {
+                // CRITICAL: Stop all clicks on background from reaching cards
+                e.preventDefault();
+                e.stopPropagation();
+                closeMenu();
+              }}
+              onMouseDown={(e) => {
+                // Stop mousedown events too - prevent card clicks
+                e.preventDefault();
+                e.stopPropagation();
+                // Close menu immediately on mousedown
+                closeMenu();
+              }}
+              onTouchStart={(e) => {
+                // Stop touch events - prevent card clicks
+                e.preventDefault();
+                e.stopPropagation();
+                // Close menu on touch
+                closeMenu();
+              }}
+              onTouchEnd={(e) => {
+                // Also stop touchend to prevent any lingering events
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onPointerDown={(e) => {
+                // Catch all pointer events (mouse, touch, pen)
+                e.preventDefault();
+                e.stopPropagation();
+                closeMenu();
               }}
             />
 
