@@ -117,6 +117,7 @@ export default function ScanReceipt() {
       // Create a new expense if one doesn't exist
       if (!targetExpenseId || Number.isNaN(targetExpenseId)) {
         try {
+          console.log("[ScanReceipt] Creating new expense for receipt scan");
           const newExpense = await createExpenseMutation.mutateAsync({
             supplierName: "Receipt Scan",
             description: null,
@@ -132,12 +133,25 @@ export default function ScanReceipt() {
             paymentDate: null,
             paymentMethod: null,
           });
+          console.log("[ScanReceipt] Expense created successfully:", newExpense.id);
           targetExpenseId = newExpense.id;
         } catch (createErr) {
-          // Re-throw with a clearer error message
-          const createErrorMessage = createErr instanceof Error 
-            ? createErr.message 
-            : "Failed to create expense. Please check that all required fields are valid.";
+          console.error("[ScanReceipt] Failed to create expense:", createErr);
+          // Extract detailed error message
+          let createErrorMessage = "Failed to create expense";
+          if (createErr instanceof Error) {
+            createErrorMessage = createErr.message;
+            // Check if it's a tRPC error with data
+            if ((createErr as any).data?.code) {
+              createErrorMessage = `${createErr.message} (Code: ${(createErr as any).data.code})`;
+            }
+          } else if (typeof createErr === "object" && createErr !== null) {
+            if ("message" in createErr) {
+              createErrorMessage = String(createErr.message);
+            } else if ("error" in createErr) {
+              createErrorMessage = String(createErr.error);
+            }
+          }
           throw new Error(`Failed to create expense: ${createErrorMessage}`);
         }
       }
@@ -187,15 +201,39 @@ export default function ScanReceipt() {
       navigate(`/expenses/${targetExpenseId}`);
     } catch (err) {
       console.error("[ScanReceipt] Upload error:", err);
+      console.error("[ScanReceipt] Error details:", {
+        name: err instanceof Error ? err.name : undefined,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        type: typeof err,
+        keys: err && typeof err === "object" ? Object.keys(err) : undefined,
+      });
+      
       let errorMessage = "Failed to upload receipt";
       
       if (err instanceof DOMException && err.name === "AbortError") {
         errorMessage = "Upload timed out. Please try again.";
       } else if (err instanceof Error) {
         errorMessage = err.message;
-      } else if (typeof err === "object" && err !== null && "message" in err) {
-        errorMessage = String(err.message);
+        // Check if it's a tRPC error with more details
+        if ((err as any).data) {
+          const data = (err as any).data;
+          if (data.message) {
+            errorMessage = data.message;
+          } else if (data.code) {
+            errorMessage = `${err.message} (Error code: ${data.code})`;
+          }
+        }
+      } else if (typeof err === "object" && err !== null) {
+        if ("message" in err) {
+          errorMessage = String(err.message);
+        } else if ("error" in err) {
+          errorMessage = String(err.error);
+        }
       }
+      
+      // Log the final error message that will be shown to user
+      console.error("[ScanReceipt] Final error message:", errorMessage);
       
       setError(errorMessage);
       setScanState("preview");
@@ -276,7 +314,14 @@ export default function ScanReceipt() {
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>
+                <div className="space-y-2">
+                  <div className="font-medium">{error}</div>
+                  <div className="text-xs opacity-75">
+                    Check server logs for details. Error logged at: {new Date().toLocaleTimeString()}
+                  </div>
+                </div>
+              </AlertDescription>
             </Alert>
           )}
 

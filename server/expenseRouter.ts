@@ -397,38 +397,65 @@ export const expenseRouter = router({
   createManualExpense: protectedProcedure
     .input(createManualExpenseSchema)
     .mutation(async ({ input, ctx }) => {
-      // Validate VAT/currency rules
-      validateVatCurrencyRules({ vatMode: input.vatMode, currency: input.currency });
+      try {
+        console.log("[Expenses] createManualExpense called:", {
+          userId: ctx.user.id,
+          supplierName: input.supplierName,
+          hasGrossAmount: input.grossAmountCents !== undefined,
+          grossAmountCents: input.grossAmountCents,
+          category: input.category,
+        });
 
-      const expense = await db.createExpense({
-        createdBy: ctx.user.id,
-        updatedByUserId: ctx.user.id,
-        status: "needs_review",
-        source: "manual",
-        supplierName: input.supplierName,
-        description: input.description || null,
-        expenseDate: input.expenseDate,
-        grossAmountCents: input.grossAmountCents ?? 1, // Default to 1 cent if not provided (for scanned receipts)
-        currency: input.currency,
-        vatMode: input.vatMode,
-        vatRate: input.vatRate || null,
-        vatAmountCents: input.vatAmountCents || null,
-        businessUsePct: input.businessUsePct,
-        category: input.category,
-        paymentStatus: input.paymentStatus,
-        paymentDate: input.paymentDate || null,
-        paymentMethod: input.paymentMethod || null,
-        reviewedByUserId: null,
-        reviewedAt: null,
-        voidedByUserId: null,
-        voidedAt: null,
-        voidReason: null,
-        voidNote: null,
-        confidenceScore: null,
-        confidenceReason: null,
-      });
+        // Validate VAT/currency rules
+        validateVatCurrencyRules({ vatMode: input.vatMode, currency: input.currency });
 
-      return expense;
+        const grossAmount = input.grossAmountCents ?? 1; // Default to 1 cent if not provided (for scanned receipts)
+        console.log("[Expenses] Creating expense with grossAmountCents:", grossAmount);
+
+        const expense = await db.createExpense({
+          createdBy: ctx.user.id,
+          updatedByUserId: ctx.user.id,
+          status: "needs_review",
+          source: "manual",
+          supplierName: input.supplierName,
+          description: input.description || null,
+          expenseDate: input.expenseDate,
+          grossAmountCents: grossAmount,
+          currency: input.currency,
+          vatMode: input.vatMode,
+          vatRate: input.vatRate || null,
+          vatAmountCents: input.vatAmountCents || null,
+          businessUsePct: input.businessUsePct,
+          category: input.category,
+          paymentStatus: input.paymentStatus,
+          paymentDate: input.paymentDate || null,
+          paymentMethod: input.paymentMethod || null,
+          reviewedByUserId: null,
+          reviewedAt: null,
+          voidedByUserId: null,
+          voidedAt: null,
+          voidReason: null,
+          voidNote: null,
+          confidenceScore: null,
+          confidenceReason: null,
+        });
+
+        console.log("[Expenses] Expense created successfully:", expense.id);
+        return expense;
+      } catch (error) {
+        console.error("[Expenses] Failed to create manual expense:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("[Expenses] Error details:", {
+          message: errorMessage,
+          stack: error instanceof Error ? error.stack : undefined,
+          input: {
+            supplierName: input.supplierName,
+            grossAmountCents: input.grossAmountCents,
+            category: input.category,
+          },
+        });
+        throw error;
+      }
     }),
 
   /**
