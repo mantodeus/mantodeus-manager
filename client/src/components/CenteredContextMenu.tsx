@@ -92,6 +92,7 @@ export const CenteredContextMenu = React.forwardRef<
   const [isPressing, setIsPressing] = useState(false);
   const [menuItemsClickable, setMenuItemsClickable] = useState(false);
   const [itemRect, setItemRect] = useState<DOMRect | null>(null);
+  const [menuHeight, setMenuHeight] = useState(200);
   const itemRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -102,7 +103,6 @@ export const CenteredContextMenu = React.forwardRef<
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const menuHeight = 200; // Approximate menu height
     const menuWidth = 240; // Approximate menu width
     const spacing = 12;
     const edgePadding = 12;
@@ -127,7 +127,7 @@ export const CenteredContextMenu = React.forwardRef<
       maxWidth: "calc(100vw - 24px)",
       width: "auto",
     };
-  }, [itemRect]);
+  }, [itemRect, menuHeight]);
 
   const openMenu = useCallback((event?: PointerEvent | TouchEvent | React.MouseEvent) => {
     if (disabled) return;
@@ -345,6 +345,15 @@ export const CenteredContextMenu = React.forwardRef<
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, closeMenu]);
+
+  // Measure menu height after render so spacing is consistent above/below.
+  useEffect(() => {
+    if (!isOpen || !menuRef.current) return;
+    const rect = menuRef.current.getBoundingClientRect();
+    if (rect.height > 0 && rect.height !== menuHeight) {
+      setMenuHeight(rect.height);
+    }
+  }, [isOpen, menuHeight]);
 
   // Close on outside click
   useEffect(() => {
