@@ -36,12 +36,12 @@ export function PageHeader({
             <div className="min-w-0 flex-1">
               {title && <h1 className={resolvedTitleClassName}>{title}</h1>}
               {(subtitle || actions) && (
-                <div className="flex items-center gap-4 mt-1">
+                <div className="flex items-center justify-between gap-4 mt-1 w-full">
                   {subtitle && (
                     <p className="text-muted-foreground text-sm">{subtitle}</p>
                   )}
                   {actions && (
-                    <div className="flex items-center gap-2 shrink-0 ml-auto">
+                    <div className="flex items-center gap-2 shrink-0">
                       {actions}
                     </div>
                   )}
