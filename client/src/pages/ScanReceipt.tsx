@@ -120,7 +120,7 @@ export default function ScanReceipt() {
           supplierName: "Receipt Scan",
           description: null,
           expenseDate: new Date(),
-          grossAmountCents: 0,
+          // grossAmountCents is optional - will default to 1 cent on backend
           currency: "EUR",
           vatMode: "none",
           vatRate: null,

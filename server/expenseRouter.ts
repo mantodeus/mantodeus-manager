@@ -208,7 +208,7 @@ const createManualExpenseSchema = z.object({
   supplierName: z.string().min(1, "Supplier name is required"),
   description: z.string().optional().nullable(),
   expenseDate: z.date(),
-  grossAmountCents: z.number().int().positive("Gross amount must be positive"),
+  grossAmountCents: z.number().int().positive("Gross amount must be positive").optional(),
   currency: z.string().length(3).default("EUR"),
   vatMode: vatModeSchema.default("none"),
   vatRate: vatRateSchema.optional().nullable(),
@@ -408,7 +408,7 @@ export const expenseRouter = router({
         supplierName: input.supplierName,
         description: input.description || null,
         expenseDate: input.expenseDate,
-        grossAmountCents: input.grossAmountCents,
+        grossAmountCents: input.grossAmountCents ?? 1, // Default to 1 cent if not provided (for scanned receipts)
         currency: input.currency,
         vatMode: input.vatMode,
         vatRate: input.vatRate || null,
