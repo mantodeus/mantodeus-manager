@@ -254,6 +254,12 @@ export const CenteredContextMenu = React.forwardRef<
     const element = findItemElement();
     if (element) {
       itemRef.current = element;
+      
+      // Ensure the element has the has-context-menu class (in case ItemActionsMenu hasn't added it yet)
+      if (!element.classList.contains('has-context-menu')) {
+        element.classList.add('has-context-menu');
+      }
+      
       const rect = element.getBoundingClientRect();
       setItemRect(rect);
       setIsOpen(true);

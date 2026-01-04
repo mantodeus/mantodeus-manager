@@ -419,6 +419,9 @@
     position: relative;
     z-index: 1003;
     box-shadow: inset 0 0 0 1px rgba(12, 245, 126, 0.35);
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
   }
 
   .has-context-menu.context-menu-shifted {
