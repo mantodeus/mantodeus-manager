@@ -25,6 +25,15 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '200M',
+      // Prevent rapid restart loops
+      min_uptime: '10s',        // Process must run for 10s before considered stable
+      max_restarts: 10,          // Max 10 restarts within time_window
+      restart_delay: 4000,       // Wait 4s between restarts
+      exp_backoff_restart_delay: 100,  // Exponential backoff starting at 100ms
+      time_window: '1h',        // Reset restart count after 1 hour
+      // Keep process alive
+      kill_timeout: 5000,       // Wait 5s for graceful shutdown
+      listen_timeout: 10000,    // Wait 10s for app to start listening
       env: {
         NODE_ENV: 'production',
         // Ensure Node.js can find modules in the project's node_modules

@@ -40,6 +40,9 @@ const SECRET = process.env.WEBHOOK_SECRET;
 const APP_PATH = process.env.APP_PATH || '/srv/customer/sites/manager.mantodeus.com';
 const PM2_APP_NAME = process.env.PM2_APP_NAME || 'mantodeus-manager';
 
+// Track if server has started successfully
+let serverStarted = false;
+
 // CRITICAL: Fail fast if WEBHOOK_SECRET is not set
 if (!SECRET) {
   console.error('❌ FATAL ERROR: WEBHOOK_SECRET environment variable is required for security.');
@@ -47,6 +50,54 @@ if (!SECRET) {
   console.error('   Generate a secret: openssl rand -hex 32');
   process.exit(1);
 }
+
+// Error handlers to prevent crashes
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
+  
+  // Log to file if possible
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    level: 'fatal',
+    message: 'Uncaught Exception',
+    error: error.message,
+    stack: error.stack,
+  };
+  fs.appendFile(
+    path.join(APP_PATH, 'logs', 'webhook.log'),
+    JSON.stringify(logEntry) + '\n'
+  ).catch(() => {});
+  
+  // Exit with delay to prevent rapid restart loops
+  setTimeout(() => {
+    console.error('Exiting due to uncaught exception');
+    process.exit(1);
+  }, serverStarted ? 5000 : 2000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection:', reason);
+  if (reason instanceof Error) {
+    console.error('Stack:', reason.stack);
+  }
+  
+  // Log to file if possible
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    level: 'error',
+    message: 'Unhandled Rejection',
+    reason: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
+  };
+  fs.appendFile(
+    path.join(APP_PATH, 'logs', 'webhook.log'),
+    JSON.stringify(logEntry) + '\n'
+  ).catch(() => {});
+  
+  // Don't exit on unhandled rejections - they're often recoverable
+  // But log them for debugging
+});
 
 // Log directory
 const LOG_DIR = path.join(APP_PATH, 'logs');
@@ -164,48 +215,20 @@ app.post('/webhook', async (req, res) => {
 
 // Deployment function
 async function deploy(branch, commitId) {
-  await log('info', 'Starting deployment', { branch, commitId });
+  try {
+    await log('info', 'Starting deployment', { branch, commitId });
+  } catch (logError) {
+    console.error('Failed to log deployment start:', logError);
+  }
   
-  // Use the proven working deploy script
+  // Use the smart idempotent deploy script
   const deployScript = path.join(APP_PATH, 'scripts', 'deploy-prod.sh');
   
   try {
     // Check if deploy script exists
-    try {
-      await fs.access(deployScript);
-    } catch {
-      await log('error', 'Deploy script not found, using fallback', { deployScript });
-      // Fallback: direct commands with retry logic for pnpm install
-      // Use --frozen-lockfile to ensure reproducible builds
-      const commands = [
-        `cd ${APP_PATH}`,
-        'git fetch origin',
-        'git pull origin main',
-        `npx pnpm install --frozen-lockfile || (` +
-          `echo "First pnpm install failed, cleaning up..." && ` +
-          `rm -rf node_modules && ` +
-          `npx pnpm install --frozen-lockfile` +
-        `)`,
-        'npx pnpm run db:generate',
-        'npx pnpm run db:migrate',
-        'npm run build',
-        `npx pm2 restart ${PM2_APP_NAME} || npx pm2 start dist/index.js --name ${PM2_APP_NAME}`,
-        'npx pm2 save',
-      ].join(' && ');
-      
-      const { stdout, stderr } = await execAsync(commands, {
-        cwd: APP_PATH,
-        maxBuffer: 10 * 1024 * 1024,
-      });
-      
-      await log('info', 'Deployment completed (fallback)', {
-        stdout: stdout.substring(0, 500),
-        stderr: stderr.substring(0, 500),
-      });
-      return;
-    }
+    await fs.access(deployScript);
     
-    // Use deploy script (the proven working one)
+    // Use the smart deploy script (idempotent - only runs what's needed)
     const { stdout, stderr } = await execAsync(`bash ${deployScript}`, {
       cwd: APP_PATH,
       maxBuffer: 10 * 1024 * 1024,
@@ -215,19 +238,101 @@ async function deploy(branch, commitId) {
       stdout: stdout.substring(0, 500),
       stderr: stderr.substring(0, 500),
     });
-  } catch (error) {
-    await log('error', 'Deployment failed', {
-      error: error.message,
-      stack: error.stack,
-    });
+  } catch (scriptError) {
+    // If script doesn't exist or fails, use basic fallback
+    if (scriptError.code === 'ENOENT') {
+      await log('warn', 'Deploy script not found, using basic fallback', { deployScript });
+    } else {
+      await log('error', 'Deploy script failed, using basic fallback', { 
+        error: scriptError.message,
+        deployScript 
+      });
+    }
+    
+    // Ultimate fallback: basic commands (should rarely be needed)
+    const commands = [
+      `cd ${APP_PATH}`,
+      'git fetch origin',
+      'git pull origin main',
+      `npx pnpm install --frozen-lockfile || (` +
+        `echo "First pnpm install failed, cleaning up..." && ` +
+        `rm -rf node_modules && ` +
+        `npx pnpm install --frozen-lockfile` +
+      `)`,
+      'npx pnpm run db:generate',
+      'npx pnpm run db:migrate',
+      'npm run build',
+      `npx pm2 restart ${PM2_APP_NAME} || npx pm2 start dist/index.js --name ${PM2_APP_NAME}`,
+      'npx pm2 save',
+    ].join(' && ');
+    
+    try {
+      const { stdout, stderr } = await execAsync(commands, {
+        cwd: APP_PATH,
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      
+      await log('info', 'Deployment completed (basic fallback)', {
+        stdout: stdout.substring(0, 500),
+        stderr: stderr.substring(0, 500),
+      });
+    } catch (error) {
+    try {
+      await log('error', 'Deployment failed', {
+        error: error.message,
+        stack: error.stack,
+      });
+    } catch (logError) {
+      // If logging fails, at least log to console
+      console.error('Deployment failed:', error);
+      console.error('Also failed to log error:', logError);
+    }
+    // Don't throw - we don't want deployment errors to crash the webhook listener
   }
 }
 
+// Error handler for Express
+app.use(async (error, req, res, next) => {
+  console.error('Express Error:', error);
+  try {
+    await log('error', 'Express error', {
+      error: error.message,
+      stack: error.stack,
+      path: req.path,
+    });
+  } catch (logError) {
+    // If logging fails, continue anyway
+    console.error('Failed to log Express error:', logError);
+  }
+  
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
+  serverStarted = true;
   console.log(`🚀 Webhook listener started on port ${PORT}`);
   console.log(`📝 Logs: ${WEBHOOK_LOG}`);
   console.log(`✅ Webhook secret configured and signature verification enabled`);
+});
+
+// Handle server errors
+server.on('error', async (error) => {
+  console.error('❌ Server error:', error);
+  try {
+    await log('error', 'Server error', {
+      error: error.message,
+      stack: error.stack,
+      code: error.code,
+    });
+  } catch (logError) {
+    console.error('Failed to log server error:', logError);
+  }
+  
+  // Don't exit - let PM2 handle restarts
+  // But log the error
 });
 
 // Graceful shutdown
