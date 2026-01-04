@@ -365,58 +365,57 @@ export default function Notes() {
       }
     };
 
+    // Format date according to German locale (DD.MM.YYYY)
+    const formatDate = (date: Date) => {
+      return new Date(date).toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    };
+
+    // Get plain text from markdown content for preview
+    const getPlainText = (content: string | null) => {
+      if (!content) return "";
+      // Remove markdown syntax for preview
+      return content
+        .replace(/#{1,6}\s+/g, "") // Remove headers
+        .replace(/\*\*([^*]+)\*\*/g, "$1") // Remove bold
+        .replace(/\*([^*]+)\*/g, "$1") // Remove italic
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1") // Remove links
+        .replace(/\n+/g, " ") // Replace newlines with spaces
+        .trim();
+    };
+
     return (
       <Card
         key={note.id}
-        className={`p-6 hover:shadow-lg transition-all ${
+        className={`p-4 hover:shadow-lg transition-all ${
           selectedIds.has(note.id) ? "item-selected" : ""
         } ${!isMultiSelectMode ? "cursor-pointer" : ""}`}
         onClick={handleCardClick}
       >
-        <div className="flex items-start gap-3 mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg line-clamp-1">
-              {note.title}
-            </h3>
-          </div>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="text-base font-medium line-clamp-1 flex-1 min-w-0">
+            {note.title}
+          </h3>
           {!isMultiSelectMode && (
             <ItemActionsMenu
               onAction={(action) => handleItemAction(action, note.id)}
               actions={["edit", "duplicate", "select", "archive", "delete"]}
-              triggerClassName="text-muted-foreground hover:text-foreground"
+              triggerClassName="text-muted-foreground hover:text-foreground flex-shrink-0"
             />
           )}
         </div>
 
         {note.content && (
-          <div className="text-sm text-muted-foreground mb-3 line-clamp-3 prose prose-sm dark:prose-invert max-w-none">
-            <Markdown>{note.content}</Markdown>
+          <div className="text-sm text-muted-foreground mb-2 line-clamp-1">
+            {getPlainText(note.content)}
           </div>
         )}
 
-        {note.tags && (
-          <div className="flex items-center gap-2 mb-3">
-            <Tag className="h-3 w-3 text-accent" />
-            <span className="text-xs text-muted-foreground">{note.tags}</span>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-          {getProjectName(note) && (
-            <div className="flex items-center gap-1">
-              <span className="text-accent">Project:</span>
-              <span>{getProjectName(note)}</span>
-            </div>
-          )}
-          {getContactName(note.contactId) && (
-            <div className="flex items-center gap-1">
-              <span className="text-accent">Contact:</span>
-              <span>{getContactName(note.contactId)}</span>
-            </div>
-          )}
-          <div className="mt-2">
-            Updated: {new Date(note.updatedAt).toLocaleDateString()}
-          </div>
+        <div className="text-xs text-muted-foreground">
+          {formatDate(note.updatedAt)}
         </div>
       </Card>
     );
