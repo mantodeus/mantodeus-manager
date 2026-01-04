@@ -101,7 +101,10 @@ export function useLongPress({
       setGestureState("pressing");
       onPressStart?.();
 
-      const nativeEvent = e.nativeEvent as PointerEvent;
+      const nativeEvent =
+        "nativeEvent" in e
+          ? ((e as React.PointerEvent).nativeEvent as PointerEvent)
+          : (e as unknown as PointerEvent);
 
       longPressTimer.current = setTimeout(() => {
         // Check if we've scrolled too much
