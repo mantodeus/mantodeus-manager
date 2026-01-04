@@ -101,6 +101,8 @@ export function useLongPress({
       setGestureState("pressing");
       onPressStart?.();
 
+      const nativeEvent = e.nativeEvent as PointerEvent;
+
       longPressTimer.current = setTimeout(() => {
         // Check if we've scrolled too much
         if (hasScrolled.current) {
@@ -111,16 +113,7 @@ export function useLongPress({
         // Long-press detected - prevent tap/click
         setGestureState("long-press");
         
-        // Create native PointerEvent for callback
-        const nativeEvent = new PointerEvent("pointerdown", {
-          bubbles: true,
-          cancelable: true,
-          pointerId: e.pointerId,
-          clientX: x,
-          clientY: y,
-          button: 0,
-        });
-
+        // Use the original native event so target/currentTarget are preserved.
         onLongPress(nativeEvent);
 
         // Haptic feedback on supported devices
