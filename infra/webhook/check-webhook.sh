@@ -11,12 +11,25 @@ echo ""
 
 # Check if webhook listener is running in PM2
 echo "1. Checking PM2 process..."
-if pm2 list | grep -q "webhook-listener"; then
-    echo "   ✅ webhook-listener is running in PM2"
-    pm2 info webhook-listener | grep -E "status|uptime|restarts"
+if command -v pm2 &> /dev/null; then
+    PM2_CMD="pm2"
+elif command -v npx &> /dev/null; then
+    PM2_CMD="npx pm2"
 else
-    echo "   ❌ webhook-listener is NOT running in PM2"
-    echo "   💡 Start it with: pm2 start infra/webhook/ecosystem.config.cjs"
+    PM2_CMD=""
+fi
+
+if [ -n "$PM2_CMD" ]; then
+    if $PM2_CMD list 2>/dev/null | grep -q "webhook-listener"; then
+        echo "   ✅ webhook-listener is running in PM2"
+        $PM2_CMD info webhook-listener 2>/dev/null | grep -E "status|uptime|restarts" || true
+    else
+        echo "   ❌ webhook-listener is NOT running in PM2"
+        echo "   💡 Start it with: $PM2_CMD start infra/webhook/ecosystem.config.cjs"
+    fi
+else
+    echo "   ⚠️  PM2 not found (try: npx pm2 list)"
+    echo "   💡 Install PM2 or use: npx pm2 start infra/webhook/ecosystem.config.cjs"
 fi
 echo ""
 
@@ -48,7 +61,11 @@ echo ""
 
 # Check PM2 logs
 echo "4. Checking PM2 logs (last 5 lines)..."
-pm2 logs webhook-listener --lines 5 --nostream 2>/dev/null || echo "   ⚠️  Could not read PM2 logs"
+if [ -n "$PM2_CMD" ]; then
+    $PM2_CMD logs webhook-listener --lines 5 --nostream 2>/dev/null || echo "   ⚠️  Could not read PM2 logs"
+else
+    echo "   ⚠️  PM2 not available"
+fi
 echo ""
 
 # Check GitHub webhook configuration
@@ -80,7 +97,12 @@ echo ""
 echo "============================================"
 echo "📊 Summary:"
 echo "============================================"
-if pm2 list | grep -q "webhook-listener" && curl -sf http://localhost:9000/health > /dev/null 2>&1; then
+WEBHOOK_RUNNING=false
+if [ -n "$PM2_CMD" ] && $PM2_CMD list 2>/dev/null | grep -q "webhook-listener"; then
+    WEBHOOK_RUNNING=true
+fi
+
+if [ "$WEBHOOK_RUNNING" = true ] && curl -sf http://localhost:9000/health > /dev/null 2>&1; then
     echo "✅ Webhook listener appears to be running"
     echo ""
     echo "⚠️  IMPORTANT: Even if the webhook is running, check:"
@@ -92,8 +114,16 @@ else
     echo ""
     echo "💡 To start the webhook listener:"
     echo "   cd /srv/customer/sites/manager.mantodeus.com"
-    echo "   pm2 start infra/webhook/ecosystem.config.cjs"
-    echo "   pm2 save"
+    if [ -n "$PM2_CMD" ]; then
+        echo "   $PM2_CMD start infra/webhook/ecosystem.config.cjs"
+        echo "   $PM2_CMD save"
+    else
+        echo "   npx pm2 start infra/webhook/ecosystem.config.cjs"
+        echo "   npx pm2 save"
+    fi
+    echo ""
+    echo "   Or check if it's already running:"
+    echo "   npx pm2 list"
 fi
 echo ""
 
