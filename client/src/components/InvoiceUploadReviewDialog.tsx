@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye, Send, CheckCircle2 } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
@@ -325,64 +325,68 @@ export function InvoiceUploadReviewDialog({
       )}>
         <DialogHeader className={cn("flex-shrink-0 pr-10", isMobile && "px-0 pr-10")}>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
+            {isReview ? (
+              <FileText className="h-5 w-5 text-primary" />
+            ) : (
+              <DocumentCurrencyEuro className="h-5 w-5 text-primary" />
+            )}
             {isReview ? "Review Invoice" : "Edit Invoice"}
           </DialogTitle>
         </DialogHeader>
-
-        {/* Header buttons: Preview and Send (when draft, not in review) */}
-        <div className="flex items-center justify-end gap-2 -mt-4 mb-2 pr-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handlePreviewPDF}
-            disabled={isLoading}
-            className="gap-2"
-          >
-            <Eye className="h-4 w-4" />
-            Preview
-          </Button>
-          {/* Send button - only shown when draft and not in review */}
-          {!isReview && isDraft && (
-            <Button
-              size="sm"
-              onClick={handleSend}
-              disabled={isLoading || (!dueDate && !invoice?.dueDate) || Number(totalAmount || 0) <= 0}
-              className="gap-2"
-            >
-              <Send className="h-4 w-4" />
-              Send
-            </Button>
-          )}
-          {/* Sent/Paid button - shown when sent/paid */}
-          {invoiceState === 'SENT' && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled
-              className="gap-2"
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              Sent
-            </Button>
-          )}
-          {invoiceState === 'PAID' && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled
-              className="gap-2"
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              Paid
-            </Button>
-          )}
-        </div>
 
         <div className={cn(
           "space-y-4 py-4",
           isMobile && "overflow-y-auto min-h-0 pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
         )}>
+          {/* Action buttons: Preview and Send (when draft, not in review) - moved below title */}
+          <div className="flex items-center justify-end gap-2 pb-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handlePreviewPDF}
+              disabled={isLoading}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              Preview
+            </Button>
+            {/* Send button - only shown when draft and not in review */}
+            {!isReview && isDraft && (
+              <Button
+                size="sm"
+                onClick={handleSend}
+                disabled={isLoading || (!dueDate && !invoice?.dueDate) || Number(totalAmount || 0) <= 0}
+                className="gap-2"
+              >
+                <Send className="h-4 w-4" />
+                Send
+              </Button>
+            )}
+            {/* Sent/Paid button - shown when sent/paid */}
+            {invoiceState === 'SENT' && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Sent
+              </Button>
+            )}
+            {invoiceState === 'PAID' && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Paid
+              </Button>
+            )}
+          </div>
+
           {/* Warning banners */}
           {invoice && !isReview && (
             <>
@@ -487,13 +491,12 @@ export function InvoiceUploadReviewDialog({
               </p>
             </div>
           )}
-        </div>
 
-        {/* Footer: Save, Cancel, and Revert buttons (when appropriate) */}
-        <DialogFooter className={cn(
-          isMobile ? "flex-col gap-2 flex-shrink-0" : ""
-        )}>
-          <div className={isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"}>
+          {/* Action buttons: Save, Cancel, and Revert buttons (when appropriate) - moved into scrollable content */}
+          <div className={cn(
+            "pt-4 border-t",
+            isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"
+          )}>
             {!isReadOnly && (
               <Button 
                 onClick={handleSave} 
@@ -535,7 +538,7 @@ export function InvoiceUploadReviewDialog({
               Cancel
             </Button>
           </div>
-        </DialogFooter>
+        </div>
       </DialogContent>
 
       {/* Share Invoice Dialog */}
