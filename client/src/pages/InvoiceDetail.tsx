@@ -28,9 +28,9 @@ export default function InvoiceDetail() {
     { enabled: !!invoiceId }
   );
 
-  // Redirect uploaded invoices to review dialog (only if they need review)
+  // Redirect ALL uploaded invoices to review dialog (never show full InvoiceForm)
   useEffect(() => {
-    if (invoice && invoice.source === "uploaded" && invoice.needsReview) {
+    if (invoice && invoice.source === "uploaded") {
       setReviewDialogOpen(true);
     }
   }, [invoice]);
@@ -103,8 +103,8 @@ export default function InvoiceDetail() {
     );
   }
 
-  // For uploaded invoices that need review, show review dialog instead (not the line-item form)
-  if (invoice && invoice.source === "uploaded" && invoice.needsReview) {
+  // For ALL uploaded invoices, show review dialog instead (never show full InvoiceForm)
+  if (invoice && invoice.source === "uploaded") {
     return (
       <>
         <InvoiceUploadReviewDialog
@@ -162,20 +162,34 @@ export default function InvoiceDetail() {
           <CardTitle>Edit Invoice</CardTitle>
         </CardHeader>
         <CardContent>
-          <InvoiceForm
-            mode="edit"
-            invoiceId={invoiceId}
-            contacts={contacts}
-            onClose={() => navigate("/invoices")}
-            onSuccess={async () => {
-              toast.success("Invoice updated");
-              await utils.invoices.list.invalidate();
-              await utils.invoices.listNeedsReview.invalidate();
-            }}
-            onOpenInvoice={(nextId) => navigate(`/invoices/${nextId}`)}
-            onPreview={handlePreviewPDF}
-            showPreview={invoice && invoice.status !== "draft"}
-          />
+          {/* Only show InvoiceForm for created invoices - uploaded invoices use review dialog */}
+          {invoice && invoice.source === "created" ? (
+            <InvoiceForm
+              mode="edit"
+              invoiceId={invoiceId}
+              contacts={contacts}
+              onClose={() => navigate("/invoices")}
+              onSuccess={async () => {
+                toast.success("Invoice updated");
+                await utils.invoices.list.invalidate();
+                await utils.invoices.listNeedsReview.invalidate();
+              }}
+              onOpenInvoice={(nextId) => navigate(`/invoices/${nextId}`)}
+              onPreview={handlePreviewPDF}
+              showPreview={invoice && invoice.status !== "draft"}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>This invoice is being edited in the review dialog.</p>
+              <Button
+                variant="outline"
+                onClick={() => setReviewDialogOpen(true)}
+                className="mt-4"
+              >
+                Open Review Dialog
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -649,11 +649,13 @@ export default function Invoices() {
                             key={invoice.id}
                             className="p-3 cursor-pointer hover:bg-accent"
                             onClick={() => {
-                              if (invoice.source === "uploaded" && invoice.status === "draft") {
+                              // ALL uploaded invoices use review dialog (never full InvoiceForm)
+                              if (invoice.source === "uploaded") {
                                 setUploadedInvoiceId(invoice.id);
                                 setUploadedParsedData(null);
                                 setUploadReviewDialogOpen(true);
                               } else {
+                                // Created invoices navigate to detail page (full InvoiceForm)
                                 navigate(`/invoices/${invoice.id}`);
                               }
                               setIsSearchOpen(false);
@@ -1020,13 +1022,13 @@ export default function Invoices() {
               if (isMultiSelectMode) {
                 toggleSelection(invoice.id);
               } else {
-                // For uploaded invoices that need review, open review dialog
-                // For uploaded invoices that don't need review, navigate to detail page (full InvoiceForm)
-                if (invoice.source === "uploaded" && invoice.needsReview) {
+                // ALL uploaded invoices use review dialog (never full InvoiceForm)
+                if (invoice.source === "uploaded") {
                   setUploadedInvoiceId(invoice.id);
                   setUploadedParsedData(null);
                   setUploadReviewDialogOpen(true);
                 } else {
+                  // Created invoices navigate to detail page (full InvoiceForm)
                   navigate(`/invoices/${invoice.id}`);
                 }
               }

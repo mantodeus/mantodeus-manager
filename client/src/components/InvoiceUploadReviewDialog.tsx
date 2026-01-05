@@ -27,6 +27,7 @@ import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "@/components/ui/Icon";
 import { ShareInvoiceDialog } from "./invoices/ShareInvoiceDialog";
+import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -55,6 +56,8 @@ export function InvoiceUploadReviewDialog({
   const [totalAmount, setTotalAmount] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
+  const [revertTarget, setRevertTarget] = useState<"draft" | "sent" | null>(null);
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
@@ -136,6 +139,30 @@ export function InvoiceUploadReviewDialog({
       toast.error("Failed to cancel upload: " + error.message);
     },
   });
+  const revertToDraftMutation = trpc.invoices.revertToDraft.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice reverted to draft");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      utils.invoices.list.invalidate();
+      setRevertDialogOpen(false);
+      setRevertTarget(null);
+    },
+    onError: (error) => {
+      toast.error("Failed to revert invoice: " + error.message);
+    },
+  });
+  const revertToSentMutation = trpc.invoices.revertToSent.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice reverted to sent");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      utils.invoices.list.invalidate();
+      setRevertDialogOpen(false);
+      setRevertTarget(null);
+    },
+    onError: (error) => {
+      toast.error("Failed to revert invoice: " + error.message);
+    },
+  });
 
   // Initialize form when parsed data or invoice changes
   useEffect(() => {
@@ -189,6 +216,9 @@ export function InvoiceUploadReviewDialog({
   const invoiceState = invoice ? getInvoiceState(invoice) : null;
   const isReview = invoiceState === 'REVIEW';
   const isDraft = invoiceState === 'DRAFT';
+  const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
+  const isPaid = invoiceState === 'PAID';
+  const isReadOnly = isSent || isPaid; // Only disable when sent/paid, not when draft
   
   const handleSend = () => {
     if (!invoice) return;
@@ -258,7 +288,34 @@ export function InvoiceUploadReviewDialog({
     await cancelMutation.mutateAsync({ id: invoiceId });
   };
 
-  const isLoading = confirmMutation.isPending || updateMutation.isPending || cancelMutation.isPending;
+  const isLoading = confirmMutation.isPending || updateMutation.isPending || cancelMutation.isPending || revertToDraftMutation.isPending || revertToSentMutation.isPending;
+  
+  // Get derived values for revert logic
+  const derivedValues = invoice ? getDerivedValues(invoice) : { outstanding: 0, isPaid: false, isPartial: false, isOverdue: false };
+  
+  // Revert handlers
+  const handleRevertToDraft = () => {
+    if (!invoice || derivedValues.outstanding > 0) {
+      toast.error("Cannot revert to draft: invoice has payments");
+      return;
+    }
+    setRevertTarget("draft");
+    setRevertDialogOpen(true);
+  };
+  
+  const handleRevertToSent = () => {
+    setRevertTarget("sent");
+    setRevertDialogOpen(true);
+  };
+  
+  const handleRevertConfirm = async () => {
+    if (!invoiceId) return;
+    if (revertTarget === "draft") {
+      await revertToDraftMutation.mutateAsync({ id: invoiceId, confirmed: true });
+    } else if (revertTarget === "sent") {
+      await revertToSentMutation.mutateAsync({ id: invoiceId, confirmed: true });
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -348,9 +405,19 @@ export function InvoiceUploadReviewDialog({
             </>
           )}
 
+          {/* Read-only overlay message for sent/paid invoices */}
+          {isReadOnly && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                This invoice is locked because it has been {isPaid ? 'paid' : 'sent'}.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="client">Client</Label>
-            <Select value={clientId} onValueChange={setClientId} disabled={!isReview}>
+            <Select value={clientId} onValueChange={setClientId} disabled={isReadOnly}>
               <SelectTrigger id="client">
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
@@ -372,7 +439,7 @@ export function InvoiceUploadReviewDialog({
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
               placeholder="Auto-generated if empty"
-              disabled={!isReview}
+              disabled={isReadOnly}
             />
           </div>
 
@@ -384,7 +451,7 @@ export function InvoiceUploadReviewDialog({
               value={issueDate}
               onChange={(e) => setIssueDate(e.target.value)}
               required
-              disabled={!isReview}
+              disabled={isReadOnly}
             />
           </div>
 
@@ -399,11 +466,11 @@ export function InvoiceUploadReviewDialog({
               onChange={(e) => setTotalAmount(e.target.value)}
               placeholder="0.00"
               required
-              disabled={!isReview}
+              disabled={isReadOnly}
             />
           </div>
 
-          {/* Due Date - required for sending */}
+          {/* Due Date - shown for non-review state, required for sending */}
           {!isReview && (
             <div className="space-y-2">
               <Label htmlFor="dueDate">Due Date *</Label>
@@ -413,6 +480,7 @@ export function InvoiceUploadReviewDialog({
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 required={!isReview}
+                disabled={isReadOnly}
               />
               <p className="text-xs text-muted-foreground">
                 Due date is required before sending the invoice
@@ -421,19 +489,42 @@ export function InvoiceUploadReviewDialog({
           )}
         </div>
 
-        {/* Footer: Save and Cancel only (per spec) */}
+        {/* Footer: Save, Cancel, and Revert buttons (when appropriate) */}
         <DialogFooter className={cn(
           isMobile ? "flex-col gap-2 flex-shrink-0" : ""
         )}>
           <div className={isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"}>
-            <Button 
-              onClick={handleSave} 
-              disabled={isLoading || !isFormValid}
-              className={isMobile ? "w-full" : ""}
-            >
-              {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isReview ? "Save" : "Update"}
-            </Button>
+            {!isReadOnly && (
+              <Button 
+                onClick={handleSave} 
+                disabled={isLoading || !isFormValid}
+                className={isMobile ? "w-full" : ""}
+              >
+                {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isReview ? "Save" : "Update"}
+              </Button>
+            )}
+            {/* Revert buttons - only shown when sent/paid */}
+            {isSent && !isPaid && derivedValues.outstanding === 0 && (
+              <Button
+                variant="outline"
+                onClick={handleRevertToDraft}
+                disabled={isLoading}
+                className={isMobile ? "w-full" : ""}
+              >
+                Revert to Draft
+              </Button>
+            )}
+            {isPaid && (
+              <Button
+                variant="outline"
+                onClick={handleRevertToSent}
+                disabled={isLoading}
+                className={isMobile ? "w-full" : ""}
+              >
+                Revert to Sent
+              </Button>
+            )}
             <Button 
               variant="destructive" 
               onClick={handleCancel} 
@@ -457,6 +548,20 @@ export function InvoiceUploadReviewDialog({
             utils.invoices.get.invalidate({ id: invoiceId });
             onSuccess?.();
           }}
+        />
+      )}
+      
+      {/* Revert Status Dialog */}
+      {invoice && (
+        <RevertInvoiceStatusDialog
+          open={revertDialogOpen}
+          onOpenChange={setRevertDialogOpen}
+          currentStatus={isPaid ? "paid" : "open"}
+          targetStatus={revertTarget === "draft" ? "draft" : "open"}
+          invoiceNumber={invoice.invoiceNumber}
+          invoiceAmount={invoice.total}
+          onConfirm={handleRevertConfirm}
+          isReverting={revertToDraftMutation.isPending || revertToSentMutation.isPending}
         />
       )}
     </Dialog>
