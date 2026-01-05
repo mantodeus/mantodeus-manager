@@ -354,12 +354,13 @@ export const CenteredContextMenu = React.forwardRef<
     if (!isBlocking) return;
 
     const handleGlobalBlock = (event: Event) => {
-      const target = event.target as HTMLElement | null;
+      const target = event.target as EventTarget | null;
+      const targetElement = target instanceof Element ? target : null;
       const path = (event as Event & { composedPath?: () => EventTarget[] }).composedPath?.();
       const isMenuTarget =
         (menuRef.current && path ? path.includes(menuRef.current) : false) ||
-        (menuRef.current && target ? menuRef.current.contains(target) : false) ||
-        Boolean(target?.closest(".glass-context-menu"));
+        (menuRef.current && target ? menuRef.current.contains(target as Node) : false) ||
+        Boolean(targetElement?.closest(".glass-context-menu"));
 
       if (isMenuTarget) {
         return;
