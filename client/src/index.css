@@ -457,12 +457,16 @@
   /* But allow the menu, blocker, and active item to work */
   body.context-menu-open .context-menu-blocker,
   body.context-menu-open .context-menu-overlay,
+  body.context-menu-open .context-menu-scrim,
   body.context-menu-open .glass-context-menu,
   body.context-menu-open .glass-context-menu button,
   body.context-menu-open .bottom-tab-bar,
-  body.context-menu-open .bottom-tab-bar button,
-  body.context-menu-open .has-context-menu.context-menu-active {
+  body.context-menu-open .bottom-tab-bar button {
     pointer-events: auto !important;
+  }
+
+  body.context-menu-open .has-context-menu.context-menu-active {
+    pointer-events: none !important;
   }
 
   /* Apple-style centered context menu animations - transform-only, no layout */

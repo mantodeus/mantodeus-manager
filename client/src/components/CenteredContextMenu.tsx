@@ -122,6 +122,7 @@ export const CenteredContextMenu = React.forwardRef<
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const overlayPressRef = useRef(false);
+  const suppressClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const menuShiftY = useMemo(() => {
     if (!itemRect || !itemRef.current) return 0;
@@ -317,16 +318,38 @@ export const CenteredContextMenu = React.forwardRef<
     };
   }, [isOpen]);
 
-  const handleOverlayPointerDown = useCallback(
+  const suppressNextClick = useCallback(() => {
+    const handler = (event: Event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      document.removeEventListener("click", handler, true);
+      document.removeEventListener("mousedown", handler, true);
+      document.removeEventListener("touchend", handler, true);
+    };
+    document.addEventListener("click", handler, true);
+    document.addEventListener("mousedown", handler, true);
+    document.addEventListener("touchend", handler, true);
+    if (suppressClickTimeoutRef.current) {
+      clearTimeout(suppressClickTimeoutRef.current);
+    }
+    suppressClickTimeoutRef.current = setTimeout(() => {
+      document.removeEventListener("click", handler, true);
+      document.removeEventListener("mousedown", handler, true);
+      document.removeEventListener("touchend", handler, true);
+    }, 400);
+  }, []);
+
+  const handleScrimPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
       overlayPressRef.current = true;
     },
-    [closeMenu]
+    []
   );
 
-  const handleOverlayPointerUp = useCallback(
+  const handleScrimPointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
@@ -336,18 +359,19 @@ export const CenteredContextMenu = React.forwardRef<
       if (timeSinceMenuOpen < 250) {
         return;
       }
+      suppressNextClick();
       closeMenu();
     },
-    [closeMenu]
+    [closeMenu, suppressNextClick]
   );
 
-  const handleOverlayTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+  const handleScrimTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     overlayPressRef.current = true;
   }, []);
 
-  const handleOverlayTouchEnd = useCallback(
+  const handleScrimTouchEnd = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
@@ -357,12 +381,13 @@ export const CenteredContextMenu = React.forwardRef<
       if (timeSinceMenuOpen < 250) {
         return;
       }
+      suppressNextClick();
       closeMenu();
     },
-    [closeMenu]
+    [closeMenu, suppressNextClick]
   );
 
-  const handleOverlayClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleScrimClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
   }, []);
@@ -520,7 +545,9 @@ export const CenteredContextMenu = React.forwardRef<
       const target = e.target as Node;
       // Check if click is on the overlay background (not menu or item)
       const isOverlay = (target as HTMLElement)?.classList?.contains('context-menu-overlay') ||
-        (target as HTMLElement)?.closest('.context-menu-overlay');
+        (target as HTMLElement)?.closest('.context-menu-overlay') ||
+        (target as HTMLElement)?.classList?.contains('context-menu-scrim') ||
+        (target as HTMLElement)?.closest('.context-menu-scrim');
       
       if (isOverlay) {
         // Overlay click - stop propagation and close
@@ -673,19 +700,29 @@ export const CenteredContextMenu = React.forwardRef<
         menuStyle &&
         createPortal(
           <>
-            {/* Background overlay with blur - stays below tab bar */}
+            {/* Background blur layer (visual only) */}
             <div
               className="context-menu-overlay fixed inset-0 backdrop-blur-md bg-black/20"
               style={{
-                zIndex: 9996,
+                zIndex: 9995,
                 animation: "fadeIn 220ms ease-out",
-                pointerEvents: "auto",
+                pointerEvents: "none",
               }}
-              onPointerDown={handleOverlayPointerDown}
-              onPointerUp={handleOverlayPointerUp}
-              onClick={handleOverlayClick}
-              onTouchStart={handleOverlayTouchStart}
-              onTouchEnd={handleOverlayTouchEnd}
+            />
+
+            {/* Interaction scrim (captures taps/clicks) */}
+            <div
+              className="context-menu-scrim fixed inset-0"
+              style={{
+                zIndex: 9996,
+                pointerEvents: "auto",
+                background: "transparent",
+              }}
+              onPointerDown={handleScrimPointerDown}
+              onPointerUp={handleScrimPointerUp}
+              onClick={handleScrimClick}
+              onTouchStart={handleScrimTouchStart}
+              onTouchEnd={handleScrimTouchEnd}
             />
 
             {/* Centered menu - z-index below tab bar */}
