@@ -2,17 +2,87 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { FileText, Download, Loader2 } from "@/components/ui/Icon";
+import { FileText, Download, Loader2, SlidersHorizontal } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
+import { useLocation } from "wouter";
+import { useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 export default function Reports() {
   const { user } = useAuth();
+  const [location, setLocation] = useLocation();
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const { data: projects, isLoading: projectsLoading } = trpc.projects.list.useQuery();
 
   const handleGenerateReport = (projectId: number, projectTitle: string) => {
     toast.info("Report generation feature coming soon");
   };
+
+  const filterSlot = (
+    <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Filter reports">
+          <SlidersHorizontal className="size-6" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="p-0">
+        <SheetHeader>
+          <SheetTitle>Filters</SheetTitle>
+        </SheetHeader>
+        <div className="px-4 pb-4 overflow-y-auto space-y-4 pt-4">
+          {/* Status Buttons */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Status</div>
+            <div className="flex gap-2">
+              <Button
+                variant={location === "/reports" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  setLocation("/reports");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Active
+              </Button>
+              <Button
+                variant={location === "/reports/archived" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  setLocation("/reports/archived");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Archived
+              </Button>
+              <Button
+                variant={location === "/reports/rubbish" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  setLocation("/reports/rubbish");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Deleted
+              </Button>
+            </div>
+          </div>
+        </div>
+        <SheetFooter className="flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => setIsFilterOpen(false)}>
+            Close
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
 
   if (projectsLoading) {
     return (
@@ -27,6 +97,7 @@ export default function Reports() {
       <PageHeader
         title="Reports"
         subtitle="Generate and download project reports"
+        filterSlot={filterSlot}
       />
 
       <div className="grid gap-4">

@@ -608,6 +608,111 @@ export default function Contacts() {
     </Dialog>
   );
 
+  const filterSlot = (
+    <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Filter contacts">
+          <SlidersHorizontal className="size-6" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="p-0">
+        <SheetHeader>
+          <SheetTitle>Filters</SheetTitle>
+        </SheetHeader>
+        <div className="px-4 pb-4 overflow-y-auto space-y-4 pt-4">
+          {/* Time Filter */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Time</div>
+            <Select
+              value={draftFilters.time}
+              onValueChange={(value) =>
+                setDraftFilters((prev) => ({
+                  ...prev,
+                  time: value,
+                }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Any time" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any time</SelectItem>
+                {/* Generate years (current year and 5 years back) */}
+                {(() => {
+                  const currentYear = new Date().getFullYear();
+                  const years = [];
+                  for (let year = currentYear; year >= currentYear - 5; year--) {
+                    years.push(
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    );
+                    // Add months for each year (January to December)
+                    for (let month = 1; month <= 12; month++) {
+                      const monthValue = `${year}-${month}`;
+                      const monthName = monthDisplayNames[month - 1];
+                      years.push(
+                        <SelectItem key={monthValue} value={monthValue}>
+                          {monthName} {year}
+                        </SelectItem>
+                      );
+                    }
+                  }
+                  return years;
+                })()}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status Buttons */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Status</div>
+            <div className="flex gap-2">
+              <Button
+                variant={location === "/contacts" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  setLocation("/contacts");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Active
+              </Button>
+              <Button
+                variant={location === "/contacts/archived" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  setLocation("/contacts/archived");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Archived
+              </Button>
+              <Button
+                variant={location === "/contacts/rubbish" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  setLocation("/contacts/rubbish");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Deleted
+              </Button>
+            </div>
+          </div>
+        </div>
+        <SheetFooter className="flex-row justify-end gap-2">
+          <Button variant="outline" onClick={clearDraftFilters}>
+            Revert
+          </Button>
+          <Button onClick={applyFilters}>
+            Apply
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -628,6 +733,7 @@ export default function Contacts() {
           </>
         }
         searchSlot={searchSlot}
+        filterSlot={filterSlot}
       />
 
       {isFormOpen && (

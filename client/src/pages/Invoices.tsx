@@ -11,6 +11,7 @@ import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
+import { CreateInvoiceDialog } from "@/components/invoices/CreateInvoiceDialog";
 import { useIsMobile } from "@/hooks/useMobile";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { Link, useLocation } from "wouter";
@@ -77,6 +78,7 @@ export default function Invoices() {
     invoiceNumber: string | null;
   } | null>(null);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -807,28 +809,41 @@ export default function Invoices() {
             </Select>
           </div>
 
-          {/* Status Filter */}
+          {/* Status Buttons */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
-            <Select
-              value={filters.status}
-              onValueChange={(value) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  status: value as FilterState["status"],
-                }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-                <SelectItem value="deleted">Deleted</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Button
+                variant={window.location.pathname === "/invoices" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  navigate("/invoices");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Active
+              </Button>
+              <Button
+                variant={window.location.pathname === "/invoices/archived" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  navigate("/invoices/archived");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Archived
+              </Button>
+              <Button
+                variant={window.location.pathname === "/invoices/rubbish" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  navigate("/invoices/rubbish");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Deleted
+              </Button>
+            </div>
           </div>
         </div>
         <SheetFooter className="flex-row justify-end gap-2">
@@ -840,8 +855,27 @@ export default function Invoices() {
     </Sheet>
   );
 
+  // Calculate padding for multi-select bar
+  // Bar height: min-h-[44px] + padding (14px * 2) + marginBottom (1rem = 16px) + safe area
+  // Roughly: 44 + 28 + 16 = 88px minimum, but add extra for safety and wrapping
+  const multiSelectPadding = useMemo(() => {
+    if (!isMultiSelectMode) return undefined;
+    // On mobile, account for bottom tab bar + safe area
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      // Multi-select bar is above tab bar, so we need: bar height + some spacing
+      return '140px'; // Enough to clear both bar and tab bar
+    }
+    return '120px'; // Desktop: just the bar height
+  }, [isMultiSelectMode]);
+
   return (
-    <div className="space-y-6">
+    <div 
+      className="space-y-6"
+      style={{
+        paddingBottom: multiSelectPadding,
+      }}
+    >
       <PageHeader
         title="Invoices"
         subtitle="Create, edit, and manage invoices"
@@ -861,11 +895,12 @@ export default function Invoices() {
               )}
               Upload
             </Button>
-            <Button asChild className="h-10 whitespace-nowrap">
-              <Link href="/invoices/new">
-                <Plus className="w-4 h-4 mr-1" />
-                New
-              </Link>
+            <Button 
+              onClick={() => setCreateDialogOpen(true)}
+              className="h-10 whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              New
             </Button>
           </>
         }
@@ -931,7 +966,7 @@ export default function Invoices() {
                   key={`needs-review-${invoice.id}`}
                   onClick={handleNeedsReviewClick}
                   data-item={invoice.id}
-                  className={`card p-3 sm:p-4 hover:shadow-sm transition-all md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
+                  className={`card p-3 sm:p-4 hover:shadow-sm transition-shadow md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
                 >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
@@ -992,7 +1027,7 @@ export default function Invoices() {
           </p>
           {!hasActiveFilters && (
             <Button
-              onClick={() => navigate("/invoices/new")}
+              onClick={() => setCreateDialogOpen(true)}
               variant="outline"
               className="mt-4"
             >
@@ -1039,7 +1074,7 @@ export default function Invoices() {
                 key={invoice.id}
                 onClick={handleCardClick}
                 data-item={invoice.id}
-                className={`card p-3 sm:p-4 hover:shadow-sm transition-all md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
+                className={`card p-3 sm:p-4 hover:shadow-sm transition-shadow md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
               >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
@@ -1127,6 +1162,15 @@ export default function Invoices() {
         }}
         invoiceId={uploadedInvoiceId}
         parsedData={uploadedParsedData}
+        onSuccess={() => {
+          refetch();
+          refetchNeedsReview();
+        }}
+      />
+
+      <CreateInvoiceDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
         onSuccess={() => {
           refetch();
           refetchNeedsReview();

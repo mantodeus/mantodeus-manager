@@ -579,6 +579,10 @@
   [class*="selected"]:has(input[type="checkbox"]:checked),
   .item-selected {
     box-shadow: inset 0 0 0 1px rgba(12, 245, 126, 0.35) !important;
+    /* Ensure no layout shift - box-shadow doesn't affect layout, but be explicit */
+    margin: 0 !important;
+    transform: none !important;
+    transition: box-shadow 150ms ease-out !important;
   }
 
   /* Select action buttons - dropdown-style, not CTA buttons */
@@ -833,6 +837,29 @@
 
   .animate-scroller-slide-in {
     animation: scroller-slide-in 120ms ease-out;
+  }
+
+  /* Fade-out separator - thin line that fades from sides to center */
+  .separator-fade {
+    position: relative;
+    height: 1px;
+    width: 100%;
+  }
+
+  .separator-fade::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      var(--border) 20%,
+      var(--border) 80%,
+      transparent 100%
+    );
   }
 }
 

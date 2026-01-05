@@ -327,7 +327,7 @@ export function InvoiceUploadReviewDialog({
         showCloseButton={false}
       >
         {/* PageHeader-like structure */}
-        <div className="flex-shrink-0 p-6 pb-4 space-y-4 border-b">
+        <div className="flex-shrink-0 p-6 pb-4 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 min-w-0 flex-1">
               <div className="flex-1 min-w-0 flex flex-col">
@@ -408,6 +408,9 @@ export function InvoiceUploadReviewDialog({
             )}
           </div>
         </div>
+
+        {/* Fade-out separator */}
+        <div className="separator-fade" />
 
         <div className={cn(
           "space-y-4 p-6 overflow-y-auto flex-1",

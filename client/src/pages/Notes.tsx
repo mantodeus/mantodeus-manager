@@ -659,28 +659,41 @@ export default function Notes() {
             </Select>
           </div>
 
-          {/* Status Filter */}
+          {/* Status Buttons */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
-            <Select
-              value={draftFilters.status}
-              onValueChange={(value) =>
-                setDraftFilters((prev) => ({
-                  ...prev,
-                  status: value as FilterState["status"],
-                }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-                <SelectItem value="deleted">Deleted</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Button
+                variant={window.location.pathname === "/notes" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  navigate("/notes");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Active
+              </Button>
+              <Button
+                variant={window.location.pathname === "/notes/archived" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  navigate("/notes/archived");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Archived
+              </Button>
+              <Button
+                variant={window.location.pathname === "/notes/rubbish" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  navigate("/notes/rubbish");
+                  setIsFilterOpen(false);
+                }}
+              >
+                Deleted
+              </Button>
+            </div>
           </div>
         </div>
         <SheetFooter className="flex-row justify-end gap-2">

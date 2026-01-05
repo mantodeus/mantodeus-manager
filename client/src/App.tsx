@@ -15,6 +15,8 @@ import ProjectDetail from "./pages/ProjectDetail";
 import ProjectJobDetail from "./pages/ProjectJobDetail";
 import ProjectNew from "./pages/ProjectNew";
 import Reports from "./pages/Reports";
+import ReportsArchived from "./pages/ReportsArchived";
+import ReportsRubbish from "./pages/ReportsRubbish";
 import Calendar from "./components/Calendar";
 import Contacts from "./pages/Contacts";
 import ContactsArchived from "./pages/ContactsArchived";
@@ -170,6 +172,16 @@ function Router() {
       <Route path="/reports">
         <DashboardLayout>
           <Reports />
+        </DashboardLayout>
+      </Route>
+      <Route path="/reports/archived">
+        <DashboardLayout>
+          <ReportsArchived />
+        </DashboardLayout>
+      </Route>
+      <Route path="/reports/rubbish">
+        <DashboardLayout>
+          <ReportsRubbish />
         </DashboardLayout>
       </Route>
       <Route path="/statements">
