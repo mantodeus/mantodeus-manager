@@ -522,10 +522,19 @@ export const invoiceRouter = router({
       if (cancellation?.sentAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled invoices are read-only." });
       }
-      if (!invoice.sentAt || invoice.paidAt) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can be marked as paid" });
+      if (invoice.paidAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice is already marked as paid" });
       }
-      checkInvoiceNeedsReview(invoice, "marked as paid");
+      // For uploaded invoices in review state, allow marking as paid without sentAt (historical import)
+      if (invoice.source === "uploaded" && invoice.needsReview) {
+        // Allow - this is the historical import use case (Section 19)
+      } else {
+        // For created invoices or after review, require sentAt
+        if (!invoice.sentAt) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can be marked as paid" });
+        }
+        checkInvoiceNeedsReview(invoice, "marked as paid");
+      }
 
       await db.markInvoiceAsPaid(invoice.id);
       const updated = await db.getInvoiceById(invoice.id);
@@ -682,7 +691,12 @@ export const invoiceRouter = router({
       if (invoice.sentAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice has already been sent" });
       }
-      checkInvoiceNeedsReview(invoice, "sent");
+      // Allow uploaded invoices in review state (Section 19 exception)
+      if (invoice.source === "uploaded" && invoice.needsReview) {
+        // Allow - this is the historical import use case
+      } else {
+        checkInvoiceNeedsReview(invoice, "sent");
+      }
 
       await db.markInvoiceAsSent(invoice.id);
       const updated = await db.getInvoiceById(invoice.id);

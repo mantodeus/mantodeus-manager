@@ -88,14 +88,37 @@ isOverdue = sentAt !== null && !isPaid && dueDate && dueDate < today
 
 ---
 
-## 5. Review State (Uploaded Invoices)
+## 5. Review State (Uploaded Invoices - EXCEPTION FOR HISTORICAL IMPORTS)
 
-### Footer
+### Footer (Uploaded Invoices ONLY)
 
-- Save
-- Cancel
+- **Mark as Sent** (if not already sent) - Sets historical state
+- **Mark as Paid** (if not already paid) - Sets historical state
+- **Save** - Saves and exits review state
+- **Delete** - Cancels upload, removes invoice
 
-🚫 **No lifecycle actions allowed in review**🚫 **No sending**🚫 **No payments**---
+### Why This Exception Exists
+
+**Uploaded invoices** are historical records (PDFs from old systems, scanned documents). They may have been sent/paid months or years ago via email, postal mail, or other accounting software.
+
+**Rules:**
+1. "Mark as Sent/Paid" buttons **ONLY appear in REVIEW state** (`needsReview: true`)
+2. These set historical timestamps **without** share link creation (no validation required)
+3. After saving review (`needsReview: false`), standard header/footer rules apply
+4. **No Cancel button** - Only Delete (removes invoice entirely)
+
+### Created Invoices (NOT uploaded)
+
+For newly created invoices, review state does NOT have these buttons:
+
+- **Save** - Saves invoice
+- **Delete** - Deletes invoice
+
+🚫 **No lifecycle actions allowed in review for created invoices**
+🚫 **No sending for created invoices in review**
+🚫 **No payments for created invoices in review**
+
+---
 
 ## 6. Draft State
 
@@ -346,6 +369,26 @@ if (sharedDoc.expiresAt < now()) {
 - [ ] No accidental send/payment taps
 - [ ] Header buttons don't wrap unpredictably
 
+### Historical Invoice Import (Uploaded Invoices)
+
+- [ ] "Mark as Sent" button appears ONLY in REVIEW state for uploaded invoices
+- [ ] "Mark as Paid" button appears ONLY in REVIEW state for uploaded invoices
+- [ ] "Mark as Sent" sets `sentAt` without creating share link
+- [ ] "Mark as Paid" sets `paidAt` and `amountPaid = totalAmount`
+- [ ] After saving review (`needsReview: false`), buttons disappear
+- [ ] After review, uploaded invoices follow standard header/footer layout
+- [ ] Delete button always visible (no Cancel button)
+- [ ] Delete in review state: hard deletes (cancels upload)
+- [ ] Delete in draft/sent/paid state: soft deletes (moves to trash)
+- [ ] `markAsSent` mutation rejects non-uploaded invoices
+- [ ] `markAsPaid` mutation rejects non-uploaded invoices
+
+### Button Layout (No Cancel Button)
+
+- [ ] No Cancel button exists anywhere in invoice dialogs
+- [ ] Delete button always visible in all states
+- [ ] Delete never disabled (uses soft delete for sent/paid)
+
 ---
 
 ## 17. Explicitly Out of Scope (v1)
@@ -370,4 +413,183 @@ V1 does **not** track:
 - ❌ Who reverted status
 - ❌ Edit history
 
-This is **intentionally deferred** to prevent v1 scope creep. Future audit requirements will be addressed when financial compliance demands it.---
+This is **intentionally deferred** to prevent v1 scope creep. Future audit requirements will be addressed when financial compliance demands it.
+
+---
+
+## 19. Historical Invoice Import (Uploaded Invoices Implementation)
+
+### Backend Mutations (Uploaded Invoices Only)
+
+```typescript
+// Mark uploaded invoice as sent (historical state)
+markAsSent: protectedProcedure
+  .input(z.object({
+    id: z.number(),
+    sentDate: z.date().optional() // Allow setting historical date
+  }))
+  .mutation(async ({ input, ctx }) => {
+    const invoice = await getInvoice(input.id);
+
+    // Verify invoice is uploaded (has uploadId or similar marker)
+    if (!invoice.uploadId) {
+      throw new Error("Only uploaded invoices can be marked as sent directly");
+    }
+
+    // Set sentAt without share link creation
+    await db.update(invoices)
+      .set({ sentAt: input.sentDate || new Date() })
+      .where(eq(invoices.id, input.id));
+
+    return { success: true };
+  })
+
+// Mark uploaded invoice as paid (historical state)
+markAsPaid: protectedProcedure
+  .input(z.object({
+    id: z.number(),
+    paymentDate: z.date().optional() // Allow setting historical date
+  }))
+  .mutation(async ({ input, ctx }) => {
+    const invoice = await getInvoice(input.id);
+
+    // Verify invoice is uploaded
+    if (!invoice.uploadId) {
+      throw new Error("Only uploaded invoices can be marked as paid directly");
+    }
+
+    // Set paid state
+    const paymentDate = input.paymentDate || new Date();
+    await db.update(invoices)
+      .set({
+        paidAt: paymentDate,
+        amountPaid: invoice.totalAmount,
+        lastPaymentAt: paymentDate
+      })
+      .where(eq(invoices.id, input.id));
+
+    return { success: true };
+  })
+```
+
+### UI Implementation (InvoiceUploadReviewDialog)
+
+```tsx
+// Footer layout for uploaded invoices in REVIEW state
+{isReview && isUploaded && (
+  <DialogFooter className="flex flex-col gap-2">
+    {/* Mark as Sent (only if not already sent) */}
+    {!invoice.sentAt && (
+      <Button onClick={handleMarkAsSent} disabled={isLoading}>
+        Mark as Sent
+      </Button>
+    )}
+
+    {/* Mark as Paid (only if not already paid) */}
+    {!invoice.paidAt && (
+      <Button onClick={handleMarkAsPaid} disabled={isLoading}>
+        Mark as Paid
+      </Button>
+    )}
+
+    {/* Save */}
+    <Button onClick={handleSave} disabled={isLoading || !isFormValid}>
+      Save
+    </Button>
+
+    {/* Delete (NO Cancel button) */}
+    <Button
+      variant="destructive"
+      onClick={handleDelete}
+      disabled={isLoading}
+    >
+      Delete
+    </Button>
+  </DialogFooter>
+)}
+
+// After review (needsReview: false), use standard layout
+{!isReview && (
+  <>
+    {/* HEADER: Lifecycle buttons */}
+    <DialogHeader>
+      <DialogTitle>Edit Invoice</DialogTitle>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={handlePreview}>Preview</Button>
+        {isDraft && (
+          <Button onClick={navigateToShare} disabled={!dueDate || totalAmount <= 0}>
+            Send
+          </Button>
+        )}
+        {isSent && <Button variant="secondary" disabled>Sent</Button>}
+        {isPaid && <Button variant="secondary" disabled>Paid</Button>}
+      </div>
+    </DialogHeader>
+
+    {/* FOOTER: Form actions */}
+    <DialogFooter>
+      <Button onClick={handleSave}>Save</Button>
+      <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+      {isSent && amountPaid === 0 && (
+        <Button variant="outline" onClick={handleRevertToDraft}>
+          Revert to Draft
+        </Button>
+      )}
+      {isPaid && (
+        <Button variant="destructive" onClick={handleRevertToSent}>
+          Revert to Sent
+        </Button>
+      )}
+    </DialogFooter>
+  </>
+)}
+```
+
+### Delete Button Logic
+
+**All invoice states (uploaded and created):**
+
+```typescript
+const handleDelete = async () => {
+  if (isReview) {
+    // In review state: Cancel upload (hard delete)
+    await cancelUploadedInvoice.mutateAsync({ id: invoice.id });
+  } else if (isSent || isPaid) {
+    // Sent/Paid invoices: Move to trash (soft delete for audit safety)
+    await moveToTrash.mutateAsync({ id: invoice.id });
+  } else {
+    // Draft invoices: Move to trash
+    await moveToTrash.mutateAsync({ id: invoice.id });
+  }
+
+  onClose();
+  navigate('/invoices');
+};
+```
+
+**Button visibility:**
+- Always visible (no Cancel button exists)
+- Never disabled (even for sent/paid - uses soft delete)
+
+### Validation Rules
+
+**Mark as Sent:**
+- No validation required (historical fact)
+- Only available for uploaded invoices
+- Only visible in REVIEW state
+
+**Mark as Paid:**
+- No validation required (historical fact)
+- Only available for uploaded invoices
+- Only visible in REVIEW state
+- Automatically sets `amountPaid = totalAmount`
+
+### After Review State Ends
+
+Once `needsReview: false`, uploaded invoices behave identically to created invoices:
+- Header/footer separation applies (Section 13)
+- Share link flow applies if re-sending (Section 7)
+- Payment flow applies if adding partial payments (Section 9)
+- Revert rules apply (Section 13)
+
+---

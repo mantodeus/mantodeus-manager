@@ -1998,9 +1998,23 @@ export async function markInvoiceAsPaid(id: number) {
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
 
+  // Get invoice to set amountPaid = totalAmount (Section 19 requirement)
+  const invoice = await getInvoiceById(id);
+  if (!invoice) {
+    throw new Error("Invoice not found");
+  }
+
+  const totalAmount = invoice.total ? String(invoice.total) : "0.00";
+  const paymentDate = new Date();
+
   return db
     .update(invoices)
-    .set({ status: 'paid', paidAt: new Date() })
+    .set({ 
+      status: 'paid', 
+      paidAt: paymentDate,
+      amountPaid: totalAmount,
+      lastPaymentAt: paymentDate
+    })
     .where(eq(invoices.id, id));
 }
 

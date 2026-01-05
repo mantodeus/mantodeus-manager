@@ -2,8 +2,8 @@
  * Invoice Upload Review Dialog
  * 
  * Dialog for reviewing and confirming uploaded PDF invoice data.
- * Per spec: Review state has only Preview button in header, Save/Cancel in footer.
- * No lifecycle actions allowed in review state.
+ * Per spec Section 19: Review state has Mark as Sent/Paid buttons, Save, and Delete (no Cancel).
+ * Buttons ONLY appear in review state for uploaded invoices.
  */
 
 import { useState, useEffect } from "react";
@@ -163,6 +163,37 @@ export function InvoiceUploadReviewDialog({
       toast.error("Failed to revert invoice: " + error.message);
     },
   });
+  const markAsSentMutation = trpc.invoices.markAsSent.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as sent");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      utils.invoices.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Failed to mark as sent: " + error.message);
+    },
+  });
+  const markAsPaidMutation = trpc.invoices.markAsPaid.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as paid");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      utils.invoices.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Failed to mark as paid: " + error.message);
+    },
+  });
+  const moveToTrashMutation = trpc.invoices.moveToTrash.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice moved to trash");
+      onOpenChange(false);
+      utils.invoices.list.invalidate();
+      onSuccess?.();
+    },
+    onError: (error) => {
+      toast.error("Failed to delete invoice: " + error.message);
+    },
+  });
 
   // Initialize form when parsed data or invoice changes
   useEffect(() => {
@@ -271,24 +302,16 @@ export function InvoiceUploadReviewDialog({
     }
   };
 
-  const handleCancel = async () => {
-    if (!invoiceId) {
-      onOpenChange(false);
-      return;
-    }
 
-    // For already-confirmed invoices, just close the dialog
-    // Only delete if the invoice still needs review (unconfirmed upload)
-    if (invoice && !invoice.needsReview) {
-      onOpenChange(false);
-      return;
-    }
-
-    // Delete the invoice and S3 file (only for unconfirmed uploads)
-    await cancelMutation.mutateAsync({ id: invoiceId });
-  };
-
-  const isLoading = confirmMutation.isPending || updateMutation.isPending || cancelMutation.isPending || revertToDraftMutation.isPending || revertToSentMutation.isPending;
+  const isLoading = 
+    confirmMutation.isPending || 
+    updateMutation.isPending || 
+    cancelMutation.isPending || 
+    revertToDraftMutation.isPending || 
+    revertToSentMutation.isPending ||
+    markAsSentMutation.isPending ||
+    markAsPaidMutation.isPending ||
+    moveToTrashMutation.isPending;
   
   // Get derived values for revert logic
   const derivedValues = invoice ? getDerivedValues(invoice) : { outstanding: 0, isPaid: false, isPartial: false, isOverdue: false };
@@ -314,6 +337,28 @@ export function InvoiceUploadReviewDialog({
       await revertToDraftMutation.mutateAsync({ id: invoiceId, confirmed: true });
     } else if (revertTarget === "sent") {
       await revertToSentMutation.mutateAsync({ id: invoiceId, confirmed: true });
+    }
+  };
+
+  const handleMarkAsSent = async () => {
+    if (!invoiceId) return;
+    await markAsSentMutation.mutateAsync({ id: invoiceId });
+  };
+
+  const handleMarkAsPaid = async () => {
+    if (!invoiceId) return;
+    await markAsPaidMutation.mutateAsync({ id: invoiceId });
+  };
+
+  const handleDelete = async () => {
+    if (!invoiceId || !invoice) return;
+    
+    if (isReview) {
+      // In review state: Cancel upload (hard delete) - Section 19, line 556
+      await cancelMutation.mutateAsync({ id: invoiceId });
+    } else {
+      // After review: Move to trash (soft delete) - Section 19, lines 558-562
+      await moveToTrashMutation.mutateAsync({ id: invoiceId });
     }
   };
 
@@ -521,52 +566,108 @@ export function InvoiceUploadReviewDialog({
             </div>
           )}
 
-          {/* Action buttons: Save, Cancel, and Revert buttons (when appropriate) - moved into scrollable content */}
-          <div className={cn(
-            "pt-4 border-t",
-            isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"
-          )}>
-            {!isReadOnly && (
+          {/* Action buttons: Section 19 layout - REVIEW state for uploaded invoices */}
+          {isReview && invoice?.source === "uploaded" && (
+            <div className={cn(
+              "pt-4 border-t",
+              isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
+            )}>
+              {/* Mark as Sent (only if not already sent) - Section 19, line 482 */}
+              {!invoice.sentAt && (
+                <Button 
+                  onClick={handleMarkAsSent} 
+                  disabled={isLoading || markAsSentMutation.isPending}
+                  className={isMobile ? "w-full" : ""}
+                >
+                  {markAsSentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Mark as Sent
+                </Button>
+              )}
+
+              {/* Mark as Paid (only if not already paid) - Section 19, line 489 */}
+              {!invoice.paidAt && (
+                <Button 
+                  onClick={handleMarkAsPaid} 
+                  disabled={isLoading || markAsPaidMutation.isPending}
+                  className={isMobile ? "w-full" : ""}
+                >
+                  {markAsPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Mark as Paid
+                </Button>
+              )}
+
+              {/* Save - Section 19, line 496 */}
               <Button 
                 onClick={handleSave} 
                 disabled={isLoading || !isFormValid}
                 className={isMobile ? "w-full" : ""}
               >
                 {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isReview ? "Save" : "Update"}
+                Save
               </Button>
-            )}
-            {/* Revert buttons - only shown when sent/paid */}
-            {isSent && !isPaid && derivedValues.outstanding === 0 && (
+
+              {/* Delete (NO Cancel button) - Section 19, line 501 */}
               <Button
-                variant="outline"
-                onClick={handleRevertToDraft}
-                disabled={isLoading}
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isLoading || cancelMutation.isPending}
                 className={isMobile ? "w-full" : ""}
               >
-                Revert to Draft
+                {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Delete
               </Button>
-            )}
-            {isPaid && (
-              <Button
-                variant="outline"
-                onClick={handleRevertToSent}
-                disabled={isLoading}
+            </div>
+          )}
+
+          {/* After review state (needsReview: false) - standard layout */}
+          {!isReview && (
+            <div className={cn(
+              "pt-4 border-t",
+              isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"
+            )}>
+              {!isReadOnly && (
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isLoading || !isFormValid}
+                  className={isMobile ? "w-full" : ""}
+                >
+                  {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Update
+                </Button>
+              )}
+              {/* Revert buttons - only shown when sent/paid */}
+              {isSent && !isPaid && derivedValues.outstanding === 0 && (
+                <Button
+                  variant="outline"
+                  onClick={handleRevertToDraft}
+                  disabled={isLoading}
+                  className={isMobile ? "w-full" : ""}
+                >
+                  Revert to Draft
+                </Button>
+              )}
+              {isPaid && (
+                <Button
+                  variant="outline"
+                  onClick={handleRevertToSent}
+                  disabled={isLoading}
+                  className={isMobile ? "w-full" : ""}
+                >
+                  Revert to Sent
+                </Button>
+              )}
+              {/* Delete (replaces Cancel) */}
+              <Button 
+                variant="destructive" 
+                onClick={handleDelete} 
+                disabled={isLoading || moveToTrashMutation.isPending}
                 className={isMobile ? "w-full" : ""}
               >
-                Revert to Sent
+                {moveToTrashMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Delete
               </Button>
-            )}
-            <Button 
-              variant="destructive" 
-              onClick={handleCancel} 
-              disabled={isLoading}
-              className={isMobile ? "w-full" : ""}
-            >
-              {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Cancel
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
       </DialogContent>
 
