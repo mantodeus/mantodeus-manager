@@ -129,7 +129,7 @@ export default function ContactsArchived() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Archived Contacts"
+        title="Archived"
         subtitle="Contacts you've archived. You can restore them anytime."
         leading={
           <Link href="/contacts">

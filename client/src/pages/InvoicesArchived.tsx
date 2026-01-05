@@ -155,7 +155,7 @@ export default function InvoicesArchived() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Archived Invoices"
+        title="Archived"
         subtitle="Invoices you've archived. You can restore them anytime."
         leading={
           <Link href="/invoices">
