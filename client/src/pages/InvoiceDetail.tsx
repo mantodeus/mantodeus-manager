@@ -1,4 +1,5 @@
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
+import { ShareInvoiceDialog } from "@/components/invoices/ShareInvoiceDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
