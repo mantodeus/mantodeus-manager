@@ -496,6 +496,20 @@ export const CenteredContextMenu = React.forwardRef<
     [onAction, closeMenu]
   );
 
+  const stopSyntheticEvent = (
+    event:
+      | React.MouseEvent
+      | React.TouchEvent
+      | React.PointerEvent
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const nativeEvent = event.nativeEvent as Event & {
+      stopImmediatePropagation?: () => void;
+    };
+    nativeEvent.stopImmediatePropagation?.();
+  };
+
   // Update pressing state based on gesture
   useEffect(() => {
     if (gestureState === "pressing") {
@@ -619,27 +633,20 @@ export const CenteredContextMenu = React.forwardRef<
         key={action}
         onClick={(e) => {
           // CRITICAL: Stop event propagation to prevent triggering card click
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
+          stopSyntheticEvent(e);
           triggerAction();
         }}
         onMouseDown={(e) => {
           // Also stop on mousedown to prevent any interaction with card
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
+          stopSyntheticEvent(e);
         }}
         onTouchStart={(e) => {
           // Stop touch events too
-          e.stopPropagation();
-          e.stopImmediatePropagation();
+          stopSyntheticEvent(e);
         }}
         onTouchEnd={(e) => {
           // Trigger action on touch end for mobile reliability
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
+          stopSyntheticEvent(e);
           triggerAction();
         }}
         className={cn(
