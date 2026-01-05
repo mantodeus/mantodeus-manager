@@ -374,19 +374,7 @@ export function InvoiceForm({
 
   return (
     <div className="space-y-6 w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
-      {/* Header with lifecycle buttons */}
-      {!isCreate && (
-        <div className="flex items-center justify-between gap-4 pb-4 border-b">
-          <div className="flex items-center gap-2">
-            {isReadOnly && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>🔒 This invoice is locked because it has been sent.</span>
-              </div>
-            )}
-          </div>
-          {getHeaderButtons()}
-        </div>
-      )}
+      {/* Header buttons removed - now handled by parent page (InvoiceDetail) */}
 
       {/* Warning banners */}
       {invoice && (

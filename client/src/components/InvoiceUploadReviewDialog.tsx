@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, X } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
@@ -319,27 +319,48 @@ export function InvoiceUploadReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(
-        "sm:max-w-[500px] flex flex-col",
-        isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
-      )}>
-        <DialogHeader className={cn("flex-shrink-0 pr-10", isMobile && "px-0 pr-10")}>
-          <DialogTitle className="flex items-center gap-2">
-            {isReview ? (
-              <FileText className="h-5 w-5 text-primary" />
-            ) : (
-              <DocumentCurrencyEuro className="h-5 w-5 text-primary" />
-            )}
-            {isReview ? "Review Invoice" : "Edit Invoice"}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className={cn(
-          "space-y-4 py-4",
-          isMobile && "overflow-y-auto min-h-0 pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
-        )}>
-          {/* Action buttons: Preview and Send (when draft, not in review) - moved below title */}
-          <div className="flex items-center justify-end gap-2 pb-2">
+      <DialogContent 
+        className={cn(
+          "sm:max-w-[500px] flex flex-col p-0",
+          isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+        )}
+        showCloseButton={false}
+      >
+        {/* PageHeader-like structure */}
+        <div className="flex-shrink-0 p-6 pb-4 space-y-4 border-b">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4 min-w-0 flex-1">
+              <div className="flex-1 min-w-0 flex flex-col">
+                <h1 className="text-3xl font-regular flex items-center gap-2">
+                  {isReview ? (
+                    <FileText className="h-6 w-6 text-primary" />
+                  ) : (
+                    <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
+                  )}
+                  {isReview ? "Review Invoice" : "Edit Invoice"}
+                </h1>
+                <p className="text-muted-foreground text-sm mt-3">
+                  {isReview 
+                    ? "Review and confirm uploaded invoice metadata" 
+                    : "Edit invoice metadata and details"}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-3 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChange(false)}
+                className="h-10 w-10"
+                aria-label="Close"
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+          </div>
+          
+          {/* Action buttons below header */}
+          <div className="flex items-center justify-end gap-2 pt-2">
             <Button 
               variant="outline" 
               size="sm"
@@ -386,7 +407,12 @@ export function InvoiceUploadReviewDialog({
               </Button>
             )}
           </div>
+        </div>
 
+        <div className={cn(
+          "space-y-4 p-6 overflow-y-auto flex-1",
+          isMobile && "pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+        )}>
           {/* Warning banners */}
           {invoice && !isReview && (
             <>

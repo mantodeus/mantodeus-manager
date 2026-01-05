@@ -2,7 +2,7 @@ import { InvoiceForm } from "@/components/invoices/InvoiceForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2 } from "@/components/ui/Icon";
+import { ArrowLeft, Loader2, X, DocumentCurrencyEuro, Eye, Send, CheckCircle2 } from "@/components/ui/Icon";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,6 +10,7 @@ import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialo
 import { useState, useEffect } from "react";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { useIsMobile } from "@/hooks/useMobile";
+import { getInvoiceState } from "@/lib/invoiceState";
 
 export default function InvoiceDetail() {
   const [, params] = useRoute("/invoices/:id");
@@ -141,27 +142,108 @@ export default function InvoiceDetail() {
   }
 
   const title = invoice?.invoiceName || invoice?.invoiceNumber || "Invoice";
+  const invoiceState = invoice ? getInvoiceState(invoice) : null;
+  const isDraft = invoiceState === 'DRAFT';
+  const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
+  const isPaid = invoiceState === 'PAID';
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+
+  const handleSend = () => {
+    if (!invoice) return;
+    if (!invoice.dueDate) {
+      toast.error("Invoice must have a due date before it can be sent");
+      return;
+    }
+    setShareDialogOpen(true);
+  };
 
   return (
     <div className="space-y-6">
       <PageHeader />
-      <div className="flex items-center gap-4">
-        <Link href="/invoices">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-3xl font-regular">{title}</h1>
-          <p className="text-muted-foreground text-sm">View and edit invoice details</p>
+      
+      {/* PageHeader-like structure matching invoices page */}
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 min-w-0 flex-1">
+            <div className="flex-1 min-w-0 flex flex-col">
+              <h1 className="text-3xl font-regular flex items-center gap-2">
+                <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
+                {title}
+              </h1>
+              <p className="text-muted-foreground text-sm mt-3">
+                View and edit invoice details
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-3 shrink-0">
+            <Link href="/invoices">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10"
+                aria-label="Close"
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </Link>
+          </div>
         </div>
+        
+        {/* Action buttons below header */}
+        {invoice && invoice.source === "created" && (
+          <div className="flex items-center justify-end gap-2 pb-2 border-b">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handlePreviewPDF}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              Preview
+            </Button>
+            {isDraft && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSend}
+                disabled={!invoice.dueDate}
+                className="gap-2"
+              >
+                <Send className="h-4 w-4" />
+                Send
+              </Button>
+            )}
+            {isSent && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled
+                className="gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Sent
+              </Button>
+            )}
+            {isPaid && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled
+                className="gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Paid
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       <Card className="w-full border-0 shadow-none">
-        <CardHeader>
-          <CardTitle>Edit Invoice</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {/* Only show InvoiceForm for created invoices - uploaded invoices use review dialog */}
           {invoice && invoice.source === "created" ? (
             <InvoiceForm
@@ -207,6 +289,19 @@ export default function InvoiceDetail() {
         fileName={previewFileName}
         fullScreen={isMobile}
       />
+
+      {/* Share Invoice Dialog for created invoices */}
+      {invoice && invoice.source === "created" && invoiceId && (
+        <ShareInvoiceDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          invoiceId={invoiceId}
+          onSuccess={async () => {
+            await utils.invoices.get.invalidate({ id: invoiceId });
+            await utils.invoices.list.invalidate();
+          }}
+        />
+      )}
     </div>
   );
 }
