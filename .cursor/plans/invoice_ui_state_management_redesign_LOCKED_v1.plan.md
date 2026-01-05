@@ -92,20 +92,21 @@ isOverdue = sentAt !== null && !isPaid && dueDate && dueDate < today
 
 ### Footer (Uploaded Invoices ONLY)
 
-- **Mark as Sent** (if not already sent) - Sets historical state
-- **Mark as Paid** (if not already paid) - Sets historical state
-- **Save** - Saves and exits review state
-- **Delete** - Cancels upload, removes invoice
+- **Mark as Sent** (if not already sent) - Sets historical state (outline variant, not highlighted)
+- **Mark as Paid** (if not already paid) - Sets historical state (outline variant, not highlighted)
+- **Save/Update** - Saves invoice (primary variant, highlighted)
+- **Delete** - Deletes invoice (destructive variant, highlighted)
 
 ### Why This Exception Exists
 
 **Uploaded invoices** are historical records (PDFs from old systems, scanned documents). They may have been sent/paid months or years ago via email, postal mail, or other accounting software.
 
 **Rules:**
-1. "Mark as Sent/Paid" buttons **ONLY appear in REVIEW state** (`needsReview: true`)
+1. "Mark as Sent/Paid" buttons appear in **REVIEW and DRAFT states** (`needsReview: true` OR `!sentAt`) for uploaded invoices
 2. These set historical timestamps **without** share link creation (no validation required)
-3. After saving review (`needsReview: false`), standard header/footer rules apply
-4. **No Cancel button** - Only Delete (removes invoice entirely)
+3. Buttons use **outline variant** (not highlighted) - only Save and Delete are highlighted
+4. After invoice is sent/paid, standard header/footer rules apply
+5. **No Cancel button** - Only Delete (removes invoice entirely)
 
 ### Created Invoices (NOT uploaded)
 
@@ -126,6 +127,17 @@ For newly created invoices, review state does NOT have these buttons:
 - No payments allowed
 - `dueDate` optional while editing
 - **Send disabled until `dueDate` is set**
+
+### Draft State (Uploaded Invoices ONLY)
+
+For uploaded invoices in draft state, additional buttons are available:
+
+- **Mark as Sent** (if not already sent) - Sets historical state (outline variant, not highlighted)
+- **Mark as Paid** (if not already paid) - Sets historical state (outline variant, not highlighted)
+- **Update** - Updates invoice (primary variant, highlighted)
+- **Delete** - Deletes invoice (destructive variant, highlighted)
+
+**Button visibility:** `isDraft && invoice.source === "uploaded"`
 
 ---
 
@@ -371,17 +383,18 @@ if (sharedDoc.expiresAt < now()) {
 
 ### Historical Invoice Import (Uploaded Invoices)
 
-- [ ] "Mark as Sent" button appears ONLY in REVIEW state for uploaded invoices
-- [ ] "Mark as Paid" button appears ONLY in REVIEW state for uploaded invoices
+- [ ] "Mark as Sent" button appears in REVIEW and DRAFT states for uploaded invoices
+- [ ] "Mark as Paid" button appears in REVIEW and DRAFT states for uploaded invoices
+- [ ] "Mark as Sent" and "Mark as Paid" use outline variant (not highlighted)
+- [ ] Save and Delete buttons use primary/destructive variants (highlighted)
 - [ ] "Mark as Sent" sets `sentAt` without creating share link
 - [ ] "Mark as Paid" sets `paidAt` and `amountPaid = totalAmount`
-- [ ] After saving review (`needsReview: false`), buttons disappear
-- [ ] After review, uploaded invoices follow standard header/footer layout
+- [ ] After invoice is sent/paid, buttons disappear and standard layout applies
 - [ ] Delete button always visible (no Cancel button)
 - [ ] Delete in review state: hard deletes (cancels upload)
 - [ ] Delete in draft/sent/paid state: soft deletes (moves to trash)
-- [ ] `markAsSent` mutation rejects non-uploaded invoices
-- [ ] `markAsPaid` mutation rejects non-uploaded invoices
+- [ ] `markAsSent` mutation allows uploaded invoices in review/draft states
+- [ ] `markAsPaid` mutation allows uploaded invoices in review/draft states
 
 ### Button Layout (No Cancel Button)
 
@@ -475,29 +488,29 @@ markAsPaid: protectedProcedure
 ### UI Implementation (InvoiceUploadReviewDialog)
 
 ```tsx
-// Footer layout for uploaded invoices in REVIEW state
-{isReview && isUploaded && (
+// Footer layout for uploaded invoices in REVIEW and DRAFT states
+{(isReview || isDraft) && isUploaded && (
   <DialogFooter className="flex flex-col gap-2">
-    {/* Mark as Sent (only if not already sent) */}
+    {/* Mark as Sent (only if not already sent) - outline variant (not highlighted) */}
     {!invoice.sentAt && (
-      <Button onClick={handleMarkAsSent} disabled={isLoading}>
+      <Button variant="outline" onClick={handleMarkAsSent} disabled={isLoading}>
         Mark as Sent
       </Button>
     )}
 
-    {/* Mark as Paid (only if not already paid) */}
+    {/* Mark as Paid (only if not already paid) - outline variant (not highlighted) */}
     {!invoice.paidAt && (
-      <Button onClick={handleMarkAsPaid} disabled={isLoading}>
+      <Button variant="outline" onClick={handleMarkAsPaid} disabled={isLoading}>
         Mark as Paid
       </Button>
     )}
 
-    {/* Save */}
+    {/* Save/Update - primary variant (highlighted) */}
     <Button onClick={handleSave} disabled={isLoading || !isFormValid}>
-      Save
+      {isReview ? "Save" : "Update"}
     </Button>
 
-    {/* Delete (NO Cancel button) */}
+    {/* Delete - destructive variant (highlighted) */}
     <Button
       variant="destructive"
       onClick={handleDelete}
@@ -576,13 +589,15 @@ const handleDelete = async () => {
 **Mark as Sent:**
 - No validation required (historical fact)
 - Only available for uploaded invoices
-- Only visible in REVIEW state
+- Visible in REVIEW and DRAFT states
+- Uses outline variant (not highlighted)
 
 **Mark as Paid:**
 - No validation required (historical fact)
 - Only available for uploaded invoices
-- Only visible in REVIEW state
+- Visible in REVIEW and DRAFT states
 - Automatically sets `amountPaid = totalAmount`
+- Uses outline variant (not highlighted)
 
 ### After Review State Ends
 

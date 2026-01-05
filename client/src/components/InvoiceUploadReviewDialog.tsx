@@ -566,15 +566,16 @@ export function InvoiceUploadReviewDialog({
             </div>
           )}
 
-          {/* Action buttons: Section 19 layout - REVIEW state for uploaded invoices */}
-          {isReview && invoice?.source === "uploaded" && (
+          {/* Action buttons: Section 19 layout - REVIEW and DRAFT states for uploaded invoices */}
+          {(isReview || isDraft) && invoice?.source === "uploaded" && (
             <div className={cn(
               "pt-4 border-t",
               isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
             )}>
-              {/* Mark as Sent (only if not already sent) - Section 19, line 482 */}
+              {/* Mark as Sent (only if not already sent) - appears in REVIEW and DRAFT for uploaded invoices */}
               {!invoice.sentAt && (
                 <Button 
+                  variant="outline"
                   onClick={handleMarkAsSent} 
                   disabled={isLoading || markAsSentMutation.isPending}
                   className={isMobile ? "w-full" : ""}
@@ -584,9 +585,10 @@ export function InvoiceUploadReviewDialog({
                 </Button>
               )}
 
-              {/* Mark as Paid (only if not already paid) - Section 19, line 489 */}
+              {/* Mark as Paid (only if not already paid) - appears in REVIEW and DRAFT for uploaded invoices */}
               {!invoice.paidAt && (
                 <Button 
+                  variant="outline"
                   onClick={handleMarkAsPaid} 
                   disabled={isLoading || markAsPaidMutation.isPending}
                   className={isMobile ? "w-full" : ""}
@@ -596,31 +598,55 @@ export function InvoiceUploadReviewDialog({
                 </Button>
               )}
 
-              {/* Save - Section 19, line 496 */}
-              <Button 
-                onClick={handleSave} 
-                disabled={isLoading || !isFormValid}
-                className={isMobile ? "w-full" : ""}
-              >
-                {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save
-              </Button>
+              {/* Save/Update - highlighted (primary) */}
+              {!isReadOnly && (
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isLoading || !isFormValid}
+                  className={isMobile ? "w-full" : ""}
+                >
+                  {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isReview ? "Save" : "Update"}
+                </Button>
+              )}
+              
+              {/* Revert buttons - only shown when sent/paid (after review) */}
+              {!isReview && isSent && !isPaid && derivedValues.outstanding === 0 && (
+                <Button
+                  variant="outline"
+                  onClick={handleRevertToDraft}
+                  disabled={isLoading}
+                  className={isMobile ? "w-full" : ""}
+                >
+                  Revert to Draft
+                </Button>
+              )}
+              {!isReview && isPaid && (
+                <Button
+                  variant="outline"
+                  onClick={handleRevertToSent}
+                  disabled={isLoading}
+                  className={isMobile ? "w-full" : ""}
+                >
+                  Revert to Sent
+                </Button>
+              )}
 
-              {/* Delete (NO Cancel button) - Section 19, line 501 */}
+              {/* Delete - highlighted (destructive) */}
               <Button
                 variant="destructive"
                 onClick={handleDelete}
-                disabled={isLoading || cancelMutation.isPending}
+                disabled={isLoading || (isReview ? cancelMutation.isPending : moveToTrashMutation.isPending)}
                 className={isMobile ? "w-full" : ""}
               >
-                {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {(isReview ? cancelMutation.isPending : moveToTrashMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Delete
               </Button>
             </div>
           )}
 
-          {/* After review state (needsReview: false) - standard layout */}
-          {!isReview && (
+          {/* After review and draft states (sent/paid) - standard layout for uploaded invoices */}
+          {!isReview && !isDraft && invoice?.source === "uploaded" && (
             <div className={cn(
               "pt-4 border-t",
               isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"

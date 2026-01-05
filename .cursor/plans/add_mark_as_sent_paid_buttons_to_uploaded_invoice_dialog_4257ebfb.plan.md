@@ -1,3 +1,9 @@
+---
+name: ""
+overview: ""
+todos: []
+---
+
 # Add Mark as Sent/Paid Buttons to Uploaded Invoice Dialog (Section 19 Implementation)
 
 ## Overview
@@ -42,9 +48,12 @@ if (invoice.source === "uploaded" && invoice.needsReview) {
 }
 ```
 
+
+
 #### Verify markAsPaid Sets amountPaid
 
 Ensure `markAsPaid` sets `amountPaid = totalAmount` (per Section 19):
+
 - Check `db.markInvoiceAsPaid()` implementation
 - If not set, update to set `amountPaid = invoice.totalAmount`
 
@@ -92,6 +101,8 @@ const moveToTrashMutation = trpc.invoices.moveToTrash.useMutation({
 });
 ```
 
+
+
 #### Add Handler Functions
 
 Add handlers after existing handlers (around line ~310):
@@ -120,11 +131,12 @@ const handleDelete = async () => {
 };
 ```
 
+
+
 #### Replace Footer Button Section
 
-Replace the footer button section (lines ~524-569) with Section 19 layout:
+Replace the footer button section (lines ~524-569) with Section 19 layout:**For REVIEW state (uploaded invoices only):**
 
-**For REVIEW state (uploaded invoices only):**
 ```typescript
 {isReview && invoice?.source === "uploaded" && (
   <div className={cn(
@@ -180,7 +192,9 @@ Replace the footer button section (lines ~524-569) with Section 19 layout:
 ```
 
 **For AFTER review state (needsReview: false):**
+
 Keep existing footer logic but:
+
 - Replace "Cancel" with "Delete" button
 - Update `handleCancel` to call `handleDelete` instead
 - Delete button uses `moveToTrashMutation` for all non-review states
@@ -209,17 +223,21 @@ const isLoading =
   moveToTrashMutation.isPending;
 ```
 
+
+
 ## Implementation Details
 
 ### Button Visibility Rules
 
 **REVIEW state (uploaded invoices only):**
+
 - "Mark as Sent": `isReview && invoice.source === "uploaded" && !invoice.sentAt`
 - "Mark as Paid": `isReview && invoice.source === "uploaded" && !invoice.paidAt`
 - "Save": Always visible when not read-only
 - "Delete": Always visible
 
 **After REVIEW (needsReview: false):**
+
 - Standard header/footer layout applies
 - "Delete" replaces "Cancel"
 - Revert buttons appear per existing logic
@@ -262,4 +280,3 @@ const isLoading =
 - ✅ No validation required (historical facts)
 - ✅ No share link creation
 - ✅ Delete replaces Cancel entirely
-- ✅ Delete uses appropriate method per state
