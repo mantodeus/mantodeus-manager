@@ -117,6 +117,7 @@ export const CenteredContextMenu = React.forwardRef<
   const [isPressing, setIsPressing] = useState(false);
   const [itemRect, setItemRect] = useState<DOMRect | null>(null);
   const [menuHeight, setMenuHeight] = useState(200);
+  const menuOpenTimeRef = useRef(0);
   const itemRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -269,6 +270,7 @@ export const CenteredContextMenu = React.forwardRef<
       }
       setIsBlocking(true);
       setIsOpen(true);
+      menuOpenTimeRef.current = Date.now();
       onOpenChange?.(true);
       element.classList.add("context-menu-active");
       setIsPressing(false);
@@ -294,6 +296,7 @@ export const CenteredContextMenu = React.forwardRef<
     setIsOpen(false);
     onOpenChange?.(false);
     setIsPressing(false);
+    menuOpenTimeRef.current = 0;
     if (itemRef.current) {
       itemRef.current.classList.remove("context-menu-active");
       itemRef.current.classList.remove("context-menu-shifted");
@@ -359,11 +362,15 @@ export const CenteredContextMenu = React.forwardRef<
         return;
       }
 
+      const timeSinceOpen = Date.now() - menuOpenTimeRef.current;
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
 
       if (isOpen) {
+        if (menuOpenTimeRef.current && timeSinceOpen < 600) {
+          return;
+        }
         suppressNextClick();
         closeMenu();
       }
