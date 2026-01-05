@@ -191,9 +191,7 @@ Replace the footer button section (lines ~524-569) with Section 19 layout:**For 
 )}
 ```
 
-**For AFTER review state (needsReview: false):**
-
-Keep existing footer logic but:
+**For AFTER review state (needsReview: false):**Keep existing footer logic but:
 
 - Replace "Cancel" with "Delete" button
 - Update `handleCancel` to call `handleDelete` instead
@@ -258,25 +256,28 @@ const isLoading =
 
 ## Testing Checklist
 
-- [ ] "Mark as Sent" button appears ONLY in review state for uploaded invoices
-- [ ] "Mark as Sent" sets `sentAt` timestamp without creating share link
-- [ ] "Mark as Sent" button disappears after being clicked
-- [ ] "Mark as Paid" button appears ONLY in review state for uploaded invoices
-- [ ] "Mark as Paid" sets `paidAt` and `amountPaid = totalAmount`
-- [ ] "Mark as Paid" button disappears after being clicked
-- [ ] "Delete" button replaces "Cancel" in all states
-- [ ] "Delete" in review state: hard deletes (cancels upload)
-- [ ] "Delete" in draft/sent/paid state: soft deletes (moves to trash)
-- [ ] Buttons do NOT appear for created invoices
-- [ ] After saving review, buttons disappear and standard layout applies
-- [ ] Backend allows markAsSent/markAsPaid for uploaded invoices in review
-- [ ] All mutations properly invalidate queries and show toasts
+- [x] "Mark as Sent" button appears in REVIEW and DRAFT states for uploaded invoices
+- [x] "Mark as Sent" sets `sentAt` timestamp without creating share link
+- [x] "Mark as Sent" button disappears after being clicked
+- [x] "Mark as Paid" button appears in REVIEW and DRAFT states for uploaded invoices
+- [x] "Mark as Paid" sets `paidAt` and `amountPaid = totalAmount`
+- [x] "Mark as Paid" button disappears after being clicked
+- [x] "Delete" button replaces "Cancel" in all states
+- [x] "Delete" in review state: hard deletes (cancels upload)
+- [x] "Delete" in draft/sent/paid state: soft deletes (moves to trash)
+- [x] Buttons do NOT appear for created invoices
+- [x] After invoice is sent/paid, buttons disappear and standard layout applies
+- [x] Backend allows markAsSent/markAsPaid for uploaded invoices in review/draft states
+- [x] All mutations properly invalidate queries and show toasts
+- [x] Mark as Sent/Paid buttons use outline variant (not highlighted)
+- [x] Save/Update and Delete buttons use primary/destructive variants (highlighted)
 
 ## Alignment with LOCKED Spec
 
 - ✅ Section 5: Review State exception for uploaded invoices
+- ✅ Section 6: Draft State exception for uploaded invoices
 - ✅ Section 19: Complete implementation guide
-- ✅ Buttons ONLY in review state (not after)
+- ✅ Buttons appear in REVIEW and DRAFT states (not after sent/paid)
 - ✅ No validation required (historical facts)
 - ✅ No share link creation
-- ✅ Delete replaces Cancel entirely
+- ✅ Button styling: Mark as Sent/Paid use outline variant, Save/Delete highlighted
