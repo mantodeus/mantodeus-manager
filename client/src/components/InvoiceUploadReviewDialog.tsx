@@ -246,7 +246,8 @@ export function InvoiceUploadReviewDialog({
   // Get invoice state
   const invoiceState = invoice ? getInvoiceState(invoice) : null;
   const isReview = invoiceState === 'REVIEW';
-  const isDraft = invoiceState === 'DRAFT';
+  // For uploaded invoices, draft state is when needsReview is false and sentAt is null
+  const isDraft = invoiceState === 'DRAFT' || (invoice?.source === "uploaded" && !invoice.needsReview && !invoice.sentAt);
   const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
   const isPaid = invoiceState === 'PAID';
   const isReadOnly = isSent || isPaid; // Only disable when sent/paid, not when draft
@@ -578,7 +579,10 @@ export function InvoiceUploadReviewDialog({
                   variant="outline"
                   onClick={handleMarkAsSent} 
                   disabled={isLoading || markAsSentMutation.isPending}
-                  className={isMobile ? "w-full" : ""}
+                  className={cn(
+                    isMobile ? "w-full" : "",
+                    "border bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-transparent dark:border-input dark:hover:bg-input/50"
+                  )}
                 >
                   {markAsSentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Mark as Sent
@@ -591,7 +595,10 @@ export function InvoiceUploadReviewDialog({
                   variant="outline"
                   onClick={handleMarkAsPaid} 
                   disabled={isLoading || markAsPaidMutation.isPending}
-                  className={isMobile ? "w-full" : ""}
+                  className={cn(
+                    isMobile ? "w-full" : "",
+                    "border bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-transparent dark:border-input dark:hover:bg-input/50"
+                  )}
                 >
                   {markAsPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Mark as Paid

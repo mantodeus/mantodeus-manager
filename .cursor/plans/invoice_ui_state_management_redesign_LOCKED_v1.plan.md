@@ -99,9 +99,8 @@ isOverdue = sentAt !== null && !isPaid && dueDate && dueDate < today
 
 ### Why This Exception Exists
 
-**Uploaded invoices** are historical records (PDFs from old systems, scanned documents). They may have been sent/paid months or years ago via email, postal mail, or other accounting software.
+**Uploaded invoices** are historical records (PDFs from old systems, scanned documents). They may have been sent/paid months or years ago via email, postal mail, or other accounting software.**Rules:**
 
-**Rules:**
 1. "Mark as Sent/Paid" buttons appear in **REVIEW and DRAFT states** (`needsReview: true` OR `!sentAt`) for uploaded invoices
 2. These set historical timestamps **without** share link creation (no validation required)
 3. Buttons use **outline variant** (not highlighted) - only Save and Delete are highlighted
@@ -116,10 +115,10 @@ For newly created invoices, review state does NOT have these buttons:
 - **Delete** - Deletes invoice
 
 🚫 **No lifecycle actions allowed in review for created invoices**
-🚫 **No sending for created invoices in review**
-🚫 **No payments for created invoices in review**
 
----
+🚫 **No sending for created invoices in review**
+
+🚫 **No payments for created invoices in review**---
 
 ## 6. Draft State
 
@@ -137,9 +136,7 @@ For uploaded invoices in draft state, additional buttons are available:
 - **Update** - Updates invoice (primary variant, highlighted)
 - **Delete** - Deletes invoice (destructive variant, highlighted)
 
-**Button visibility:** `isDraft && invoice.source === "uploaded"`
-
----
+**Button visibility:** `isDraft && invoice.source === "uploaded"`---
 
 ## 7. Send / Share Flow (CRITICAL RULES)
 
@@ -426,9 +423,7 @@ V1 does **not** track:
 - ❌ Who reverted status
 - ❌ Edit history
 
-This is **intentionally deferred** to prevent v1 scope creep. Future audit requirements will be addressed when financial compliance demands it.
-
----
+This is **intentionally deferred** to prevent v1 scope creep. Future audit requirements will be addressed when financial compliance demands it.---
 
 ## 19. Historical Invoice Import (Uploaded Invoices Implementation)
 
@@ -484,6 +479,8 @@ markAsPaid: protectedProcedure
     return { success: true };
   })
 ```
+
+
 
 ### UI Implementation (InvoiceUploadReviewDialog)
 
@@ -558,6 +555,8 @@ markAsPaid: protectedProcedure
 )}
 ```
 
+
+
 ### Delete Button Logic
 
 **All invoice states (uploaded and created):**
@@ -581,18 +580,21 @@ const handleDelete = async () => {
 ```
 
 **Button visibility:**
+
 - Always visible (no Cancel button exists)
 - Never disabled (even for sent/paid - uses soft delete)
 
 ### Validation Rules
 
 **Mark as Sent:**
+
 - No validation required (historical fact)
 - Only available for uploaded invoices
 - Visible in REVIEW and DRAFT states
 - Uses outline variant (not highlighted)
 
 **Mark as Paid:**
+
 - No validation required (historical fact)
 - Only available for uploaded invoices
 - Visible in REVIEW and DRAFT states
@@ -602,9 +604,8 @@ const handleDelete = async () => {
 ### After Review State Ends
 
 Once `needsReview: false`, uploaded invoices behave identically to created invoices:
+
 - Header/footer separation applies (Section 13)
 - Share link flow applies if re-sending (Section 7)
 - Payment flow applies if adding partial payments (Section 9)
 - Revert rules apply (Section 13)
-
----
