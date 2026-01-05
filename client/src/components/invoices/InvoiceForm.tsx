@@ -171,6 +171,25 @@ export function InvoiceForm({
     onError: (err) => toast.error(err.message || "Failed to save invoice"),
   });
 
+  // Mutations for lifecycle actions - MUST be called before any early returns
+  const utils = trpc.useUtils();
+  const revertToDraftMutation = trpc.invoices.revertToDraft.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice reverted to draft");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      onSuccess?.();
+    },
+    onError: (error) => toast.error(error.message || "Failed to revert invoice"),
+  });
+  const revertToSentMutation = trpc.invoices.revertToSent.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice reverted to sent");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      onSuccess?.();
+    },
+    onError: (error) => toast.error(error.message || "Failed to revert invoice"),
+  });
+
   const invoice = getInvoiceQuery.data ?? null;
   const isMobile = useIsMobile();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -251,25 +270,6 @@ export function InvoiceForm({
   };
 
   const editingItem = itemEditor.index !== null ? items[itemEditor.index] : defaultLineItem;
-
-  // Mutations for lifecycle actions
-  const utils = trpc.useUtils();
-  const revertToDraftMutation = trpc.invoices.revertToDraft.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice reverted to draft");
-      utils.invoices.get.invalidate({ id: invoiceId! });
-      onSuccess?.();
-    },
-    onError: (error) => toast.error(error.message || "Failed to revert invoice"),
-  });
-  const revertToSentMutation = trpc.invoices.revertToSent.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice reverted to sent");
-      utils.invoices.get.invalidate({ id: invoiceId! });
-      onSuccess?.();
-    },
-    onError: (error) => toast.error(error.message || "Failed to revert invoice"),
-  });
 
   const handleSend = () => {
     if (!invoice) return;
