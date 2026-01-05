@@ -113,16 +113,15 @@ export const CenteredContextMenu = React.forwardRef<
   menuClassName,
 }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
   const [isPressing, setIsPressing] = useState(false);
-  const [menuItemsClickable, setMenuItemsClickable] = useState(false);
   const [itemRect, setItemRect] = useState<DOMRect | null>(null);
   const [menuHeight, setMenuHeight] = useState(200);
-  const menuOpenTimeRef = useRef(0);
   const itemRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const overlayPressRef = useRef(false);
   const suppressClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const blockingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const menuShiftY = useMemo(() => {
     if (!itemRect || !itemRef.current) return 0;
@@ -264,15 +263,15 @@ export const CenteredContextMenu = React.forwardRef<
       
       const rect = element.getBoundingClientRect();
       setItemRect(rect);
+      if (blockingTimeoutRef.current) {
+        clearTimeout(blockingTimeoutRef.current);
+        blockingTimeoutRef.current = null;
+      }
+      setIsBlocking(true);
       setIsOpen(true);
-      menuOpenTimeRef.current = Date.now();
       onOpenChange?.(true);
       element.classList.add("context-menu-active");
       setIsPressing(false);
-      
-      // Make menu items clickable immediately - no cooldown needed
-      // The blocker will prevent accidental card clicks
-      setMenuItemsClickable(true);
     } else {
       console.warn('CenteredContextMenu: Could not find item element', { event, itemRef: itemRef.current });
     }
@@ -295,7 +294,6 @@ export const CenteredContextMenu = React.forwardRef<
     setIsOpen(false);
     onOpenChange?.(false);
     setIsPressing(false);
-    menuOpenTimeRef.current = 0; // Reset menu open time
     if (itemRef.current) {
       itemRef.current.classList.remove("context-menu-active");
       itemRef.current.classList.remove("context-menu-shifted");
@@ -303,6 +301,14 @@ export const CenteredContextMenu = React.forwardRef<
     }
     // Reset long-press gesture state immediately
     resetLongPress();
+    if (blockingTimeoutRef.current) {
+      clearTimeout(blockingTimeoutRef.current);
+    }
+    setIsBlocking(true);
+    blockingTimeoutRef.current = setTimeout(() => {
+      setIsBlocking(false);
+      blockingTimeoutRef.current = null;
+    }, 400);
     // Delay clearing rect to allow exit animation
     setTimeout(() => {
       setItemRect(null);
@@ -311,12 +317,12 @@ export const CenteredContextMenu = React.forwardRef<
   }, [resetLongPress, onOpenChange]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isBlocking) return;
     document.body.classList.add('context-menu-open');
     return () => {
       document.body.classList.remove('context-menu-open');
     };
-  }, [isOpen]);
+  }, [isBlocking]);
 
   const suppressNextClick = useCallback(() => {
     const handler = (event: Event) => {
@@ -329,7 +335,7 @@ export const CenteredContextMenu = React.forwardRef<
     };
     document.addEventListener("click", handler, true);
     document.addEventListener("mousedown", handler, true);
-    document.addEventListener("touchend", handler, true);
+    document.addEventListener("touchend", handler, { capture: true, passive: false });
     if (suppressClickTimeoutRef.current) {
       clearTimeout(suppressClickTimeoutRef.current);
     }
@@ -337,60 +343,44 @@ export const CenteredContextMenu = React.forwardRef<
       document.removeEventListener("click", handler, true);
       document.removeEventListener("mousedown", handler, true);
       document.removeEventListener("touchend", handler, true);
-    }, 400);
+    }, 800);
   }, []);
 
-  const handleScrimPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      overlayPressRef.current = true;
-    },
-    []
-  );
+  useEffect(() => {
+    if (!isBlocking) return;
 
-  const handleScrimPointerUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!overlayPressRef.current) return;
-      overlayPressRef.current = false;
-      const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
-      if (timeSinceMenuOpen < 250) {
+    const handleGlobalBlock = (event: Event) => {
+      const target = event.target as HTMLElement | null;
+      const isMenuTarget =
+        (menuRef.current && target && menuRef.current.contains(target)) ||
+        Boolean(target?.closest(".glass-context-menu"));
+
+      if (isMenuTarget) {
         return;
       }
-      suppressNextClick();
-      closeMenu();
-    },
-    [closeMenu, suppressNextClick]
-  );
 
-  const handleScrimTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    overlayPressRef.current = true;
-  }, []);
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
 
-  const handleScrimTouchEnd = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!overlayPressRef.current) return;
-      overlayPressRef.current = false;
-      const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
-      if (timeSinceMenuOpen < 250) {
-        return;
+      if (isOpen) {
+        suppressNextClick();
+        closeMenu();
       }
-      suppressNextClick();
-      closeMenu();
-    },
-    [closeMenu, suppressNextClick]
-  );
+    };
 
-  const handleScrimClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
+    document.addEventListener("click", handleGlobalBlock, true);
+    document.addEventListener("mousedown", handleGlobalBlock, true);
+    document.addEventListener("touchstart", handleGlobalBlock, { capture: true, passive: false });
+    document.addEventListener("touchend", handleGlobalBlock, { capture: true, passive: false });
+
+    return () => {
+      document.removeEventListener("click", handleGlobalBlock, true);
+      document.removeEventListener("mousedown", handleGlobalBlock, true);
+      document.removeEventListener("touchstart", handleGlobalBlock, true);
+      document.removeEventListener("touchend", handleGlobalBlock, true);
+    };
+  }, [isBlocking, isOpen, closeMenu, suppressNextClick]);
 
   // Prevent background scrolling when menu is open (Apple-style behavior)
   useEffect(() => {
@@ -459,6 +449,19 @@ export const CenteredContextMenu = React.forwardRef<
       document.body.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (blockingTimeoutRef.current) {
+        clearTimeout(blockingTimeoutRef.current);
+        blockingTimeoutRef.current = null;
+      }
+      if (suppressClickTimeoutRef.current) {
+        clearTimeout(suppressClickTimeoutRef.current);
+        suppressClickTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Expose open method via ref
   React.useImperativeHandle(ref, () => ({
@@ -535,53 +538,6 @@ export const CenteredContextMenu = React.forwardRef<
       setMenuHeight(rect.height);
     }
   }, [isOpen, menuHeight]);
-
-  // Close on outside click - but the overlay div handles this directly
-  // This is kept as a fallback for edge cases
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node;
-      // Check if click is on the overlay background (not menu or item)
-      const isOverlay = (target as HTMLElement)?.classList?.contains('context-menu-overlay') ||
-        (target as HTMLElement)?.closest('.context-menu-overlay') ||
-        (target as HTMLElement)?.classList?.contains('context-menu-scrim') ||
-        (target as HTMLElement)?.closest('.context-menu-scrim');
-      
-      if (isOverlay) {
-        // Overlay click - stop propagation and close
-        e.preventDefault();
-        e.stopPropagation();
-        closeMenu();
-        return;
-      }
-      
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(target) &&
-        wrapperRef.current &&
-        !wrapperRef.current.contains(target)
-      ) {
-        // Click outside menu and item - close menu
-        e.preventDefault();
-        e.stopPropagation();
-        closeMenu();
-      }
-    };
-
-    // Use a slight delay to avoid immediate close on open
-    const timeout = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside, true); // Use capture phase
-      document.addEventListener("touchstart", handleClickOutside, true); // Use capture phase
-    }, 100);
-
-    return () => {
-      clearTimeout(timeout);
-      document.removeEventListener("mousedown", handleClickOutside, true);
-      document.removeEventListener("touchstart", handleClickOutside, true);
-    };
-  }, [isOpen, closeMenu]);
 
   // Group actions
   const groupedActions = useMemo(() => {
@@ -693,11 +649,8 @@ export const CenteredContextMenu = React.forwardRef<
         </div>
       </div>
 
-      {/* Render menu in portal when open */}
-      {isOpen &&
-        itemRect &&
-        itemRef.current &&
-        menuStyle &&
+      {/* Render menu in portal when open or closing */}
+      {isBlocking &&
         createPortal(
           <>
             {/* Background blur layer (visual only) */}
@@ -707,6 +660,8 @@ export const CenteredContextMenu = React.forwardRef<
                 zIndex: 9995,
                 animation: "fadeIn 220ms ease-out",
                 pointerEvents: "none",
+                opacity: isOpen ? 1 : 0,
+                transition: "opacity 180ms ease-out",
               }}
             />
 
@@ -717,86 +672,87 @@ export const CenteredContextMenu = React.forwardRef<
                 zIndex: 9996,
                 pointerEvents: "auto",
                 background: "transparent",
+                touchAction: "none",
               }}
-              onPointerDown={handleScrimPointerDown}
-              onPointerUp={handleScrimPointerUp}
-              onClick={handleScrimClick}
-              onTouchStart={handleScrimTouchStart}
-              onTouchEnd={handleScrimTouchEnd}
             />
 
             {/* Centered menu - z-index below tab bar */}
-            <div
-              ref={menuRef}
-              className={cn("glass-context-menu", menuClassName)}
-              style={{
-                ...menuStyle,
-                zIndex: 9998,
-                animation: "menuSlideUp 260ms cubic-bezier(0.16, 1, 0.3, 1)",
-                overflowY: "auto", // Enable scrolling within menu
-                overscrollBehavior: "contain", // Prevent scroll chaining to background
-                pointerEvents: "auto", // Menu must be interactive
-              }}
-              onClick={(e) => {
-                // Stop all clicks inside menu from bubbling
-                e.stopPropagation();
-              }}
-              onMouseDown={(e) => {
-                // Stop mousedown events too
-                e.stopPropagation();
-              }}
-              onTouchStart={(e) => {
-                // Stop touch events
-                e.stopPropagation();
-              }}
-            >
-              {groupedActions.primary.length === 0 &&
-              groupedActions.mode.length === 0 &&
-              groupedActions.lifecycle.length === 0 &&
-              groupedActions.destructive.length === 0 &&
-              groupedActions.rubbish.length === 0 ? (
-                <div className="glass-menu-item text-muted-foreground text-xs uppercase">
-                  No actions available
+            {isOpen &&
+              itemRect &&
+              itemRef.current &&
+              menuStyle && (
+                <div
+                  ref={menuRef}
+                  className={cn("glass-context-menu", menuClassName)}
+                  style={{
+                    ...menuStyle,
+                    zIndex: 9998,
+                    animation: "menuSlideUp 260ms cubic-bezier(0.16, 1, 0.3, 1)",
+                    overflowY: "auto", // Enable scrolling within menu
+                    overscrollBehavior: "contain", // Prevent scroll chaining to background
+                    pointerEvents: "auto", // Menu must be interactive
+                  }}
+                  onClick={(e) => {
+                    // Stop all clicks inside menu from bubbling
+                    e.stopPropagation();
+                  }}
+                  onMouseDown={(e) => {
+                    // Stop mousedown events too
+                    e.stopPropagation();
+                  }}
+                  onTouchStart={(e) => {
+                    // Stop touch events
+                    e.stopPropagation();
+                  }}
+                >
+                  {groupedActions.primary.length === 0 &&
+                  groupedActions.mode.length === 0 &&
+                  groupedActions.lifecycle.length === 0 &&
+                  groupedActions.destructive.length === 0 &&
+                  groupedActions.rubbish.length === 0 ? (
+                    <div className="glass-menu-item text-muted-foreground text-xs uppercase">
+                      No actions available
+                    </div>
+                  ) : (
+                    <>
+                      {/* Primary: Edit, Duplicate */}
+                      {groupedActions.primary.length > 0 && (
+                        <div className="menu-group">
+                          {groupedActions.primary.map(renderActionItem)}
+                        </div>
+                      )}
+
+                      {/* Mode: Select */}
+                      {groupedActions.mode.length > 0 && (
+                        <div className="menu-group">
+                          {groupedActions.mode.map(renderActionItem)}
+                        </div>
+                      )}
+
+                      {/* Lifecycle: Archive */}
+                      {groupedActions.lifecycle.length > 0 && (
+                        <div className="menu-group">
+                          {groupedActions.lifecycle.map(renderActionItem)}
+                        </div>
+                      )}
+
+                      {/* Rubbish: Restore, Delete Permanently */}
+                      {groupedActions.rubbish.length > 0 && (
+                        <div className="menu-group">
+                          {groupedActions.rubbish.map(renderActionItem)}
+                        </div>
+                      )}
+
+                      {/* Destructive: Delete (isolated with extra spacing) */}
+                      {groupedActions.destructive.length > 0 && (
+                        <div className="menu-group destructive">
+                          {groupedActions.destructive.map(renderActionItem)}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              ) : (
-                <>
-                  {/* Primary: Edit, Duplicate */}
-                  {groupedActions.primary.length > 0 && (
-                    <div className="menu-group">
-                      {groupedActions.primary.map(renderActionItem)}
-                    </div>
-                  )}
-
-                  {/* Mode: Select */}
-                  {groupedActions.mode.length > 0 && (
-                    <div className="menu-group">
-                      {groupedActions.mode.map(renderActionItem)}
-                    </div>
-                  )}
-
-                  {/* Lifecycle: Archive */}
-                  {groupedActions.lifecycle.length > 0 && (
-                    <div className="menu-group">
-                      {groupedActions.lifecycle.map(renderActionItem)}
-                    </div>
-                  )}
-
-                  {/* Rubbish: Restore, Delete Permanently */}
-                  {groupedActions.rubbish.length > 0 && (
-                    <div className="menu-group">
-                      {groupedActions.rubbish.map(renderActionItem)}
-                    </div>
-                  )}
-
-                  {/* Destructive: Delete (isolated with extra spacing) */}
-                  {groupedActions.destructive.length > 0 && (
-                    <div className="menu-group destructive">
-                      {groupedActions.destructive.map(renderActionItem)}
-                    </div>
-                  )}
-                </>
               )}
-            </div>
           </>,
           document.body
         )}
