@@ -25,6 +25,7 @@ import { formatProjectSchedule } from "@/lib/dateFormat";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -530,30 +531,35 @@ export default function Projects() {
           {/* Status Buttons */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
-            <div className="flex gap-2">
-              <Button
-                variant={location === "/projects" ? "default" : "outline"}
-                className="flex-1"
-                onClick={() => {
-                  setLocation("/projects");
-                  setIsFilterOpen(false);
-                }}
-              >
-                Active
-              </Button>
-              <Button
-                variant={location === "/projects/archived" ? "default" : "outline"}
-                className="flex-1"
-                onClick={() => {
-                  setLocation("/projects/archived");
-                  setIsFilterOpen(false);
-                }}
-              >
-                Archived
-              </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex gap-2 flex-1">
+                <Button
+                  variant={location === "/projects" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => {
+                    setLocation("/projects");
+                    setIsFilterOpen(false);
+                  }}
+                >
+                  Active
+                </Button>
+                <Button
+                  variant={location === "/projects/archived" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => {
+                    setLocation("/projects/archived");
+                    setIsFilterOpen(false);
+                  }}
+                >
+                  Archived
+                </Button>
+              </div>
               <Button
                 variant={location === "/projects/rubbish" ? "default" : "outline"}
-                className="flex-1"
+                className={cn(
+                  "flex-1 sm:flex-1",
+                  location === "/projects/rubbish" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""
+                )}
                 onClick={() => {
                   setLocation("/projects/rubbish");
                   setIsFilterOpen(false);

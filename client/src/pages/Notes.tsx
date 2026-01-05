@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -662,30 +663,35 @@ export default function Notes() {
           {/* Status Buttons */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
-            <div className="flex gap-2">
-              <Button
-                variant={window.location.pathname === "/notes" ? "default" : "outline"}
-                className="flex-1"
-                onClick={() => {
-                  navigate("/notes");
-                  setIsFilterOpen(false);
-                }}
-              >
-                Active
-              </Button>
-              <Button
-                variant={window.location.pathname === "/notes/archived" ? "default" : "outline"}
-                className="flex-1"
-                onClick={() => {
-                  navigate("/notes/archived");
-                  setIsFilterOpen(false);
-                }}
-              >
-                Archived
-              </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex gap-2 flex-1">
+                <Button
+                  variant={window.location.pathname === "/notes" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => {
+                    navigate("/notes");
+                    setIsFilterOpen(false);
+                  }}
+                >
+                  Active
+                </Button>
+                <Button
+                  variant={window.location.pathname === "/notes/archived" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => {
+                    navigate("/notes/archived");
+                    setIsFilterOpen(false);
+                  }}
+                >
+                  Archived
+                </Button>
+              </div>
               <Button
                 variant={window.location.pathname === "/notes/rubbish" ? "default" : "outline"}
-                className="flex-1"
+                className={cn(
+                  "flex-1 sm:flex-1",
+                  window.location.pathname === "/notes/rubbish" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""
+                )}
                 onClick={() => {
                   navigate("/notes/rubbish");
                   setIsFilterOpen(false);

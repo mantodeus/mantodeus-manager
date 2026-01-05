@@ -146,12 +146,7 @@ export default function ProjectsArchived() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={
-          <span className="flex items-center gap-3">
-            <Archive className="h-8 w-8 text-muted-foreground" />
-            Archived Projects
-          </span>
-        }
+        title="Archived Projects"
         subtitle="Projects you've archived. You can restore them anytime."
         leading={
           <Link href="/projects">

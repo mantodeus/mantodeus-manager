@@ -20,6 +20,7 @@ import { BulkInvoiceUploadDialog } from "@/components/invoices/BulkInvoiceUpload
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 function formatCurrency(amount: number | string) {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -812,30 +813,35 @@ export default function Invoices() {
           {/* Status Buttons */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
-            <div className="flex gap-2">
-              <Button
-                variant={window.location.pathname === "/invoices" ? "default" : "outline"}
-                className="flex-1"
-                onClick={() => {
-                  navigate("/invoices");
-                  setIsFilterOpen(false);
-                }}
-              >
-                Active
-              </Button>
-              <Button
-                variant={window.location.pathname === "/invoices/archived" ? "default" : "outline"}
-                className="flex-1"
-                onClick={() => {
-                  navigate("/invoices/archived");
-                  setIsFilterOpen(false);
-                }}
-              >
-                Archived
-              </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex gap-2 flex-1">
+                <Button
+                  variant={window.location.pathname === "/invoices" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => {
+                    navigate("/invoices");
+                    setIsFilterOpen(false);
+                  }}
+                >
+                  Active
+                </Button>
+                <Button
+                  variant={window.location.pathname === "/invoices/archived" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => {
+                    navigate("/invoices/archived");
+                    setIsFilterOpen(false);
+                  }}
+                >
+                  Archived
+                </Button>
+              </div>
               <Button
                 variant={window.location.pathname === "/invoices/rubbish" ? "default" : "outline"}
-                className="flex-1"
+                className={cn(
+                  "flex-1 sm:flex-1",
+                  window.location.pathname === "/invoices/rubbish" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""
+                )}
                 onClick={() => {
                   navigate("/invoices/rubbish");
                   setIsFilterOpen(false);

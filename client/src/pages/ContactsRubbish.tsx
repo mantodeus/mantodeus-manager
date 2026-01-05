@@ -114,12 +114,7 @@ export default function ContactsRubbish() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={
-          <span className="flex items-center gap-3">
-            <Trash2 className="h-8 w-8 text-muted-foreground" />
-            Rubbish
-          </span>
-        }
+        title="Rubbish"
         subtitle="Deleted contacts. Items here can be restored or permanently deleted."
         leading={
           <Link href="/contacts">
@@ -128,7 +123,7 @@ export default function ContactsRubbish() {
             </Button>
           </Link>
         }
-        primaryAction={
+        actions={
           trashedContacts.length > 0 ? (
             <Button
               variant="destructive"
@@ -141,6 +136,7 @@ export default function ContactsRubbish() {
             </Button>
           ) : undefined
         }
+        actionsPlacement="right"
       />
 
       {/* Rubbish Items List */}

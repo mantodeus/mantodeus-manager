@@ -102,12 +102,7 @@ export default function InvoicesRubbish() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={
-          <span className="flex items-center gap-3">
-            <Trash2 className="h-8 w-8 text-muted-foreground" />
-            Rubbish
-          </span>
-        }
+        title="Rubbish"
         subtitle="Deleted invoices. Items here can be restored or permanently deleted."
         leading={
           <Link href="/invoices">
@@ -116,7 +111,7 @@ export default function InvoicesRubbish() {
             </Button>
           </Link>
         }
-        primaryAction={
+        actions={
           trashedInvoices.length > 0 ? (
             <Button
               variant="destructive"
@@ -129,6 +124,7 @@ export default function InvoicesRubbish() {
             </Button>
           ) : undefined
         }
+        actionsPlacement="right"
       />
 
       {trashedInvoices.length === 0 ? (

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Archive, ArrowLeft, Loader2 } from "@/components/ui/Icon";
+import { FileText, ArrowLeft, Loader2 } from "@/components/ui/Icon";
 import { useEffect, useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
@@ -155,12 +155,7 @@ export default function InvoicesArchived() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={
-          <span className="flex items-center gap-3">
-            <Archive className="h-8 w-8 text-muted-foreground" />
-            Archived Invoices
-          </span>
-        }
+        title="Archived Invoices"
         subtitle="Invoices you've archived. You can restore them anytime."
         leading={
           <Link href="/invoices">

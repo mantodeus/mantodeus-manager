@@ -34,7 +34,7 @@ export function PageHeader({
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4 min-w-0 flex-1 self-stretch">
+        <div className="flex items-start gap-2 min-w-0 flex-1 self-stretch">
           {leading}
           {(title || subtitle || showInlineActions) && (
             <div className="flex-1 min-w-0 flex flex-col h-full">
@@ -42,7 +42,7 @@ export function PageHeader({
               {(subtitle || showInlineActions) && (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
                   {subtitle && (
-                    <p className="text-muted-foreground text-sm break-normal flex-1">
+                    <p className="text-muted-foreground text-sm break-normal">
                       {subtitle}
                     </p>
                   )}

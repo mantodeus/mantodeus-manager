@@ -122,12 +122,7 @@ export default function NotesRubbish() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={
-          <span className="flex items-center gap-3">
-            <Trash2 className="h-8 w-8 text-muted-foreground" />
-            Rubbish
-          </span>
-        }
+        title="Rubbish"
         subtitle="Deleted notes. Items here can be restored or permanently deleted."
         leading={
           <Link href="/notes">
@@ -136,7 +131,7 @@ export default function NotesRubbish() {
             </Button>
           </Link>
         }
-        primaryAction={
+        actions={
           trashedNotes.length > 0 ? (
             <Button
               variant="destructive"
@@ -149,6 +144,7 @@ export default function NotesRubbish() {
             </Button>
           ) : undefined
         }
+        actionsPlacement="right"
       />
 
       {/* Rubbish Items List */}

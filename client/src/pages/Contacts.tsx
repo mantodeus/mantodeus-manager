@@ -667,30 +667,35 @@ export default function Contacts() {
           {/* Status Buttons */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
-            <div className="flex gap-2">
-              <Button
-                variant={location === "/contacts" ? "default" : "outline"}
-                className="flex-1"
-                onClick={() => {
-                  setLocation("/contacts");
-                  setIsFilterOpen(false);
-                }}
-              >
-                Active
-              </Button>
-              <Button
-                variant={location === "/contacts/archived" ? "default" : "outline"}
-                className="flex-1"
-                onClick={() => {
-                  setLocation("/contacts/archived");
-                  setIsFilterOpen(false);
-                }}
-              >
-                Archived
-              </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex gap-2 flex-1">
+                <Button
+                  variant={location === "/contacts" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => {
+                    setLocation("/contacts");
+                    setIsFilterOpen(false);
+                  }}
+                >
+                  Active
+                </Button>
+                <Button
+                  variant={location === "/contacts/archived" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => {
+                    setLocation("/contacts/archived");
+                    setIsFilterOpen(false);
+                  }}
+                >
+                  Archived
+                </Button>
+              </div>
               <Button
                 variant={location === "/contacts/rubbish" ? "default" : "outline"}
-                className="flex-1"
+                className={cn(
+                  "flex-1 sm:flex-1",
+                  location === "/contacts/rubbish" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""
+                )}
                 onClick={() => {
                   setLocation("/contacts/rubbish");
                   setIsFilterOpen(false);

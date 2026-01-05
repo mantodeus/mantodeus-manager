@@ -165,12 +165,7 @@ export default function NotesArchived() {
   return (
     <div className="container mx-auto py-8 px-4">
       <PageHeader
-        title={
-          <span className="flex items-center gap-3">
-            <Archive className="h-8 w-8 text-muted-foreground" />
-            Archived Notes
-          </span>
-        }
+        title="Archived Notes"
         subtitle="Notes you've archived. You can restore them anytime."
         leading={
           <Link href="/notes">
