@@ -121,6 +121,7 @@ export const CenteredContextMenu = React.forwardRef<
   const itemRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const overlayPressRef = useRef(false);
 
   const menuShiftY = useMemo(() => {
     if (!itemRect || !itemRef.current) return 0;
@@ -320,6 +321,17 @@ export const CenteredContextMenu = React.forwardRef<
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
+      overlayPressRef.current = true;
+    },
+    [closeMenu]
+  );
+
+  const handleOverlayPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!overlayPressRef.current) return;
+      overlayPressRef.current = false;
       const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
       if (timeSinceMenuOpen < 250) {
         return;
@@ -329,10 +341,18 @@ export const CenteredContextMenu = React.forwardRef<
     [closeMenu]
   );
 
-  const handleOverlayClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleOverlayTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    overlayPressRef.current = true;
+  }, []);
+
+  const handleOverlayTouchEnd = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
+      if (!overlayPressRef.current) return;
+      overlayPressRef.current = false;
       const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
       if (timeSinceMenuOpen < 250) {
         return;
@@ -341,6 +361,11 @@ export const CenteredContextMenu = React.forwardRef<
     },
     [closeMenu]
   );
+
+  const handleOverlayClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
 
   // Prevent background scrolling when menu is open (Apple-style behavior)
   useEffect(() => {
@@ -657,7 +682,10 @@ export const CenteredContextMenu = React.forwardRef<
                 pointerEvents: "auto",
               }}
               onPointerDown={handleOverlayPointerDown}
+              onPointerUp={handleOverlayPointerUp}
               onClick={handleOverlayClick}
+              onTouchStart={handleOverlayTouchStart}
+              onTouchEnd={handleOverlayTouchEnd}
             />
 
             {/* Centered menu - z-index below tab bar */}

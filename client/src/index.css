@@ -449,7 +449,8 @@
   body.context-menu-open [class*="Card"],
   body.context-menu-open [role="article"],
   body.context-menu-open article,
-  body.context-menu-open a[href] {
+  body.context-menu-open a[href],
+  body.context-menu-open button {
     pointer-events: none !important;
   }
 
