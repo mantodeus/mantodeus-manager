@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X } from "@/components/ui/Icon";
+import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
@@ -813,40 +813,48 @@ export default function Invoices() {
           {/* Status Buttons */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <div className="flex gap-2 flex-1">
-                <Button
-                  variant={window.location.pathname === "/invoices" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => {
-                    navigate("/invoices");
-                    setIsFilterOpen(false);
-                  }}
-                >
-                  Active
-                </Button>
-                <Button
-                  variant={window.location.pathname === "/invoices/archived" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => {
-                    navigate("/invoices/archived");
-                    setIsFilterOpen(false);
-                  }}
-                >
-                  Archived
-                </Button>
-              </div>
+            <div className="flex flex-col gap-2">
               <Button
-                variant={window.location.pathname === "/invoices/rubbish" ? "default" : "outline"}
+                variant="outline"
                 className={cn(
-                  "flex-1 sm:flex-1",
-                  window.location.pathname === "/invoices/rubbish" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""
+                  "flex-1 w-full",
+                  window.location.pathname === "/invoices" && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+                onClick={() => {
+                  navigate("/invoices");
+                  setIsFilterOpen(false);
+                }}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Active
+              </Button>
+              <Button
+                variant="outline"
+                className={cn(
+                  "flex-1 w-full",
+                  window.location.pathname === "/invoices/archived" && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+                onClick={() => {
+                  navigate("/invoices/archived");
+                  setIsFilterOpen(false);
+                }}
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                Archived
+              </Button>
+              <Button
+                variant="outline"
+                className={cn(
+                  "flex-1 w-full",
+                  "hover:bg-destructive hover:text-destructive-foreground",
+                  window.location.pathname === "/invoices/rubbish" && "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 )}
                 onClick={() => {
                   navigate("/invoices/rubbish");
                   setIsFilterOpen(false);
                 }}
               >
+                <Trash2 className="h-4 w-4 mr-2" />
                 Deleted
               </Button>
             </div>
@@ -1152,9 +1160,28 @@ export default function Invoices() {
           onDelete={handleBatchDelete}
           onCancel={() => {
             // Clear selection and exit multi-select mode
-            // React will batch these state updates automatically
             setSelectedIds(new Set());
             setIsMultiSelectMode(false);
+            
+            // Clean up any lingering context menu transforms on all invoice items
+            // This ensures items slide back down to their original position after canceling multi-select
+            // Use requestAnimationFrame to ensure DOM updates happen after React's render
+            requestAnimationFrame(() => {
+              // Find all invoice cards in the invoices page and remove context menu classes/transforms
+              const invoiceCards = document.querySelectorAll('[data-item]');
+              invoiceCards.forEach((card) => {
+                const element = card as HTMLElement;
+                // Remove context menu classes
+                element.classList.remove("context-menu-active");
+                element.classList.remove("context-menu-shifted");
+                element.classList.remove("context-menu-pressing");
+                // Remove CSS custom properties that control the transform
+                element.style.removeProperty("--context-menu-shift");
+                element.style.removeProperty("--context-menu-scale");
+                // Force reset transform to ensure item returns to original position
+                element.style.transform = "";
+              });
+            });
           }}
         />
       )}

@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Tag, FileText, Loader2, SlidersHorizontal, X } from "@/components/ui/Icon";
+import { Plus, Search, Tag, FileText, Loader2, SlidersHorizontal, X, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
@@ -663,40 +663,48 @@ export default function Notes() {
           {/* Status Buttons */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <div className="flex gap-2 flex-1">
-                <Button
-                  variant={window.location.pathname === "/notes" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => {
-                    navigate("/notes");
-                    setIsFilterOpen(false);
-                  }}
-                >
-                  Active
-                </Button>
-                <Button
-                  variant={window.location.pathname === "/notes/archived" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => {
-                    navigate("/notes/archived");
-                    setIsFilterOpen(false);
-                  }}
-                >
-                  Archived
-                </Button>
-              </div>
+            <div className="flex flex-col gap-2">
               <Button
-                variant={window.location.pathname === "/notes/rubbish" ? "default" : "outline"}
+                variant="outline"
                 className={cn(
-                  "flex-1 sm:flex-1",
-                  window.location.pathname === "/notes/rubbish" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""
+                  "flex-1 w-full",
+                  window.location.pathname === "/notes" && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+                onClick={() => {
+                  navigate("/notes");
+                  setIsFilterOpen(false);
+                }}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Active
+              </Button>
+              <Button
+                variant="outline"
+                className={cn(
+                  "flex-1 w-full",
+                  window.location.pathname === "/notes/archived" && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+                onClick={() => {
+                  navigate("/notes/archived");
+                  setIsFilterOpen(false);
+                }}
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                Archived
+              </Button>
+              <Button
+                variant="outline"
+                className={cn(
+                  "flex-1 w-full",
+                  "hover:bg-destructive hover:text-destructive-foreground",
+                  window.location.pathname === "/notes/rubbish" && "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 )}
                 onClick={() => {
                   navigate("/notes/rubbish");
                   setIsFilterOpen(false);
                 }}
               >
+                <Trash2 className="h-4 w-4 mr-2" />
                 Deleted
               </Button>
             </div>

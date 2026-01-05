@@ -667,40 +667,48 @@ export default function Contacts() {
           {/* Status Buttons */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <div className="flex gap-2 flex-1">
-                <Button
-                  variant={location === "/contacts" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => {
-                    setLocation("/contacts");
-                    setIsFilterOpen(false);
-                  }}
-                >
-                  Active
-                </Button>
-                <Button
-                  variant={location === "/contacts/archived" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => {
-                    setLocation("/contacts/archived");
-                    setIsFilterOpen(false);
-                  }}
-                >
-                  Archived
-                </Button>
-              </div>
+            <div className="flex flex-col gap-2">
               <Button
-                variant={location === "/contacts/rubbish" ? "default" : "outline"}
+                variant="outline"
                 className={cn(
-                  "flex-1 sm:flex-1",
-                  location === "/contacts/rubbish" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""
+                  "flex-1 w-full",
+                  location === "/contacts" && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+                onClick={() => {
+                  setLocation("/contacts");
+                  setIsFilterOpen(false);
+                }}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Active
+              </Button>
+              <Button
+                variant="outline"
+                className={cn(
+                  "flex-1 w-full",
+                  location === "/contacts/archived" && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+                onClick={() => {
+                  setLocation("/contacts/archived");
+                  setIsFilterOpen(false);
+                }}
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                Archived
+              </Button>
+              <Button
+                variant="outline"
+                className={cn(
+                  "flex-1 w-full",
+                  "hover:bg-destructive hover:text-destructive-foreground",
+                  location === "/contacts/rubbish" && "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 )}
                 onClick={() => {
                   setLocation("/contacts/rubbish");
                   setIsFilterOpen(false);
                 }}
               >
+                <Trash2 className="h-4 w-4 mr-2" />
                 Deleted
               </Button>
             </div>

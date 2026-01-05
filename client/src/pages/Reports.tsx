@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { FileText, Download, Loader2, SlidersHorizontal } from "@/components/ui/Icon";
+import { FileText, Download, Loader2, SlidersHorizontal, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/PageHeader";
@@ -42,40 +42,48 @@ export default function Reports() {
           {/* Status Buttons */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Status</div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <div className="flex gap-2 flex-1">
-                <Button
-                  variant={location === "/reports" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => {
-                    setLocation("/reports");
-                    setIsFilterOpen(false);
-                  }}
-                >
-                  Active
-                </Button>
-                <Button
-                  variant={location === "/reports/archived" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => {
-                    setLocation("/reports/archived");
-                    setIsFilterOpen(false);
-                  }}
-                >
-                  Archived
-                </Button>
-              </div>
+            <div className="flex flex-col gap-2">
               <Button
-                variant={location === "/reports/rubbish" ? "default" : "outline"}
+                variant="outline"
                 className={cn(
-                  "flex-1 sm:flex-1",
-                  location === "/reports/rubbish" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""
+                  "flex-1 w-full",
+                  location === "/reports" && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+                onClick={() => {
+                  setLocation("/reports");
+                  setIsFilterOpen(false);
+                }}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Active
+              </Button>
+              <Button
+                variant="outline"
+                className={cn(
+                  "flex-1 w-full",
+                  location === "/reports/archived" && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+                onClick={() => {
+                  setLocation("/reports/archived");
+                  setIsFilterOpen(false);
+                }}
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                Archived
+              </Button>
+              <Button
+                variant="outline"
+                className={cn(
+                  "flex-1 w-full",
+                  "hover:bg-destructive hover:text-destructive-foreground",
+                  location === "/reports/rubbish" && "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 )}
                 onClick={() => {
                   setLocation("/reports/rubbish");
                   setIsFilterOpen(false);
                 }}
               >
+                <Trash2 className="h-4 w-4 mr-2" />
                 Deleted
               </Button>
             </div>
