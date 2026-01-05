@@ -28,6 +28,7 @@ export default function InvoiceDetail() {
     { id: invoiceId! },
     { enabled: !!invoiceId }
   );
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Redirect ALL uploaded invoices to review dialog (never show full InvoiceForm)
   useEffect(() => {
@@ -146,7 +147,6 @@ export default function InvoiceDetail() {
   const isDraft = invoiceState === 'DRAFT';
   const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
   const isPaid = invoiceState === 'PAID';
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const handleSend = () => {
     if (!invoice) return;

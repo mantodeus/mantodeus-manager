@@ -55,10 +55,10 @@ function calculateTotals(items: ReturnType<typeof normalizeLineItems>) {
 }
 
 /**
- * Format invoice name as "Rechnung {invoiceNumber}" for German invoices
+ * Format invoice name - just return the invoice number (no prefix)
  */
 function formatInvoiceName(invoiceNumber: string): string {
-  return `Rechnung ${invoiceNumber}`;
+  return invoiceNumber;
 }
 
 function extractInvoiceCounter(value: string): number | null {
