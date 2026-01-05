@@ -50,7 +50,7 @@ export function CreateInvoiceDialog({
         showCloseButton={false}
       >
         {/* PageHeader-like structure */}
-        <div className="flex-shrink-0 p-6 pb-4 space-y-4">
+        <div className="flex-shrink-0 p-6 pb-2 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 min-w-0 flex-1">
               <div className="flex-1 min-w-0 flex flex-col">
@@ -81,8 +81,8 @@ export function CreateInvoiceDialog({
         <div className="separator-fade" />
 
         <div className={cn(
-          "p-6 overflow-y-auto flex-1",
-          isMobile && "pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+          "px-6 pt-4 overflow-y-auto flex-1",
+          isMobile ? "pb-[calc(var(--bottom-safe-area,0px)+1rem)]" : "pb-6"
         )}>
           <InvoiceForm
             mode="create"

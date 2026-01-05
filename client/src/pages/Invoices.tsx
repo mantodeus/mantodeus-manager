@@ -1145,8 +1145,10 @@ export default function Invoices() {
           onArchive={handleBatchArchive}
           onDelete={handleBatchDelete}
           onCancel={() => {
-            setIsMultiSelectMode(false);
+            // Clear selection and exit multi-select mode
+            // React will batch these state updates automatically
             setSelectedIds(new Set());
+            setIsMultiSelectMode(false);
           }}
         />
       )}
