@@ -95,11 +95,7 @@ isOverdue = sentAt !== null && !isPaid && dueDate && dueDate < today
 - Save
 - Cancel
 
-🚫 **No lifecycle actions allowed in review**
-
-🚫 **No sending**
-
-🚫 **No payments**---
+🚫 **No lifecycle actions allowed in review**🚫 **No sending**🚫 **No payments**---
 
 ## 6. Draft State
 
@@ -180,9 +176,7 @@ if (amountPaid === totalAmount) {
 displayOutstanding = Math.max(0, totalAmount - amountPaid)
 ```
 
-⚠️ **Backend must prevent negative outstanding**
-
-⚠️ **Clamp is UI safety only, not logic**---
+⚠️ **Backend must prevent negative outstanding**⚠️ **Clamp is UI safety only, not logic**---
 
 ## 10. Paid State
 
@@ -225,21 +219,11 @@ displayOutstanding = Math.max(0, totalAmount - amountPaid)
 displayOutstanding = Math.max(0, totalAmount - amountPaid)
 ```
 
-⚠️ **Backend must prevent negative outstanding**
-
-⚠️ **Clamp is UI safety only, not logic**---
+⚠️ **Backend must prevent negative outstanding**⚠️ **Clamp is UI safety only, not logic**---
 
 ## 13. Revert Confirmation Rules
 
-| Action | Requirement |
-
-|--------|-------------|
-
-| Paid → Sent | Typed **REVERT** |
-
-| Sent → Draft (no payments) | Confirmation dialog only |
-
-| Any revert with payments | Blocked unless Paid → Sent |---
+| Action | Requirement ||--------|-------------|| Paid → Sent | Typed **REVERT** || Sent → Draft (no payments) | Confirmation dialog only || Any revert with payments | Blocked unless Paid → Sent |---
 
 ## 14. Database Migration (MANDATORY)
 
@@ -389,5 +373,3 @@ V1 does **not** track:
 This is **intentionally deferred** to prevent v1 scope creep. Future audit requirements will be addressed when financial compliance demands it.---
 
 ## FINAL STATUS
-
-🔒 **LOCKED FOR V1**

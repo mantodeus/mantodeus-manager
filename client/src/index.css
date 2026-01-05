@@ -417,7 +417,7 @@
 
   .has-context-menu.context-menu-active {
     position: relative;
-    z-index: 10000 !important;
+    z-index: 9997 !important;
     box-shadow: inset 0 0 0 1px rgba(12, 245, 126, 0.35);
     opacity: 1 !important;
     visibility: visible !important;
@@ -449,8 +449,7 @@
   body.context-menu-open [class*="Card"],
   body.context-menu-open [role="article"],
   body.context-menu-open article,
-  body.context-menu-open a[href],
-  body.context-menu-open button {
+  body.context-menu-open a[href] {
     pointer-events: none !important;
   }
 
@@ -458,6 +457,9 @@
   body.context-menu-open .context-menu-blocker,
   body.context-menu-open .context-menu-overlay,
   body.context-menu-open .glass-context-menu,
+  body.context-menu-open .glass-context-menu button,
+  body.context-menu-open .bottom-tab-bar,
+  body.context-menu-open .bottom-tab-bar button,
   body.context-menu-open .has-context-menu.context-menu-active {
     pointer-events: auto !important;
   }

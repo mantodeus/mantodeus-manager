@@ -187,7 +187,7 @@ export const CenteredContextMenu = React.forwardRef<
       top: `${adjustedBottom + spacing}px`,
       left: `${left}px`,
       transform: "translateX(-50%)",
-      zIndex: 1002,
+      zIndex: 9998,
       maxWidth: "calc(100vw - 24px)",
       maxHeight: `${maxHeight}px`,
       width: "auto",
@@ -308,126 +308,39 @@ export const CenteredContextMenu = React.forwardRef<
     }, 220);
   }, [resetLongPress, onOpenChange]);
 
-  // Create a blocking overlay div directly in body when menu is open
   useEffect(() => {
-    if (isOpen) {
-      // Add class to body to disable all card clicks via CSS
-      document.body.classList.add('context-menu-open');
-      
-      // Create a blocking overlay div directly in body (not in portal)
-      // This ensures it's rendered immediately and captures all events
-      const blocker = document.createElement('div');
-      blocker.className = 'context-menu-blocker';
-      blocker.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 9998;
-        pointer-events: auto;
-        background: transparent;
-      `;
-      // Make sure blocker doesn't cover the active item
-      blocker.style.pointerEvents = 'auto';
-      
-      // Block all events on the blocker, but allow menu interactions
-      let touchStartTime = 0;
-      const handleTouchStart = (e: TouchEvent) => {
-        const target = e.target as HTMLElement;
-        // Allow events on menu - don't block them
-        if (menuRef.current && menuRef.current.contains(target)) {
-          return;
-        }
-        touchStartTime = Date.now();
-        // Don't close on touch start - wait for touch end
-      };
-      
-      const handleTouchEnd = (e: TouchEvent) => {
-        const target = e.target as HTMLElement;
-        // CRITICAL: Allow events on menu - don't block them
-        if (menuRef.current && menuRef.current.contains(target)) {
-          return; // Let menu handle the event
-        }
-        // Don't close immediately after menu opens (prevent closing on long press release)
-        const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
-        if (timeSinceMenuOpen < 500) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          return; // Menu just opened, don't close on release
-        }
-        // Only close if this is a quick tap (not a long press release)
-        const touchDuration = Date.now() - touchStartTime;
-        if (touchDuration < 200) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          closeMenu();
-        }
-      };
-      
-      const handleClick = (e: MouseEvent | TouchEvent) => {
-        const target = e.target as HTMLElement;
-        // CRITICAL: Allow events on menu - don't block them
-        if (menuRef.current && menuRef.current.contains(target)) {
-          return; // Let menu handle the event
-        }
-        // Don't close immediately after menu opens
-        const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
-        if (timeSinceMenuOpen < 500) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          return; // Menu just opened, don't close immediately
-        }
-        // Block everything else - close menu
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        closeMenu();
-      };
-      
-      // Use capture phase but allow menu events to pass through
-      blocker.addEventListener('click', handleClick as EventListener, true);
-      blocker.addEventListener('touchstart', handleTouchStart, true);
-      blocker.addEventListener('touchend', handleTouchEnd, true);
-      blocker.addEventListener('mousedown', handleClick as EventListener, true);
-      
-      document.body.appendChild(blocker);
-      
-      // Also add a global event listener in capture phase as backup
-      // This prevents any card clicks from going through
-      const blockAllClicks = (e: MouseEvent | TouchEvent) => {
-        const target = e.target as HTMLElement;
-        // CRITICAL: Allow clicks on the menu itself
-        if (menuRef.current && menuRef.current.contains(target)) {
-          return; // Let menu handle the event
-        }
-        // Block all other clicks (including active item) to prevent background actions
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        // Close menu if clicking on background
-        const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
-        if (timeSinceMenuOpen >= 500) {
-          closeMenu();
-        }
-      };
-      
-      document.addEventListener('click', blockAllClicks, true); // Capture phase
-      document.addEventListener('touchstart', blockAllClicks, true); // Capture phase
-      document.addEventListener('mousedown', blockAllClicks, true); // Capture phase
-      
-      return () => {
-        document.body.classList.remove('context-menu-open');
-        blocker.remove();
-        document.removeEventListener('click', blockAllClicks, true);
-        document.removeEventListener('touchstart', blockAllClicks, true);
-        document.removeEventListener('mousedown', blockAllClicks, true);
-      };
-    }
-  }, [isOpen, closeMenu]);
+    if (!isOpen) return;
+    document.body.classList.add('context-menu-open');
+    return () => {
+      document.body.classList.remove('context-menu-open');
+    };
+  }, [isOpen]);
+
+  const handleOverlayPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
+      if (timeSinceMenuOpen < 250) {
+        return;
+      }
+      closeMenu();
+    },
+    [closeMenu]
+  );
+
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const timeSinceMenuOpen = Date.now() - menuOpenTimeRef.current;
+      if (timeSinceMenuOpen < 250) {
+        return;
+      }
+      closeMenu();
+    },
+    [closeMenu]
+  );
 
   // Prevent background scrolling when menu is open (Apple-style behavior)
   useEffect(() => {
@@ -735,23 +648,25 @@ export const CenteredContextMenu = React.forwardRef<
         menuStyle &&
         createPortal(
           <>
-            {/* Background overlay with blur - z-index 9997 (below blocker) */}
+            {/* Background overlay with blur - stays below tab bar */}
             <div
               className="context-menu-overlay fixed inset-0 backdrop-blur-md bg-black/20"
               style={{
-                zIndex: 9997,
+                zIndex: 9996,
                 animation: "fadeIn 220ms ease-out",
-                pointerEvents: "none", // Let the blocker handle events
+                pointerEvents: "auto",
               }}
+              onPointerDown={handleOverlayPointerDown}
+              onClick={handleOverlayClick}
             />
 
-            {/* Centered menu - z-index 10001 (above active item) */}
+            {/* Centered menu - z-index below tab bar */}
             <div
               ref={menuRef}
               className={cn("glass-context-menu", menuClassName)}
               style={{
                 ...menuStyle,
-                zIndex: 10001,
+                zIndex: 9998,
                 animation: "menuSlideUp 260ms cubic-bezier(0.16, 1, 0.3, 1)",
                 overflowY: "auto", // Enable scrolling within menu
                 overscrollBehavior: "contain", // Prevent scroll chaining to background
