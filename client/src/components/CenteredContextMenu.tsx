@@ -624,15 +624,6 @@ export const CenteredContextMenu = React.forwardRef<
           e.stopImmediatePropagation();
           triggerAction();
         }}
-        onPointerUp={(e) => {
-          if (e.pointerType !== "touch") {
-            return;
-          }
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          triggerAction();
-        }}
         onMouseDown={(e) => {
           // Also stop on mousedown to prevent any interaction with card
           e.preventDefault();
@@ -645,9 +636,11 @@ export const CenteredContextMenu = React.forwardRef<
           e.stopImmediatePropagation();
         }}
         onTouchEnd={(e) => {
-          // Stop touch end events
+          // Trigger action on touch end for mobile reliability
+          e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation();
+          triggerAction();
         }}
         className={cn(
           "glass-menu-item w-full text-left",
