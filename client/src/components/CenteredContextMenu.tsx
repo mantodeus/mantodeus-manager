@@ -123,6 +123,7 @@ export const CenteredContextMenu = React.forwardRef<
   const wrapperRef = useRef<HTMLDivElement>(null);
   const suppressClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const blockingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastActionTimeRef = useRef(0);
 
   const menuShiftY = useMemo(() => {
     if (!itemRect || !itemRef.current) return 0;
@@ -354,8 +355,10 @@ export const CenteredContextMenu = React.forwardRef<
 
     const handleGlobalBlock = (event: Event) => {
       const target = event.target as HTMLElement | null;
+      const path = (event as Event & { composedPath?: () => EventTarget[] }).composedPath?.();
       const isMenuTarget =
-        (menuRef.current && target && menuRef.current.contains(target)) ||
+        (menuRef.current && path ? path.includes(menuRef.current) : false) ||
+        (menuRef.current && target ? menuRef.current.contains(target) : false) ||
         Boolean(target?.closest(".glass-context-menu"));
 
       if (isMenuTarget) {
@@ -601,6 +604,15 @@ export const CenteredContextMenu = React.forwardRef<
     const Icon = config.icon;
     const isDestructive = config.variant === "destructive";
 
+    const triggerAction = () => {
+      const now = Date.now();
+      if (now - lastActionTimeRef.current < 400) {
+        return;
+      }
+      lastActionTimeRef.current = now;
+      handleAction(action);
+    };
+
     return (
       <button
         key={action}
@@ -609,8 +621,16 @@ export const CenteredContextMenu = React.forwardRef<
           e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation();
-          
-          handleAction(action);
+          triggerAction();
+        }}
+        onPointerUp={(e) => {
+          if (e.pointerType !== "touch") {
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          triggerAction();
         }}
         onMouseDown={(e) => {
           // Also stop on mousedown to prevent any interaction with card
