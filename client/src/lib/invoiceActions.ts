@@ -88,9 +88,14 @@ export function getInvoiceActions({
     actions.push("revertToSent");
   }
 
-  if (isSent && derivedValues.outstanding === 0) {
-    // Only allow revert to draft if no payments/outstanding amount
-    actions.push("revertToDraft");
+  if (isSent) {
+    // Allow revert to draft for sent invoices with no payments
+    // For sent invoices: outstanding = total when no payments, so check amountPaid instead
+    const amountPaid = Number(invoice.amountPaid || 0);
+    if (amountPaid === 0) {
+      // No payments received - can revert to draft
+      actions.push("revertToDraft");
+    }
   }
 
   // Archive - for open/sent/paid (not draft or review)
@@ -150,12 +155,14 @@ export function isActionValidForInvoice(
       return { valid: true };
 
     case "revertToDraft":
-      // Only from sent AND no payments/outstanding==0
+      // Only from sent AND no payments (amountPaid must be 0)
       if (!isSent) {
         return { valid: false, reason: "Invoice must be sent to revert to draft" };
       }
-      if (derivedValues.outstanding > 0) {
-        return { valid: false, reason: "Invoice has outstanding payments" };
+      // Check if there are any payments (amountPaid > 0)
+      const amountPaid = Number(invoice.amountPaid || 0);
+      if (amountPaid > 0) {
+        return { valid: false, reason: "Invoice has payments and cannot be reverted to draft" };
       }
       return { valid: true };
 
