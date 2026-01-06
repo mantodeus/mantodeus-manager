@@ -847,6 +847,7 @@ export const invoiceRouter = router({
         invoiceNumber: z.string().optional(),
         issueDate: z.date().optional(),
         totalAmount: z.string().optional(),
+        dueDate: z.date().optional(),
         items: z.array(lineItemSchema).optional(),
       })
     )
@@ -890,6 +891,7 @@ export const invoiceRouter = router({
         invoiceNumber: finalInvoiceNumber,
         invoiceName: formatInvoiceName(finalInvoiceNumber),
         issueDate: input.issueDate ? new Date(input.issueDate) : invoice.issueDate,
+        dueDate: input.dueDate ? new Date(input.dueDate) : invoice.dueDate,
         subtotal,
         total,
         needsReview: false, // Clear review flag

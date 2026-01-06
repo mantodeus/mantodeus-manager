@@ -6,7 +6,7 @@
  * Buttons ONLY appear in review state for uploaded invoices.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +22,7 @@ import { trpc } from "@/lib/trpc";
 import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, X } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -52,6 +53,8 @@ export function InvoiceUploadReviewDialog({
   onSuccess,
 }: InvoiceUploadReviewDialogProps) {
   const isMobile = useIsMobile();
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'green-mantis';
   const [clientId, setClientId] = useState<string>("none");
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [issueDate, setIssueDate] = useState<string>("");
@@ -114,6 +117,9 @@ export function InvoiceUploadReviewDialog({
       onOpenChange(false);
       utils.invoices.list.invalidate();
       utils.invoices.listNeedsReview.invalidate();
+      if (invoiceId) {
+        utils.invoices.get.invalidate({ id: invoiceId });
+      }
       onSuccess?.();
     },
     onError: (error) => {
@@ -199,18 +205,16 @@ export function InvoiceUploadReviewDialog({
     },
   });
 
+  // Track if we've hydrated from parsedData for this invoiceId to prevent overwriting saved values
+  const hydratedFromParsedDataRef = useRef<Set<number>>(new Set());
+
   // Initialize form when parsed data or invoice changes
+  // CRITICAL: Prefer invoice (saved DB values) over parsedData to prevent overwriting edits
   useEffect(() => {
-    if (parsedData) {
-      setInvoiceNumber(parsedData.invoiceNumber || "");
-      setIssueDate(
-        parsedData.invoiceDate
-          ? new Date(parsedData.invoiceDate).toISOString().split("T")[0]
-          : ""
-      );
-      setTotalAmount(parsedData.totalAmount || "");
-      setClientId("none");
-    } else if (invoice) {
+    if (!invoiceId) return;
+
+    // If invoice exists (has been saved), always use invoice values
+    if (invoice) {
       setInvoiceNumber(invoice.invoiceNumber || "");
       setIssueDate(
         invoice.issueDate
@@ -224,8 +228,21 @@ export function InvoiceUploadReviewDialog({
           ? new Date(invoice.dueDate).toISOString().split("T")[0]
           : ""
       );
+    } 
+    // Only use parsedData ONCE per invoiceId (first time, before any save)
+    else if (parsedData && !hydratedFromParsedDataRef.current.has(invoiceId)) {
+      setInvoiceNumber(parsedData.invoiceNumber || "");
+      setIssueDate(
+        parsedData.invoiceDate
+          ? new Date(parsedData.invoiceDate).toISOString().split("T")[0]
+          : ""
+      );
+      setTotalAmount(parsedData.totalAmount || "");
+      setClientId("none");
+      setDueDate(""); // parsedData doesn't have dueDate, start empty
+      hydratedFromParsedDataRef.current.add(invoiceId);
     }
-  }, [parsedData, invoice]);
+  }, [invoice, parsedData, invoiceId]);
 
   // Try to match client by name if parsed
   useEffect(() => {
@@ -294,6 +311,7 @@ export function InvoiceUploadReviewDialog({
         invoiceNumber: invoiceNumber || undefined,
         issueDate: new Date(issueDate),
         totalAmount: String(totalAmount),
+        dueDate: dueDate ? new Date(dueDate) : undefined,
       });
     } else {
       await updateMutation.mutateAsync({
@@ -490,7 +508,12 @@ export function InvoiceUploadReviewDialog({
                 variant="outline"
                 size="sm"
                 disabled
-                className="gap-2 bg-pink-500 text-white dark:bg-[#00FF88] dark:text-black border-pink-500/50 dark:border-[#00FF88]/50"
+                className="gap-2"
+                style={{
+                  backgroundColor: isDarkMode ? '#00FF88' : 'rgb(236, 72, 153)',
+                  color: isDarkMode ? '#000000' : 'white',
+                  borderColor: isDarkMode ? 'rgba(0, 255, 136, 0.5)' : 'rgba(236, 72, 153, 0.5)',
+                }}
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Paid
@@ -584,23 +607,21 @@ export function InvoiceUploadReviewDialog({
             />
           </div>
 
-          {/* Due Date - shown for non-review state, required for sending */}
-          {!isReview && (
-            <div className="space-y-2">
-              <Label htmlFor="dueDate">Due Date *</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                required={!isReview}
-                disabled={isReadOnly}
-              />
-              <p className="text-xs text-muted-foreground">
-                Due date is required before sending the invoice
-              </p>
-            </div>
-          )}
+          {/* Due Date - shown for both review and draft states, required for sending */}
+          <div className="space-y-2">
+            <Label htmlFor="dueDate">Due Date *</Label>
+            <Input
+              id="dueDate"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              required
+              disabled={isReadOnly}
+            />
+            <p className="text-xs text-muted-foreground">
+              Due date is required before sending the invoice
+            </p>
+          </div>
 
           {/* Action buttons: Section 19 layout - REVIEW and DRAFT states for uploaded invoices */}
           {(isReview || isDraft) && invoice?.source === "uploaded" && (

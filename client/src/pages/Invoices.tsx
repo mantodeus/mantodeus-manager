@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
+import { getInvoiceActions, isActionValidForInvoice } from "@/lib/invoiceActions";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -1058,30 +1059,125 @@ export default function Invoices() {
 
   const handleBatchMarkAsPaid = () => {
     if (selectedIds.size === 0) return;
-    const ids = Array.from(selectedIds);
-    ids.forEach((id) => {
-      markAsPaidMutation.mutate({ id });
+    
+    // Get all selected invoices
+    const selectedInvoices = Array.from(selectedIds)
+      .map(id => [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id))
+      .filter(Boolean) as typeof filteredInvoices;
+    
+    // Validate each invoice and collect results
+    const validInvoices: typeof selectedInvoices = [];
+    const skipped: Array<{ id: number; reason: string }> = [];
+    
+    selectedInvoices.forEach((invoice) => {
+      const validation = isActionValidForInvoice("markAsPaid", invoice);
+      if (validation.valid) {
+        validInvoices.push(invoice);
+      } else {
+        skipped.push({ id: invoice.id, reason: validation.reason || "Invalid" });
+      }
     });
+    
+    // Process valid invoices
+    validInvoices.forEach((invoice) => {
+      // For uploaded invoices that haven't been sent, mark as sent and paid
+      if (!invoice.sentAt && invoice.source === "uploaded") {
+        markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
+      } else {
+        markAsPaidMutation.mutate({ id: invoice.id });
+      }
+    });
+    
+    // Show summary toast
+    if (skipped.length > 0) {
+      toast.warning(
+        `Skipped ${skipped.length} invoice(s): ${skipped.map(s => s.reason).join(", ")}`
+      );
+    }
+    if (validInvoices.length > 0) {
+      toast.success(`Marked ${validInvoices.length} invoice(s) as paid`);
+    }
+    
     setSelectedIds(new Set());
     setIsMultiSelectMode(false);
   };
 
   const handleBatchRevertToDraft = () => {
     if (selectedIds.size === 0) return;
-    const ids = Array.from(selectedIds);
-    ids.forEach((id) => {
-      revertToDraftMutation.mutate({ id, confirmed: true });
+    
+    // Get all selected invoices
+    const selectedInvoices = Array.from(selectedIds)
+      .map(id => [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id))
+      .filter(Boolean) as typeof filteredInvoices;
+    
+    // Validate each invoice and collect results
+    const validInvoices: typeof selectedInvoices = [];
+    const skipped: Array<{ id: number; reason: string }> = [];
+    
+    selectedInvoices.forEach((invoice) => {
+      const validation = isActionValidForInvoice("revertToDraft", invoice);
+      if (validation.valid) {
+        validInvoices.push(invoice);
+      } else {
+        skipped.push({ id: invoice.id, reason: validation.reason || "Invalid" });
+      }
     });
+    
+    // Process valid invoices
+    validInvoices.forEach((invoice) => {
+      revertToDraftMutation.mutate({ id: invoice.id, confirmed: true });
+    });
+    
+    // Show summary toast
+    if (skipped.length > 0) {
+      toast.warning(
+        `Skipped ${skipped.length} invoice(s): ${skipped.map(s => s.reason).join(", ")}`
+      );
+    }
+    if (validInvoices.length > 0) {
+      toast.success(`Reverted ${validInvoices.length} invoice(s) to draft`);
+    }
+    
     setSelectedIds(new Set());
     setIsMultiSelectMode(false);
   };
 
   const handleBatchRevertToSent = () => {
     if (selectedIds.size === 0) return;
-    const ids = Array.from(selectedIds);
-    ids.forEach((id) => {
-      revertToSentMutation.mutate({ id, confirmed: true });
+    
+    // Get all selected invoices
+    const selectedInvoices = Array.from(selectedIds)
+      .map(id => [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id))
+      .filter(Boolean) as typeof filteredInvoices;
+    
+    // Validate each invoice and collect results
+    const validInvoices: typeof selectedInvoices = [];
+    const skipped: Array<{ id: number; reason: string }> = [];
+    
+    selectedInvoices.forEach((invoice) => {
+      const validation = isActionValidForInvoice("revertToSent", invoice);
+      if (validation.valid) {
+        validInvoices.push(invoice);
+      } else {
+        skipped.push({ id: invoice.id, reason: validation.reason || "Invalid" });
+      }
     });
+    
+    // Process valid invoices
+    validInvoices.forEach((invoice) => {
+      revertToSentMutation.mutate({ id: invoice.id, confirmed: true });
+    });
+    
+    // Show summary toast
+    if (skipped.length > 0) {
+      toast.warning(
+        `Skipped ${skipped.length} invoice(s): ${skipped.map(s => s.reason).join(", ")}`
+      );
+    }
+    if (validInvoices.length > 0) {
+      toast.success(`Reverted ${validInvoices.length} invoice(s) to sent`);
+    }
+    
     setSelectedIds(new Set());
     setIsMultiSelectMode(false);
   };
@@ -1682,23 +1778,11 @@ export default function Invoices() {
             const canCancel = isStandard && hasInvoiceNumber && invoice.source !== "uploaded" && !invoice.hasCancellation && (isOpen || isPaid);
             const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
             const displayTotal = formatCurrency(invoice.total);
-            // Use standard menu actions - map invoice-specific actions to standard ones
-            // Add markAsSent and markAsPaid based on invoice state
-            const invoiceState = getInvoiceState(invoice);
-            const availableActions: ItemAction[] = ["edit", "duplicate", "select", "archive", "delete"];
-            if (!invoice.sentAt) {
-              availableActions.push("markAsSent");
-            }
-            if (!invoice.paidAt) {
-              availableActions.push("markAsPaid");
-            }
-            // Add revert actions based on invoice state
-            if (invoiceState === 'SENT' || invoiceState === 'PARTIAL') {
-              availableActions.push("revertToDraft");
-            }
-            if (invoiceState === 'PAID') {
-              availableActions.push("revertToSent");
-            }
+            // Use shared action model for consistent actions across long-press and multi-select
+            const availableActions = getInvoiceActions({
+              invoice,
+              selectionMode: false,
+            });
 
             const handleCardClick = () => {
               if (isMultiSelectMode) {
@@ -1819,33 +1903,40 @@ export default function Invoices() {
 
       {/* Multi-select bar */}
       {isMultiSelectMode && (() => {
-        // Determine which batch actions to show based on selected invoices' states
-        const selectedInvoiceStates = Array.from(selectedIds).map(id => {
-          const invoice = [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id);
-          return invoice ? getInvoiceState(invoice) : null;
-        }).filter(Boolean) as string[];
-
-        const hasSent = selectedInvoiceStates.some(s => s === 'SENT' || s === 'PARTIAL');
-        const hasPaid = selectedInvoiceStates.some(s => s === 'PAID');
-        const hasNotSent = selectedInvoiceStates.some(s => !s || s === 'DRAFT' || s === 'REVIEW');
-        const hasNotPaid = selectedInvoiceStates.some(s => s !== 'PAID');
+        // Get all selected invoices
+        const selectedInvoices = Array.from(selectedIds)
+          .map(id => [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id))
+          .filter(Boolean) as typeof filteredInvoices;
         
-        // Only show "Mark as sent" if there are non-sent invoices AND no paid invoices
-        // If paid invoices are selected, only show "Revert to sent"
-        const canMarkAsSent = hasNotSent && !hasPaid;
+        // Use shared action model to determine available actions
+        // For multi-select, we show actions that are valid for at least one selected invoice
+        const allActions = new Set<ItemAction>();
+        selectedInvoices.forEach((invoice) => {
+          const actions = getInvoiceActions({ invoice, selectionMode: true });
+          actions.forEach(action => allActions.add(action));
+        });
+        
+        // Determine which handlers to provide based on available actions
+        const hasMarkAsSent = allActions.has("markAsSent");
+        const hasMarkAsPaid = allActions.has("markAsPaid");
+        const hasRevertToDraft = allActions.has("revertToDraft");
+        const hasRevertToSent = allActions.has("revertToSent");
+        const hasArchive = allActions.has("archive");
+        const hasDuplicate = allActions.has("duplicate");
+        const hasDelete = allActions.has("delete");
 
         return (
           <MultiSelectBar
             selectedCount={selectedIds.size}
             totalCount={filteredInvoices.length + needsReviewInvoices.length}
             onSelectAll={handleSelectAll}
-            onDuplicate={handleBatchDuplicate}
-            onMarkAsSent={canMarkAsSent ? handleBatchMarkAsSent : undefined}
-            onRevertToDraft={hasSent ? handleBatchRevertToDraft : undefined}
-            onRevertToSent={hasPaid ? handleBatchRevertToSent : undefined}
-            onMarkAsPaid={hasNotPaid ? handleBatchMarkAsPaid : undefined}
-            onArchive={handleBatchArchive}
-            onDelete={handleBatchDelete}
+            onDuplicate={hasDuplicate ? handleBatchDuplicate : undefined}
+            onMarkAsSent={hasMarkAsSent ? handleBatchMarkAsSent : undefined}
+            onRevertToDraft={hasRevertToDraft ? handleBatchRevertToDraft : undefined}
+            onRevertToSent={hasRevertToSent ? handleBatchRevertToSent : undefined}
+            onMarkAsPaid={hasMarkAsPaid ? handleBatchMarkAsPaid : undefined}
+            onArchive={hasArchive ? handleBatchArchive : undefined}
+            onDelete={hasDelete ? handleBatchDelete : undefined}
           onCancel={() => {
             // Clear selection and exit multi-select mode
             setSelectedIds(new Set());
