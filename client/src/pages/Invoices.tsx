@@ -1524,7 +1524,7 @@ export default function Invoices() {
     
     // Cancelled badge (dark color) - highest priority
     if (invoice.cancelledAt) {
-      return <Badge variant="default" className="text-xs bg-gray-800 text-white dark:bg-gray-900 dark:text-white border-gray-800/50">CANCELLED</Badge>;
+      return <Badge variant="default" className="text-xs bg-black text-white dark:bg-black dark:text-white border-black/50">CANCELLED</Badge>;
     }
     
     // Badge priority: OVERDUE > PARTIAL > SENT/PAID

@@ -216,6 +216,20 @@ export function InvoiceForm({
     },
     onError: (err) => toast.error(err.message),
   });
+  const moveToTrashMutation = trpc.invoices.moveToTrash.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice moved to Rubbish");
+      onClose();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const archiveMutation = trpc.invoices.archive.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice archived");
+      onClose();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const invoice = getInvoiceQuery.data ?? null;
   const isMobile = useIsMobile();
@@ -756,28 +770,7 @@ export function InvoiceForm({
 
       {/* Footer buttons */}
       <div className="flex flex-col gap-2 pt-4 border-t">
-        <div className="flex gap-2">
-          <Button 
-            type="button" 
-            variant="destructive" 
-            className="flex-1" 
-            onClick={onClose} 
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          {!isReadOnly && (
-            <Button 
-              type="submit" 
-              form="invoice-form" 
-              className="flex-1" 
-              disabled={isLoading}
-            >
-              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              {isCreate ? "Save" : "Update"}
-            </Button>
-          )}
-        </div>
+        {/* Action buttons - above Delete/Update */}
         
         {/* Cancel/Uncancel buttons - only for draft/review invoices */}
         {invoice && !isCreate && (isDraft || isReview) && (
@@ -822,36 +815,36 @@ export function InvoiceForm({
               {markAsPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Mark as Paid
             </Button>
-            {/* Not Sent button (revert to draft) */}
+            {/* Revert to Draft button */}
             <Button
               type="button"
               variant="outline"
               onClick={() => setRevertDialogOpen(true)}
               disabled={isLoading || revertToDraftMutation.isPending}
-              className="w-full"
+              className="w-full hover:bg-blue-500 hover:text-white hover:border-blue-500/50 dark:hover:bg-blue-600 dark:hover:text-white dark:hover:border-blue-600/50"
             >
               {revertToDraftMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Not Sent
+              Revert to Draft
             </Button>
           </>
         )}
         
-        {/* Revert buttons for paid invoices */}
+        {/* Action buttons for paid invoices */}
         {invoice && !isCreate && isPaid && (
           <Button
             type="button"
             variant="outline"
             onClick={() => setRevertDialogOpen(true)}
             disabled={isLoading || revertToSentMutation.isPending}
-            className="w-full"
+            className="w-full hover:bg-blue-500 hover:text-white hover:border-blue-500/50 dark:hover:bg-blue-600 dark:hover:text-white dark:hover:border-blue-600/50"
           >
             {revertToSentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Not Paid
+            Revert to Sent
           </Button>
         )}
         
-        {/* Mark as Paid button for overdue invoices */}
-        {invoice && !isCreate && derivedValues.isOverdue && !isPaid && (
+        {/* Mark as Paid button for overdue invoices (only if not already shown above) */}
+        {invoice && !isCreate && derivedValues.isOverdue && !isPaid && !isSent && (
           <Button
             type="button"
             variant="default"
@@ -864,6 +857,48 @@ export function InvoiceForm({
             Mark as Paid
           </Button>
         )}
+        
+        {/* Delete and Update/Save buttons - always at the bottom */}
+        <div className="flex gap-2 pt-2 border-t">
+          {!isCreate && invoice && (
+            <Button 
+              type="button" 
+              variant="destructive" 
+              className="flex-1" 
+              onClick={() => {
+                if (isDraft || isReview) {
+                  moveToTrashMutation.mutate({ id: invoiceId! });
+                } else {
+                  archiveMutation.mutate({ id: invoiceId! });
+                }
+              }}
+              disabled={isLoading || moveToTrashMutation.isPending || archiveMutation.isPending}
+            >
+              {(moveToTrashMutation.isPending || archiveMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Delete
+            </Button>
+          )}
+          <Button 
+            type="button" 
+            variant="outline" 
+            className={!isCreate && invoice ? "flex-1" : "flex-1"} 
+            onClick={onClose} 
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          {!isReadOnly && (
+            <Button 
+              type="submit" 
+              form="invoice-form" 
+              className="flex-1" 
+              disabled={isLoading}
+            >
+              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {isCreate ? "Save" : "Update"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Dialogs */}
