@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,13 @@ export function RevertInvoiceStatusDialog({
 }: RevertInvoiceStatusDialogProps) {
   const [acknowledged, setAcknowledged] = useState(false);
 
+  // Reset checkbox when dialog opens (both single and batch)
+  useEffect(() => {
+    if (open) {
+      setAcknowledged(false);
+    }
+  }, [open]);
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       setAcknowledged(false);
@@ -56,26 +63,15 @@ export function RevertInvoiceStatusDialog({
 
   const getMessage = () => {
     if (isBatch) {
-      // Batch mode: plural-aware messages
-      if (targetStatus === "draft") {
-        // Reverting from sent to draft
-        const baseMessage = `You are about to revert ${batchCount} ${batchCount === 1 ? 'invoice' : 'invoices'} to draft.`;
-        const impactMessage = "This will clear their sent dates and may affect reports, payment tracking, and accounting accuracy.";
-        const skippedMessage = skippedCount > 0 ? ` ${skippedCount} ${skippedCount === 1 ? 'invoice will be' : 'invoices will be'} skipped because ${skippedCount === 1 ? 'it is' : 'they are'} not eligible for this action.` : "";
-        return `${baseMessage} ${impactMessage}${skippedMessage}`;
-      } else {
-        // Reverting from paid to sent
-        const baseMessage = `You are about to revert ${batchCount} ${batchCount === 1 ? 'invoice' : 'invoices'} to sent status.`;
-        const impactMessage = "This will clear their payment records and may affect accounting accuracy. Only proceed if the payments were recorded incorrectly.";
-        const skippedMessage = skippedCount > 0 ? ` ${skippedCount} ${skippedCount === 1 ? 'invoice will be' : 'invoices will be'} skipped because ${skippedCount === 1 ? 'it is' : 'they are'} not eligible for this action.` : "";
-        return `${baseMessage} ${impactMessage}${skippedMessage}`;
-      }
+      // Batch mode: always use plural grammar ("these invoices", "they", "them")
+      const baseMessage = `This will change the status of these invoices and may invalidate share links.`;
+      const skippedMessage = skippedCount > 0 
+        ? ` ${skippedCount} ${skippedCount === 1 ? 'invoice will be' : 'invoices will be'} skipped because they are not eligible for this action.`
+        : "";
+      return `${baseMessage}${skippedMessage}`;
     } else {
-      // Single invoice mode: existing messages
-      if (currentStatus === "open") {
-        return "This invoice has already been sent. Reverting it may affect records and client communication for accounting reasons. Only do this if the invoice was sent in error.";
-      }
-      return "This invoice is marked as paid. Reverting it may affect accounting records for accounting reasons. Only proceed if the payment was recorded incorrectly.";
+      // Single invoice mode
+      return "This will change the status and may invalidate share links.";
     }
   };
 
@@ -87,8 +83,8 @@ export function RevertInvoiceStatusDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>
             {isBatch 
-              ? `Revert ${batchCount} ${batchCount === 1 ? 'invoice' : 'invoices'}?`
-              : "Revert invoice status?"
+              ? `Revert ${batchCount} ${batchCount === 1 ? 'invoice' : 'invoices'} to ${targetStatus === "draft" ? "draft" : "sent"}?`
+              : `Revert invoice to ${targetStatus === "draft" ? "draft" : "sent"}?`
             }
           </AlertDialogTitle>
           <AlertDialogDescription className="pt-2 space-y-3">
@@ -140,8 +136,8 @@ export function RevertInvoiceStatusDialog({
             />
             <Label htmlFor="revert-ack" className="text-sm text-foreground cursor-pointer flex-1 leading-relaxed">
               {isBatch
-                ? `I understand the consequences of reverting ${batchCount === 1 ? 'this invoice' : 'these invoices'}.`
-                : "I understand the consequences of reverting this invoice."}
+                ? `I understand this will revert these invoices and cannot be undone.`
+                : "I understand this will revert the invoice and cannot be undone."}
             </Label>
           </div>
         </div>

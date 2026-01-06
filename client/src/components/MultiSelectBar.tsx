@@ -174,14 +174,25 @@ export function MultiSelectBar({
       style={{ bottom: 'var(--bottom-safe-area, 0px)', marginBottom: '1rem' }}
     >
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-        <div className="flex items-center justify-center sm:justify-start min-h-[44px]">
+        {/* Left side: Selection count + Select all */}
+        <div className="flex items-center justify-center sm:justify-start gap-3 min-h-[44px]">
           <span
             className="text-sm sm:text-base font-medium text-center sm:text-left"
             style={{ fontFamily: "Kanit, sans-serif", color: "rgba(255, 255, 255, 0.9)" }}
           >
             {selectedCount} selected
           </span>
+          {onSelectAll && totalCount && selectedCount < totalCount && (
+            <button
+              onClick={onSelectAll}
+              className="select-action"
+            >
+              <CheckSquare className="h-4 w-4" />
+              <span className="whitespace-nowrap">Select all</span>
+            </button>
+          )}
         </div>
+        {/* Right side: Actions + Cancel */}
         <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 flex-1">
           {standardActions.map((action, index) => {
             const Icon = action.icon;
@@ -202,15 +213,6 @@ export function MultiSelectBar({
               </button>
             );
           })}
-          {onSelectAll && totalCount && selectedCount < totalCount && (
-            <button
-              onClick={onSelectAll}
-              className="select-action"
-            >
-              <CheckSquare className="h-4 w-4" />
-              <span className="whitespace-nowrap">All</span>
-            </button>
-          )}
           <button
             onClick={onCancel}
             className="select-action"

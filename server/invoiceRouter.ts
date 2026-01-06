@@ -892,7 +892,7 @@ export const invoiceRouter = router({
         invoiceNumber: z.string().optional(),
         issueDate: z.date().optional(),
         totalAmount: z.string().optional(),
-        dueDate: z.date().optional(),
+        dueDate: z.date().optional().nullable(),
         items: z.array(lineItemSchema).optional(),
       })
     )
@@ -915,6 +915,21 @@ export const invoiceRouter = router({
         });
       }
       
+      // Validate required fields
+      if (!input.issueDate && !invoice.issueDate) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invoice date is required",
+        });
+      }
+      
+      if (!input.totalAmount && !invoice.total) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Total amount is required",
+        });
+      }
+      
       // Calculate totals if items provided
       let subtotal = invoice.subtotal;
       let total = invoice.total;
@@ -930,16 +945,31 @@ export const invoiceRouter = router({
       }
       
       // Update invoice with confirmed data
+      // IMPORTANT: Always use input values when provided to ensure all edits are persisted
+      // The client always sends issueDate and totalAmount (validated as required)
       const finalInvoiceNumber = input.invoiceNumber ?? invoice.invoiceNumber;
+      // issueDate is always provided by client (validated as required)
+      const finalIssueDate = input.issueDate 
+        ? new Date(input.issueDate) 
+        : (invoice.issueDate ? new Date(invoice.issueDate) : null);
+      // dueDate: if explicitly provided in input (even if null), use it; otherwise keep existing
+      const finalDueDate = input.dueDate !== undefined 
+        ? (input.dueDate ? new Date(input.dueDate) : null)
+        : (invoice.dueDate ? new Date(invoice.dueDate) : null);
+      // clientId: if explicitly provided (even if null), use it; otherwise keep existing
+      const finalClientId = input.clientId !== undefined 
+        ? input.clientId 
+        : invoice.clientId;
+      
       const updated = await db.updateInvoice(input.id, {
-        clientId: input.clientId ?? invoice.clientId,
+        clientId: finalClientId,
         invoiceNumber: finalInvoiceNumber,
         invoiceName: formatInvoiceName(finalInvoiceNumber),
-        issueDate: input.issueDate ? new Date(input.issueDate) : invoice.issueDate,
-        dueDate: input.dueDate ? new Date(input.dueDate) : invoice.dueDate,
+        issueDate: finalIssueDate,
+        dueDate: finalDueDate,
         subtotal,
         total,
-        needsReview: false, // Clear review flag
+        needsReview: false, // Clear review flag - this moves invoice from Needs Review to Draft
         items: input.items
           ? normalizeLineItems(input.items).map((item) => ({
               ...item,

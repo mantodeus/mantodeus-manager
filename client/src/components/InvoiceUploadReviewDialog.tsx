@@ -330,7 +330,7 @@ export function InvoiceUploadReviewDialog({
         invoiceNumber: invoiceNumber || undefined,
         issueDate: new Date(issueDate),
         totalAmount: String(totalAmount),
-        dueDate: dueDate ? new Date(dueDate) : undefined,
+        dueDate: dueDate ? new Date(dueDate) : null,
       });
     } else {
       await updateMutation.mutateAsync({

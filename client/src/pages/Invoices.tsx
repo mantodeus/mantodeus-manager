@@ -1387,6 +1387,9 @@ export default function Invoices() {
   };
   
   // Handler for confirmed batch revert to draft
+  // CRITICAL: This handler is ONLY called from RevertInvoiceStatusDialog.onConfirm
+  // after the user has acknowledged the warning by checking the checkbox.
+  // Never call this directly - always go through the dialog.
   const handleConfirmBatchRevertToDraft = () => {
     if (!batchRevertData || batchRevertData.targetStatus !== "draft") return;
     
@@ -1455,6 +1458,9 @@ export default function Invoices() {
   };
   
   // Handler for confirmed batch revert to sent
+  // CRITICAL: This handler is ONLY called from RevertInvoiceStatusDialog.onConfirm
+  // after the user has acknowledged the warning by checking the checkbox.
+  // Never call this directly - always go through the dialog.
   const handleConfirmBatchRevertToSent = () => {
     if (!batchRevertData || batchRevertData.targetStatus !== "open") return;
     
