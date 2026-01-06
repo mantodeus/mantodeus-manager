@@ -191,9 +191,9 @@ function YearTotalCard({
     };
   }, [cardRect]);
 
-  // Show only years with data, sorted by year descending
+  // Show only years with data, excluding the currently selected year, sorted by year descending
   const availableYears = [...allYearTotals]
-    .filter(({ total }) => total > 0)
+    .filter(({ year, total }) => total > 0 && year !== selectedYear)
     .sort((a, b) => b.year - a.year);
 
   return (
@@ -302,10 +302,7 @@ function YearTotalCard({
                       onYearSelect(year);
                       onPopoverOpenChange(false);
                     }}
-                    className={cn(
-                      "glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors",
-                      year === selectedYear && "bg-muted/50"
-                    )}
+                    className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors"
                     style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
                   >
                     <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Total {year}</span>
@@ -454,9 +451,9 @@ function QuarterTotalCard({
     };
   }, [cardRect]);
 
-  // Show only quarters with data, sorted by year and quarter descending
+  // Show only quarters with data, excluding the currently selected quarter, sorted by year and quarter descending
   const availableQuarters = [...allQuarterTotals]
-    .filter(({ total }) => total > 0)
+    .filter(({ quarter, year, total }) => total > 0 && !(year === selectedQuarter.year && quarter === selectedQuarter.quarter))
     .sort((a, b) => {
       if (a.year !== b.year) return b.year - a.year;
       return b.quarter - a.quarter;
@@ -571,10 +568,7 @@ function QuarterTotalCard({
                       onQuarterSelect(quarter, year);
                       onPopoverOpenChange(false);
                     }}
-                    className={cn(
-                      "glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors",
-                      year === selectedQuarter.year && quarter === selectedQuarter.quarter && "bg-muted/50"
-                    )}
+                    className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors"
                     style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
                   >
                     <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{key}</span>

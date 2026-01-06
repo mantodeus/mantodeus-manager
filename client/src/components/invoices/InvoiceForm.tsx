@@ -849,6 +849,21 @@ export function InvoiceForm({
             Not Paid
           </Button>
         )}
+        
+        {/* Mark as Paid button for overdue invoices */}
+        {invoice && !isCreate && derivedValues.isOverdue && !isPaid && (
+          <Button
+            type="button"
+            variant="default"
+            onClick={() => markAsPaidMutation.mutate({ id: invoiceId! })}
+            disabled={isLoading || markAsPaidMutation.isPending}
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            {markAsPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            Mark as Paid
+          </Button>
+        )}
       </div>
 
       {/* Dialogs */}
