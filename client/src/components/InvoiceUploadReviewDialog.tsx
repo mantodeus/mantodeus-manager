@@ -193,6 +193,24 @@ export function InvoiceUploadReviewDialog({
       toast.error("Failed to mark as paid: " + error.message);
     },
   });
+  const markAsCancelledMutation = trpc.invoices.markAsCancelled.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as cancelled");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      utils.invoices.list.invalidate();
+      utils.invoices.listNeedsReview.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const markAsNotCancelledMutation = trpc.invoices.markAsNotCancelled.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as not cancelled");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      utils.invoices.list.invalidate();
+      utils.invoices.listNeedsReview.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
   const moveToTrashMutation = trpc.invoices.moveToTrash.useMutation({
     onSuccess: () => {
       toast.success("Invoice moved to trash");
@@ -272,6 +290,7 @@ export function InvoiceUploadReviewDialog({
   const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
   const isPaid = invoiceState === 'PAID';
   const isReadOnly = isSent || isPaid; // Only disable when sent/paid, not when draft
+  const isCancelled = invoice?.cancelledAt !== null && invoice?.cancelledAt !== undefined;
   
   const handleSend = () => {
     if (!invoice) return;
@@ -705,6 +724,33 @@ export function InvoiceUploadReviewDialog({
                 >
                   Revert to Sent
                 </Button>
+              )}
+
+              {/* Cancel/Uncancel buttons - only for draft/review invoices */}
+              {(isDraft || isReview) && (
+                <>
+                  {isCancelled ? (
+                    <Button
+                      variant="default"
+                      onClick={() => markAsNotCancelledMutation.mutate({ id: invoiceId! })}
+                      disabled={isLoading || markAsNotCancelledMutation.isPending}
+                      className={isMobile ? "w-full" : ""}
+                    >
+                      {markAsNotCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Mark as Not Cancelled
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="destructive"
+                      onClick={() => markAsCancelledMutation.mutate({ id: invoiceId! })}
+                      disabled={isLoading || markAsCancelledMutation.isPending}
+                      className={isMobile ? "w-full" : ""}
+                    >
+                      {markAsCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Mark as Cancelled
+                    </Button>
+                  )}
+                </>
               )}
 
               {/* Delete - highlighted (destructive) */}

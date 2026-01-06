@@ -64,15 +64,17 @@ const monthDisplayNames = [
 // Year Total Card Component with Long Press
 function YearTotalCard({ 
   selectedYear, 
-  yearTotal, 
+  yearPaid, 
+  yearDue,
   allYearTotals, 
   onYearSelect,
   popoverOpen,
   onPopoverOpenChange 
 }: { 
   selectedYear: number;
-  yearTotal: number;
-  allYearTotals: Array<{ year: number; total: number }>;
+  yearPaid: number;
+  yearDue: number;
+  allYearTotals: Array<{ year: number; paid: number; due: number; total: number }>;
   onYearSelect: (year: number) => void;
   popoverOpen: boolean;
   onPopoverOpenChange: (open: boolean) => void;
@@ -163,7 +165,6 @@ function YearTotalCard({
     };
   }, [cardRect]);
 
-  const selectedYearData = allYearTotals.find(y => y.year === selectedYear);
   const otherYears = allYearTotals.filter(y => y.year !== selectedYear);
 
   return (
@@ -177,13 +178,20 @@ function YearTotalCard({
         {...longPressHandlers}
         onContextMenu={handleContextMenu}
       >
-        <div className="flex items-center justify-between">
-          <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Total {selectedYear}
-          </span>
-          <span className="text-xl font-semibold">
-            {formatCurrency(yearTotal)}
-          </span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Total {selectedYear}
+            </span>
+            <span className="text-xl font-semibold">
+              {formatCurrency(yearPaid)}
+            </span>
+          </div>
+          <div className="flex items-center justify-end">
+            <span className="text-sm text-muted-foreground">
+              Due {formatCurrency(yearDue)}
+            </span>
+          </div>
         </div>
       </Card>
 
@@ -229,29 +237,24 @@ function YearTotalCard({
             onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="space-y-1">
-              {/* Current selection at top */}
-              {selectedYearData && (
-                <div className="glass-menu-item bg-accent/30 px-3 py-2 rounded-md">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Total {selectedYearData.year}</span>
-                    <span className="text-sm font-semibold">{formatCurrency(selectedYearData.total)}</span>
-                  </div>
-                </div>
-              )}
-              
               {/* Other years */}
-              {otherYears.map(({ year, total }) => (
+              {otherYears.map(({ year, paid, due }) => (
                 <button
                   key={year}
                   onClick={() => {
                     onYearSelect(year);
                     onPopoverOpenChange(false);
                   }}
-                  className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                  className="glass-menu-item w-full text-left px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
                   style={{ border: 'none' }}
                 >
-                  <span className="text-sm font-medium">Total {year}</span>
-                  <span className="text-sm font-semibold">{formatCurrency(total)}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Total {year}</span>
+                    <span className="text-sm font-semibold">{formatCurrency(paid)}</span>
+                  </div>
+                  <div className="flex items-center justify-end mt-0.5">
+                    <span className="text-xs text-muted-foreground">Due {formatCurrency(due)}</span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -266,15 +269,17 @@ function YearTotalCard({
 // Quarter Total Card Component with Long Press
 function QuarterTotalCard({ 
   selectedQuarter, 
-  quarterTotal, 
+  quarterPaid,
+  quarterDue,
   allQuarterTotals, 
   onQuarterSelect,
   popoverOpen,
   onPopoverOpenChange 
 }: { 
   selectedQuarter: { quarter: number; year: number };
-  quarterTotal: number;
-  allQuarterTotals: Array<{ key: string; quarter: number; year: number; total: number }>;
+  quarterPaid: number;
+  quarterDue: number;
+  allQuarterTotals: Array<{ key: string; quarter: number; year: number; paid: number; due: number; total: number }>;
   onQuarterSelect: (quarter: number, year: number) => void;
   popoverOpen: boolean;
   onPopoverOpenChange: (open: boolean) => void;
@@ -365,9 +370,6 @@ function QuarterTotalCard({
     };
   }, [cardRect]);
 
-  const selectedQuarterData = allQuarterTotals.find(
-    q => q.year === selectedQuarter.year && q.quarter === selectedQuarter.quarter
-  );
   const otherQuarters = allQuarterTotals.filter(
     q => !(q.year === selectedQuarter.year && q.quarter === selectedQuarter.quarter)
   );
@@ -383,13 +385,20 @@ function QuarterTotalCard({
         {...longPressHandlers}
         onContextMenu={handleContextMenu}
       >
-        <div className="flex items-center justify-between">
-          <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Q{selectedQuarter.quarter} {selectedQuarter.year}
-          </span>
-          <span className="text-xl font-semibold">
-            {formatCurrency(quarterTotal)}
-          </span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Q{selectedQuarter.quarter} {selectedQuarter.year}
+            </span>
+            <span className="text-xl font-semibold">
+              {formatCurrency(quarterPaid)}
+            </span>
+          </div>
+          <div className="flex items-center justify-end">
+            <span className="text-sm text-muted-foreground">
+              Due {formatCurrency(quarterDue)}
+            </span>
+          </div>
         </div>
       </Card>
 
@@ -435,29 +444,24 @@ function QuarterTotalCard({
             onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="space-y-1">
-              {/* Current selection at top */}
-              {selectedQuarterData && (
-                <div className="glass-menu-item bg-accent/30 px-3 py-2 rounded-md">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{selectedQuarterData.key}</span>
-                    <span className="text-sm font-semibold">{formatCurrency(selectedQuarterData.total)}</span>
-                  </div>
-                </div>
-              )}
-              
               {/* Other quarters */}
-              {otherQuarters.map(({ key, quarter, year, total }) => (
+              {otherQuarters.map(({ key, quarter, year, paid, due }) => (
                 <button
                   key={key}
                   onClick={() => {
                     onQuarterSelect(quarter, year);
                     onPopoverOpenChange(false);
                   }}
-                  className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                  className="glass-menu-item w-full text-left px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
                   style={{ border: 'none' }}
                 >
-                  <span className="text-sm font-medium">{key}</span>
-                  <span className="text-sm font-semibold">{formatCurrency(total)}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{key}</span>
+                    <span className="text-sm font-semibold">{formatCurrency(paid)}</span>
+                  </div>
+                  <div className="flex items-center justify-end mt-0.5">
+                    <span className="text-xs text-muted-foreground">Due {formatCurrency(due)}</span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -834,7 +838,7 @@ export default function Invoices() {
   }, [allInvoices, selectedIds, searchQuery, filters]);
 
   // Calculate invoice totals for all years and quarters
-  const { yearTotal, quarterTotal, allYearTotals, allQuarterTotals } = useMemo(() => {
+  const { yearPaid, yearDue, quarterPaid, quarterDue, allYearTotals, allQuarterTotals } = useMemo(() => {
     // Use selected year/quarter for display
     const displayYear = selectedYear;
     const displayQuarter = selectedQuarter.quarter;
@@ -843,10 +847,14 @@ export default function Invoices() {
     const quarterStart = new Date(displayQuarterYear, (displayQuarter - 1) * 3, 1);
     const quarterEnd = new Date(displayQuarterYear, displayQuarter * 3, 0, 23, 59, 59);
 
-    let yearSum = 0;
-    let quarterSum = 0;
-    const yearTotalsMap = new Map<number, number>();
-    const quarterTotalsMap = new Map<string, number>();
+    let yearPaidSum = 0;
+    let yearDueSum = 0;
+    let quarterPaidSum = 0;
+    let quarterDueSum = 0;
+    const yearPaidMap = new Map<number, number>();
+    const yearDueMap = new Map<number, number>();
+    const quarterPaidMap = new Map<string, number>();
+    const quarterDueMap = new Map<string, number>();
 
     allInvoices.forEach((invoice) => {
       // Only count active invoices (not archived or deleted)
@@ -861,6 +869,11 @@ export default function Invoices() {
       const total = parseFloat(invoice.total?.toString() || '0');
       if (isNaN(total)) return;
 
+      const amountPaid = parseFloat(invoice.amountPaid?.toString() || '0');
+      const isPaid = invoice.paidAt !== null || amountPaid >= total;
+      const paidAmount = isPaid ? total : amountPaid;
+      const dueAmount = total - paidAmount;
+
       const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
       if (!issueDate) return;
 
@@ -869,50 +882,67 @@ export default function Invoices() {
       const quarterKey = `Q${invoiceQuarter} ${invoiceYear}`;
 
       // Add to year totals
-      const existingYearTotal = yearTotalsMap.get(invoiceYear) || 0;
-      yearTotalsMap.set(invoiceYear, existingYearTotal + total);
+      const existingYearPaid = yearPaidMap.get(invoiceYear) || 0;
+      yearPaidMap.set(invoiceYear, existingYearPaid + paidAmount);
+      const existingYearDue = yearDueMap.get(invoiceYear) || 0;
+      yearDueMap.set(invoiceYear, existingYearDue + dueAmount);
 
       // Add to quarter totals
-      const existingQuarterTotal = quarterTotalsMap.get(quarterKey) || 0;
-      quarterTotalsMap.set(quarterKey, existingQuarterTotal + total);
+      const existingQuarterPaid = quarterPaidMap.get(quarterKey) || 0;
+      quarterPaidMap.set(quarterKey, existingQuarterPaid + paidAmount);
+      const existingQuarterDue = quarterDueMap.get(quarterKey) || 0;
+      quarterDueMap.set(quarterKey, existingQuarterDue + dueAmount);
 
       // Selected year and quarter
       if (invoiceYear === displayYear) {
-        yearSum += total;
+        yearPaidSum += paidAmount;
+        yearDueSum += dueAmount;
       }
       if (invoiceYear === displayQuarterYear && issueDate >= quarterStart && issueDate <= quarterEnd) {
-        quarterSum += total;
+        quarterPaidSum += paidAmount;
+        quarterDueSum += dueAmount;
       }
     });
 
     // Convert maps to sorted arrays
-    const allYears = Array.from(yearTotalsMap.keys()).sort((a, b) => b - a);
+    const allYears = Array.from(new Set([...yearPaidMap.keys(), ...yearDueMap.keys()])).sort((a, b) => b - a);
     const allYearTotals = allYears.map(year => ({
       year,
-      total: yearTotalsMap.get(year) || 0
+      paid: yearPaidMap.get(year) || 0,
+      due: yearDueMap.get(year) || 0,
+      total: (yearPaidMap.get(year) || 0) + (yearDueMap.get(year) || 0)
     }));
 
     // Convert quarter map to sorted array (by year desc, then quarter desc)
-    const allQuarters = Array.from(quarterTotalsMap.entries())
-      .map(([key, total]) => {
+    const allQuarterKeys = Array.from(new Set([...quarterPaidMap.keys(), ...quarterDueMap.keys()]));
+    const allQuarters = allQuarterKeys
+      .map((key) => {
         const match = key.match(/Q(\d+) (\d+)/);
         if (!match) return null;
+        const quarter = parseInt(match[1], 10);
+        const year = parseInt(match[2], 10);
+        const paid = quarterPaidMap.get(key) || 0;
+        const due = quarterDueMap.get(key) || 0;
         return {
           key,
-          quarter: parseInt(match[1], 10),
-          year: parseInt(match[2], 10),
-          total
+          quarter,
+          year,
+          paid,
+          due,
+          total: paid + due
         };
       })
-      .filter((q): q is { key: string; quarter: number; year: number; total: number } => q !== null)
+      .filter((q): q is { key: string; quarter: number; year: number; paid: number; due: number; total: number } => q !== null)
       .sort((a, b) => {
         if (a.year !== b.year) return b.year - a.year;
         return b.quarter - a.quarter;
       });
 
     return {
-      yearTotal: yearSum,
-      quarterTotal: quarterSum,
+      yearPaid: yearPaidSum,
+      yearDue: yearDueSum,
+      quarterPaid: quarterPaidSum,
+      quarterDue: quarterDueSum,
       allYearTotals,
       allQuarterTotals: allQuarters,
     };
@@ -1779,7 +1809,8 @@ export default function Invoices() {
       <div className="grid gap-3 md:grid-cols-2">
         <YearTotalCard
           selectedYear={selectedYear}
-          yearTotal={yearTotal}
+          yearPaid={yearPaid}
+          yearDue={yearDue}
           allYearTotals={allYearTotals}
           onYearSelect={(year) => setSelectedYear(year)}
           popoverOpen={yearPopoverOpen}
@@ -1787,7 +1818,8 @@ export default function Invoices() {
         />
         <QuarterTotalCard
           selectedQuarter={selectedQuarter}
-          quarterTotal={quarterTotal}
+          quarterPaid={quarterPaid}
+          quarterDue={quarterDue}
           allQuarterTotals={allQuarterTotals}
           onQuarterSelect={(quarter, year) => setSelectedQuarter({ quarter, year })}
           popoverOpen={quarterPopoverOpen}

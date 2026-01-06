@@ -64,11 +64,9 @@ export function getInvoiceActions({
 
   // Lifecycle actions based on state
   if (isDraft || isReview) {
-    // Mark as Sent - only for draft/needsReview, requires dueDate and total>0
-    // Validation happens in the handler, but we include it here
-    if (invoice.dueDate && Number(invoice.total || 0) > 0) {
-      actions.push("markAsSent");
-    }
+    // Mark as Sent - always available for draft/review invoices
+    // Validation (dueDate and total>0) happens in the handler
+    actions.push("markAsSent");
     
     // Mark as Paid - for uploaded invoices that haven't been sent
     if (invoice.source === "uploaded" && !invoice.sentAt) {
@@ -136,16 +134,12 @@ export function isActionValidForInvoice(
 
   switch (action) {
     case "markAsSent":
-      // Only for draft/needsReview, requires dueDate and total>0
+      // Only for draft/needsReview
       if (!isDraft && !isReview) {
         return { valid: false, reason: "Invoice must be in draft or review state" };
       }
-      if (!invoice.dueDate) {
-        return { valid: false, reason: "Invoice must have a due date" };
-      }
-      if (Number(invoice.total || 0) <= 0) {
-        return { valid: false, reason: "Invoice total must be greater than 0" };
-      }
+      // Note: dueDate and total>0 validation happens in the handler, not here
+      // This allows the action to show in menus even if validation fails
       return { valid: true };
 
     case "markAsPaid":
