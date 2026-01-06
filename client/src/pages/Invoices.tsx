@@ -82,6 +82,9 @@ function YearTotalCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [cardRect, setCardRect] = useState<DOMRect | null>(null);
+  const [viewMode, setViewMode] = useState<'total' | 'paid-due'>('paid-due');
+  
+  const yearTotal = yearPaid + yearDue;
   
   const { longPressHandlers } = useLongPress({
     onLongPress: (e) => {
@@ -159,9 +162,10 @@ function YearTotalCard({
     
     return {
       position: 'fixed' as const,
-      left: `${cardRect.left + cardRect.width / 2}px`,
+      left: `${cardRect.left}px`,
       top: `${cardRect.bottom + 8}px`,
-      transform: 'translateX(-50%)',
+      width: `${cardRect.width}px`,
+      minWidth: `${cardRect.width}px`,
     };
   }, [cardRect]);
 
@@ -183,15 +187,37 @@ function YearTotalCard({
             <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
               Total {selectedYear}
             </span>
-            <span className="text-xl font-semibold">
-              {formatCurrency(yearPaid)}
-            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewMode(viewMode === 'total' ? 'paid-due' : 'total');
+              }}
+              className="text-xs px-2 py-1 rounded-md bg-accent/20 hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {viewMode === 'total' ? 'Paid/Due' : 'Total'}
+            </button>
           </div>
-          <div className="flex items-center justify-end">
-            <span className="text-sm text-muted-foreground">
-              Due {formatCurrency(yearDue)}
-            </span>
-          </div>
+          {viewMode === 'total' ? (
+            <div className="flex items-center justify-end">
+              <span className="text-xl font-semibold">
+                {formatCurrency(yearTotal)}
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-xs text-muted-foreground">Paid</span>
+                <span className="text-xl font-semibold">
+                  {formatCurrency(yearPaid)}
+                </span>
+              </div>
+              <div className="flex items-center justify-end">
+                <span className="text-sm text-muted-foreground">
+                  Due {formatCurrency(yearDue)}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </Card>
 
@@ -226,7 +252,7 @@ function YearTotalCard({
             style={{
               ...menuStyle,
               zIndex: 9998,
-              animation: "contextMenuIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              animation: "slideDownMenu 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               overflowY: "auto",
               overscrollBehavior: "contain",
               pointerEvents: "auto",
@@ -236,25 +262,20 @@ function YearTotalCard({
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
-            <div className="space-y-1">
+            <div className="space-y-1 w-full">
               {/* Other years */}
-              {otherYears.map(({ year, paid, due }) => (
+              {otherYears.map(({ year, total }) => (
                 <button
                   key={year}
                   onClick={() => {
                     onYearSelect(year);
                     onPopoverOpenChange(false);
                   }}
-                  className="glass-menu-item w-full text-left px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                  className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
                   style={{ border: 'none' }}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Total {year}</span>
-                    <span className="text-sm font-semibold">{formatCurrency(paid)}</span>
-                  </div>
-                  <div className="flex items-center justify-end mt-0.5">
-                    <span className="text-xs text-muted-foreground">Due {formatCurrency(due)}</span>
-                  </div>
+                  <span className="text-sm font-medium">Total {year}</span>
+                  <span className="text-sm font-semibold">{formatCurrency(total)}</span>
                 </button>
               ))}
             </div>
@@ -287,6 +308,9 @@ function QuarterTotalCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [cardRect, setCardRect] = useState<DOMRect | null>(null);
+  const [viewMode, setViewMode] = useState<'total' | 'paid-due'>('paid-due');
+  
+  const quarterTotal = quarterPaid + quarterDue;
   
   const { longPressHandlers } = useLongPress({
     onLongPress: (e) => {
@@ -364,9 +388,10 @@ function QuarterTotalCard({
     
     return {
       position: 'fixed' as const,
-      left: `${cardRect.left + cardRect.width / 2}px`,
+      left: `${cardRect.left}px`,
       top: `${cardRect.bottom + 8}px`,
-      transform: 'translateX(-50%)',
+      width: `${cardRect.width}px`,
+      minWidth: `${cardRect.width}px`,
     };
   }, [cardRect]);
 
@@ -390,15 +415,37 @@ function QuarterTotalCard({
             <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
               Q{selectedQuarter.quarter} {selectedQuarter.year}
             </span>
-            <span className="text-xl font-semibold">
-              {formatCurrency(quarterPaid)}
-            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewMode(viewMode === 'total' ? 'paid-due' : 'total');
+              }}
+              className="text-xs px-2 py-1 rounded-md bg-accent/20 hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {viewMode === 'total' ? 'Paid/Due' : 'Total'}
+            </button>
           </div>
-          <div className="flex items-center justify-end">
-            <span className="text-sm text-muted-foreground">
-              Due {formatCurrency(quarterDue)}
-            </span>
-          </div>
+          {viewMode === 'total' ? (
+            <div className="flex items-center justify-end">
+              <span className="text-xl font-semibold">
+                {formatCurrency(quarterTotal)}
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-xs text-muted-foreground">Paid</span>
+                <span className="text-xl font-semibold">
+                  {formatCurrency(quarterPaid)}
+                </span>
+              </div>
+              <div className="flex items-center justify-end">
+                <span className="text-sm text-muted-foreground">
+                  Due {formatCurrency(quarterDue)}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </Card>
 
@@ -433,7 +480,7 @@ function QuarterTotalCard({
             style={{
               ...menuStyle,
               zIndex: 9998,
-              animation: "contextMenuIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              animation: "slideDownMenu 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               overflowY: "auto",
               overscrollBehavior: "contain",
               pointerEvents: "auto",
@@ -443,25 +490,20 @@ function QuarterTotalCard({
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
-            <div className="space-y-1">
+            <div className="space-y-1 w-full">
               {/* Other quarters */}
-              {otherQuarters.map(({ key, quarter, year, paid, due }) => (
+              {otherQuarters.map(({ key, quarter, year, total }) => (
                 <button
                   key={key}
                   onClick={() => {
                     onQuarterSelect(quarter, year);
                     onPopoverOpenChange(false);
                   }}
-                  className="glass-menu-item w-full text-left px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                  className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
                   style={{ border: 'none' }}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{key}</span>
-                    <span className="text-sm font-semibold">{formatCurrency(paid)}</span>
-                  </div>
-                  <div className="flex items-center justify-end mt-0.5">
-                    <span className="text-xs text-muted-foreground">Due {formatCurrency(due)}</span>
-                  </div>
+                  <span className="text-sm font-medium">{key}</span>
+                  <span className="text-sm font-semibold">{formatCurrency(total)}</span>
                 </button>
               ))}
             </div>
@@ -2121,6 +2163,8 @@ export default function Invoices() {
         // Determine which handlers to provide based on available actions
         const hasMarkAsSent = allActions.has("markAsSent");
         const hasMarkAsPaid = allActions.has("markAsPaid");
+        const hasMarkAsCancelled = allActions.has("markAsCancelled");
+        const hasMarkAsNotCancelled = allActions.has("markAsNotCancelled");
         const hasRevertToDraft = allActions.has("revertToDraft");
         const hasRevertToSent = allActions.has("revertToSent");
         const hasArchive = allActions.has("archive");

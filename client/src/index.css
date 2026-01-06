@@ -403,6 +403,17 @@
     }
   }
 
+  @keyframes slideDownMenu {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   /* Prevent text selection on cards with context menu during interaction */
   .has-context-menu {
     -webkit-touch-callout: none;

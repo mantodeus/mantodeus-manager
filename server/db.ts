@@ -2219,6 +2219,49 @@ export async function revertInvoiceToSent(id: number) {
 }
 
 /**
+ * Mark invoice as cancelled (only for draft/review invoices)
+ * Sets cancelledAt timestamp
+ */
+export async function markInvoiceAsCancelled(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  const invoice = await getInvoiceById(id);
+  if (!invoice) {
+    throw new Error("Invoice not found");
+  }
+
+  // Only allow cancelling draft or review invoices
+  const isDraft = !invoice.sentAt;
+  const isReview = invoice.needsReview;
+  
+  if (!isDraft && !isReview) {
+    throw new Error("Only draft or review invoices can be cancelled");
+  }
+
+  return db
+    .update(invoices)
+    .set({ cancelledAt: new Date() })
+    .where(eq(invoices.id, id));
+}
+
+/**
+ * Mark invoice as not cancelled
+ * Clears cancelledAt timestamp
+ */
+export async function markInvoiceAsNotCancelled(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureInvoiceSchema(db);
+
+  return db
+    .update(invoices)
+    .set({ cancelledAt: null })
+    .where(eq(invoices.id, id));
+}
+
+/**
  * Add payment to invoice
  * Validates amount <= outstanding
  * Sets paidAt if fully paid
