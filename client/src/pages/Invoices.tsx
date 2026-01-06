@@ -282,7 +282,7 @@ function YearTotalCard({
                     }}
                     className={cn(
                       "glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
-                      year === selectedYear && "bg-accent/30"
+                      year === selectedYear && "bg-muted/50"
                     )}
                     style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
                   >
@@ -529,7 +529,7 @@ function QuarterTotalCard({
                     }}
                     className={cn(
                       "glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
-                      year === selectedQuarter.year && quarter === selectedQuarter.quarter && "bg-accent/30"
+                      year === selectedQuarter.year && quarter === selectedQuarter.quarter && "bg-muted/50"
                     )}
                     style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
                   >
@@ -980,8 +980,25 @@ export default function Invoices() {
       }
     });
 
-    // Convert maps to sorted arrays
-    const allYears = Array.from(new Set([...yearPaidMap.keys(), ...yearDueMap.keys()])).sort((a, b) => b - a);
+    // Get all years with data
+    const yearsWithData = Array.from(new Set([...yearPaidMap.keys(), ...yearDueMap.keys()]));
+    
+    // Always include the currently selected year and a range of years around it
+    const currentYear = new Date().getFullYear();
+    const minYear = Math.min(...yearsWithData, displayYear, currentYear - 2);
+    const maxYear = Math.max(...yearsWithData, displayYear, currentYear + 2);
+    
+    // Create a set of all years to include (data years + selected year + range)
+    const allYearsSet = new Set<number>();
+    yearsWithData.forEach(year => allYearsSet.add(year));
+    allYearsSet.add(displayYear); // Always include selected year
+    // Add range of years around current year
+    for (let year = minYear; year <= maxYear; year++) {
+      allYearsSet.add(year);
+    }
+    
+    // Convert to sorted array
+    const allYears = Array.from(allYearsSet).sort((a, b) => b - a);
     const allYearTotals = allYears.map(year => ({
       year,
       paid: yearPaidMap.get(year) || 0,
@@ -989,9 +1006,23 @@ export default function Invoices() {
       total: (yearPaidMap.get(year) || 0) + (yearDueMap.get(year) || 0)
     }));
 
+    // Get all quarters with data
+    const quartersWithData = Array.from(new Set([...quarterPaidMap.keys(), ...quarterDueMap.keys()]));
+    
+    // Always include the currently selected quarter and quarters around it
+    const selectedQuarterKey = `Q${displayQuarter} ${displayQuarterYear}`;
+    const quartersSet = new Set<string>();
+    quartersWithData.forEach(key => quartersSet.add(key));
+    quartersSet.add(selectedQuarterKey); // Always include selected quarter
+    
+    // Add adjacent quarters (previous and next quarter)
+    const prevQuarter = displayQuarter === 1 ? { quarter: 4, year: displayQuarterYear - 1 } : { quarter: displayQuarter - 1, year: displayQuarterYear };
+    const nextQuarter = displayQuarter === 4 ? { quarter: 1, year: displayQuarterYear + 1 } : { quarter: displayQuarter + 1, year: displayQuarterYear };
+    quartersSet.add(`Q${prevQuarter.quarter} ${prevQuarter.year}`);
+    quartersSet.add(`Q${nextQuarter.quarter} ${nextQuarter.year}`);
+    
     // Convert quarter map to sorted array (by year desc, then quarter desc)
-    const allQuarterKeys = Array.from(new Set([...quarterPaidMap.keys(), ...quarterDueMap.keys()]));
-    const allQuarters = allQuarterKeys
+    const allQuarters = Array.from(quartersSet)
       .map((key) => {
         const match = key.match(/Q(\d+) (\d+)/);
         if (!match) return null;
