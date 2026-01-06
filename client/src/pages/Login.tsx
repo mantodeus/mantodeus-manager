@@ -4,11 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
+import { setAuthToken } from "@/lib/authToken";
 import { APP_TITLE } from "@/const";
 import { Logo } from "@/components/Logo";
 import { Loader2 } from "@/components/ui/Icon";
+import { useLocation } from "wouter";
 
 export default function Login() {
+  const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -48,6 +51,7 @@ export default function Login() {
       if (!session?.access_token) {
         throw new Error("Failed to get session token after login");
       }
+      setAuthToken(session.access_token);
 
       // Step 3: Set the session cookie on the backend
       const callbackResponse = await fetch("/api/auth/callback", {
@@ -72,8 +76,8 @@ export default function Login() {
       await new Promise(resolve => setTimeout(resolve, 200));
 
       // Step 5: Redirect to home - the Router will handle routing based on auth state
-      // Don't reload - let the app naturally check auth state and route
-      window.location.href = "/";
+      // Avoid full reload to keep in-memory auth available in embedded browsers
+      setLocation("/");
     } catch (err: any) {
       console.error("[Login] Authentication error:", err);
       // Provide more specific error messages

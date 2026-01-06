@@ -49,6 +49,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
+import { getAuthToken, setAuthToken } from "./lib/authToken";
 import { supabase } from "./lib/supabase";
 import { initializeLogos } from "./lib/logo";
 import "./index.css";
@@ -129,12 +130,11 @@ queryClient.getMutationCache().subscribe(event => {
 // This is a slow async operation that blocks the request
 // Instead, we cache the token and update it on auth state changes
 
-// Initialize immediately to avoid "cannot access uninitialized variable" errors
-let cachedAccessToken: string | null = null;
+// Token cache lives in lib/authToken (in-memory + sessionStorage fallback)
 
 // Listen for auth state changes and cache the token
 supabase.auth.onAuthStateChange(async (event, session) => {
-  cachedAccessToken = session?.access_token ?? null;
+  setAuthToken(session?.access_token ?? null);
   
   // On sign out, clear query cache to prevent stale data
   if (event === 'SIGNED_OUT') {
@@ -202,7 +202,7 @@ let sessionRestorePromise: Promise<void> | null = null;
 const restoreBackendSession = async (): Promise<void> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    cachedAccessToken = session?.access_token ?? null;
+    setAuthToken(session?.access_token ?? null);
     
     // If we have a Supabase session, ensure the backend session cookie is set
     if (session?.access_token) {
@@ -267,7 +267,7 @@ const trpcClient = trpc.createClient({
 
           // Use cached token - this is synchronous and fast
           // Safely access cachedAccessToken (it's initialized to null at module level)
-          const token = cachedAccessToken;
+          const token = getAuthToken();
           if (token) {
             headers.set("Authorization", `Bearer ${token}`);
           }
