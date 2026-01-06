@@ -1248,7 +1248,9 @@ export default function Invoices() {
 
   const handleBulkUpload = async (files: File[]) => {
     try {
-      // Convert files to base64
+      // Preserve file order: files are already in selection order
+      // First selected will be uploaded first, so they appear at the bottom
+      // Last selected will be uploaded last, so they appear at the top (newest first)
       const fileData = await Promise.all(
         files.map(async (file) => {
           const reader = new FileReader();
@@ -1274,6 +1276,8 @@ export default function Invoices() {
         })
       );
 
+      // Files are processed in order, so first selected appears first in DB
+      // Since invoices page shows newest first, last selected will appear at top
       bulkUploadMutation.mutate({ files: fileData });
     } catch (error) {
       toast.error("Failed to process files");

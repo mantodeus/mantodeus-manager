@@ -75,14 +75,33 @@ export function BulkInvoiceUploadDialog({
   };
 
   const handleFilesSelected = useCallback((files: File[]) => {
-    const validationErrors = validateFiles(files);
-    setErrors(validationErrors);
+    // Preserve selection order: files come in the order they were selected
+    // Use functional update to access current selectedFiles state
+    setSelectedFiles((currentFiles) => {
+      // Filter out duplicates by filename to prevent adding the same file twice
+      const existingFileNames = new Set(currentFiles.map(f => f.name));
+      const newFiles = files.filter(file => !existingFileNames.has(file.name));
+      
+      // Append new files to existing list (preserving order)
+      const combinedFiles = [...currentFiles, ...newFiles];
+      
+      // Validate all files (existing + new)
+      const validationErrors = validateFiles(combinedFiles);
+      setErrors(validationErrors);
 
-    if (validationErrors.length === 0) {
-      setSelectedFiles(files);
-    } else {
-      setSelectedFiles([]);
-    }
+      if (validationErrors.length === 0) {
+        // Keep all files, including existing ones
+        return combinedFiles;
+      } else {
+        // Only keep valid new files, preserve all existing files
+        const validNewFiles = newFiles.filter(file => {
+          const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+          const isValidSize = file.size <= MAX_FILE_SIZE;
+          return isPdf && isValidSize;
+        });
+        return [...currentFiles, ...validNewFiles];
+      }
+    });
   }, []);
 
   const handleRemoveFile = (index: number) => {
@@ -177,29 +196,34 @@ export function BulkInvoiceUploadDialog({
                 </Button>
               </div>
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {selectedFiles.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 p-2 bg-muted rounded-md"
-                  >
-                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(file.size)}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 shrink-0"
-                      onClick={() => handleRemoveFile(index)}
-                      disabled={isUploading}
+                {/* Display in reverse order: newest (last selected) at top, first selected at bottom */}
+                {[...selectedFiles].reverse().map((file, originalIndex) => {
+                  // Calculate the reverse index for removal
+                  const reverseIndex = selectedFiles.length - 1 - originalIndex;
+                  return (
+                    <div
+                      key={`${file.name}-${file.size}-${file.lastModified}`}
+                      className="flex items-center gap-2 p-2 bg-muted rounded-md"
                     >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{file.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatFileSize(file.size)}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0"
+                        onClick={() => handleRemoveFile(reverseIndex)}
+                        disabled={isUploading}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
