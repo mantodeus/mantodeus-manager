@@ -12,7 +12,7 @@
  * Z-index: Active item > Menu > Overlay > Background
  */
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useLongPress } from "@/hooks/useLongPress";
 import { cn } from "@/lib/utils";
@@ -580,14 +580,29 @@ export const CenteredContextMenu = React.forwardRef<
     }
   }, [isOpen, menuShiftY]);
 
-  // Measure menu height after render so spacing is consistent above/below.
-  useEffect(() => {
+  // Measure full menu height after render so spacing stays accurate.
+  useLayoutEffect(() => {
     if (!isOpen || !menuRef.current) return;
-    const rect = menuRef.current.getBoundingClientRect();
-    if (rect.height > 0 && rect.height !== menuHeight) {
-      setMenuHeight(rect.height);
-    }
-  }, [isOpen, menuHeight]);
+
+    let rafId: number | null = null;
+
+    const measure = () => {
+      if (!menuRef.current) return;
+      const nextHeight = menuRef.current.scrollHeight;
+      if (nextHeight > 0) {
+        setMenuHeight((prev) => (prev === nextHeight ? prev : nextHeight));
+      }
+    };
+
+    measure();
+    rafId = requestAnimationFrame(measure);
+
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+    };
+  }, [isOpen, actions]);
 
   // Group actions
   const groupedActions = useMemo(() => {

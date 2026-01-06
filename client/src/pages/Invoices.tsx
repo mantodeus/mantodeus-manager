@@ -75,6 +75,8 @@ function YearTotalCard({
   popoverOpen: boolean;
   onPopoverOpenChange: (open: boolean) => void;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  
   const { longPressHandlers } = useLongPress({
     onLongPress: (e) => {
       e.preventDefault();
@@ -90,33 +92,54 @@ function YearTotalCard({
   };
 
   return (
-    <Card 
-      className="p-4 has-context-menu cursor-pointer"
-      {...longPressHandlers}
-      onContextMenu={handleContextMenu}
-    >
+    <>
+      {/* Backdrop blur overlay when popover is open */}
+      {popoverOpen && (
+        <div
+          className="fixed inset-0 backdrop-blur-md bg-black/20 z-[9995]"
+          style={{
+            animation: "fadeIn 220ms ease-out",
+            pointerEvents: "auto",
+          }}
+          onClick={() => onPopoverOpenChange(false)}
+        />
+      )}
+      
       <Popover open={popoverOpen} onOpenChange={onPopoverOpenChange}>
-        <div className="flex items-center justify-between">
-          <PopoverTrigger asChild>
-            <button className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-              Total {selectedYear}
-            </button>
-          </PopoverTrigger>
-          <span className="text-xl font-semibold">
-            {formatCurrency(yearTotal)}
-          </span>
-        </div>
-        <PopoverContent className="w-64 p-2 glass-panel border-border/50 backdrop-blur-xl bg-background/95" align="start">
+        <PopoverTrigger asChild>
+          <Card 
+            ref={cardRef}
+            className="p-4 has-context-menu cursor-pointer"
+            {...longPressHandlers}
+            onContextMenu={handleContextMenu}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Total {selectedYear}
+              </span>
+              <span className="text-xl font-semibold">
+                {formatCurrency(yearTotal)}
+              </span>
+            </div>
+          </Card>
+        </PopoverTrigger>
+        <PopoverContent 
+          className="w-64 p-2 glass-context-menu z-[9996]" 
+          align="center"
+          side="bottom"
+          sideOffset={8}
+        >
           <div className="space-y-1">
             {allYearTotals.map(({ year, total }) => (
               <button
                 key={year}
                 onClick={() => {
                   onYearSelect(year);
-                  onPopoverOpenChange(false);
+                  // Don't close immediately - allow user to see the change
+                  setTimeout(() => onPopoverOpenChange(false), 150);
                 }}
                 className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
+                  "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors glass-menu-item",
                   year === selectedYear && "bg-accent"
                 )}
               >
@@ -127,7 +150,7 @@ function YearTotalCard({
           </div>
         </PopoverContent>
       </Popover>
-    </Card>
+    </>
   );
 }
 
@@ -147,6 +170,8 @@ function QuarterTotalCard({
   popoverOpen: boolean;
   onPopoverOpenChange: (open: boolean) => void;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  
   const { longPressHandlers } = useLongPress({
     onLongPress: (e) => {
       e.preventDefault();
@@ -162,23 +187,43 @@ function QuarterTotalCard({
   };
 
   return (
-    <Card 
-      className="p-4 has-context-menu cursor-pointer"
-      {...longPressHandlers}
-      onContextMenu={handleContextMenu}
-    >
+    <>
+      {/* Backdrop blur overlay when popover is open */}
+      {popoverOpen && (
+        <div
+          className="fixed inset-0 backdrop-blur-md bg-black/20 z-[9995]"
+          style={{
+            animation: "fadeIn 220ms ease-out",
+            pointerEvents: "auto",
+          }}
+          onClick={() => onPopoverOpenChange(false)}
+        />
+      )}
+      
       <Popover open={popoverOpen} onOpenChange={onPopoverOpenChange}>
-        <div className="flex items-center justify-between">
-          <PopoverTrigger asChild>
-            <button className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-              Q{selectedQuarter.quarter} {selectedQuarter.year}
-            </button>
-          </PopoverTrigger>
-          <span className="text-xl font-semibold">
-            {formatCurrency(quarterTotal)}
-          </span>
-        </div>
-        <PopoverContent className="w-64 p-2 glass-panel border-border/50 backdrop-blur-xl bg-background/95" align="start">
+        <PopoverTrigger asChild>
+          <Card 
+            ref={cardRef}
+            className="p-4 has-context-menu cursor-pointer"
+            {...longPressHandlers}
+            onContextMenu={handleContextMenu}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Q{selectedQuarter.quarter} {selectedQuarter.year}
+              </span>
+              <span className="text-xl font-semibold">
+                {formatCurrency(quarterTotal)}
+              </span>
+            </div>
+          </Card>
+        </PopoverTrigger>
+        <PopoverContent 
+          className="w-64 p-2 glass-context-menu z-[9996]" 
+          align="center"
+          side="bottom"
+          sideOffset={8}
+        >
           <div className="space-y-1 max-h-[300px] overflow-y-auto">
             {allQuarterTotals.map(({ key, quarter, year, total }) => {
               const isSelectedQuarter = 
@@ -189,10 +234,11 @@ function QuarterTotalCard({
                   key={key}
                   onClick={() => {
                     onQuarterSelect(quarter, year);
-                    onPopoverOpenChange(false);
+                    // Don't close immediately - allow user to see the change
+                    setTimeout(() => onPopoverOpenChange(false), 150);
                   }}
                   className={cn(
-                    "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
+                    "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors glass-menu-item",
                     isSelectedQuarter && "bg-accent"
                   )}
                 >
@@ -204,7 +250,7 @@ function QuarterTotalCard({
           </div>
         </PopoverContent>
       </Popover>
-    </Card>
+    </>
   );
 }
 
