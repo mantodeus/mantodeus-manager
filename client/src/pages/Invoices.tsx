@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
+import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X, CheckCircle2, Archive, Trash2, ChevronDown } from "@/components/ui/Icon";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
@@ -20,6 +20,7 @@ import { BulkInvoiceUploadDialog } from "@/components/invoices/BulkInvoiceUpload
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 function formatCurrency(amount: number | string) {
@@ -362,8 +363,8 @@ export default function Invoices() {
 
   const filteredInvoices = filterInvoices(allInvoices);
 
-  // Calculate invoice totals for year and quarter
-  const { yearTotal, quarterTotal } = useMemo(() => {
+  // Calculate invoice totals for all years and quarters
+  const { yearTotal, quarterTotal, allYearTotals, allQuarterTotals } = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
@@ -372,6 +373,8 @@ export default function Invoices() {
 
     let yearSum = 0;
     let quarterSum = 0;
+    const yearTotalsMap = new Map<number, number>();
+    const quarterTotalsMap = new Map<string, number>();
 
     allInvoices.forEach((invoice) => {
       // Only count active invoices (not archived or deleted)
@@ -386,7 +389,20 @@ export default function Invoices() {
       const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
       if (!issueDate) return;
 
-      if (issueDate.getFullYear() === currentYear) {
+      const invoiceYear = issueDate.getFullYear();
+      const invoiceQuarter = Math.floor(issueDate.getMonth() / 3) + 1;
+      const quarterKey = `Q${invoiceQuarter} ${invoiceYear}`;
+
+      // Add to year totals
+      const existingYearTotal = yearTotalsMap.get(invoiceYear) || 0;
+      yearTotalsMap.set(invoiceYear, existingYearTotal + total);
+
+      // Add to quarter totals
+      const existingQuarterTotal = quarterTotalsMap.get(quarterKey) || 0;
+      quarterTotalsMap.set(quarterKey, existingQuarterTotal + total);
+
+      // Current year and quarter
+      if (invoiceYear === currentYear) {
         yearSum += total;
         if (issueDate >= quarterStart && issueDate <= quarterEnd) {
           quarterSum += total;
@@ -394,9 +410,36 @@ export default function Invoices() {
       }
     });
 
+    // Convert maps to sorted arrays
+    const allYears = Array.from(yearTotalsMap.keys()).sort((a, b) => b - a);
+    const allYearTotals = allYears.map(year => ({
+      year,
+      total: yearTotalsMap.get(year) || 0
+    }));
+
+    // Convert quarter map to sorted array (by year desc, then quarter desc)
+    const allQuarters = Array.from(quarterTotalsMap.entries())
+      .map(([key, total]) => {
+        const match = key.match(/Q(\d+) (\d+)/);
+        if (!match) return null;
+        return {
+          key,
+          quarter: parseInt(match[1], 10),
+          year: parseInt(match[2], 10),
+          total
+        };
+      })
+      .filter((q): q is { key: string; quarter: number; year: number; total: number } => q !== null)
+      .sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year;
+        return b.quarter - a.quarter;
+      });
+
     return {
       yearTotal: yearSum,
       quarterTotal: quarterSum,
+      allYearTotals,
+      allQuarterTotals: allQuarters,
     };
   }, [allInvoices]);
 
@@ -990,9 +1033,30 @@ export default function Invoices() {
       <div className="grid gap-3 md:grid-cols-2">
         <Card className="p-4">
           <div className="flex items-center justify-between">
-            <span className="text-base font-medium text-muted-foreground">
-              Total {new Date().getFullYear()}
-            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer">
+                  Total {new Date().getFullYear()}
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start">
+                <div className="space-y-1">
+                  {allYearTotals.map(({ year, total }) => (
+                    <div
+                      key={year}
+                      className={cn(
+                        "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent cursor-pointer",
+                        year === new Date().getFullYear() && "bg-accent"
+                      )}
+                    >
+                      <span className="text-sm font-medium">Total {year}</span>
+                      <span className="text-sm font-semibold">{formatCurrency(total)}</span>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <span className="text-xl font-semibold">
               {formatCurrency(yearTotal)}
             </span>
@@ -1000,9 +1064,35 @@ export default function Invoices() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center justify-between">
-            <span className="text-base font-medium text-muted-foreground">
-              Q{Math.floor(new Date().getMonth() / 3) + 1} {new Date().getFullYear()}
-            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer">
+                  Q{Math.floor(new Date().getMonth() / 3) + 1} {new Date().getFullYear()}
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start">
+                <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                  {allQuarterTotals.map(({ key, quarter, year, total }) => {
+                    const isCurrentQuarter = 
+                      year === new Date().getFullYear() && 
+                      quarter === Math.floor(new Date().getMonth() / 3) + 1;
+                    return (
+                      <div
+                        key={key}
+                        className={cn(
+                          "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent cursor-pointer",
+                          isCurrentQuarter && "bg-accent"
+                        )}
+                      >
+                        <span className="text-sm font-medium">{key}</span>
+                        <span className="text-sm font-semibold">{formatCurrency(total)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
             <span className="text-xl font-semibold">
               {formatCurrency(quarterTotal)}
             </span>
