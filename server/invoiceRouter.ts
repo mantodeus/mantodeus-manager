@@ -508,7 +508,10 @@ export const invoiceRouter = router({
     }),
 
   markAsPaid: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ 
+      id: z.number(),
+      alsoMarkAsSent: z.boolean().optional() // For uploaded invoices: also set sentAt if not already set
+    }))
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.user.id;
       const invoice = await db.getInvoiceById(input.id);
@@ -525,18 +528,19 @@ export const invoiceRouter = router({
       if (invoice.paidAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice is already marked as paid" });
       }
-      // For uploaded invoices in review state, allow marking as paid without sentAt (historical import)
-      if (invoice.source === "uploaded" && invoice.needsReview) {
-        // Allow - this is the historical import use case (Section 19)
+      // For uploaded invoices (review or draft state), allow marking as paid without sentAt (historical import)
+      if (invoice.source === "uploaded") {
+        // Allow - this is the historical import use case
+        // If alsoMarkAsSent is true, we'll set sentAt when marking as paid
       } else {
-        // For created invoices or after review, require sentAt
+        // For created invoices, require sentAt
         if (!invoice.sentAt) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can be marked as paid" });
         }
         checkInvoiceNeedsReview(invoice, "marked as paid");
       }
 
-      await db.markInvoiceAsPaid(invoice.id);
+      await db.markInvoiceAsPaid(invoice.id, input.alsoMarkAsSent && !invoice.sentAt);
       const updated = await db.getInvoiceById(invoice.id);
       return mapInvoiceToPayload(updated);
     }),

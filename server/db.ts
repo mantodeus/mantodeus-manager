@@ -1993,7 +1993,7 @@ export async function issueInvoice(id: number) {
     .where(eq(invoices.id, id));
 }
 
-export async function markInvoiceAsPaid(id: number) {
+export async function markInvoiceAsPaid(id: number, alsoSetSentAt: boolean = false) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
@@ -2007,14 +2007,22 @@ export async function markInvoiceAsPaid(id: number) {
   const totalAmount = invoice.total ? String(invoice.total) : "0.00";
   const paymentDate = new Date();
 
+  const updateData: any = {
+    status: 'paid', 
+    paidAt: paymentDate,
+    amountPaid: totalAmount,
+    lastPaymentAt: paymentDate
+  };
+
+  // If alsoSetSentAt is true and sentAt is not already set, set it
+  if (alsoSetSentAt && !invoice.sentAt) {
+    updateData.sentAt = paymentDate;
+    updateData.status = 'paid'; // Already set above, but explicit
+  }
+
   return db
     .update(invoices)
-    .set({ 
-      status: 'paid', 
-      paidAt: paymentDate,
-      amountPaid: totalAmount,
-      lastPaymentAt: paymentDate
-    })
+    .set(updateData)
     .where(eq(invoices.id, id));
 }
 

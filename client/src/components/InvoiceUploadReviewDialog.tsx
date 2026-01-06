@@ -28,6 +28,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "@/components/ui/Icon";
 import { ShareInvoiceDialog } from "./invoices/ShareInvoiceDialog";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
+import { MarkAsSentAndPaidDialog } from "./invoices/MarkAsSentAndPaidDialog";
+import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -58,6 +60,8 @@ export function InvoiceUploadReviewDialog({
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [revertTarget, setRevertTarget] = useState<"draft" | "sent" | null>(null);
+  const [markAsSentAndPaidDialogOpen, setMarkAsSentAndPaidDialogOpen] = useState(false);
+  const [markAsNotPaidDialogOpen, setMarkAsNotPaidDialogOpen] = useState(false);
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
@@ -347,8 +351,37 @@ export function InvoiceUploadReviewDialog({
   };
 
   const handleMarkAsPaid = async () => {
-    if (!invoiceId) return;
+    if (!invoiceId || !invoice) return;
+    
+    // If invoice hasn't been sent yet, show confirmation dialog
+    if (!invoice.sentAt && invoice.source === "uploaded") {
+      setMarkAsSentAndPaidDialogOpen(true);
+      return;
+    }
+    
+    // Otherwise, mark as paid directly
     await markAsPaidMutation.mutateAsync({ id: invoiceId });
+  };
+
+  const handleConfirmMarkAsSentAndPaid = async () => {
+    if (!invoiceId) return;
+    await markAsPaidMutation.mutateAsync({ id: invoiceId, alsoMarkAsSent: true });
+  };
+
+  const handleMarkAsNotPaid = () => {
+    if (!invoice) return;
+    setMarkAsNotPaidDialogOpen(true);
+  };
+
+  const handleConfirmMarkAsNotPaid = async (target: "sent" | "draft") => {
+    if (!invoiceId) return;
+    setMarkAsNotPaidDialogOpen(false);
+    
+    if (target === "sent") {
+      await revertToSentMutation.mutateAsync({ id: invoiceId, confirmed: true });
+    } else if (target === "draft") {
+      await revertToDraftMutation.mutateAsync({ id: invoiceId, confirmed: true });
+    }
   };
 
   const handleDelete = async () => {
@@ -589,8 +622,8 @@ export function InvoiceUploadReviewDialog({
                 </Button>
               )}
 
-              {/* Mark as Paid (only if not already paid) - appears in REVIEW and DRAFT for uploaded invoices */}
-              {!invoice.paidAt && (
+              {/* Mark as Paid / Mark as Not Paid - appears in REVIEW and DRAFT for uploaded invoices */}
+              {!invoice.paidAt ? (
                 <Button 
                   variant="outline"
                   onClick={handleMarkAsPaid} 
@@ -602,6 +635,18 @@ export function InvoiceUploadReviewDialog({
                 >
                   {markAsPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Mark as Paid
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline"
+                  onClick={handleMarkAsNotPaid} 
+                  disabled={isLoading || revertToSentMutation.isPending || revertToDraftMutation.isPending}
+                  className={cn(
+                    isMobile ? "w-full" : "",
+                    "border bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-transparent dark:border-input dark:hover:bg-input/50"
+                  )}
+                >
+                  Mark as Not Paid
                 </Button>
               )}
 
@@ -728,6 +773,25 @@ export function InvoiceUploadReviewDialog({
           invoiceAmount={invoice.total}
           onConfirm={handleRevertConfirm}
           isReverting={revertToDraftMutation.isPending || revertToSentMutation.isPending}
+        />
+      )}
+
+      {/* Mark as Sent and Paid Dialog */}
+      <MarkAsSentAndPaidDialog
+        open={markAsSentAndPaidDialogOpen}
+        onOpenChange={setMarkAsSentAndPaidDialogOpen}
+        onConfirm={handleConfirmMarkAsSentAndPaid}
+        isProcessing={markAsPaidMutation.isPending}
+      />
+
+      {/* Mark as Not Paid Dialog */}
+      {invoice && (
+        <MarkAsNotPaidDialog
+          open={markAsNotPaidDialogOpen}
+          onOpenChange={setMarkAsNotPaidDialogOpen}
+          onConfirm={handleConfirmMarkAsNotPaid}
+          isProcessing={revertToSentMutation.isPending || revertToDraftMutation.isPending}
+          hasPayments={Number(invoice.amountPaid || 0) > 0}
         />
       )}
     </Dialog>
