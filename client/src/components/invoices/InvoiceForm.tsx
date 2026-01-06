@@ -192,6 +192,22 @@ export function InvoiceForm({
     },
     onError: (error) => toast.error(error.message || "Failed to revert invoice"),
   });
+  const markAsCancelledMutation = trpc.invoices.markAsCancelled.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as cancelled");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      onSuccess?.();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const markAsNotCancelledMutation = trpc.invoices.markAsNotCancelled.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as not cancelled");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      onSuccess?.();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const invoice = getInvoiceQuery.data ?? null;
   const isMobile = useIsMobile();
@@ -213,9 +229,11 @@ export function InvoiceForm({
   
   // Use state-based logic instead of status field
   const isDraft = invoiceState === 'DRAFT' || isCreate;
+  const isReview = invoiceState === 'REVIEW';
   const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
   const isPaid = invoiceState === 'PAID';
   const isReadOnly = isSent || isPaid;
+  const isCancelled = invoice?.cancelledAt !== null && invoice?.cancelledAt !== undefined;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -752,6 +770,35 @@ export function InvoiceForm({
             </Button>
           )}
         </div>
+        
+        {/* Cancel/Uncancel buttons - only for draft/review invoices */}
+        {invoice && !isCreate && (isDraft || isReview) && (
+          <>
+            {isCancelled ? (
+              <Button
+                type="button"
+                variant="default"
+                onClick={() => markAsNotCancelledMutation.mutate({ id: invoiceId! })}
+                disabled={isLoading || markAsNotCancelledMutation.isPending}
+                className="w-full"
+              >
+                {markAsNotCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Mark as Not Cancelled
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => markAsCancelledMutation.mutate({ id: invoiceId! })}
+                disabled={isLoading || markAsCancelledMutation.isPending}
+                className="w-full"
+              >
+                {markAsCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Mark as Cancelled
+              </Button>
+            )}
+          </>
+        )}
         
         {/* Revert buttons - only in footer */}
         {invoice && !isCreate && (

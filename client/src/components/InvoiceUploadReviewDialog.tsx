@@ -722,51 +722,54 @@ export function InvoiceUploadReviewDialog({
 
           {/* After review and draft states (sent/paid) - standard layout for uploaded invoices */}
           {!isReview && !isDraft && invoice?.source === "uploaded" && (
-            <div className={cn(
-              "pt-4 border-t",
-              isMobile ? "flex flex-col gap-2 w-full" : "flex gap-2"
-            )}>
-              {!isReadOnly && (
+            <div className="pt-4 border-t flex flex-col gap-2">
+              <div className="flex gap-2">
+                {/* Delete (replaces Cancel) */}
                 <Button 
-                  onClick={handleSave} 
-                  disabled={isLoading || !isFormValid}
-                  className={isMobile ? "w-full" : ""}
+                  variant="destructive" 
+                  onClick={handleDelete} 
+                  disabled={isLoading || moveToTrashMutation.isPending}
+                  className="flex-1"
                 >
-                  {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Update
+                  {moveToTrashMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Delete
                 </Button>
-              )}
-              {/* Revert buttons - only shown when sent/paid */}
-              {isSent && !isPaid && derivedValues.outstanding === 0 && (
-                <Button
-                  variant="outline"
-                  onClick={handleRevertToDraft}
-                  disabled={isLoading}
-                  className={isMobile ? "w-full" : ""}
-                >
-                  Revert to Draft
-                </Button>
-              )}
-              {isPaid && (
-                <Button
-                  variant="outline"
-                  onClick={handleRevertToSent}
-                  disabled={isLoading}
-                  className={isMobile ? "w-full" : ""}
-                >
-                  Revert to Sent
-                </Button>
-              )}
-              {/* Delete (replaces Cancel) */}
-              <Button 
-                variant="destructive" 
-                onClick={handleDelete} 
-                disabled={isLoading || moveToTrashMutation.isPending}
-                className={isMobile ? "w-full" : ""}
-              >
-                {moveToTrashMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Delete
-              </Button>
+                {!isReadOnly && (
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={isLoading || !isFormValid}
+                    className="flex-1"
+                  >
+                    {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Update
+                  </Button>
+                )}
+              </div>
+              {/* Revert buttons - only shown when sent/paid, on separate line */}
+              {(isSent && !isPaid && derivedValues.outstanding === 0) || isPaid ? (
+                <div className="flex gap-2">
+                  {isSent && !isPaid && derivedValues.outstanding === 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={handleRevertToDraft}
+                      disabled={isLoading}
+                      className="w-full"
+                    >
+                      Revert to Draft
+                    </Button>
+                  )}
+                  {isPaid && (
+                    <Button
+                      variant="outline"
+                      onClick={handleRevertToSent}
+                      disabled={isLoading}
+                      className="w-full"
+                    >
+                      Revert to Sent
+                    </Button>
+                  )}
+                </div>
+              ) : null}
             </div>
           )}
         </div>

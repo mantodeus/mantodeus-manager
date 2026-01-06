@@ -32,7 +32,9 @@ export type CenteredContextMenuAction =
   | "markAsInOrder"
   | "void"
   | "revertToDraft"
-  | "revertToSent";
+  | "revertToSent"
+  | "markAsCancelled"
+  | "markAsNotCancelled";
 
 interface CenteredContextMenuProps {
   /** Callback when an action is selected */
@@ -65,6 +67,8 @@ const actionConfig: Record<
   revertToSent: { icon: RotateCcw, label: "Revert to sent", variant: "destructive" },
   markAsSent: { icon: Send, label: "Mark as sent", variant: "default" },
   markAsPaid: { icon: DollarSign, label: "Mark as paid", variant: "default" },
+  markAsCancelled: { icon: XCircle, label: "Mark as cancelled", variant: "destructive" },
+  markAsNotCancelled: { icon: CheckCircle2, label: "Mark as not cancelled", variant: "default" },
   markAsInOrder: { icon: CheckCircle2, label: "Mark as In Order", variant: "default" },
   void: { icon: XCircle, label: "Void", variant: "destructive" },
 };
@@ -650,9 +654,9 @@ export const CenteredContextMenu = React.forwardRef<
       groups.rubbish.push(action);
     });
 
-    // Add lifecycle actions (markAsSent/markAsPaid/revert) if present
+    // Add lifecycle actions (markAsSent/markAsPaid/revert/cancel) if present
     (actions || []).forEach((action) => {
-      if (action === "markAsSent" || action === "markAsPaid" || action === "revertToDraft" || action === "revertToSent") {
+      if (action === "markAsSent" || action === "markAsPaid" || action === "revertToDraft" || action === "revertToSent" || action === "markAsCancelled" || action === "markAsNotCancelled") {
         groups.lifecycle.push(action);
       }
     });

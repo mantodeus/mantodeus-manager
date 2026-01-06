@@ -151,13 +151,6 @@ function YearTotalCard({
     };
   }, [popoverOpen]);
 
-  // Update card rect when popover opens
-  useEffect(() => {
-    if (popoverOpen && cardRef.current) {
-      setCardRect(cardRef.current.getBoundingClientRect());
-    }
-  }, [popoverOpen]);
-
   // Calculate menu position
   const menuStyle = useMemo(() => {
     if (!cardRect) return null;
@@ -358,13 +351,6 @@ function QuarterTotalCard({
       document.body.removeEventListener('wheel', preventScroll, { capture: true } as any);
       document.body.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
     };
-  }, [popoverOpen]);
-
-  // Update card rect when popover opens
-  useEffect(() => {
-    if (popoverOpen && cardRef.current) {
-      setCardRect(cardRef.current.getBoundingClientRect());
-    }
   }, [popoverOpen]);
 
   // Calculate menu position
@@ -583,6 +569,22 @@ export default function Invoices() {
   const markAsPaidMutation = trpc.invoices.markAsPaid.useMutation({
     onSuccess: () => {
       toast.success("Invoice marked as paid");
+      refetch();
+      refetchNeedsReview();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const markAsCancelledMutation = trpc.invoices.markAsCancelled.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as cancelled");
+      refetch();
+      refetchNeedsReview();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const markAsNotCancelledMutation = trpc.invoices.markAsNotCancelled.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as not cancelled");
       refetch();
       refetchNeedsReview();
     },
@@ -850,6 +852,9 @@ export default function Invoices() {
       // Only count active invoices (not archived or deleted)
       if (invoice._status !== 'active') return;
       
+      // Exclude cancelled invoices from revenue
+      if (invoice.cancelledAt) return;
+      
       // Only count sent/paid invoices (not drafts)
       if (!invoice.sentAt && !invoice.paidAt) return;
 
@@ -1110,6 +1115,86 @@ export default function Invoices() {
     setIsMultiSelectMode(false);
   };
 
+  const handleBatchMarkAsCancelled = () => {
+    if (selectedIds.size === 0) return;
+    
+    // Get all selected invoices
+    const selectedInvoices = Array.from(selectedIds)
+      .map(id => [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id))
+      .filter(Boolean) as typeof filteredInvoices;
+    
+    // Validate each invoice and collect results
+    const validInvoices: typeof selectedInvoices = [];
+    const skipped: Array<{ id: number; reason: string }> = [];
+    
+    selectedInvoices.forEach((invoice) => {
+      const validation = isActionValidForInvoice("markAsCancelled", invoice);
+      if (validation.valid) {
+        validInvoices.push(invoice);
+      } else {
+        skipped.push({ id: invoice.id, reason: validation.reason || "Invalid" });
+      }
+    });
+    
+    // Process valid invoices
+    validInvoices.forEach((invoice) => {
+      markAsCancelledMutation.mutate({ id: invoice.id });
+    });
+    
+    // Show summary toast
+    if (skipped.length > 0) {
+      toast.warning(
+        `Skipped ${skipped.length} invoice(s): ${skipped.map(s => s.reason).join(", ")}`
+      );
+    }
+    if (validInvoices.length > 0) {
+      toast.success(`Marked ${validInvoices.length} invoice(s) as cancelled`);
+    }
+    
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchMarkAsNotCancelled = () => {
+    if (selectedIds.size === 0) return;
+    
+    // Get all selected invoices
+    const selectedInvoices = Array.from(selectedIds)
+      .map(id => [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id))
+      .filter(Boolean) as typeof filteredInvoices;
+    
+    // Validate each invoice and collect results
+    const validInvoices: typeof selectedInvoices = [];
+    const skipped: Array<{ id: number; reason: string }> = [];
+    
+    selectedInvoices.forEach((invoice) => {
+      const validation = isActionValidForInvoice("markAsNotCancelled", invoice);
+      if (validation.valid) {
+        validInvoices.push(invoice);
+      } else {
+        skipped.push({ id: invoice.id, reason: validation.reason || "Invalid" });
+      }
+    });
+    
+    // Process valid invoices
+    validInvoices.forEach((invoice) => {
+      markAsNotCancelledMutation.mutate({ id: invoice.id });
+    });
+    
+    // Show summary toast
+    if (skipped.length > 0) {
+      toast.warning(
+        `Skipped ${skipped.length} invoice(s): ${skipped.map(s => s.reason).join(", ")}`
+      );
+    }
+    if (validInvoices.length > 0) {
+      toast.success(`Marked ${validInvoices.length} invoice(s) as not cancelled`);
+    }
+    
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
   const handleBatchRevertToDraft = () => {
     if (selectedIds.size === 0) return;
     
@@ -1287,6 +1372,11 @@ export default function Invoices() {
   const getStatusBadge = (invoice: any) => {
     const invoiceState = getInvoiceState(invoice);
     const derivedValues = getDerivedValues(invoice);
+    
+    // Cancelled badge (dark color) - highest priority
+    if (invoice.cancelledAt) {
+      return <Badge variant="default" className="text-xs bg-gray-800 text-white dark:bg-gray-900 dark:text-white border-gray-800/50">CANCELLED</Badge>;
+    }
     
     // Badge priority: OVERDUE > PARTIAL > SENT/PAID
     if (derivedValues.isOverdue) {
@@ -1799,6 +1889,12 @@ export default function Invoices() {
                                   // For uploaded invoices that haven't been sent, mark as sent and paid
                                   markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
                                   break;
+                                case "markAsCancelled":
+                                  markAsCancelledMutation.mutate({ id: invoice.id });
+                                  break;
+                                case "markAsNotCancelled":
+                                  markAsNotCancelledMutation.mutate({ id: invoice.id });
+                                  break;
                                 default:
                                   console.warn("Unknown action:", action);
                               }
@@ -1955,6 +2051,12 @@ export default function Invoices() {
                                 // Show revert dialog - for now, directly revert with confirmation
                                 revertToSentMutation.mutate({ id: invoice.id, confirmed: true });
                                 break;
+                              case "markAsCancelled":
+                                markAsCancelledMutation.mutate({ id: invoice.id });
+                                break;
+                              case "markAsNotCancelled":
+                                markAsNotCancelledMutation.mutate({ id: invoice.id });
+                                break;
                               default:
                                 console.warn("Unknown action:", action);
                             }
@@ -2003,6 +2105,8 @@ export default function Invoices() {
             onRevertToDraft={hasRevertToDraft ? handleBatchRevertToDraft : undefined}
             onRevertToSent={hasRevertToSent ? handleBatchRevertToSent : undefined}
             onMarkAsPaid={hasMarkAsPaid ? handleBatchMarkAsPaid : undefined}
+            onMarkAsCancelled={hasMarkAsCancelled ? handleBatchMarkAsCancelled : undefined}
+            onMarkAsNotCancelled={hasMarkAsNotCancelled ? handleBatchMarkAsNotCancelled : undefined}
             onArchive={hasArchive ? handleBatchArchive : undefined}
             onDelete={hasDelete ? handleBatchDelete : undefined}
           onCancel={() => {

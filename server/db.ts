@@ -211,7 +211,8 @@ async function ensureInvoiceSchema(db: any) {
         ADD COLUMN IF NOT EXISTS needsReview BOOLEAN NOT NULL DEFAULT 0 AFTER source,
         ADD COLUMN IF NOT EXISTS originalPdfS3Key VARCHAR(500) NULL AFTER needsReview,
         ADD COLUMN IF NOT EXISTS archivedAt DATETIME NULL AFTER updatedAt,
-        ADD COLUMN IF NOT EXISTS trashedAt DATETIME NULL AFTER archivedAt
+        ADD COLUMN IF NOT EXISTS trashedAt DATETIME NULL AFTER archivedAt,
+        ADD COLUMN IF NOT EXISTS cancelledAt DATETIME NULL AFTER trashedAt
     `);
     } catch (error) {
       console.warn("[Database] Invoice schema legacy alter skipped:", error);
@@ -247,6 +248,10 @@ async function ensureInvoiceSchema(db: any) {
     );
     await executeStatement(
       "CREATE INDEX `invoices_trashedAt_idx` ON `invoices` (`trashedAt`)",
+      isDuplicateIndexError
+    );
+    await executeStatement(
+      "CREATE INDEX `invoices_cancelledAt_idx` ON `invoices` (`cancelledAt`)",
       isDuplicateIndexError
     );
     await executeStatement(

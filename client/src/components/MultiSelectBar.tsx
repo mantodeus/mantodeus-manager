@@ -13,7 +13,7 @@
  * Mobile-first, full-width, properly aligned, no clipping.
  */
 
-import { Trash2, Archive, X, Copy, CheckSquare, Send, DollarSign, RotateCcw } from "@/components/ui/Icon";
+import { Trash2, Archive, X, Copy, CheckSquare, Send, DollarSign, RotateCcw, XCircle, CheckCircle2 } from "@/components/ui/Icon";
 import type { IconComponent } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +34,8 @@ interface MultiSelectBarProps {
   onDelete?: () => void;
   onMarkAsSent?: () => void;
   onMarkAsPaid?: () => void;
+  onMarkAsCancelled?: () => void;
+  onMarkAsNotCancelled?: () => void;
   onRevertToDraft?: () => void;
   onRevertToSent?: () => void;
   onCancel: () => void;
@@ -57,6 +59,8 @@ export function MultiSelectBar({
   onDelete,
   onMarkAsSent,
   onMarkAsPaid,
+  onMarkAsCancelled,
+  onMarkAsNotCancelled,
   onRevertToDraft,
   onRevertToSent,
   onCancel,
@@ -71,7 +75,7 @@ export function MultiSelectBar({
   if (selectedCount === 0) return null;
 
   // Use new API if handlers are provided, otherwise fall back to legacy API
-  const useNewAPI = onSelectAll || onDuplicate || onArchive || onDelete || onMarkAsSent || onMarkAsPaid || onRevertToDraft || onRevertToSent;
+  const useNewAPI = onSelectAll || onDuplicate || onArchive || onDelete || onMarkAsSent || onMarkAsPaid || onMarkAsCancelled || onMarkAsNotCancelled || onRevertToDraft || onRevertToSent;
   
   // Build actions array in required order
   const standardActions: MultiSelectAction[] = [];
@@ -116,6 +120,22 @@ export function MultiSelectBar({
         label: "Mark as paid",
         icon: DollarSign,
         onClick: onMarkAsPaid,
+        variant: "default",
+      });
+    }
+    if (onMarkAsCancelled) {
+      standardActions.push({
+        label: "Mark as cancelled",
+        icon: XCircle,
+        onClick: onMarkAsCancelled,
+        variant: "destructive",
+      });
+    }
+    if (onMarkAsNotCancelled) {
+      standardActions.push({
+        label: "Mark as not cancelled",
+        icon: CheckCircle2,
+        onClick: onMarkAsNotCancelled,
         variant: "default",
       });
     }

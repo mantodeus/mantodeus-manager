@@ -366,6 +366,8 @@ export const invoices = mysqlTable("invoices", {
   archivedAt: timestamp("archivedAt"),
   /** Timestamp when invoice was moved to rubbish (null if not trashed) */
   trashedAt: timestamp("trashedAt"),
+  /** Timestamp when invoice was marked as cancelled (null if not cancelled) */
+  cancelledAt: timestamp("cancelledAt"),
   // File metadata (legacy/backwards compatibility)
   pdfFileKey: varchar("pdfFileKey", { length: 500 }),
   filename: varchar("filename", { length: 255 }),
@@ -389,6 +391,7 @@ export const invoices = mysqlTable("invoices", {
   uniqueIndex("invoice_name_per_user").on(table.userId, table.invoiceName),
   index("invoices_archivedAt_idx").on(table.archivedAt),
   index("invoices_trashedAt_idx").on(table.trashedAt),
+  index("invoices_cancelledAt_idx").on(table.cancelledAt),
   index("invoices_sentAt_idx").on(table.sentAt),
   index("invoices_paidAt_idx").on(table.paidAt),
   index("invoices_amountPaid_idx").on(table.amountPaid),

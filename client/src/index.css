@@ -553,10 +553,10 @@
     margin-bottom: 0;
   }
 
-  /* Destructive group gets extra top spacing */
+  /* Destructive group - same spacing as other groups */
   .menu-group.destructive {
-    margin-top: 8px;
-    padding-top: 6px;
+    margin-top: 0;
+    padding-top: 0;
   }
 
   /* Multi-select bar - glass container (tool tray, not warning panel) */

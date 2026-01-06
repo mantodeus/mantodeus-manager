@@ -744,6 +744,51 @@ export const invoiceRouter = router({
       return mapInvoiceToPayload(updated);
     }),
 
+  markAsCancelled: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+
+      // Only allow cancelling draft or review invoices
+      const isDraft = !invoice.sentAt;
+      const isReview = invoice.needsReview;
+      
+      if (!isDraft && !isReview) {
+        throw new TRPCError({ 
+          code: "BAD_REQUEST", 
+          message: "Only draft or review invoices can be cancelled" 
+        });
+      }
+
+      await db.markInvoiceAsCancelled(input.id);
+      const updated = await db.getInvoiceById(input.id);
+      return mapInvoiceToPayload(updated);
+    }),
+
+  markAsNotCancelled: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const invoice = await db.getInvoiceById(input.id);
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      if (invoice.userId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
+      }
+
+      await db.markInvoiceAsNotCancelled(input.id);
+      const updated = await db.getInvoiceById(input.id);
+      return mapInvoiceToPayload(updated);
+    }),
+
   revertToSent: protectedProcedure
     .input(z.object({ id: z.number(), confirmed: z.boolean() }))
     .mutation(async ({ input, ctx }) => {

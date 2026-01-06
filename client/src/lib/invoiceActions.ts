@@ -74,6 +74,14 @@ export function getInvoiceActions({
     if (invoice.source === "uploaded" && !invoice.sentAt) {
       actions.push("markAsPaid");
     }
+
+    // Mark as Cancelled / Mark as Not Cancelled - only for draft/review invoices
+    const isCancelled = invoice.cancelledAt !== null;
+    if (isCancelled) {
+      actions.push("markAsNotCancelled");
+    } else {
+      actions.push("markAsCancelled");
+    }
   }
 
   if (isSent || isPaid) {
@@ -187,6 +195,26 @@ export function isActionValidForInvoice(
 
     case "select":
       // Always valid
+      return { valid: true };
+
+    case "markAsCancelled":
+      // Only for draft or review invoices
+      if (!isDraft && !isReview) {
+        return { valid: false, reason: "Only draft or review invoices can be cancelled" };
+      }
+      if (invoice.cancelledAt !== null) {
+        return { valid: false, reason: "Invoice is already cancelled" };
+      }
+      return { valid: true };
+
+    case "markAsNotCancelled":
+      // Only for draft or review invoices
+      if (!isDraft && !isReview) {
+        return { valid: false, reason: "Only draft or review invoices can be uncancelled" };
+      }
+      if (invoice.cancelledAt === null) {
+        return { valid: false, reason: "Invoice is not cancelled" };
+      }
       return { valid: true };
 
     default:
