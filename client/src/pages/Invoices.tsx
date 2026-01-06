@@ -116,6 +116,14 @@ export default function Invoices() {
     },
     onError: (err) => toast.error(err.message),
   });
+  const markAsSentMutation = trpc.invoices.markAsSent.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as sent");
+      refetch();
+      refetchNeedsReview();
+    },
+    onError: (err) => toast.error(err.message),
+  });
   const markAsPaidMutation = trpc.invoices.markAsPaid.useMutation({
     onSuccess: () => {
       toast.success("Invoice marked as paid");
@@ -162,6 +170,22 @@ export default function Invoices() {
   const revertMutation = trpc.invoices.revertStatus.useMutation({
     onSuccess: () => {
       toast.success("Invoice status reverted");
+      refetch();
+      refetchNeedsReview();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const revertToDraftMutation = trpc.invoices.revertToDraft.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice reverted to draft");
+      refetch();
+      refetchNeedsReview();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const revertToSentMutation = trpc.invoices.revertToSent.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice reverted to sent");
       refetch();
       refetchNeedsReview();
     },
@@ -498,6 +522,26 @@ export default function Invoices() {
     setIsMultiSelectMode(false);
   };
 
+  const handleBatchMarkAsSent = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      markAsSentMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchMarkAsPaid = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      markAsPaidMutation.mutate({ id });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
   const handleBulkUpload = async (files: File[]) => {
     try {
       // Convert files to base64
@@ -546,7 +590,7 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'PAID') {
-      return <Badge variant="default" className="text-xs bg-pink-500 text-white dark:bg-primary dark:text-primary-foreground border-pink-500/50 dark:border-primary/50">PAID</Badge>;
+      return <Badge variant="default" className="text-xs bg-pink-500 text-white dark:bg-[#00FF88] dark:text-black border-pink-500/50 dark:border-[#00FF88]/50">PAID</Badge>;
     }
     
     if (invoiceState === 'SENT') {
@@ -999,7 +1043,7 @@ export default function Invoices() {
                         <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
                         {!isMultiSelectMode && (
                           <ItemActionsMenu
-                            actions={["edit", "duplicate", "select", "archive", "delete"]}
+                            actions={["edit", "duplicate", "select", "archive", "delete", "markAsSent", "markAsPaid"]}
                             onAction={(action) => {
                               if (action === "edit") {
                                 // "Edit" maps to "review" for needs-review invoices
@@ -1019,6 +1063,13 @@ export default function Invoices() {
                               }
                               if (action === "delete") {
                                 setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName });
+                              }
+                              if (action === "markAsSent") {
+                                markAsSentMutation.mutate({ id: invoice.id });
+                              }
+                              if (action === "markAsPaid") {
+                                // For uploaded invoices that haven't been sent, mark as sent and paid
+                                markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
                               }
                             }}
                           />
@@ -1065,7 +1116,22 @@ export default function Invoices() {
             const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
             const displayTotal = formatCurrency(invoice.total);
             // Use standard menu actions - map invoice-specific actions to standard ones
+            // Add markAsSent and markAsPaid based on invoice state
+            const invoiceState = getInvoiceState(invoice);
             const availableActions: ItemAction[] = ["edit", "duplicate", "select", "archive", "delete"];
+            if (!invoice.sentAt) {
+              availableActions.push("markAsSent");
+            }
+            if (!invoice.paidAt) {
+              availableActions.push("markAsPaid");
+            }
+            // Add revert actions based on invoice state
+            if (invoiceState === 'SENT' || invoiceState === 'PARTIAL') {
+              availableActions.push("revertToDraft");
+            }
+            if (invoiceState === 'PAID') {
+              availableActions.push("revertToSent");
+            }
 
             const handleCardClick = () => {
               if (isMultiSelectMode) {
@@ -1138,6 +1204,26 @@ export default function Invoices() {
                                 toast.info("Only draft invoices can be deleted. Use Archive for sent invoices.");
                               }
                             }
+                            if (action === "markAsSent") {
+                              markAsSentMutation.mutate({ id: invoice.id });
+                            }
+                            if (action === "markAsPaid") {
+                              // For uploaded invoices that haven't been sent, show confirmation dialog
+                              if (!invoice.sentAt && invoice.source === "uploaded") {
+                                // For batch operations, we'll mark as sent and paid
+                                markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
+                              } else {
+                                markAsPaidMutation.mutate({ id: invoice.id });
+                              }
+                            }
+                            if (action === "revertToDraft") {
+                              // Show revert dialog - for now, directly revert with confirmation
+                              revertToDraftMutation.mutate({ id: invoice.id, confirmed: true });
+                            }
+                            if (action === "revertToSent") {
+                              // Show revert dialog - for now, directly revert with confirmation
+                              revertToSentMutation.mutate({ id: invoice.id, confirmed: true });
+                            }
                           }}
                         />
                       )}
@@ -1156,6 +1242,8 @@ export default function Invoices() {
           totalCount={filteredInvoices.length + needsReviewInvoices.length}
           onSelectAll={handleSelectAll}
           onDuplicate={handleBatchDuplicate}
+          onMarkAsSent={handleBatchMarkAsSent}
+          onMarkAsPaid={handleBatchMarkAsPaid}
           onArchive={handleBatchArchive}
           onDelete={handleBatchDelete}
           onCancel={() => {

@@ -16,7 +16,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom";
 import { useLongPress } from "@/hooks/useLongPress";
 import { cn } from "@/lib/utils";
-import { Edit, Trash2, Copy, CheckCircle2, Archive, RotateCcw, Eye, DollarSign, XCircle } from "@/components/ui/Icon";
+import { Edit, Trash2, Copy, CheckCircle2, Archive, RotateCcw, Eye, DollarSign, XCircle, Send } from "@/components/ui/Icon";
 
 export type CenteredContextMenuAction =
   | "edit"
@@ -27,6 +27,7 @@ export type CenteredContextMenuAction =
   | "restore"
   | "deletePermanently"
   | "view"
+  | "markAsSent"
   | "markAsPaid"
   | "markAsInOrder"
   | "void"
@@ -62,6 +63,7 @@ const actionConfig: Record<
   deletePermanently: { icon: Trash2, label: "Delete permanently", variant: "destructive" },
   revertToDraft: { icon: RotateCcw, label: "Mark as not sent", variant: "destructive" },
   revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" },
+  markAsSent: { icon: Send, label: "Mark as sent", variant: "default" },
   markAsPaid: { icon: DollarSign, label: "Mark as paid", variant: "default" },
   markAsInOrder: { icon: CheckCircle2, label: "Mark as In Order", variant: "default" },
   void: { icon: XCircle, label: "Void", variant: "destructive" },
@@ -652,6 +654,13 @@ export const CenteredContextMenu = React.forwardRef<
 
     validRubbishActions.forEach((action) => {
       groups.rubbish.push(action);
+    });
+
+    // Add lifecycle actions (markAsSent, markAsPaid) if present
+    (actions || []).forEach((action) => {
+      if (action === "markAsSent" || action === "markAsPaid") {
+        groups.lifecycle.push(action);
+      }
     });
 
     return groups;

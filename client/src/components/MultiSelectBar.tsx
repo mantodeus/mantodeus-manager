@@ -13,7 +13,7 @@
  * Mobile-first, full-width, properly aligned, no clipping.
  */
 
-import { Trash2, Archive, X, Copy, CheckSquare } from "@/components/ui/Icon";
+import { Trash2, Archive, X, Copy, CheckSquare, Send, DollarSign } from "@/components/ui/Icon";
 import type { IconComponent } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +32,8 @@ interface MultiSelectBarProps {
   onDuplicate?: () => void;
   onArchive?: () => void;
   onDelete?: () => void;
+  onMarkAsSent?: () => void;
+  onMarkAsPaid?: () => void;
   onCancel: () => void;
   /** Whether all items are currently selected */
   allSelected?: boolean;
@@ -51,6 +53,8 @@ export function MultiSelectBar({
   onDuplicate,
   onArchive,
   onDelete,
+  onMarkAsSent,
+  onMarkAsPaid,
   onCancel,
   allSelected = false,
   // Legacy props
@@ -63,7 +67,7 @@ export function MultiSelectBar({
   if (selectedCount === 0) return null;
 
   // Use new API if handlers are provided, otherwise fall back to legacy API
-  const useNewAPI = onSelectAll || onDuplicate || onArchive || onDelete;
+  const useNewAPI = onSelectAll || onDuplicate || onArchive || onDelete || onMarkAsSent || onMarkAsPaid;
   
   // Build actions array in required order
   const standardActions: MultiSelectAction[] = [];
@@ -74,6 +78,22 @@ export function MultiSelectBar({
         label: "Duplicate",
         icon: Copy,
         onClick: onDuplicate,
+        variant: "default",
+      });
+    }
+    if (onMarkAsSent) {
+      standardActions.push({
+        label: "Mark as sent",
+        icon: Send,
+        onClick: onMarkAsSent,
+        variant: "default",
+      });
+    }
+    if (onMarkAsPaid) {
+      standardActions.push({
+        label: "Mark as paid",
+        icon: DollarSign,
+        onClick: onMarkAsPaid,
         variant: "default",
       });
     }
