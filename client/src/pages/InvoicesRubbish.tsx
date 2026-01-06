@@ -194,7 +194,7 @@ export default function InvoicesRubbish() {
     const { status, sentAt, paidAt, dueDate } = invoice;
 
     if (status === 'paid') {
-      return <Badge variant="default" className="text-xs bg-pink-500 text-white dark:!bg-[#00FF88] dark:!text-black border-pink-500/50 dark:border-[#00FF88]/50">PAID</Badge>;
+      return <Badge variant="outline" className="text-xs !bg-pink-500 !text-white dark:!bg-[#00FF88] dark:!text-black !border-pink-500/50 dark:!border-[#00FF88]/50">PAID</Badge>;
     }
 
     if (status === 'open' && sentAt) {
