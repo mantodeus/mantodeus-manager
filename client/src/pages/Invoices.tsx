@@ -176,8 +176,10 @@ function YearTotalCard({
     };
   }, [cardRect]);
 
-  // Show all years, sorted by year descending
-  const availableYears = [...allYearTotals].sort((a, b) => b.year - a.year);
+  // Show only years with data, sorted by year descending
+  const availableYears = [...allYearTotals]
+    .filter(({ total }) => total > 0)
+    .sort((a, b) => b.year - a.year);
 
   return (
     <>
@@ -197,25 +199,30 @@ function YearTotalCard({
             setViewMode(viewMode === 'total' ? 'paid-due' : 'total');
           }}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Total {selectedYear}
-            </span>
-          </div>
           {viewMode === 'total' ? (
-            <div className="flex items-center justify-end gap-2">
-              <span className="text-xl font-semibold">Total</span>
-              <span className="text-xl font-semibold">
-                {formatCurrency(yearTotal)}
+            <div className="flex items-center justify-between">
+              <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Total {selectedYear}
               </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-semibold">Total</span>
+                <span className="text-xl font-semibold">
+                  {formatCurrency(yearTotal)}
+                </span>
+              </div>
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-end gap-2">
-                <span className="text-xl font-semibold">Paid</span>
-                <span className="text-xl font-semibold">
-                  {formatCurrency(yearPaid)}
+              <div className="flex items-center justify-between">
+                <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  Total {selectedYear}
                 </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-semibold">Paid</span>
+                  <span className="text-xl font-semibold">
+                    {formatCurrency(yearPaid)}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center justify-end gap-2">
                 <span className="text-sm text-muted-foreground">Due</span>
@@ -281,7 +288,7 @@ function YearTotalCard({
                       onPopoverOpenChange(false);
                     }}
                     className={cn(
-                      "glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
+                      "glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors",
                       year === selectedYear && "bg-muted/50"
                     )}
                     style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
@@ -417,11 +424,13 @@ function QuarterTotalCard({
     };
   }, [cardRect]);
 
-  // Show all quarters, sorted by year and quarter descending
-  const availableQuarters = [...allQuarterTotals].sort((a, b) => {
-    if (a.year !== b.year) return b.year - a.year;
-    return b.quarter - a.quarter;
-  });
+  // Show only quarters with data, sorted by year and quarter descending
+  const availableQuarters = [...allQuarterTotals]
+    .filter(({ total }) => total > 0)
+    .sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.quarter - a.quarter;
+    });
 
   return (
     <>
@@ -444,25 +453,30 @@ function QuarterTotalCard({
             }
           }}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Q{selectedQuarter.quarter} {selectedQuarter.year}
-            </span>
-          </div>
           {viewMode === 'total' ? (
-            <div className="flex items-center justify-end gap-2">
-              <span className="text-xl font-semibold">Total</span>
-              <span className="text-xl font-semibold">
-                {formatCurrency(quarterTotal)}
+            <div className="flex items-center justify-between">
+              <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Q{selectedQuarter.quarter} {selectedQuarter.year}
               </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-semibold">Total</span>
+                <span className="text-xl font-semibold">
+                  {formatCurrency(quarterTotal)}
+                </span>
+              </div>
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-end gap-2">
-                <span className="text-xl font-semibold">Paid</span>
-                <span className="text-xl font-semibold">
-                  {formatCurrency(quarterPaid)}
+              <div className="flex items-center justify-between">
+                <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  Q{selectedQuarter.quarter} {selectedQuarter.year}
                 </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-semibold">Paid</span>
+                  <span className="text-xl font-semibold">
+                    {formatCurrency(quarterPaid)}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center justify-end gap-2">
                 <span className="text-sm text-muted-foreground">Due</span>
@@ -528,7 +542,7 @@ function QuarterTotalCard({
                       onPopoverOpenChange(false);
                     }}
                     className={cn(
-                      "glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
+                      "glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors",
                       year === selectedQuarter.year && quarter === selectedQuarter.quarter && "bg-muted/50"
                     )}
                     style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
@@ -980,25 +994,11 @@ export default function Invoices() {
       }
     });
 
-    // Get all years with data
+    // Get all years with data (only include years that have invoice data)
     const yearsWithData = Array.from(new Set([...yearPaidMap.keys(), ...yearDueMap.keys()]));
     
-    // Always include the currently selected year and a range of years around it
-    const currentYear = new Date().getFullYear();
-    const minYear = Math.min(...yearsWithData, displayYear, currentYear - 2);
-    const maxYear = Math.max(...yearsWithData, displayYear, currentYear + 2);
-    
-    // Create a set of all years to include (data years + selected year + range)
-    const allYearsSet = new Set<number>();
-    yearsWithData.forEach(year => allYearsSet.add(year));
-    allYearsSet.add(displayYear); // Always include selected year
-    // Add range of years around current year
-    for (let year = minYear; year <= maxYear; year++) {
-      allYearsSet.add(year);
-    }
-    
-    // Convert to sorted array
-    const allYears = Array.from(allYearsSet).sort((a, b) => b - a);
+    // Convert to sorted array - only include years with data
+    const allYears = yearsWithData.sort((a, b) => b - a);
     const allYearTotals = allYears.map(year => ({
       year,
       paid: yearPaidMap.get(year) || 0,
@@ -1006,23 +1006,11 @@ export default function Invoices() {
       total: (yearPaidMap.get(year) || 0) + (yearDueMap.get(year) || 0)
     }));
 
-    // Get all quarters with data
+    // Get all quarters with data (only include quarters that have invoice data)
     const quartersWithData = Array.from(new Set([...quarterPaidMap.keys(), ...quarterDueMap.keys()]));
     
-    // Always include the currently selected quarter and quarters around it
-    const selectedQuarterKey = `Q${displayQuarter} ${displayQuarterYear}`;
-    const quartersSet = new Set<string>();
-    quartersWithData.forEach(key => quartersSet.add(key));
-    quartersSet.add(selectedQuarterKey); // Always include selected quarter
-    
-    // Add adjacent quarters (previous and next quarter)
-    const prevQuarter = displayQuarter === 1 ? { quarter: 4, year: displayQuarterYear - 1 } : { quarter: displayQuarter - 1, year: displayQuarterYear };
-    const nextQuarter = displayQuarter === 4 ? { quarter: 1, year: displayQuarterYear + 1 } : { quarter: displayQuarter + 1, year: displayQuarterYear };
-    quartersSet.add(`Q${prevQuarter.quarter} ${prevQuarter.year}`);
-    quartersSet.add(`Q${nextQuarter.quarter} ${nextQuarter.year}`);
-    
-    // Convert quarter map to sorted array (by year desc, then quarter desc)
-    const allQuarters = Array.from(quartersSet)
+    // Convert quarter map to sorted array (by year desc, then quarter desc) - only include quarters with data
+    const allQuarters = quartersWithData
       .map((key) => {
         const match = key.match(/Q(\d+) (\d+)/);
         if (!match) return null;
