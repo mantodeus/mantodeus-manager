@@ -121,6 +121,7 @@ export const CenteredContextMenu = React.forwardRef<
   const [isOpen, setIsOpen] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [isPressing, setIsPressing] = useState(false);
+  const [isTouchHoldActive, setIsTouchHoldActive] = useState(false);
   const [itemRect, setItemRect] = useState<DOMRect | null>(null);
   const [menuHeight, setMenuHeight] = useState(200);
   const menuOpenTimeRef = useRef(0);
@@ -304,6 +305,15 @@ export const CenteredContextMenu = React.forwardRef<
       onOpenChange?.(true);
       element.classList.add("context-menu-active");
       setIsPressing(false);
+      const isTouchEvent =
+        (event && "touches" in event) ||
+        (event && "pointerType" in event && event.pointerType === "touch") ||
+        (event &&
+          "nativeEvent" in event &&
+          event.nativeEvent &&
+          "pointerType" in event.nativeEvent &&
+          event.nativeEvent.pointerType === "touch");
+      setIsTouchHoldActive(Boolean(isTouchEvent));
     } else {
       console.warn('CenteredContextMenu: Could not find item element', { event, itemRef: itemRef.current });
     }
@@ -326,6 +336,7 @@ export const CenteredContextMenu = React.forwardRef<
     setIsOpen(false);
     onOpenChange?.(false);
     setIsPressing(false);
+    setIsTouchHoldActive(false);
     menuOpenTimeRef.current = 0;
     if (itemRef.current) {
       itemRef.current.classList.remove("context-menu-active");
@@ -356,6 +367,29 @@ export const CenteredContextMenu = React.forwardRef<
       document.body.classList.remove('context-menu-open');
     };
   }, [isBlocking]);
+
+  useEffect(() => {
+    if (!isOpen || !isTouchHoldActive) return;
+    document.body.classList.add("context-menu-touch-hold");
+    const clearTouchHold = (event: Event) => {
+      if (
+        "pointerType" in event &&
+        (event as PointerEvent).pointerType !== "touch"
+      ) {
+        return;
+      }
+      setIsTouchHoldActive(false);
+    };
+    document.addEventListener("touchend", clearTouchHold, { capture: true });
+    document.addEventListener("touchcancel", clearTouchHold, { capture: true });
+    document.addEventListener("pointerup", clearTouchHold, { capture: true });
+    return () => {
+      document.body.classList.remove("context-menu-touch-hold");
+      document.removeEventListener("touchend", clearTouchHold, { capture: true } as AddEventListenerOptions);
+      document.removeEventListener("touchcancel", clearTouchHold, { capture: true } as AddEventListenerOptions);
+      document.removeEventListener("pointerup", clearTouchHold, { capture: true } as AddEventListenerOptions);
+    };
+  }, [isOpen, isTouchHoldActive]);
 
   const suppressNextClick = useCallback(() => {
     const handler = (event: Event) => {

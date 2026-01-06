@@ -555,6 +555,18 @@
     color: #ff5a5a;
   }
 
+  @media (hover: none) and (pointer: coarse) {
+    body.context-menu-touch-hold .glass-menu-item:hover,
+    body.context-menu-touch-hold .glass-menu-item[data-highlighted],
+    body.context-menu-touch-hold .glass-menu-item.delete:hover,
+    body.context-menu-touch-hold .glass-menu-item.delete[data-highlighted],
+    body.context-menu-touch-hold .glass-menu-item[data-variant="destructive"]:hover,
+    body.context-menu-touch-hold .glass-menu-item[data-variant="destructive"][data-highlighted] {
+      background: transparent;
+      box-shadow: none;
+    }
+  }
+
   /* Menu group spacing utility */
   .menu-group {
     margin-bottom: 6px;
