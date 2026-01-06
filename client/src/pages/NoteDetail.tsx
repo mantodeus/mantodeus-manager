@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText } from "@/components/ui/Icon";
+import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image as ImageIcon, FileText, User, FolderOpen } from "@/components/ui/Icon";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
 import { SimpleMarkdownEditor } from "@/components/SimpleMarkdownEditor";
 import { toast } from "sonner";
@@ -687,7 +687,10 @@ export default function NoteDetail() {
 
       {/* Bottom Action Bar (Edit Mode Only) */}
       {isEditMode && (
-        <div className="fixed left-0 right-0 bg-background border-t p-4 flex items-center justify-center gap-4 md:justify-end md:pr-8 z-40 md:bottom-0" style={{ bottom: 'var(--bottom-safe-area, 0px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}>
+        <div 
+          className="fixed left-0 right-0 bg-background border-t p-4 flex items-center justify-center gap-3 md:justify-end md:pr-8 z-40 md:bottom-0 overflow-visible" 
+          style={{ bottom: 'var(--bottom-safe-area, 0px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+        >
           <input
             ref={fileInputRef}
             type="file"
@@ -706,18 +709,26 @@ export default function NoteDetail() {
           />
           <Button
             variant="outline"
+            size="sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadFileMutation.isPending || registerFileMutation.isPending}
-            className="flex-1 md:flex-initial"
+            className="h-9 flex-1 md:flex-initial"
           >
             <Paperclip className="h-4 w-4 mr-2" />
             {uploadFileMutation.isPending || registerFileMutation.isPending
               ? "Uploading..."
-              : "Attachment"}
+              : "Attach"}
           </Button>
-          <Select value={selectedContactId} onValueChange={setSelectedContactId}>
-            <SelectTrigger className="flex-1 md:flex-initial md:w-[140px]">
-              <SelectValue placeholder="Contact" />
+          <Select value={selectedContactId} onValueChange={(val) => setSelectedContactId(val || "none")}>
+            <SelectTrigger className="h-9 px-3 gap-2 flex-1 md:flex-initial md:w-[140px]">
+              <User className="h-4 w-4 text-muted-foreground shrink-0" />
+              <SelectValue>
+                {selectedContactId === "none" ? (
+                  <span className="text-foreground">Contact</span>
+                ) : (
+                  contacts.find(c => c.id.toString() === selectedContactId)?.name || "Contact"
+                )}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">No Contact</SelectItem>
@@ -728,11 +739,18 @@ export default function NoteDetail() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-            <SelectTrigger className="flex-1 md:flex-initial md:w-[140px]">
-              <SelectValue placeholder="Project" />
+          <Select value={selectedProjectId} onValueChange={(val) => setSelectedProjectId(val || "none")}>
+            <SelectTrigger className="h-9 px-3 gap-2 flex-1 md:flex-initial md:w-[140px]">
+              <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+              <SelectValue>
+                {selectedProjectId === "none" ? (
+                  <span className="text-foreground">Project</span>
+                ) : (
+                  projects.find(p => p.id.toString() === selectedProjectId)?.name || "Project"
+                )}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent side="top" align="end" sideOffset={8}>
               <SelectItem value="none">No Project</SelectItem>
               {projects.map((project) => (
                 <SelectItem key={project.id} value={project.id.toString()}>

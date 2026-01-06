@@ -306,7 +306,7 @@ export function SimpleMarkdownEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
   const isUpdatingRef = useRef(false);
   const isUserInputRef = useRef(false);
@@ -322,59 +322,28 @@ export function SimpleMarkdownEditor({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Detect keyboard and position toolbar above it on mobile
+  // Pin toolbar to top of keyboard using visualViewport
   useEffect(() => {
-    if (!isMobile) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
 
-    const updateKeyboardHeight = () => {
-      if (window.visualViewport) {
-        const viewport = window.visualViewport;
-        const windowHeight = window.innerHeight;
-        // Calculate keyboard height from the visual viewport bottom (accounts for scroll offset).
-        const keyboardOffset = Math.max(
-          0,
-          Math.round(windowHeight - (viewport.height + viewport.offsetTop))
-        );
-        const nextHeight = keyboardOffset > 50 ? keyboardOffset : 0;
-        // Avoid re-render churn from tiny viewport changes while typing/scrolling.
-        setKeyboardHeight((prev) => (prev === nextHeight ? prev : nextHeight));
-      } else {
-        // Fallback for browsers without visual viewport API
-        const currentHeight = window.innerHeight;
-        const storedHeight = sessionStorage.getItem('viewport-height');
-        if (storedHeight) {
-          const heightDiff = parseInt(storedHeight) - currentHeight;
-          if (heightDiff > 50) {
-            setKeyboardHeight(heightDiff);
-          } else {
-            setKeyboardHeight(0);
-            sessionStorage.setItem('viewport-height', currentHeight.toString());
-          }
-        } else {
-          sessionStorage.setItem('viewport-height', currentHeight.toString());
-          setKeyboardHeight(0);
-        }
-      }
+    const update = () => {
+      const offset = Math.max(
+        0,
+        window.innerHeight - vv.height - vv.offsetTop
+      );
+      setKeyboardOffset(offset);
     };
 
-    updateKeyboardHeight();
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateKeyboardHeight);
-      window.visualViewport.addEventListener('scroll', updateKeyboardHeight);
-    } else {
-      window.addEventListener('resize', updateKeyboardHeight);
-    }
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
 
     return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', updateKeyboardHeight);
-        window.visualViewport.removeEventListener('scroll', updateKeyboardHeight);
-      } else {
-        window.removeEventListener('resize', updateKeyboardHeight);
-      }
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
     };
-  }, [isMobile]);
+  }, []);
 
   // Update editor HTML when markdown content changes (from props)
   // BUT only if the change came from outside (not from user typing)
@@ -717,23 +686,14 @@ export function SimpleMarkdownEditor({
         }
       `}</style>
 
-      {/* Formatting Toolbar - sticky inside container */}
+      {/* Formatting Toolbar - pinned to top of keyboard */}
       {showToolbar && (
         <div
-          className={cn(
-            "sticky border-t bg-background/95 backdrop-blur-sm shadow-lg",
-            isMobile ? "bottom-0" : "bottom-0"
-          )}
+          className="notes-editor-bar sticky bottom-0 z-50 border-t bg-background/95 backdrop-blur-sm shadow-lg"
           style={{
-            bottom: isMobile && keyboardHeight > 0 
-              ? `${keyboardHeight}px` 
-              : `calc(env(safe-area-inset-bottom, 0px) + 0px)`,
-            zIndex: 10,
-            paddingBottom: isMobile 
-              ? `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)` 
-              : "0.5rem",
-            transform: 'translateZ(0)',
-            willChange: 'transform',
+            transform: `translateY(-${keyboardOffset}px)`,
+            transition: 'transform 180ms ease-out',
+            paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)`,
           }}
         >
           <div className="flex items-center gap-1 p-2 overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
