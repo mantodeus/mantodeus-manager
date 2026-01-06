@@ -504,6 +504,14 @@ export default function Invoices() {
   const [moveToRubbishTargetId, setMoveToRubbishTargetId] = useState<number | null>(null);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [revertTarget, setRevertTarget] = useState<{ id: number; targetStatus: "draft" | "open"; currentStatus: "open" | "paid" } | null>(null);
+  // Batch revert state - stores validated invoices and skipped items
+  const [batchRevertDialogOpen, setBatchRevertDialogOpen] = useState(false);
+  const [batchRevertData, setBatchRevertData] = useState<{
+    targetStatus: "draft" | "open";
+    currentStatus: "open" | "paid";
+    validInvoiceIds: number[];
+    skippedCount: number;
+  } | null>(null);
   const [markAsSentDialogOpen, setMarkAsSentDialogOpen] = useState(false);
   const [markAsSentTarget, setMarkAsSentTarget] = useState<{ id: number; invoiceNumber?: string | null; alreadySent: boolean } | null>(null);
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
@@ -1123,21 +1131,49 @@ export default function Invoices() {
       }
     });
     
-    // Process valid invoices
-    validInvoices.forEach((invoice) => {
-      revertToDraftMutation.mutate({ id: invoice.id, confirmed: true });
+    // CRITICAL: Batch revert actions MUST show confirmation dialog - no bypass allowed
+    // Store validated data and show dialog
+    if (validInvoices.length > 0) {
+      setBatchRevertData({
+        targetStatus: "draft",
+        currentStatus: "open",
+        validInvoiceIds: validInvoices.map(inv => inv.id),
+        skippedCount: skipped.length,
+      });
+      setBatchRevertDialogOpen(true);
+    } else {
+      // No valid invoices - show error
+      toast.error("No invoices can be reverted to draft. All selected invoices are not eligible for this action.");
+      if (skipped.length > 0) {
+        toast.warning(
+          `Reasons: ${skipped.map(s => s.reason).join(", ")}`
+        );
+      }
+    }
+  };
+  
+  // Handler for confirmed batch revert to draft
+  const handleConfirmBatchRevertToDraft = () => {
+    if (!batchRevertData || batchRevertData.targetStatus !== "draft") return;
+    
+    // Process all valid invoices
+    batchRevertData.validInvoiceIds.forEach((id) => {
+      revertToDraftMutation.mutate({ id, confirmed: true });
     });
     
     // Show summary toast
-    if (skipped.length > 0) {
+    if (batchRevertData.skippedCount > 0) {
       toast.warning(
-        `Skipped ${skipped.length} invoice(s): ${skipped.map(s => s.reason).join(", ")}`
+        `${batchRevertData.skippedCount} invoice(s) were skipped because they are not eligible for this action.`
       );
     }
-    if (validInvoices.length > 0) {
-      toast.success(`Reverted ${validInvoices.length} invoice(s) to draft`);
+    if (batchRevertData.validInvoiceIds.length > 0) {
+      toast.success(`Reverted ${batchRevertData.validInvoiceIds.length} invoice(s) to draft`);
     }
     
+    // Close dialog and reset
+    setBatchRevertDialogOpen(false);
+    setBatchRevertData(null);
     setSelectedIds(new Set());
     setIsMultiSelectMode(false);
   };
@@ -1163,21 +1199,49 @@ export default function Invoices() {
       }
     });
     
-    // Process valid invoices
-    validInvoices.forEach((invoice) => {
-      revertToSentMutation.mutate({ id: invoice.id, confirmed: true });
+    // CRITICAL: Batch revert actions MUST show confirmation dialog - no bypass allowed
+    // Store validated data and show dialog
+    if (validInvoices.length > 0) {
+      setBatchRevertData({
+        targetStatus: "open",
+        currentStatus: "paid",
+        validInvoiceIds: validInvoices.map(inv => inv.id),
+        skippedCount: skipped.length,
+      });
+      setBatchRevertDialogOpen(true);
+    } else {
+      // No valid invoices - show error
+      toast.error("No invoices can be reverted to sent. All selected invoices are not eligible for this action.");
+      if (skipped.length > 0) {
+        toast.warning(
+          `Reasons: ${skipped.map(s => s.reason).join(", ")}`
+        );
+      }
+    }
+  };
+  
+  // Handler for confirmed batch revert to sent
+  const handleConfirmBatchRevertToSent = () => {
+    if (!batchRevertData || batchRevertData.targetStatus !== "open") return;
+    
+    // Process all valid invoices
+    batchRevertData.validInvoiceIds.forEach((id) => {
+      revertToSentMutation.mutate({ id, confirmed: true });
     });
     
     // Show summary toast
-    if (skipped.length > 0) {
+    if (batchRevertData.skippedCount > 0) {
       toast.warning(
-        `Skipped ${skipped.length} invoice(s): ${skipped.map(s => s.reason).join(", ")}`
+        `${batchRevertData.skippedCount} invoice(s) were skipped because they are not eligible for this action.`
       );
     }
-    if (validInvoices.length > 0) {
-      toast.success(`Reverted ${validInvoices.length} invoice(s) to sent`);
+    if (batchRevertData.validInvoiceIds.length > 0) {
+      toast.success(`Reverted ${batchRevertData.validInvoiceIds.length} invoice(s) to sent`);
     }
     
+    // Close dialog and reset
+    setBatchRevertDialogOpen(false);
+    setBatchRevertData(null);
     setSelectedIds(new Set());
     setIsMultiSelectMode(false);
   };
@@ -2059,6 +2123,7 @@ export default function Invoices() {
         isDeleting={moveToTrashMutation.isPending}
       />
 
+      {/* Single invoice revert dialog */}
       <RevertInvoiceStatusDialog
         open={revertDialogOpen}
         onOpenChange={setRevertDialogOpen}
@@ -2074,6 +2139,31 @@ export default function Invoices() {
           setRevertDialogOpen(false);
         }}
         isReverting={revertMutation.isPending}
+      />
+      
+      {/* Batch revert dialog - CRITICAL: Batch revert actions MUST show confirmation dialog */}
+      <RevertInvoiceStatusDialog
+        open={batchRevertDialogOpen}
+        onOpenChange={(open) => {
+          setBatchRevertDialogOpen(open);
+          if (!open) {
+            setBatchRevertData(null);
+          }
+        }}
+        currentStatus={batchRevertData?.currentStatus || "open"}
+        targetStatus={batchRevertData?.targetStatus || "draft"}
+        onConfirm={() => {
+          if (!batchRevertData) return;
+          if (batchRevertData.targetStatus === "draft") {
+            handleConfirmBatchRevertToDraft();
+          } else {
+            handleConfirmBatchRevertToSent();
+          }
+        }}
+        isReverting={revertToDraftMutation.isPending || revertToSentMutation.isPending}
+        isBatch={true}
+        batchCount={batchRevertData?.validInvoiceIds.length || 0}
+        skippedCount={batchRevertData?.skippedCount || 0}
       />
 
       <DeleteConfirmDialog

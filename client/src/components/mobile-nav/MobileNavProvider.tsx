@@ -6,7 +6,7 @@
  * § 14: Component Structure
  */
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import type {
   MobileNavContextValue,
   TabId,
@@ -18,9 +18,49 @@ const MobileNavContext = createContext<MobileNavContextValue | undefined>(
   undefined
 );
 
+const ACTIVE_TAB_KEY = 'mantodeus-active-tab';
+const LAST_USED_MODULE_KEY = 'mantodeus-last-used-module-by-tab';
+
+// Load persisted state from localStorage
+function loadPersistedState(): {
+  activeTab: TabId;
+  lastUsedModuleByTab: Record<TabId, string | null>;
+} {
+  try {
+    const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
+    const savedModules = localStorage.getItem(LAST_USED_MODULE_KEY);
+    
+    const activeTab = (savedTab === 'office' || savedTab === 'field' || savedTab === 'tools')
+      ? savedTab
+      : 'field'; // Default to field
+    
+    const lastUsedModuleByTab: Record<TabId, string | null> = savedModules
+      ? JSON.parse(savedModules)
+      : {
+          office: null,
+          field: null,
+          tools: null,
+        };
+    
+    return { activeTab, lastUsedModuleByTab };
+  } catch (error) {
+    console.warn('[MobileNav] Failed to load persisted state:', error);
+    return {
+      activeTab: 'field',
+      lastUsedModuleByTab: {
+        office: null,
+        field: null,
+        tools: null,
+      },
+    };
+  }
+}
+
 export function MobileNavProvider({ children }: { children: ReactNode }) {
-  // § 2.2: Field is the default tab (not configurable)
-  const [activeTab, setActiveTab] = useState<TabId>('field');
+  const persistedState = loadPersistedState();
+  
+  // § 2.2: Field is the default tab (not configurable), but restore from localStorage
+  const [activeTab, setActiveTab] = useState<TabId>(persistedState.activeTab);
 
   // Use string literal to avoid potential enum initialization issues
   const [gestureState, setGestureState] = useState<GestureState>(
@@ -33,11 +73,25 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
 
   const [lastUsedModuleByTab, setLastUsedModuleByTab] = useState<
     Record<TabId, string | null>
-  >({
-    office: null,
-    field: null,
-    tools: null,
-  });
+  >(persistedState.lastUsedModuleByTab);
+
+  // Persist activeTab to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_TAB_KEY, activeTab);
+    } catch (error) {
+      console.warn('[MobileNav] Failed to save active tab:', error);
+    }
+  }, [activeTab]);
+
+  // Persist lastUsedModuleByTab to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_USED_MODULE_KEY, JSON.stringify(lastUsedModuleByTab));
+    } catch (error) {
+      console.warn('[MobileNav] Failed to save last used modules:', error);
+    }
+  }, [lastUsedModuleByTab]);
 
   const setLastUsedModule = (tab: TabId, path: string) => {
     setLastUsedModuleByTab(prev => ({

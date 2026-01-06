@@ -11,6 +11,7 @@ export { ScrollerOverlay } from './ScrollerOverlay';
 export { useGestureRecognition } from './useGestureRecognition';
 export { useDeviceCapabilities } from './useDeviceCapabilities';
 export { useScrollPhysics } from './useScrollPhysics';
+export { useRouteTracking } from './useRouteTracking';
 
 export * from './types';
 export * from './constants';

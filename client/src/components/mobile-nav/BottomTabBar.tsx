@@ -24,16 +24,14 @@ export function BottomTabBar() {
   const [, setLocation] = useLocation();
 
   const handleTabClick = (tabId: TabId) => {
-    // Simple tap switches tabs (tap alone doesn't activate scroller)
-    // Allow clicks when idle or hold_pending (quick tap before gesture activates)
-    if (gestureState === 'idle' || gestureState === 'hold_pending') {
-      setActiveTab(tabId);
-      const lastUsedPath = lastUsedModuleByTab[tabId];
-      const fallbackPath = MODULE_REGISTRY[tabId]?.[0]?.path;
-      const targetPath = lastUsedPath ?? fallbackPath;
-      if (targetPath) {
-        setLocation(targetPath);
-      }
+    // Always navigate when tab is clicked, even if it's already active
+    // This allows users to return to the last page in that tab
+    setActiveTab(tabId);
+    const lastUsedPath = lastUsedModuleByTab[tabId];
+    const fallbackPath = MODULE_REGISTRY[tabId]?.[0]?.path;
+    const targetPath = lastUsedPath ?? fallbackPath;
+    if (targetPath) {
+      setLocation(targetPath);
     }
   };
 
@@ -161,9 +159,12 @@ export function BottomTabBar() {
                   e.stopPropagation();
                 }}
                 onTouchEnd={(e) => {
-                  // Prevent default behaviors
-                  e.preventDefault();
-                  e.stopPropagation();
+                  // Only prevent default if gesture is active
+                  // For simple taps, allow the click event to fire
+                  if (gestureState !== 'idle' && gestureState !== 'hold_pending') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
                 }}
                 onTouchCancel={(e) => {
                   // Prevent default behaviors

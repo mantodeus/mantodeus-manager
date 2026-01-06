@@ -83,8 +83,8 @@ function Router() {
     }
 
     // Authenticated - restore last route or default to projects
-    // Only redirect if we're on login page (not on "/" to allow natural routing)
-    if (location === "/login") {
+    // Restore if we're on login page or "/" (initial load)
+    if (location === "/login" || location === "/") {
       try {
         const lastRoute = localStorage.getItem(LAST_ROUTE_KEY);
         if (lastRoute && !EXCLUDED_ROUTES.includes(lastRoute)) {
@@ -98,6 +98,7 @@ function Router() {
       }
       setHasRestoredRoute(true);
     } else {
+      // Already on a route - just mark as restored
       setHasRestoredRoute(true);
     }
   }, [user, loading, location, setLocation, hasRestoredRoute]);

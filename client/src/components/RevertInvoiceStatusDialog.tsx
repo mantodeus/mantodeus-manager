@@ -12,6 +12,10 @@ interface RevertInvoiceStatusDialogProps {
   invoiceAmount?: number | string | null;
   onConfirm: () => void;
   isReverting: boolean;
+  // Batch mode support
+  isBatch?: boolean;
+  batchCount?: number;
+  skippedCount?: number;
 }
 
 export function RevertInvoiceStatusDialog({
@@ -23,6 +27,9 @@ export function RevertInvoiceStatusDialog({
   invoiceAmount,
   onConfirm,
   isReverting,
+  isBatch = false,
+  batchCount = 0,
+  skippedCount = 0,
 }: RevertInvoiceStatusDialogProps) {
   const [acknowledged, setAcknowledged] = useState(false);
 
@@ -48,10 +55,28 @@ export function RevertInvoiceStatusDialog({
   };
 
   const getMessage = () => {
-    if (currentStatus === "open") {
-      return "This invoice has already been sent. Reverting it may affect records and client communication for accounting reasons. Only do this if the invoice was sent in error.";
+    if (isBatch) {
+      // Batch mode: plural-aware messages
+      if (targetStatus === "draft") {
+        // Reverting from sent to draft
+        const baseMessage = `You are about to revert ${batchCount} ${batchCount === 1 ? 'invoice' : 'invoices'} to draft.`;
+        const impactMessage = "This will clear their sent dates and may affect reports, payment tracking, and accounting accuracy.";
+        const skippedMessage = skippedCount > 0 ? ` ${skippedCount} ${skippedCount === 1 ? 'invoice will be' : 'invoices will be'} skipped because ${skippedCount === 1 ? 'it is' : 'they are'} not eligible for this action.` : "";
+        return `${baseMessage} ${impactMessage}${skippedMessage}`;
+      } else {
+        // Reverting from paid to sent
+        const baseMessage = `You are about to revert ${batchCount} ${batchCount === 1 ? 'invoice' : 'invoices'} to sent status.`;
+        const impactMessage = "This will clear their payment records and may affect accounting accuracy. Only proceed if the payments were recorded incorrectly.";
+        const skippedMessage = skippedCount > 0 ? ` ${skippedCount} ${skippedCount === 1 ? 'invoice will be' : 'invoices will be'} skipped because ${skippedCount === 1 ? 'it is' : 'they are'} not eligible for this action.` : "";
+        return `${baseMessage} ${impactMessage}${skippedMessage}`;
+      }
+    } else {
+      // Single invoice mode: existing messages
+      if (currentStatus === "open") {
+        return "This invoice has already been sent. Reverting it may affect records and client communication for accounting reasons. Only do this if the invoice was sent in error.";
+      }
+      return "This invoice is marked as paid. Reverting it may affect accounting records for accounting reasons. Only proceed if the payment was recorded incorrectly.";
     }
-    return "This invoice is marked as paid. Reverting it may affect accounting records for accounting reasons. Only proceed if the payment was recorded incorrectly.";
   };
 
   const canConfirm = acknowledged && !isReverting;
@@ -60,12 +85,17 @@ export function RevertInvoiceStatusDialog({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Revert invoice status?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {isBatch 
+              ? `Revert ${batchCount} ${batchCount === 1 ? 'invoice' : 'invoices'}?`
+              : "Revert invoice status?"
+            }
+          </AlertDialogTitle>
           <AlertDialogDescription className="pt-2 space-y-3">
             {getMessage()}
             
-            {/* Invoice details */}
-            {(invoiceNumber || invoiceAmount) && (
+            {/* Invoice details - only show for single invoice mode */}
+            {!isBatch && (invoiceNumber || invoiceAmount) && (
               <div className="rounded-md border bg-muted/30 p-3 space-y-1 text-sm">
                 {invoiceNumber && (
                   <div className="flex justify-between">
@@ -77,6 +107,22 @@ export function RevertInvoiceStatusDialog({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Amount:</span>
                     <span className="font-medium">{formatAmount(invoiceAmount)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Batch summary - show counts */}
+            {isBatch && (
+              <div className="rounded-md border bg-muted/30 p-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Invoices to revert:</span>
+                  <span className="font-medium">{batchCount}</span>
+                </div>
+                {skippedCount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Invoices skipped:</span>
+                    <span className="font-medium text-orange-600">{skippedCount}</span>
                   </div>
                 )}
               </div>
@@ -93,7 +139,9 @@ export function RevertInvoiceStatusDialog({
               className="mt-0.5"
             />
             <Label htmlFor="revert-ack" className="text-sm text-foreground cursor-pointer flex-1 leading-relaxed">
-              I understand the consequences.
+              {isBatch
+                ? `I understand the consequences of reverting ${batchCount === 1 ? 'this invoice' : 'these invoices'}.`
+                : "I understand the consequences of reverting this invoice."}
             </Label>
           </div>
         </div>
@@ -109,7 +157,10 @@ export function RevertInvoiceStatusDialog({
             onClick={handleConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isReverting ? "Reverting..." : "Revert Status"}
+            {isReverting 
+              ? (isBatch ? `Reverting ${batchCount} ${batchCount === 1 ? 'invoice' : 'invoices'}...` : "Reverting...")
+              : (isBatch ? `Revert ${batchCount} ${batchCount === 1 ? 'Invoice' : 'Invoices'}` : "Revert Status")
+            }
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

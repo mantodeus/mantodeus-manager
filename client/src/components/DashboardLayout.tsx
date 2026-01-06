@@ -33,6 +33,7 @@ import {
   BottomTabBar,
   ModuleScroller,
   ScrollerOverlay,
+  useRouteTracking,
 } from "./mobile-nav";
 
 const menuItems = [
@@ -285,6 +286,7 @@ function DashboardLayoutContent({
       {/* Â§ 1.1: Mobile Navigation (Mobile only, Desktop unchanged) */}
       {isMobile && (
         <>
+          <RouteTracker />
           <ScrollerOverlay />
           <ModuleScroller />
           <BottomTabBar />
@@ -299,11 +301,20 @@ function DashboardLayoutContent({
   );
 }
 
+// Component to track route changes (only on mobile)
+function RouteTracker() {
+  useRouteTracking();
+  return null;
+}
+
 function MobileDashboardLayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Track route changes to update active tab and last used module
+  useRouteTracking();
+
   return (
     <div className="flex min-h-svh w-full flex-col">
       <div className="h-0" />
