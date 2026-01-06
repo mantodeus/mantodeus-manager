@@ -86,7 +86,7 @@ function YearTotalCard({
   
   const yearTotal = yearPaid + yearDue;
   
-  const { longPressHandlers } = useLongPress({
+  const { longPressHandlers, reset: resetLongPress } = useLongPress({
     onLongPress: (e) => {
       e.preventDefault();
       if (cardRef.current) {
@@ -96,6 +96,13 @@ function YearTotalCard({
     },
     duration: 550,
   });
+
+  // Reset long press when menu closes
+  useEffect(() => {
+    if (!popoverOpen) {
+      resetLongPress();
+    }
+  }, [popoverOpen, resetLongPress]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -182,23 +189,21 @@ function YearTotalCard({
         {...longPressHandlers}
         onContextMenu={handleContextMenu}
       >
-        <div className="flex flex-col gap-1">
+        <div 
+          className="flex flex-col gap-1"
+          onClick={(e) => {
+            e.stopPropagation();
+            setViewMode(viewMode === 'total' ? 'paid-due' : 'total');
+          }}
+        >
           <div className="flex items-center justify-between">
             <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
               Total {selectedYear}
             </span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setViewMode(viewMode === 'total' ? 'paid-due' : 'total');
-              }}
-              className="text-xs px-2 py-1 rounded-md bg-accent/20 hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {viewMode === 'total' ? 'Paid/Due' : 'Total'}
-            </button>
           </div>
           {viewMode === 'total' ? (
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-end gap-2">
+              <span className="text-xl font-semibold">Total</span>
               <span className="text-xl font-semibold">
                 {formatCurrency(yearTotal)}
               </span>
@@ -206,14 +211,15 @@ function YearTotalCard({
           ) : (
             <>
               <div className="flex items-center justify-end gap-2">
-                <span className="text-xs text-muted-foreground">Paid</span>
+                <span className="text-xl font-semibold">Paid</span>
                 <span className="text-xl font-semibold">
                   {formatCurrency(yearPaid)}
                 </span>
               </div>
-              <div className="flex items-center justify-end">
-                <span className="text-sm text-muted-foreground">
-                  Due {formatCurrency(yearDue)}
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-xl font-semibold">Due</span>
+                <span className="text-xl font-semibold">
+                  {formatCurrency(yearDue)}
                 </span>
               </div>
             </>
@@ -312,7 +318,7 @@ function QuarterTotalCard({
   
   const quarterTotal = quarterPaid + quarterDue;
   
-  const { longPressHandlers } = useLongPress({
+  const { longPressHandlers, reset: resetLongPress } = useLongPress({
     onLongPress: (e) => {
       e.preventDefault();
       if (cardRef.current) {
@@ -322,6 +328,13 @@ function QuarterTotalCard({
     },
     duration: 550,
   });
+
+  // Reset long press when menu closes
+  useEffect(() => {
+    if (!popoverOpen) {
+      resetLongPress();
+    }
+  }, [popoverOpen, resetLongPress]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -410,23 +423,24 @@ function QuarterTotalCard({
         {...longPressHandlers}
         onContextMenu={handleContextMenu}
       >
-        <div className="flex flex-col gap-1">
+        <div 
+          className="flex flex-col gap-1"
+          onClick={(e) => {
+            // Only toggle if menu is not open and it's a regular click (not long press)
+            if (!popoverOpen) {
+              e.stopPropagation();
+              setViewMode(viewMode === 'total' ? 'paid-due' : 'total');
+            }
+          }}
+        >
           <div className="flex items-center justify-between">
             <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
               Q{selectedQuarter.quarter} {selectedQuarter.year}
             </span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setViewMode(viewMode === 'total' ? 'paid-due' : 'total');
-              }}
-              className="text-xs px-2 py-1 rounded-md bg-accent/20 hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {viewMode === 'total' ? 'Paid/Due' : 'Total'}
-            </button>
           </div>
           {viewMode === 'total' ? (
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-end gap-2">
+              <span className="text-xl font-semibold">Total</span>
               <span className="text-xl font-semibold">
                 {formatCurrency(quarterTotal)}
               </span>
@@ -434,14 +448,15 @@ function QuarterTotalCard({
           ) : (
             <>
               <div className="flex items-center justify-end gap-2">
-                <span className="text-xs text-muted-foreground">Paid</span>
+                <span className="text-xl font-semibold">Paid</span>
                 <span className="text-xl font-semibold">
                   {formatCurrency(quarterPaid)}
                 </span>
               </div>
-              <div className="flex items-center justify-end">
-                <span className="text-sm text-muted-foreground">
-                  Due {formatCurrency(quarterDue)}
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-xl font-semibold">Due</span>
+                <span className="text-xl font-semibold">
+                  {formatCurrency(quarterDue)}
                 </span>
               </div>
             </>
