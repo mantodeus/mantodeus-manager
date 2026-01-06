@@ -437,7 +437,10 @@ export function InvoiceUploadReviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className={cn(
-          "sm:max-w-[500px] flex flex-col p-0",
+          "flex flex-col p-0",
+          // Desktop: almost fullscreen with small margins (override default centered positioning)
+          "sm:!top-[1.5rem] sm:!left-[1.5rem] sm:!right-[1.5rem] sm:!bottom-[1.5rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!w-auto sm:!h-auto sm:max-h-[calc(100vh-3rem)]",
+          // Mobile: fullscreen with safe margins
           isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
         )}
         showCloseButton={false}
