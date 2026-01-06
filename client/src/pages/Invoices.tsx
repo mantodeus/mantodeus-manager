@@ -211,14 +211,14 @@ function YearTotalCard({
           ) : (
             <>
               <div className="flex items-center justify-end gap-2">
-                <span className="text-xl font-semibold">Paid</span>
-                <span className="text-xl font-semibold">
+                <span className="text-sm text-muted-foreground">Paid</span>
+                <span className="text-sm text-muted-foreground">
                   {formatCurrency(yearPaid)}
                 </span>
               </div>
               <div className="flex items-center justify-end gap-2">
-                <span className="text-xl font-semibold">Due</span>
-                <span className="text-xl font-semibold">
+                <span className="text-sm text-muted-foreground">Due</span>
+                <span className="text-sm text-muted-foreground">
                   {formatCurrency(yearDue)}
                 </span>
               </div>
@@ -263,27 +263,32 @@ function YearTotalCard({
               overscrollBehavior: "contain",
               pointerEvents: "auto",
               maxHeight: "300px",
+              minHeight: "40px",
             }}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
-            <div className="space-y-1 w-full">
+            <div className="space-y-1 w-full py-1">
               {/* Other years */}
-              {otherYears.map(({ year, total }) => (
-                <button
-                  key={year}
-                  onClick={() => {
-                    onYearSelect(year);
-                    onPopoverOpenChange(false);
-                  }}
-                  className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
-                  style={{ border: 'none' }}
-                >
-                  <span className="text-sm font-medium">Total {year}</span>
-                  <span className="text-sm font-semibold">{formatCurrency(total)}</span>
-                </button>
-              ))}
+              {otherYears.length > 0 ? (
+                otherYears.map(({ year, total }) => (
+                  <button
+                    key={year}
+                    onClick={() => {
+                      onYearSelect(year);
+                      onPopoverOpenChange(false);
+                    }}
+                    className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                    style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
+                  >
+                    <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Total {year}</span>
+                    <span className="text-sm font-semibold" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{formatCurrency(total)}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-muted-foreground">No other years available</div>
+              )}
             </div>
           </div>
         </>,
@@ -448,14 +453,14 @@ function QuarterTotalCard({
           ) : (
             <>
               <div className="flex items-center justify-end gap-2">
-                <span className="text-xl font-semibold">Paid</span>
-                <span className="text-xl font-semibold">
+                <span className="text-sm text-muted-foreground">Paid</span>
+                <span className="text-sm text-muted-foreground">
                   {formatCurrency(quarterPaid)}
                 </span>
               </div>
               <div className="flex items-center justify-end gap-2">
-                <span className="text-xl font-semibold">Due</span>
-                <span className="text-xl font-semibold">
+                <span className="text-sm text-muted-foreground">Due</span>
+                <span className="text-sm text-muted-foreground">
                   {formatCurrency(quarterDue)}
                 </span>
               </div>
@@ -500,27 +505,32 @@ function QuarterTotalCard({
               overscrollBehavior: "contain",
               pointerEvents: "auto",
               maxHeight: "300px",
+              minHeight: "40px",
             }}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
-            <div className="space-y-1 w-full">
+            <div className="space-y-1 w-full py-1">
               {/* Other quarters */}
-              {otherQuarters.map(({ key, quarter, year, total }) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    onQuarterSelect(quarter, year);
-                    onPopoverOpenChange(false);
-                  }}
-                  className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
-                  style={{ border: 'none' }}
-                >
-                  <span className="text-sm font-medium">{key}</span>
-                  <span className="text-sm font-semibold">{formatCurrency(total)}</span>
-                </button>
-              ))}
+              {otherQuarters.length > 0 ? (
+                otherQuarters.map(({ key, quarter, year, total }) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      onQuarterSelect(quarter, year);
+                      onPopoverOpenChange(false);
+                    }}
+                    className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                    style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
+                  >
+                    <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{key}</span>
+                    <span className="text-sm font-semibold" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{formatCurrency(total)}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-muted-foreground">No other quarters available</div>
+              )}
             </div>
           </div>
         </>,
