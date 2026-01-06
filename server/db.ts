@@ -90,6 +90,7 @@ let _db: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _pool: any = null;
 let _invoiceSchemaReady = false;
+let _sharedDocumentsSchemaReady = false;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
@@ -279,6 +280,40 @@ async function ensureInvoiceSchema(db: any) {
     _invoiceSchemaReady = true;
   } catch (error) {
     console.error("[Database] Failed to ensure invoice schema:", error);
+  }
+}
+
+async function ensureSharedDocumentsSchema(db: any) {
+  if (_sharedDocumentsSchemaReady) return;
+  const isDuplicateColumnError = (error: any) =>
+    error?.code === "ER_DUP_FIELDNAME" || error?.cause?.code === "ER_DUP_FIELDNAME";
+  const isDuplicateIndexError = (error: any) =>
+    error?.code === "ER_DUP_KEYNAME" || error?.cause?.code === "ER_DUP_KEYNAME";
+  const executeStatement = async (statement: string, ignoreError: (error: any) => boolean) => {
+    try {
+      await db.execute(sql.raw(statement));
+    } catch (error: any) {
+      if (ignoreError(error)) return;
+      throw error;
+    }
+  };
+
+  try {
+    await executeStatement(
+      "ALTER TABLE `shared_documents` ADD COLUMN `invalidated` BOOLEAN NOT NULL DEFAULT 0",
+      isDuplicateColumnError
+    );
+    await executeStatement(
+      "ALTER TABLE `shared_documents` ADD COLUMN `invalidatedAt` DATETIME NULL",
+      isDuplicateColumnError
+    );
+    await executeStatement(
+      "CREATE INDEX `shared_documents_invalidated_idx` ON `shared_documents` (`invalidated`)",
+      isDuplicateIndexError
+    );
+    _sharedDocumentsSchemaReady = true;
+  } catch (error) {
+    console.error("[Database] Failed to ensure shared_documents schema:", error);
   }
 }
 
@@ -2232,6 +2267,7 @@ export async function addInvoicePayment(id: number, amount: number) {
 export async function invalidateInvoiceShareLinks(invoiceId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureSharedDocumentsSchema(db);
 
   // Only update if there are rows to update - this prevents errors when no share links exist
   const result = await db
@@ -3896,6 +3932,7 @@ export async function deleteFileMetadataByS3Key(s3Key: string) {
 export async function createSharedDocument(data: InsertSharedDocument) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureSharedDocumentsSchema(db);
   
   return await db.insert(sharedDocuments).values(data);
 }
@@ -3903,6 +3940,7 @@ export async function createSharedDocument(data: InsertSharedDocument) {
 export async function getSharedDocumentByToken(token: string) {
   const db = await getDb();
   if (!db) return null;
+  await ensureSharedDocumentsSchema(db);
   
   const result = await db.select().from(sharedDocuments)
     .where(eq(sharedDocuments.shareToken, token))
@@ -3914,6 +3952,7 @@ export async function getSharedDocumentByToken(token: string) {
 export async function deleteSharedDocument(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  await ensureSharedDocumentsSchema(db);
   
   return await db.delete(sharedDocuments).where(eq(sharedDocuments.id, id));
 }

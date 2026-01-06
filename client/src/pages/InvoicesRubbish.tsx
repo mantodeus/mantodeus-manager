@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Trash2, ArrowLeft, Loader2, FileText, Search, SlidersHorizontal, X, CheckCircle2, Archive } from "@/components/ui/Icon";
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useTheme } from "@/hooks/useTheme";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";

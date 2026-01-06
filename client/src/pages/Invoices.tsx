@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
 import { useEffect, useState, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
@@ -76,10 +77,15 @@ function YearTotalCard({
   onPopoverOpenChange: (open: boolean) => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [cardRect, setCardRect] = useState<DOMRect | null>(null);
   
   const { longPressHandlers } = useLongPress({
     onLongPress: (e) => {
       e.preventDefault();
+      if (cardRef.current) {
+        setCardRect(cardRef.current.getBoundingClientRect());
+      }
       onPopoverOpenChange(true);
     },
     duration: 550,
@@ -88,68 +94,177 @@ function YearTotalCard({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (cardRef.current) {
+      setCardRect(cardRef.current.getBoundingClientRect());
+    }
     onPopoverOpenChange(true);
   };
 
+  // Prevent background scrolling when menu is open
+  useEffect(() => {
+    if (!popoverOpen) return;
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalBodyPosition = document.body.style.position;
+    const originalBodyWidth = document.body.style.width;
+    const originalBodyTop = document.body.style.top;
+    const scrollY = window.scrollY;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.top = `-${scrollY}px`;
+
+    const preventScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (menuRef.current && (menuRef.current.contains(target) || menuRef.current === target)) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const preventTouchMove = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (menuRef.current && (menuRef.current.contains(target) || menuRef.current === target)) {
+        return;
+      }
+      e.preventDefault();
+    };
+
+    window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+    window.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true });
+    document.body.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+    document.body.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true });
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.position = originalBodyPosition;
+      document.body.style.width = originalBodyWidth;
+      document.body.style.top = originalBodyTop;
+      window.scrollTo(0, scrollY);
+      window.removeEventListener('wheel', preventScroll, { capture: true } as any);
+      window.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
+      document.body.removeEventListener('wheel', preventScroll, { capture: true } as any);
+      document.body.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
+    };
+  }, [popoverOpen]);
+
+  // Update card rect when popover opens
+  useEffect(() => {
+    if (popoverOpen && cardRef.current) {
+      setCardRect(cardRef.current.getBoundingClientRect());
+    }
+  }, [popoverOpen]);
+
+  // Calculate menu position
+  const menuStyle = useMemo(() => {
+    if (!cardRect) return null;
+    
+    return {
+      position: 'fixed' as const,
+      left: `${cardRect.left + cardRect.width / 2}px`,
+      top: `${cardRect.bottom + 8}px`,
+      transform: 'translateX(-50%)',
+    };
+  }, [cardRect]);
+
+  const selectedYearData = allYearTotals.find(y => y.year === selectedYear);
+  const otherYears = allYearTotals.filter(y => y.year !== selectedYear);
+
   return (
     <>
-      {/* Backdrop blur overlay when popover is open */}
-      {popoverOpen && (
-        <div
-          className="fixed inset-0 backdrop-blur-md bg-black/20 z-[9995]"
-          style={{
-            animation: "fadeIn 220ms ease-out",
-            pointerEvents: "auto",
-          }}
-          onClick={() => onPopoverOpenChange(false)}
-        />
-      )}
-      
-      <Popover open={popoverOpen} onOpenChange={onPopoverOpenChange}>
-        <PopoverTrigger asChild>
-          <Card 
-            ref={cardRef}
-            className="p-4 has-context-menu cursor-pointer"
-            {...longPressHandlers}
-            onContextMenu={handleContextMenu}
+      <Card 
+        ref={cardRef}
+        className={cn(
+          "p-4 has-context-menu cursor-pointer",
+          popoverOpen && "context-menu-active"
+        )}
+        {...longPressHandlers}
+        onContextMenu={handleContextMenu}
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+            Total {selectedYear}
+          </span>
+          <span className="text-xl font-semibold">
+            {formatCurrency(yearTotal)}
+          </span>
+        </div>
+      </Card>
+
+      {popoverOpen && cardRect && menuStyle && createPortal(
+        <>
+          {/* Background blur layer */}
+          <div
+            className="context-menu-overlay fixed inset-0 backdrop-blur-md bg-black/20"
+            style={{
+              zIndex: 9995,
+              animation: "fadeIn 220ms ease-out",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Interaction scrim (captures taps/clicks) */}
+          <div
+            className="context-menu-scrim fixed inset-0"
+            style={{
+              zIndex: 9996,
+              pointerEvents: "auto",
+              background: "transparent",
+              touchAction: "none",
+            }}
+            onClick={() => onPopoverOpenChange(false)}
+          />
+
+          {/* Menu */}
+          <div
+            ref={menuRef}
+            className="glass-context-menu"
+            style={{
+              ...menuStyle,
+              zIndex: 9998,
+              animation: "contextMenuIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              overflowY: "auto",
+              overscrollBehavior: "contain",
+              pointerEvents: "auto",
+              maxHeight: "300px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
-                Total {selectedYear}
-              </span>
-              <span className="text-xl font-semibold">
-                {formatCurrency(yearTotal)}
-              </span>
+            <div className="space-y-1">
+              {/* Current selection at top */}
+              {selectedYearData && (
+                <div className="glass-menu-item bg-accent/30 px-3 py-2 rounded-md">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Total {selectedYearData.year}</span>
+                    <span className="text-sm font-semibold">{formatCurrency(selectedYearData.total)}</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Other years */}
+              {otherYears.map(({ year, total }) => (
+                <button
+                  key={year}
+                  onClick={() => {
+                    onYearSelect(year);
+                    onPopoverOpenChange(false);
+                  }}
+                  className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                  style={{ border: 'none' }}
+                >
+                  <span className="text-sm font-medium">Total {year}</span>
+                  <span className="text-sm font-semibold">{formatCurrency(total)}</span>
+                </button>
+              ))}
             </div>
-          </Card>
-        </PopoverTrigger>
-        <PopoverContent 
-          className="w-64 p-2 glass-context-menu z-[9996]" 
-          align="center"
-          side="bottom"
-          sideOffset={8}
-        >
-          <div className="space-y-1">
-            {allYearTotals.map(({ year, total }) => (
-              <button
-                key={year}
-                onClick={() => {
-                  onYearSelect(year);
-                  // Don't close immediately - allow user to see the change
-                  setTimeout(() => onPopoverOpenChange(false), 150);
-                }}
-                className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors glass-menu-item",
-                  year === selectedYear && "bg-accent"
-                )}
-              >
-                <span className="text-sm font-medium">Total {year}</span>
-                <span className="text-sm font-semibold">{formatCurrency(total)}</span>
-              </button>
-            ))}
           </div>
-        </PopoverContent>
-      </Popover>
+        </>,
+        document.body
+      )}
     </>
   );
 }
@@ -171,10 +286,15 @@ function QuarterTotalCard({
   onPopoverOpenChange: (open: boolean) => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [cardRect, setCardRect] = useState<DOMRect | null>(null);
   
   const { longPressHandlers } = useLongPress({
     onLongPress: (e) => {
       e.preventDefault();
+      if (cardRef.current) {
+        setCardRect(cardRef.current.getBoundingClientRect());
+      }
       onPopoverOpenChange(true);
     },
     duration: 550,
@@ -183,73 +303,181 @@ function QuarterTotalCard({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (cardRef.current) {
+      setCardRect(cardRef.current.getBoundingClientRect());
+    }
     onPopoverOpenChange(true);
   };
 
+  // Prevent background scrolling when menu is open
+  useEffect(() => {
+    if (!popoverOpen) return;
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalBodyPosition = document.body.style.position;
+    const originalBodyWidth = document.body.style.width;
+    const originalBodyTop = document.body.style.top;
+    const scrollY = window.scrollY;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.top = `-${scrollY}px`;
+
+    const preventScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (menuRef.current && (menuRef.current.contains(target) || menuRef.current === target)) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const preventTouchMove = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (menuRef.current && (menuRef.current.contains(target) || menuRef.current === target)) {
+        return;
+      }
+      e.preventDefault();
+    };
+
+    window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+    window.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true });
+    document.body.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+    document.body.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true });
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.position = originalBodyPosition;
+      document.body.style.width = originalBodyWidth;
+      document.body.style.top = originalBodyTop;
+      window.scrollTo(0, scrollY);
+      window.removeEventListener('wheel', preventScroll, { capture: true } as any);
+      window.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
+      document.body.removeEventListener('wheel', preventScroll, { capture: true } as any);
+      document.body.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
+    };
+  }, [popoverOpen]);
+
+  // Update card rect when popover opens
+  useEffect(() => {
+    if (popoverOpen && cardRef.current) {
+      setCardRect(cardRef.current.getBoundingClientRect());
+    }
+  }, [popoverOpen]);
+
+  // Calculate menu position
+  const menuStyle = useMemo(() => {
+    if (!cardRect) return null;
+    
+    return {
+      position: 'fixed' as const,
+      left: `${cardRect.left + cardRect.width / 2}px`,
+      top: `${cardRect.bottom + 8}px`,
+      transform: 'translateX(-50%)',
+    };
+  }, [cardRect]);
+
+  const selectedQuarterData = allQuarterTotals.find(
+    q => q.year === selectedQuarter.year && q.quarter === selectedQuarter.quarter
+  );
+  const otherQuarters = allQuarterTotals.filter(
+    q => !(q.year === selectedQuarter.year && q.quarter === selectedQuarter.quarter)
+  );
+
   return (
     <>
-      {/* Backdrop blur overlay when popover is open */}
-      {popoverOpen && (
-        <div
-          className="fixed inset-0 backdrop-blur-md bg-black/20 z-[9995]"
-          style={{
-            animation: "fadeIn 220ms ease-out",
-            pointerEvents: "auto",
-          }}
-          onClick={() => onPopoverOpenChange(false)}
-        />
-      )}
-      
-      <Popover open={popoverOpen} onOpenChange={onPopoverOpenChange}>
-        <PopoverTrigger asChild>
-          <Card 
-            ref={cardRef}
-            className="p-4 has-context-menu cursor-pointer"
-            {...longPressHandlers}
-            onContextMenu={handleContextMenu}
+      <Card 
+        ref={cardRef}
+        className={cn(
+          "p-4 has-context-menu cursor-pointer",
+          popoverOpen && "context-menu-active"
+        )}
+        {...longPressHandlers}
+        onContextMenu={handleContextMenu}
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+            Q{selectedQuarter.quarter} {selectedQuarter.year}
+          </span>
+          <span className="text-xl font-semibold">
+            {formatCurrency(quarterTotal)}
+          </span>
+        </div>
+      </Card>
+
+      {popoverOpen && cardRect && menuStyle && createPortal(
+        <>
+          {/* Background blur layer */}
+          <div
+            className="context-menu-overlay fixed inset-0 backdrop-blur-md bg-black/20"
+            style={{
+              zIndex: 9995,
+              animation: "fadeIn 220ms ease-out",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Interaction scrim (captures taps/clicks) */}
+          <div
+            className="context-menu-scrim fixed inset-0"
+            style={{
+              zIndex: 9996,
+              pointerEvents: "auto",
+              background: "transparent",
+              touchAction: "none",
+            }}
+            onClick={() => onPopoverOpenChange(false)}
+          />
+
+          {/* Menu */}
+          <div
+            ref={menuRef}
+            className="glass-context-menu"
+            style={{
+              ...menuStyle,
+              zIndex: 9998,
+              animation: "contextMenuIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              overflowY: "auto",
+              overscrollBehavior: "contain",
+              pointerEvents: "auto",
+              maxHeight: "300px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
-                Q{selectedQuarter.quarter} {selectedQuarter.year}
-              </span>
-              <span className="text-xl font-semibold">
-                {formatCurrency(quarterTotal)}
-              </span>
-            </div>
-          </Card>
-        </PopoverTrigger>
-        <PopoverContent 
-          className="w-64 p-2 glass-context-menu z-[9996]" 
-          align="center"
-          side="bottom"
-          sideOffset={8}
-        >
-          <div className="space-y-1 max-h-[300px] overflow-y-auto">
-            {allQuarterTotals.map(({ key, quarter, year, total }) => {
-              const isSelectedQuarter = 
-                year === selectedQuarter.year && 
-                quarter === selectedQuarter.quarter;
-              return (
+            <div className="space-y-1">
+              {/* Current selection at top */}
+              {selectedQuarterData && (
+                <div className="glass-menu-item bg-accent/30 px-3 py-2 rounded-md">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{selectedQuarterData.key}</span>
+                    <span className="text-sm font-semibold">{formatCurrency(selectedQuarterData.total)}</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Other quarters */}
+              {otherQuarters.map(({ key, quarter, year, total }) => (
                 <button
                   key={key}
                   onClick={() => {
                     onQuarterSelect(quarter, year);
-                    // Don't close immediately - allow user to see the change
-                    setTimeout(() => onPopoverOpenChange(false), 150);
+                    onPopoverOpenChange(false);
                   }}
-                  className={cn(
-                    "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors glass-menu-item",
-                    isSelectedQuarter && "bg-accent"
-                  )}
+                  className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                  style={{ border: 'none' }}
                 >
                   <span className="text-sm font-medium">{key}</span>
                   <span className="text-sm font-semibold">{formatCurrency(total)}</span>
                 </button>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </PopoverContent>
-      </Popover>
+        </>,
+        document.body
+      )}
     </>
   );
 }

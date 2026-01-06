@@ -61,8 +61,8 @@ const actionConfig: Record<
   archive: { icon: Archive, label: "Archive", variant: "default" },
   restore: { icon: RotateCcw, label: "Restore", variant: "default" },
   deletePermanently: { icon: Trash2, label: "Delete permanently", variant: "destructive" },
-  revertToDraft: { icon: RotateCcw, label: "Mark as not sent", variant: "destructive" },
-  revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" },
+  revertToDraft: { icon: RotateCcw, label: "Revert to draft", variant: "destructive" },
+  revertToSent: { icon: RotateCcw, label: "Revert to sent", variant: "destructive" },
   markAsSent: { icon: Send, label: "Mark as sent", variant: "default" },
   markAsPaid: { icon: DollarSign, label: "Mark as paid", variant: "default" },
   markAsInOrder: { icon: CheckCircle2, label: "Mark as In Order", variant: "default" },
@@ -650,9 +650,9 @@ export const CenteredContextMenu = React.forwardRef<
       groups.rubbish.push(action);
     });
 
-    // Add lifecycle actions (markAsSent, markAsPaid) if present
+    // Add lifecycle actions (markAsSent/markAsPaid/revert) if present
     (actions || []).forEach((action) => {
-      if (action === "markAsSent" || action === "markAsPaid") {
+      if (action === "markAsSent" || action === "markAsPaid" || action === "revertToDraft" || action === "revertToSent") {
         groups.lifecycle.push(action);
       }
     });
