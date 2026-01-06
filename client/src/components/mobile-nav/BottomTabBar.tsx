@@ -14,6 +14,7 @@ import type { GestureState, TabId } from './types';
 export function BottomTabBar() {
   const {
     activeTab,
+    gestureTab,
     setActiveTab,
     gestureState,
     scrollerVisible,
@@ -97,7 +98,9 @@ export function BottomTabBar() {
         {scrollerVisible && (
           <div className="pointer-events-none absolute bottom-full left-0 right-0 mb-1 flex items-center justify-around px-4">
             {TABS.map((tab) => {
-              const isActive = tab.id === activeTab;
+              // Show the title of the tab being gestured, not just the active tab
+              // This ensures the correct title is shown when gesturing on any tab
+              const isActive = tab.id === (gestureTab ?? activeTab);
 
               return (
                 <span
