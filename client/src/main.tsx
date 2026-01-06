@@ -288,35 +288,17 @@ const trpcClient = trpc.createClient({
 });
 
 // Ensure DOM is ready before rendering
-// CRITICAL: Wait for session restoration to complete before rendering IF there's a session
-// This prevents users from being logged out on app restart
-// BUT: Don't block if there's no session - allow login page to load immediately
-const initializeApp = async () => {
+// Don't block on session restoration - let it happen in background
+// The app will render immediately, and session restoration will happen via onAuthStateChange
+const initializeApp = () => {
   try {
-    // Check if there's a session first
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    // Only wait for session restoration if there's actually a session to restore
-    // This prevents blocking the login page when user needs to authenticate
-    if (session?.access_token && sessionRestorePromise) {
-      // Wait for restoration with a timeout to prevent infinite waiting
-      try {
-        await Promise.race([
-          sessionRestorePromise,
-          new Promise<void>((resolve) => setTimeout(resolve, 2000)) // Max 2 second wait
-        ]);
-      } catch (error) {
-        console.warn("[Auth] Session restoration timed out or failed, proceeding anyway:", error);
-        // Continue anyway - don't block the app
-      }
-    }
-    
     const rootElement = document.getElementById("root");
     if (!rootElement) {
       throw new Error("Root element not found");
     }
 
-    // Create root and render
+    // Create root and render immediately - don't wait for anything
+    // Session restoration happens in the background via onAuthStateChange handler
     const root = createRoot(rootElement);
     root.render(
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
@@ -362,11 +344,11 @@ const initializeApp = async () => {
 };
 
 // Initialize when DOM is ready
-// CRITICAL: Wait for session restoration before initializing app
+// Don't wait for anything - render immediately
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", async () => {
+  document.addEventListener("DOMContentLoaded", () => {
     try {
-      await initializeApp();
+      initializeApp();
       initializeLogos();
     } catch (error) {
       console.error("[App] Failed to initialize on DOMContentLoaded:", error);
@@ -374,14 +356,12 @@ if (document.readyState === "loading") {
   });
 } else {
   // DOM is already ready
-  (async () => {
-    try {
-      await initializeApp();
-      initializeLogos();
-    } catch (error) {
-      console.error("[App] Failed to initialize:", error);
-    }
-  })();
+  try {
+    initializeApp();
+    initializeLogos();
+  } catch (error) {
+    console.error("[App] Failed to initialize:", error);
+  }
 }
 
 // Additional error handlers (redundant but safe)

@@ -36,6 +36,8 @@ export function useGestureRecognition() {
   const lastScrollTimeRef = useRef<number>(0);
   const lastScrollYRef = useRef<number>(0);
   const activePointerIdRef = useRef<number | null>(null);
+  // Store the tab that initiated the gesture (since activeTab state update is async)
+  const gestureTabRef = useRef<TabId | null>(null);
   const windowMoveHandlerRef = useRef<((event: PointerEvent) => void) | null>(
     null
   );
@@ -76,6 +78,7 @@ export function useGestureRecognition() {
     activePointerIdRef.current = null;
     setPointerPosition(null);
     setGestureState('idle');
+    gestureTabRef.current = null; // Clear gesture tab ref
   }, [isMobile, removeWindowListeners, setGestureState, setPointerPosition]);
 
   const processPointerMove = useCallback(
@@ -173,13 +176,18 @@ export function useGestureRecognition() {
       if (gestureState === 'dragging') {
         setGestureState('snapping');
       } else if (gestureState === 'hold_active') {
-        const lastIndex = Math.max(0, MODULE_REGISTRY[activeTab].length - 1);
+        // Use the tab that initiated the gesture (from ref) instead of activeTab state
+        // This ensures we use the correct tab even if state hasn't updated yet
+        const gestureTab = gestureTabRef.current ?? activeTab;
+        const lastIndex = Math.max(0, MODULE_REGISTRY[gestureTab].length - 1);
         setHighlightedIndex(prev => prev ?? lastIndex);
         setGestureState('snapping');
       } else if (wasJustTap) {
         // Just a tap - cancel gesture and let the click handler fire
+        gestureTabRef.current = null; // Clear ref on tap
         cancelGesture();
       } else {
+        gestureTabRef.current = null; // Clear ref on cancel
         cancelGesture();
       }
     },
@@ -228,18 +236,38 @@ export function useGestureRecognition() {
       }
 
       const tabId = tabTrigger.getAttribute('data-tab-trigger') as TabId | null;
-      if (tabId) {
-        setActiveTab(tabId);
-      }
-      if (e.clientY > window.innerHeight - GESTURE_CONFIG.SAFE_ZONE_BOTTOM) {
+      if (!tabId) {
         return;
       }
+      
+      // CRITICAL: Set the active tab to the one being touched FIRST
+      // This allows gestures to work on any tab, not just the currently active one
+      setActiveTab(tabId);
+      // Also store it in a ref for immediate use (React state updates are async)
+      gestureTabRef.current = tabId;
+      
+      // Don't apply safe zone or edge dead zone checks for tab bar touches
+      // The tab bar IS at the bottom, so we need to allow gestures to start there
+      // The safe zone check is meant to prevent accidental gestures from system swipe areas,
+      // but we explicitly want gestures to work on the tab bar itself
+      
+      // Tab bar is approximately 56px + safe area (roughly 80-100px total from bottom)
+      // If touch is in the tab bar area, skip safe zone checks
+      const tabBarHeight = 100; // Approximate tab bar height including safe area
+      const isOnTabBar = e.clientY > window.innerHeight - tabBarHeight;
+      
+      if (!isOnTabBar) {
+        // For touches outside tab bar, apply safe zone and edge checks
+        if (e.clientY > window.innerHeight - GESTURE_CONFIG.SAFE_ZONE_BOTTOM) {
+          return;
+        }
 
-      if (
-        e.clientX < GESTURE_CONFIG.EDGE_DEAD_ZONE ||
-        e.clientX > window.innerWidth - GESTURE_CONFIG.EDGE_DEAD_ZONE
-      ) {
-        return;
+        if (
+          e.clientX < GESTURE_CONFIG.EDGE_DEAD_ZONE ||
+          e.clientX > window.innerWidth - GESTURE_CONFIG.EDGE_DEAD_ZONE
+        ) {
+          return;
+        }
       }
 
       e.preventDefault();
@@ -293,6 +321,7 @@ export function useGestureRecognition() {
       removeWindowListeners,
       setGestureState,
       setPointerPosition,
+      setActiveTab,
     ]
   );
 
