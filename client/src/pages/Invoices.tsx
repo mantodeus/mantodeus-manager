@@ -10,6 +10,7 @@ import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
+import { MarkAsSentWarningDialog } from "@/components/MarkAsSentWarningDialog";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
 import { CreateInvoiceDialog } from "@/components/invoices/CreateInvoiceDialog";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -68,6 +69,8 @@ export default function Invoices() {
   const [moveToRubbishTargetId, setMoveToRubbishTargetId] = useState<number | null>(null);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [revertTarget, setRevertTarget] = useState<{ id: number; targetStatus: "draft" | "open"; currentStatus: "open" | "paid" } | null>(null);
+  const [markAsSentDialogOpen, setMarkAsSentDialogOpen] = useState(false);
+  const [markAsSentTarget, setMarkAsSentTarget] = useState<{ id: number; invoiceNumber?: string | null; alreadySent: boolean } | null>(null);
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [cancellationTarget, setCancellationTarget] = useState<{ id: number; invoiceNumber: string } | null>(null);
   const [needsReviewDeleteTarget, setNeedsReviewDeleteTarget] = useState<{ id: number; name: string } | null>(null);
@@ -122,8 +125,17 @@ export default function Invoices() {
       toast.success("Invoice marked as sent");
       refetch();
       refetchNeedsReview();
+      setMarkAsSentDialogOpen(false);
+      setMarkAsSentTarget(null);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      // If error is about already sent, show warning dialog
+      if (err.message.includes("already been sent") && err.message.includes("confirm")) {
+        // This will be handled by checking invoice.sentAt before calling mutation
+        return;
+      }
+      toast.error(err.message);
+    },
   });
   const markAsPaidMutation = trpc.invoices.markAsPaid.useMutation({
     onSuccess: () => {
@@ -567,12 +579,32 @@ export default function Invoices() {
 
   const handleBatchMarkAsSent = () => {
     if (selectedIds.size === 0) return;
-    const ids = Array.from(selectedIds);
-    ids.forEach((id) => {
-      markAsSentMutation.mutate({ id });
-    });
-    setSelectedIds(new Set());
-    setIsMultiSelectMode(false);
+    
+    // Check if any selected invoices are already sent
+    const selectedInvoices = Array.from(selectedIds)
+      .map(id => [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id))
+      .filter(Boolean) as typeof filteredInvoices;
+    
+    const alreadySentInvoices = selectedInvoices.filter(inv => inv.sentAt);
+    
+    if (alreadySentInvoices.length > 0) {
+      // Show warning dialog for batch operation
+      // For batch, we'll process all with confirmation
+      const ids = Array.from(selectedIds);
+      ids.forEach((id) => {
+        markAsSentMutation.mutate({ id, confirmed: true });
+      });
+      setSelectedIds(new Set());
+      setIsMultiSelectMode(false);
+    } else {
+      // No already-sent invoices, proceed normally
+      const ids = Array.from(selectedIds);
+      ids.forEach((id) => {
+        markAsSentMutation.mutate({ id });
+      });
+      setSelectedIds(new Set());
+      setIsMultiSelectMode(false);
+    }
   };
 
   const handleBatchMarkAsPaid = () => {
@@ -1177,8 +1209,17 @@ export default function Invoices() {
                                   setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName });
                                   break;
                                 case "markAsSent":
-                                  // CRITICAL: Only call markAsSent mutation
-                                  markAsSentMutation.mutate({ id: invoice.id });
+                                  // Check if invoice is already sent - show warning dialog if so
+                                  if (invoice.sentAt) {
+                                    setMarkAsSentTarget({ 
+                                      id: invoice.id, 
+                                      invoiceNumber: invoice.invoiceNumber,
+                                      alreadySent: true 
+                                    });
+                                    setMarkAsSentDialogOpen(true);
+                                  } else {
+                                    markAsSentMutation.mutate({ id: invoice.id });
+                                  }
                                   break;
                                 case "markAsPaid":
                                   // CRITICAL: Only call markAsPaid mutation
@@ -1324,8 +1365,17 @@ export default function Invoices() {
                                 }
                                 break;
                               case "markAsSent":
-                                // CRITICAL: Only call markAsSent mutation
-                                markAsSentMutation.mutate({ id: invoice.id });
+                                // Check if invoice is already sent - show warning dialog if so
+                                if (invoice.sentAt) {
+                                  setMarkAsSentTarget({ 
+                                    id: invoice.id, 
+                                    invoiceNumber: invoice.invoiceNumber,
+                                    alreadySent: true 
+                                  });
+                                  setMarkAsSentDialogOpen(true);
+                                } else {
+                                  markAsSentMutation.mutate({ id: invoice.id });
+                                }
                                 break;
                               case "markAsPaid":
                                 // CRITICAL: Only call markAsPaid mutation
@@ -1370,6 +1420,9 @@ export default function Invoices() {
         const hasPaid = selectedInvoiceStates.some(s => s === 'PAID');
         const hasNotSent = selectedInvoiceStates.some(s => !s || s === 'DRAFT' || s === 'REVIEW');
         const hasNotPaid = selectedInvoiceStates.some(s => s !== 'PAID');
+        
+        // Allow marking paid invoices as sent (with warning)
+        const canMarkAsSent = hasNotSent || hasPaid;
 
         return (
           <MultiSelectBar
@@ -1377,7 +1430,7 @@ export default function Invoices() {
             totalCount={filteredInvoices.length + needsReviewInvoices.length}
             onSelectAll={handleSelectAll}
             onDuplicate={handleBatchDuplicate}
-            onMarkAsSent={hasNotSent ? handleBatchMarkAsSent : undefined}
+            onMarkAsSent={canMarkAsSent ? handleBatchMarkAsSent : undefined}
             onRevertToDraft={hasSent ? handleBatchRevertToDraft : undefined}
             onRevertToSent={hasPaid ? handleBatchRevertToSent : undefined}
             onMarkAsPaid={hasNotPaid ? handleBatchMarkAsPaid : undefined}
@@ -1538,6 +1591,23 @@ export default function Invoices() {
         description={`This will create a new cancellation invoice that reverses invoice ${cancellationTarget?.invoiceNumber ?? ""}. The original invoice will remain unchanged.`}
         confirmLabel="Create cancellation invoice"
         isDeleting={createCancellationMutation.isPending}
+      />
+
+      {/* Mark as Sent Warning Dialog */}
+      <MarkAsSentWarningDialog
+        open={markAsSentDialogOpen}
+        onOpenChange={(open) => {
+          setMarkAsSentDialogOpen(open);
+          if (!open) {
+            setMarkAsSentTarget(null);
+          }
+        }}
+        invoiceNumber={markAsSentTarget?.invoiceNumber}
+        onConfirm={() => {
+          if (!markAsSentTarget) return;
+          markAsSentMutation.mutate({ id: markAsSentTarget.id, confirmed: true });
+        }}
+        isProcessing={markAsSentMutation.isPending}
       />
 
       {/* Bulk Upload Dialog */}

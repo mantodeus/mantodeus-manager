@@ -2165,7 +2165,7 @@ export async function revertInvoiceToDraft(id: number) {
 
 /**
  * Revert invoice to sent state (from paid)
- * Clears paidAt but keeps amountPaid
+ * Clears paidAt and resets amountPaid to 0
  */
 export async function revertInvoiceToSent(id: number) {
   const db = await getDb();
@@ -2174,7 +2174,7 @@ export async function revertInvoiceToSent(id: number) {
 
   return db
     .update(invoices)
-    .set({ status: 'open', paidAt: null })
+    .set({ status: 'open', paidAt: null, amountPaid: "0.00" })
     .where(eq(invoices.id, id));
 }
 

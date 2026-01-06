@@ -136,57 +136,21 @@ export const CenteredContextMenu = React.forwardRef<
     const bottomObstruction = getBottomObstructionHeight();
     const isMobile = window.innerWidth < 768;
 
+    // Calculate available space below the item (accounting for tab bar)
     const availableBelow =
       viewportHeight - bottomObstruction - itemRect.bottom - spacing - edgePadding;
+    
+    // Calculate how much we need to shift to show the FULL menu
     const requiredShift = Math.max(0, menuHeight - availableBelow);
     if (requiredShift <= 0) return 0;
 
-    // Maximum shift is limited by available space above
+    // Maximum shift is limited by available space above (can go all the way to top)
     const maxShift = Math.max(0, itemRect.top - edgePadding);
     
-    // On mobile, be more conservative - only shift the minimum needed
-    // Only snap to previous item if the minimum shift would overlap with it
-    if (isMobile) {
-      // Calculate minimum shift needed to show menu
-      const minShift = Math.min(requiredShift, maxShift);
-      
-      // Check if we need to snap to previous item to avoid overlap
-      const parent = itemRef.current.parentElement;
-      if (parent) {
-        const cardSelector =
-          '[data-slot="card"], .card, [data-item], li, .item-card, [class*="Card"], [role="article"], article';
-        const siblings = Array.from(parent.querySelectorAll(cardSelector))
-          .filter((node): node is HTMLElement => node instanceof HTMLElement);
-        const currentLeft = itemRect.left;
-        const sameColumn = siblings
-          .map((node) => ({ node, rect: node.getBoundingClientRect() }))
-          .filter(({ rect }) => Math.abs(rect.left - currentLeft) < rect.width / 2)
-          .sort((a, b) => a.rect.top - b.rect.top);
-
-        const currentIndex = sameColumn.findIndex(({ node }) => node === itemRef.current);
-        const prevRect = currentIndex > 0 ? sameColumn[currentIndex - 1].rect : null;
-        
-        if (prevRect) {
-          // Calculate distance to previous item
-          const step = itemRect.top - prevRect.top;
-          if (step > 0) {
-            // If minimum shift would cause overlap with previous item, snap to previous item
-            // Otherwise, use minimum shift
-            if (minShift > step - itemRect.height * 0.1) {
-              // Would overlap - snap to previous item position
-              return Math.min(step, maxShift);
-            }
-          }
-        }
-      }
-      
-      // Return minimum shift needed, capped at max
-      return minShift;
-    }
-
-    // Desktop: use original snapping logic
+    // Find parent and siblings for snapping logic
     const parent = itemRef.current.parentElement;
     if (!parent) {
+      // No parent - shift as much as needed, up to max
       return Math.min(requiredShift, maxShift);
     }
 
@@ -202,11 +166,19 @@ export const CenteredContextMenu = React.forwardRef<
 
     const currentIndex = sameColumn.findIndex(({ node }) => node === itemRef.current);
     const prevRect = currentIndex > 0 ? sameColumn[currentIndex - 1].rect : null;
+    
+    // Calculate step size (distance to previous item, or default spacing)
     const step = prevRect ? itemRect.top - prevRect.top : itemRect.height + spacing;
     const safeStep = step > 0 ? step : itemRect.height + spacing;
-    const snappedShift = Math.ceil(requiredShift / safeStep) * safeStep;
+    
+    // Calculate how many steps we need to shift to show the full menu
+    // Always round UP to ensure full menu is visible
+    const stepsNeeded = Math.ceil(requiredShift / safeStep);
+    const snappedShift = stepsNeeded * safeStep;
 
-    return Math.min(snappedShift, maxShift);
+    // Return the snapped shift, but ensure it's at least enough to show the full menu
+    // Cap at maxShift (can go all the way to top if needed)
+    return Math.min(Math.max(snappedShift, requiredShift), maxShift);
   }, [itemRect, menuHeight]);
 
   // Calculate menu position (always below the pressed item)
@@ -226,14 +198,21 @@ export const CenteredContextMenu = React.forwardRef<
       viewportWidth - edgePadding - menuWidth / 2
     );
 
+    // Calculate menu position after item shift
     const adjustedBottom = itemRect.bottom - menuShiftY;
+    const menuTop = adjustedBottom + spacing;
+    
+    // Calculate available space below the menu (accounting for tab bar)
     const availableBelow =
-      viewportHeight - bottomObstruction - adjustedBottom - spacing - edgePadding;
-    const maxHeight = Math.max(120, availableBelow);
+      viewportHeight - bottomObstruction - menuTop - edgePadding;
+    
+    // Ensure menu height doesn't exceed available space
+    // But prioritize showing the full menu - if we shifted, we should have space
+    const maxHeight = Math.max(120, Math.min(menuHeight, availableBelow));
 
     return {
       position: "fixed" as const,
-      top: `${adjustedBottom + spacing}px`,
+      top: `${menuTop}px`,
       left: `${left}px`,
       transform: "translateX(-50%)",
       zIndex: 9998,

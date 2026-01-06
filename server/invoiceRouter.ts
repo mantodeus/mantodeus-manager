@@ -682,7 +682,7 @@ export const invoiceRouter = router({
     }),
 
   markAsSent: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: z.number(), confirmed: z.boolean().optional() }))
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.user.id;
       const invoice = await db.getInvoiceById(input.id);
@@ -692,8 +692,13 @@ export const invoiceRouter = router({
       if (invoice.userId !== userId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this invoice" });
       }
-      if (invoice.sentAt) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice has already been sent" });
+      // Allow marking as sent even if already sent - user can fix mistakes with warning dialog
+      // If already sent and not confirmed, require confirmation (frontend will show warning)
+      if (invoice.sentAt && !input.confirmed) {
+        throw new TRPCError({ 
+          code: "BAD_REQUEST", 
+          message: "Invoice has already been sent. Please confirm to proceed." 
+        });
       }
       // Allow uploaded invoices in review state (Section 19 exception)
       if (invoice.source === "uploaded" && invoice.needsReview) {
