@@ -86,13 +86,19 @@ function YearTotalCard({
   
   const yearTotal = yearPaid + yearDue;
   
-  const { longPressHandlers, reset: resetLongPress } = useLongPress({
+  const { longPressHandlers, reset: resetLongPress, gestureState } = useLongPress({
     onLongPress: (e) => {
       e.preventDefault();
       if (cardRef.current) {
         setCardRect(cardRef.current.getBoundingClientRect());
+        cardRef.current.classList.remove('context-menu-pressing');
       }
       onPopoverOpenChange(true);
+    },
+    onPressStart: () => {
+      if (cardRef.current) {
+        cardRef.current.classList.add('context-menu-pressing');
+      }
     },
     duration: 550,
   });
@@ -103,6 +109,15 @@ function YearTotalCard({
       resetLongPress();
     }
   }, [popoverOpen, resetLongPress]);
+
+  // Remove pressing class when press ends or menu opens
+  useEffect(() => {
+    if (cardRef.current) {
+      if (gestureState === 'idle' || gestureState === 'menu-open') {
+        cardRef.current.classList.remove('context-menu-pressing');
+      }
+    }
+  }, [gestureState]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -334,13 +349,19 @@ function QuarterTotalCard({
   
   const quarterTotal = quarterPaid + quarterDue;
   
-  const { longPressHandlers, reset: resetLongPress } = useLongPress({
+  const { longPressHandlers, reset: resetLongPress, gestureState } = useLongPress({
     onLongPress: (e) => {
       e.preventDefault();
       if (cardRef.current) {
         setCardRect(cardRef.current.getBoundingClientRect());
+        cardRef.current.classList.remove('context-menu-pressing');
       }
       onPopoverOpenChange(true);
+    },
+    onPressStart: () => {
+      if (cardRef.current) {
+        cardRef.current.classList.add('context-menu-pressing');
+      }
     },
     duration: 550,
   });
@@ -351,6 +372,15 @@ function QuarterTotalCard({
       resetLongPress();
     }
   }, [popoverOpen, resetLongPress]);
+
+  // Remove pressing class when press ends or menu opens
+  useEffect(() => {
+    if (cardRef.current) {
+      if (gestureState === 'idle' || gestureState === 'menu-open') {
+        cardRef.current.classList.remove('context-menu-pressing');
+      }
+    }
+  }, [gestureState]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
