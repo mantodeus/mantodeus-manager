@@ -132,15 +132,60 @@ export const CenteredContextMenu = React.forwardRef<
     const spacing = 12;
     const edgePadding = 12;
     const bottomObstruction = getBottomObstructionHeight();
+    const isMobile = window.innerWidth < 768;
 
     const availableBelow =
       viewportHeight - bottomObstruction - itemRect.bottom - spacing - edgePadding;
     const requiredShift = Math.max(0, menuHeight - availableBelow);
     if (requiredShift <= 0) return 0;
 
+    // Maximum shift is limited by available space above
+    const maxShift = Math.max(0, itemRect.top - edgePadding);
+    
+    // On mobile, be more conservative - only shift the minimum needed
+    // Only snap to previous item if the minimum shift would overlap with it
+    if (isMobile) {
+      // Calculate minimum shift needed to show menu
+      const minShift = Math.min(requiredShift, maxShift);
+      
+      // Check if we need to snap to previous item to avoid overlap
+      const parent = itemRef.current.parentElement;
+      if (parent) {
+        const cardSelector =
+          '[data-slot="card"], .card, [data-item], li, .item-card, [class*="Card"], [role="article"], article';
+        const siblings = Array.from(parent.querySelectorAll(cardSelector))
+          .filter((node): node is HTMLElement => node instanceof HTMLElement);
+        const currentLeft = itemRect.left;
+        const sameColumn = siblings
+          .map((node) => ({ node, rect: node.getBoundingClientRect() }))
+          .filter(({ rect }) => Math.abs(rect.left - currentLeft) < rect.width / 2)
+          .sort((a, b) => a.rect.top - b.rect.top);
+
+        const currentIndex = sameColumn.findIndex(({ node }) => node === itemRef.current);
+        const prevRect = currentIndex > 0 ? sameColumn[currentIndex - 1].rect : null;
+        
+        if (prevRect) {
+          // Calculate distance to previous item
+          const step = itemRect.top - prevRect.top;
+          if (step > 0) {
+            // If minimum shift would cause overlap with previous item, snap to previous item
+            // Otherwise, use minimum shift
+            if (minShift > step - itemRect.height * 0.1) {
+              // Would overlap - snap to previous item position
+              return Math.min(step, maxShift);
+            }
+          }
+        }
+      }
+      
+      // Return minimum shift needed, capped at max
+      return minShift;
+    }
+
+    // Desktop: use original snapping logic
     const parent = itemRef.current.parentElement;
     if (!parent) {
-      return Math.min(requiredShift, Math.max(0, itemRect.top - edgePadding));
+      return Math.min(requiredShift, maxShift);
     }
 
     const cardSelector =
@@ -158,7 +203,6 @@ export const CenteredContextMenu = React.forwardRef<
     const step = prevRect ? itemRect.top - prevRect.top : itemRect.height + spacing;
     const safeStep = step > 0 ? step : itemRect.height + spacing;
     const snappedShift = Math.ceil(requiredShift / safeStep) * safeStep;
-    const maxShift = Math.max(0, itemRect.top - edgePadding);
 
     return Math.min(snappedShift, maxShift);
   }, [itemRect, menuHeight]);
