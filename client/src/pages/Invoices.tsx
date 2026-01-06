@@ -23,7 +23,7 @@ import { BulkInvoiceUploadDialog } from "@/components/invoices/BulkInvoiceUpload
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 function formatCurrency(amount: number | string) {
@@ -59,37 +59,152 @@ const monthDisplayNames = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-// Year Total Button Component with Long Press
-function YearTotalButton({ selectedYear, onLongPress }: { selectedYear: number; onLongPress: () => void }) {
+// Year Total Card Component with Long Press
+function YearTotalCard({ 
+  selectedYear, 
+  yearTotal, 
+  allYearTotals, 
+  onYearSelect,
+  popoverOpen,
+  onPopoverOpenChange 
+}: { 
+  selectedYear: number;
+  yearTotal: number;
+  allYearTotals: Array<{ year: number; total: number }>;
+  onYearSelect: (year: number) => void;
+  popoverOpen: boolean;
+  onPopoverOpenChange: (open: boolean) => void;
+}) {
   const { longPressHandlers } = useLongPress({
-    onLongPress: () => onLongPress(),
+    onLongPress: (e) => {
+      e.preventDefault();
+      onPopoverOpenChange(true);
+    },
     duration: 550,
   });
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onPopoverOpenChange(true);
+  };
+
   return (
-    <button
+    <Card 
+      className="p-4 has-context-menu cursor-pointer"
       {...longPressHandlers}
-      className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+      onContextMenu={handleContextMenu}
     >
-      Total {selectedYear}
-    </button>
+      <Popover open={popoverOpen} onOpenChange={onPopoverOpenChange}>
+        <div className="flex items-center justify-between">
+          <PopoverTrigger asChild>
+            <button className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+              Total {selectedYear}
+            </button>
+          </PopoverTrigger>
+          <span className="text-xl font-semibold">
+            {formatCurrency(yearTotal)}
+          </span>
+        </div>
+        <PopoverContent className="w-64 p-2 glass-panel border-border/50 backdrop-blur-xl bg-background/95" align="start">
+          <div className="space-y-1">
+            {allYearTotals.map(({ year, total }) => (
+              <button
+                key={year}
+                onClick={() => {
+                  onYearSelect(year);
+                  onPopoverOpenChange(false);
+                }}
+                className={cn(
+                  "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
+                  year === selectedYear && "bg-accent"
+                )}
+              >
+                <span className="text-sm font-medium">Total {year}</span>
+                <span className="text-sm font-semibold">{formatCurrency(total)}</span>
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </Card>
   );
 }
 
-// Quarter Total Button Component with Long Press
-function QuarterTotalButton({ selectedQuarter, onLongPress }: { selectedQuarter: { quarter: number; year: number }; onLongPress: () => void }) {
+// Quarter Total Card Component with Long Press
+function QuarterTotalCard({ 
+  selectedQuarter, 
+  quarterTotal, 
+  allQuarterTotals, 
+  onQuarterSelect,
+  popoverOpen,
+  onPopoverOpenChange 
+}: { 
+  selectedQuarter: { quarter: number; year: number };
+  quarterTotal: number;
+  allQuarterTotals: Array<{ key: string; quarter: number; year: number; total: number }>;
+  onQuarterSelect: (quarter: number, year: number) => void;
+  popoverOpen: boolean;
+  onPopoverOpenChange: (open: boolean) => void;
+}) {
   const { longPressHandlers } = useLongPress({
-    onLongPress: () => onLongPress(),
+    onLongPress: (e) => {
+      e.preventDefault();
+      onPopoverOpenChange(true);
+    },
     duration: 550,
   });
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onPopoverOpenChange(true);
+  };
+
   return (
-    <button
+    <Card 
+      className="p-4 has-context-menu cursor-pointer"
       {...longPressHandlers}
-      className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+      onContextMenu={handleContextMenu}
     >
-      Q{selectedQuarter.quarter} {selectedQuarter.year}
-    </button>
+      <Popover open={popoverOpen} onOpenChange={onPopoverOpenChange}>
+        <div className="flex items-center justify-between">
+          <PopoverTrigger asChild>
+            <button className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+              Q{selectedQuarter.quarter} {selectedQuarter.year}
+            </button>
+          </PopoverTrigger>
+          <span className="text-xl font-semibold">
+            {formatCurrency(quarterTotal)}
+          </span>
+        </div>
+        <PopoverContent className="w-64 p-2 glass-panel border-border/50 backdrop-blur-xl bg-background/95" align="start">
+          <div className="space-y-1 max-h-[300px] overflow-y-auto">
+            {allQuarterTotals.map(({ key, quarter, year, total }) => {
+              const isSelectedQuarter = 
+                year === selectedQuarter.year && 
+                quarter === selectedQuarter.quarter;
+              return (
+                <button
+                  key={key}
+                  onClick={() => {
+                    onQuarterSelect(quarter, year);
+                    onPopoverOpenChange(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
+                    isSelectedQuarter && "bg-accent"
+                  )}
+                >
+                  <span className="text-sm font-medium">{key}</span>
+                  <span className="text-sm font-semibold">{formatCurrency(total)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </Card>
   );
 }
 
@@ -1134,77 +1249,22 @@ export default function Invoices() {
 
       {/* Total Cards */}
       <div className="grid gap-3 md:grid-cols-2">
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <Popover open={yearPopoverOpen} onOpenChange={setYearPopoverOpen}>
-              <YearTotalButton
-                selectedYear={selectedYear}
-                onLongPress={() => setYearPopoverOpen(true)}
-              />
-              <PopoverContent className="w-64 p-2 glass-panel border-border/50 backdrop-blur-xl bg-background/95" align="start">
-                <div className="space-y-1">
-                  {allYearTotals.map(({ year, total }) => (
-                    <button
-                      key={year}
-                      onClick={() => {
-                        setSelectedYear(year);
-                        setYearPopoverOpen(false);
-                      }}
-                      className={cn(
-                        "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
-                        year === selectedYear && "bg-accent"
-                      )}
-                    >
-                      <span className="text-sm font-medium">Total {year}</span>
-                      <span className="text-sm font-semibold">{formatCurrency(total)}</span>
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <span className="text-xl font-semibold">
-              {formatCurrency(yearTotal)}
-            </span>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <Popover open={quarterPopoverOpen} onOpenChange={setQuarterPopoverOpen}>
-              <QuarterTotalButton
-                selectedQuarter={selectedQuarter}
-                onLongPress={() => setQuarterPopoverOpen(true)}
-              />
-              <PopoverContent className="w-64 p-2 glass-panel border-border/50 backdrop-blur-xl bg-background/95" align="start">
-                <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                  {allQuarterTotals.map(({ key, quarter, year, total }) => {
-                    const isSelectedQuarter = 
-                      year === selectedQuarter.year && 
-                      quarter === selectedQuarter.quarter;
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => {
-                          setSelectedQuarter({ quarter, year });
-                          setQuarterPopoverOpen(false);
-                        }}
-                        className={cn(
-                          "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
-                          isSelectedQuarter && "bg-accent"
-                        )}
-                      >
-                        <span className="text-sm font-medium">{key}</span>
-                        <span className="text-sm font-semibold">{formatCurrency(total)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <span className="text-xl font-semibold">
-              {formatCurrency(quarterTotal)}
-            </span>
-          </div>
-        </Card>
+        <YearTotalCard
+          selectedYear={selectedYear}
+          yearTotal={yearTotal}
+          allYearTotals={allYearTotals}
+          onYearSelect={(year) => setSelectedYear(year)}
+          popoverOpen={yearPopoverOpen}
+          onPopoverOpenChange={setYearPopoverOpen}
+        />
+        <QuarterTotalCard
+          selectedQuarter={selectedQuarter}
+          quarterTotal={quarterTotal}
+          allQuarterTotals={allQuarterTotals}
+          onQuarterSelect={(quarter, year) => setSelectedQuarter({ quarter, year })}
+          popoverOpen={quarterPopoverOpen}
+          onPopoverOpenChange={setQuarterPopoverOpen}
+        />
       </div>
 
       {needsReviewInvoices.length > 0 && (
