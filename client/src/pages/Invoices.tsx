@@ -542,6 +542,26 @@ export default function Invoices() {
     setIsMultiSelectMode(false);
   };
 
+  const handleBatchRevertToDraft = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      revertToDraftMutation.mutate({ id, confirmed: true });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBatchRevertToSent = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      revertToSentMutation.mutate({ id, confirmed: true });
+    });
+    setSelectedIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
   const handleBulkUpload = async (files: File[]) => {
     try {
       // Convert files to base64
@@ -590,7 +610,7 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'PAID') {
-      return <Badge variant="default" className="text-xs bg-pink-500 text-white dark:bg-[#00FF88] dark:text-black border-pink-500/50 dark:border-[#00FF88]/50">PAID</Badge>;
+      return <Badge variant="default" className="text-xs bg-pink-500 text-white dark:!bg-[#00FF88] dark:!text-black border-pink-500/50 dark:border-[#00FF88]/50">PAID</Badge>;
     }
     
     if (invoiceState === 'SENT') {
@@ -1045,31 +1065,38 @@ export default function Invoices() {
                           <ItemActionsMenu
                             actions={["edit", "duplicate", "select", "archive", "delete", "markAsSent", "markAsPaid"]}
                             onAction={(action) => {
-                              if (action === "edit") {
-                                // "Edit" maps to "review" for needs-review invoices
-                                setUploadedInvoiceId(invoice.id);
-                                setUploadedParsedData(null);
-                                setUploadReviewDialogOpen(true);
-                              }
-                              if (action === "duplicate") {
-                                duplicateInvoiceMutation.mutate({ id: invoice.id });
-                              }
-                              if (action === "select") {
-                                setIsMultiSelectMode(true);
-                                setSelectedIds(new Set([invoice.id]));
-                              }
-                              if (action === "archive") {
-                                handleArchiveInvoice(invoice.id);
-                              }
-                              if (action === "delete") {
-                                setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName });
-                              }
-                              if (action === "markAsSent") {
-                                markAsSentMutation.mutate({ id: invoice.id });
-                              }
-                              if (action === "markAsPaid") {
-                                // For uploaded invoices that haven't been sent, mark as sent and paid
-                                markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
+                              // Use switch statement to ensure only one action executes
+                              switch (action) {
+                                case "edit":
+                                  // "Edit" maps to "review" for needs-review invoices
+                                  setUploadedInvoiceId(invoice.id);
+                                  setUploadedParsedData(null);
+                                  setUploadReviewDialogOpen(true);
+                                  break;
+                                case "duplicate":
+                                  duplicateInvoiceMutation.mutate({ id: invoice.id });
+                                  break;
+                                case "select":
+                                  setIsMultiSelectMode(true);
+                                  setSelectedIds(new Set([invoice.id]));
+                                  break;
+                                case "archive":
+                                  handleArchiveInvoice(invoice.id);
+                                  break;
+                                case "delete":
+                                  setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName });
+                                  break;
+                                case "markAsSent":
+                                  // CRITICAL: Only call markAsSent mutation
+                                  markAsSentMutation.mutate({ id: invoice.id });
+                                  break;
+                                case "markAsPaid":
+                                  // CRITICAL: Only call markAsPaid mutation
+                                  // For uploaded invoices that haven't been sent, mark as sent and paid
+                                  markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
+                                  break;
+                                default:
+                                  console.warn("Unknown action:", action);
                               }
                             }}
                           />
@@ -1182,47 +1209,53 @@ export default function Invoices() {
                         <ItemActionsMenu
                           actions={availableActions}
                           onAction={(action) => {
-                            if (action === "edit") {
-                              // "Edit" navigates to invoice detail page
-                              navigate(`/invoices/${invoice.id}`);
-                            }
-                            if (action === "duplicate") {
-                              duplicateInvoiceMutation.mutate({ id: invoice.id });
-                            }
-                            if (action === "select") {
-                              setIsMultiSelectMode(true);
-                              setSelectedIds(new Set([invoice.id]));
-                            }
-                            if (action === "archive") {
-                              handleArchiveInvoice(invoice.id);
-                            }
-                            if (action === "delete") {
-                              // "Delete" maps to "moveToTrash" for invoices
-                              if (isDraft) {
-                                handleMoveToRubbish(invoice.id);
-                              } else {
-                                toast.info("Only draft invoices can be deleted. Use Archive for sent invoices.");
-                              }
-                            }
-                            if (action === "markAsSent") {
-                              markAsSentMutation.mutate({ id: invoice.id });
-                            }
-                            if (action === "markAsPaid") {
-                              // For uploaded invoices that haven't been sent, show confirmation dialog
-                              if (!invoice.sentAt && invoice.source === "uploaded") {
-                                // For batch operations, we'll mark as sent and paid
-                                markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
-                              } else {
-                                markAsPaidMutation.mutate({ id: invoice.id });
-                              }
-                            }
-                            if (action === "revertToDraft") {
-                              // Show revert dialog - for now, directly revert with confirmation
-                              revertToDraftMutation.mutate({ id: invoice.id, confirmed: true });
-                            }
-                            if (action === "revertToSent") {
-                              // Show revert dialog - for now, directly revert with confirmation
-                              revertToSentMutation.mutate({ id: invoice.id, confirmed: true });
+                            // Use switch statement to ensure only one action executes
+                            switch (action) {
+                              case "edit":
+                                // "Edit" navigates to invoice detail page
+                                navigate(`/invoices/${invoice.id}`);
+                                break;
+                              case "duplicate":
+                                duplicateInvoiceMutation.mutate({ id: invoice.id });
+                                break;
+                              case "select":
+                                setIsMultiSelectMode(true);
+                                setSelectedIds(new Set([invoice.id]));
+                                break;
+                              case "archive":
+                                handleArchiveInvoice(invoice.id);
+                                break;
+                              case "delete":
+                                // "Delete" maps to "moveToTrash" for invoices
+                                if (isDraft) {
+                                  handleMoveToRubbish(invoice.id);
+                                } else {
+                                  toast.info("Only draft invoices can be deleted. Use Archive for sent invoices.");
+                                }
+                                break;
+                              case "markAsSent":
+                                // CRITICAL: Only call markAsSent mutation
+                                markAsSentMutation.mutate({ id: invoice.id });
+                                break;
+                              case "markAsPaid":
+                                // CRITICAL: Only call markAsPaid mutation
+                                // For uploaded invoices that haven't been sent, mark as sent and paid
+                                if (!invoice.sentAt && invoice.source === "uploaded") {
+                                  markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
+                                } else {
+                                  markAsPaidMutation.mutate({ id: invoice.id });
+                                }
+                                break;
+                              case "revertToDraft":
+                                // Show revert dialog - for now, directly revert with confirmation
+                                revertToDraftMutation.mutate({ id: invoice.id, confirmed: true });
+                                break;
+                              case "revertToSent":
+                                // Show revert dialog - for now, directly revert with confirmation
+                                revertToSentMutation.mutate({ id: invoice.id, confirmed: true });
+                                break;
+                              default:
+                                console.warn("Unknown action:", action);
                             }
                           }}
                         />
@@ -1236,16 +1269,30 @@ export default function Invoices() {
       )}
 
       {/* Multi-select bar */}
-      {isMultiSelectMode && (
-        <MultiSelectBar
-          selectedCount={selectedIds.size}
-          totalCount={filteredInvoices.length + needsReviewInvoices.length}
-          onSelectAll={handleSelectAll}
-          onDuplicate={handleBatchDuplicate}
-          onMarkAsSent={handleBatchMarkAsSent}
-          onMarkAsPaid={handleBatchMarkAsPaid}
-          onArchive={handleBatchArchive}
-          onDelete={handleBatchDelete}
+      {isMultiSelectMode && (() => {
+        // Determine which batch actions to show based on selected invoices' states
+        const selectedInvoiceStates = Array.from(selectedIds).map(id => {
+          const invoice = [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id);
+          return invoice ? getInvoiceState(invoice) : null;
+        }).filter(Boolean) as string[];
+
+        const hasSent = selectedInvoiceStates.some(s => s === 'SENT' || s === 'PARTIAL');
+        const hasPaid = selectedInvoiceStates.some(s => s === 'PAID');
+        const hasNotSent = selectedInvoiceStates.some(s => !s || s === 'DRAFT' || s === 'REVIEW');
+        const hasNotPaid = selectedInvoiceStates.some(s => s !== 'PAID');
+
+        return (
+          <MultiSelectBar
+            selectedCount={selectedIds.size}
+            totalCount={filteredInvoices.length + needsReviewInvoices.length}
+            onSelectAll={handleSelectAll}
+            onDuplicate={handleBatchDuplicate}
+            onMarkAsSent={hasNotSent ? handleBatchMarkAsSent : undefined}
+            onRevertToDraft={hasSent ? handleBatchRevertToDraft : undefined}
+            onRevertToSent={hasPaid ? handleBatchRevertToSent : undefined}
+            onMarkAsPaid={hasNotPaid ? handleBatchMarkAsPaid : undefined}
+            onArchive={handleBatchArchive}
+            onDelete={handleBatchDelete}
           onCancel={() => {
             // Clear selection and exit multi-select mode
             setSelectedIds(new Set());
@@ -1271,8 +1318,9 @@ export default function Invoices() {
               });
             });
           }}
-        />
-      )}
+          />
+        );
+      })()}
 
       <InvoiceUploadReviewDialog
         open={uploadReviewDialogOpen}

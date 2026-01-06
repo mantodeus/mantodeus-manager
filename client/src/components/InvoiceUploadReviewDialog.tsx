@@ -468,7 +468,18 @@ export function InvoiceUploadReviewDialog({
                 variant="outline"
                 size="sm"
                 disabled
-                className="gap-2"
+                className="gap-2 bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Sent
+              </Button>
+            )}
+            {invoiceState === 'PARTIAL' && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="gap-2 bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Sent
@@ -479,7 +490,7 @@ export function InvoiceUploadReviewDialog({
                 variant="outline"
                 size="sm"
                 disabled
-                className="gap-2"
+                className="gap-2 bg-pink-500 text-white dark:bg-[#00FF88] dark:text-black border-pink-500/50 dark:border-[#00FF88]/50"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Paid
