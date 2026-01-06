@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Auth Cache Utilities
  * 
  * Functions to clear authentication-related cache and storage
@@ -6,6 +6,7 @@
  */
 
 import { supabase } from "./supabase";
+import { AUTH_TOKEN_STORAGE_KEY } from "./authToken";
 
 /**
  * Clears all authentication-related cache and storage
@@ -24,6 +25,8 @@ export async function clearAuthCache() {
     const supabaseStorageKey = "mantodeus-supabase-auth";
     if (typeof window !== "undefined") {
       localStorage.removeItem(supabaseStorageKey);
+      localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+      sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
       
       // Also try to clear any other Supabase-related keys
       const keysToRemove: string[] = [];
@@ -97,4 +100,5 @@ export function hasStaleAuthData(): boolean {
   
   return hasSupabaseData || hasAuthCookies;
 }
+
 
