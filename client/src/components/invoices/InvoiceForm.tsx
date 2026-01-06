@@ -192,6 +192,14 @@ export function InvoiceForm({
     },
     onError: (error) => toast.error(error.message || "Failed to revert invoice"),
   });
+  const markAsPaidMutation = trpc.invoices.markAsPaid.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as paid");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      onSuccess?.();
+    },
+    onError: (err) => toast.error(err.message),
+  });
   const markAsCancelledMutation = trpc.invoices.markAsCancelled.useMutation({
     onSuccess: () => {
       toast.success("Invoice marked as cancelled");
@@ -800,34 +808,46 @@ export function InvoiceForm({
           </>
         )}
         
-        {/* Revert buttons - only in footer */}
-        {invoice && !isCreate && (
+        {/* Action buttons for sent invoices */}
+        {invoice && !isCreate && isSent && !isPaid && (
           <>
-            {(invoiceState === 'SENT' || invoiceState === 'PARTIAL') && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setRevertDialogOpen(true)}
-                disabled={isLoading || revertToDraftMutation.isPending}
-                className="w-full"
-              >
-                {revertToDraftMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Not Sent
-              </Button>
-            )}
-            {invoiceState === 'PAID' && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setRevertDialogOpen(true)}
-                disabled={isLoading || revertToSentMutation.isPending}
-                className="w-full"
-              >
-                {revertToSentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Not Paid
-              </Button>
-            )}
+            {/* Mark as Paid button */}
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => markAsPaidMutation.mutate({ id: invoiceId! })}
+              disabled={isLoading || markAsPaidMutation.isPending}
+              className="w-full"
+            >
+              {markAsPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Mark as Paid
+            </Button>
+            {/* Not Sent button (revert to draft) */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRevertDialogOpen(true)}
+              disabled={isLoading || revertToDraftMutation.isPending}
+              className="w-full"
+            >
+              {revertToDraftMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Not Sent
+            </Button>
           </>
+        )}
+        
+        {/* Revert buttons for paid invoices */}
+        {invoice && !isCreate && isPaid && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setRevertDialogOpen(true)}
+            disabled={isLoading || revertToSentMutation.isPending}
+            className="w-full"
+          >
+            {revertToSentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Not Paid
+          </Button>
         )}
       </div>
 
