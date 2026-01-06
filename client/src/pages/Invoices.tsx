@@ -1524,7 +1524,19 @@ export default function Invoices() {
     
     // Cancelled badge (dark color) - highest priority
     if (invoice.cancelledAt) {
-      return <Badge variant="default" className="text-xs !bg-[#F2F1EE] !text-foreground !dark:bg-[#0A0F14] !dark:text-white !border-[#F2F1EE]/50 !dark:border-[#0A0F14]/50">CANCELLED</Badge>;
+      return (
+        <Badge 
+          variant="default" 
+          className="text-xs border-[#F2F1EE]/50 dark:border-[#0A0F14]/50" 
+          style={{
+            backgroundColor: isDarkMode ? '#0A0F14' : '#F2F1EE',
+            color: isDarkMode ? '#FFFFFF' : undefined,
+            borderColor: isDarkMode ? 'rgba(10, 15, 20, 0.5)' : 'rgba(242, 241, 238, 0.5)',
+          }}
+        >
+          CANCELLED
+        </Badge>
+      );
     }
     
     // Badge priority: OVERDUE > PARTIAL > SENT/PAID
