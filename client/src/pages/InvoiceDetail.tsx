@@ -209,7 +209,7 @@ export default function InvoiceDetail() {
                 size="sm"
                 onClick={handleSend}
                 disabled={!invoice.dueDate}
-                className="gap-2"
+                className="gap-2 bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
               >
                 <Send className="h-4 w-4" />
                 Send

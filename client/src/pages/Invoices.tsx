@@ -546,11 +546,11 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'PAID') {
-      return <Badge variant="secondary" className="text-xs">PAID</Badge>;
+      return <Badge variant="default" className="text-xs bg-pink-500 text-white dark:bg-primary dark:text-primary-foreground border-pink-500/50 dark:border-primary/50">PAID</Badge>;
     }
     
     if (invoiceState === 'SENT') {
-      return <Badge variant="secondary" className="text-xs">SENT</Badge>;
+      return <Badge variant="default" className="text-xs bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50">SENT</Badge>;
     }
     
     if (invoiceState === 'DRAFT') {

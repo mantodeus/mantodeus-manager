@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
 interface RevertInvoiceStatusDialogProps {
@@ -24,19 +24,17 @@ export function RevertInvoiceStatusDialog({
   onConfirm,
   isReverting,
 }: RevertInvoiceStatusDialogProps) {
-  const [revertText, setRevertText] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setRevertText("");
       setAcknowledged(false);
     }
     onOpenChange(newOpen);
   };
 
   const handleConfirm = () => {
-    if (revertText !== "REVERT" || !acknowledged) return;
+    if (!acknowledged) return;
     onConfirm();
   };
 
@@ -56,7 +54,7 @@ export function RevertInvoiceStatusDialog({
     return "This invoice is marked as paid. Reverting it may affect accounting records for accounting reasons. Only proceed if the payment was recorded incorrectly.";
   };
 
-  const canConfirm = revertText === "REVERT" && acknowledged && !isReverting;
+  const canConfirm = acknowledged && !isReverting;
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
@@ -87,37 +85,21 @@ export function RevertInvoiceStatusDialog({
         </AlertDialogHeader>
         
         <div className="space-y-3">
-          <div className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
-            <input
-              type="checkbox"
+          <div className="flex items-start gap-3 rounded-md border border-border p-4">
+            <Checkbox
               id="revert-ack"
               checked={acknowledged}
-              onChange={(e) => setAcknowledged(e.target.checked)}
+              onCheckedChange={(checked) => setAcknowledged(checked === true)}
               className="mt-0.5"
             />
-            <label htmlFor="revert-ack" className="text-muted-foreground cursor-pointer flex-1">
+            <Label htmlFor="revert-ack" className="text-sm text-foreground cursor-pointer flex-1 leading-relaxed">
               I understand the consequences.
-            </label>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="revert-text" className="text-sm">
-              Type <span className="font-mono font-semibold">REVERT</span> to confirm:
             </Label>
-            <Input
-              id="revert-text"
-              value={revertText}
-              onChange={(e) => setRevertText(e.target.value.toUpperCase())}
-              placeholder="REVERT"
-              className="font-mono"
-              autoFocus
-            />
           </div>
         </div>
         
         <AlertDialogFooter>
           <AlertDialogCancel onClick={() => {
-            setRevertText("");
             setAcknowledged(false);
           }}>
             Cancel

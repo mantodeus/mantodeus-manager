@@ -456,7 +456,7 @@ export function InvoiceUploadReviewDialog({
                 size="sm"
                 onClick={handleSend}
                 disabled={isLoading || (!dueDate && !invoice?.dueDate) || Number(totalAmount || 0) <= 0}
-                className="gap-2"
+                className="gap-2 bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
               >
                 <Send className="h-4 w-4" />
                 Send

@@ -246,14 +246,14 @@ export default function InvoicesArchived() {
     const { status, sentAt, paidAt, dueDate } = invoice;
 
     if (status === 'paid') {
-      return <Badge variant="secondary" className="text-xs">PAID</Badge>;
+      return <Badge variant="default" className="text-xs bg-pink-500 text-white dark:bg-primary dark:text-primary-foreground border-pink-500/50 dark:border-primary/50">PAID</Badge>;
     }
 
     if (status === 'open' && sentAt) {
       if (dueDate && new Date(dueDate) < new Date() && !paidAt) {
         return <Badge variant="destructive" className="text-xs">OVERDUE</Badge>;
       }
-      return <Badge variant="default" className="text-xs">SENT</Badge>;
+      return <Badge variant="default" className="text-xs bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50">SENT</Badge>;
     }
 
     if (status === 'open' && !sentAt) {

@@ -288,14 +288,14 @@ export function InvoiceForm({
 
   const handleRevertToDraft = () => {
     if (!invoiceId) return;
-    revertToDraftMutation.mutate({ id: invoiceId, confirmed: true });
     setRevertDialogOpen(false);
+    revertToDraftMutation.mutate({ id: invoiceId, confirmed: true });
   };
 
   const handleRevertToSent = () => {
     if (!invoiceId) return;
-    revertToSentMutation.mutate({ id: invoiceId, confirmed: true });
     setRevertDialogOpen(false);
+    revertToSentMutation.mutate({ id: invoiceId, confirmed: true });
   };
 
   // Header button logic
@@ -326,7 +326,7 @@ export function InvoiceForm({
             onClick={handleSend}
             disabled={isLoading || !formState.dueDate || totals.total <= 0}
             size={isMobile ? "sm" : "default"}
-            className={cn(isMobile && "gap-2")}
+            className={cn(isMobile && "gap-2", "bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700")}
           >
             <Send className="h-4 w-4" />
             {isMobile ? "Send" : "Send"}
