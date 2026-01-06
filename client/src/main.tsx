@@ -157,9 +157,36 @@ supabase.auth.onAuthStateChange(async (event, session) => {
         });
         if (!response.ok) {
           console.warn("[Auth] Failed to sync backend session:", response.statusText);
+          // Retry once for INITIAL_SESSION events (critical for app restart)
+          if (event === 'INITIAL_SESSION') {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const retryResponse = await fetch("/api/auth/callback", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                access_token: session.access_token,
+              }),
+            });
+            if (!retryResponse.ok) {
+              console.error("[Auth] Failed to sync backend session after retry:", retryResponse.statusText);
+            } else {
+              console.log("[Auth] Backend session synced successfully after retry");
+            }
+          }
+        } else {
+          if (event === 'INITIAL_SESSION') {
+            console.log("[Auth] Backend session restored from INITIAL_SESSION event");
+          }
         }
       } catch (error) {
-        console.warn("[Auth] Failed to sync backend session:", error);
+        console.error("[Auth] Failed to sync backend session:", error);
+        // For INITIAL_SESSION, this is critical - log as error
+        if (event === 'INITIAL_SESSION') {
+          console.error("[Auth] CRITICAL: Failed to restore backend session on app startup");
+        }
       }
     }
     // Invalidate auth query to update user state
@@ -168,27 +195,65 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 });
 
 // Initialize the cached token on startup and restore backend session
-supabase.auth.getSession().then(async ({ data: { session } }) => {
-  cachedAccessToken = session?.access_token ?? null;
-  
-  // If we have a Supabase session, ensure the backend session cookie is set
-  if (session?.access_token) {
-    try {
-      await fetch("/api/auth/callback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          access_token: session.access_token,
-        }),
-      });
-    } catch (error) {
-      console.warn("[Auth] Failed to restore backend session:", error);
+// This MUST complete before the app renders to prevent logout on restart
+// BUT only if there's actually a session to restore - don't block login page
+let sessionRestorePromise: Promise<void> | null = null;
+
+const restoreBackendSession = async (): Promise<void> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    cachedAccessToken = session?.access_token ?? null;
+    
+    // If we have a Supabase session, ensure the backend session cookie is set
+    if (session?.access_token) {
+      try {
+        const response = await fetch("/api/auth/callback", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            access_token: session.access_token,
+          }),
+        });
+        
+        if (!response.ok) {
+          console.warn("[Auth] Failed to restore backend session:", response.statusText);
+          // Retry once after a short delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const retryResponse = await fetch("/api/auth/callback", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              access_token: session.access_token,
+            }),
+          });
+          if (!retryResponse.ok) {
+            console.error("[Auth] Failed to restore backend session after retry:", retryResponse.statusText);
+          }
+        } else {
+          console.log("[Auth] Backend session restored successfully");
+        }
+      } catch (error) {
+        console.error("[Auth] Failed to restore backend session:", error);
+        // Don't throw - allow app to continue, session might still work
+      }
+    } else {
+      // No session to restore - this is fine, user needs to login
+      console.log("[Auth] No session to restore - user needs to login");
     }
+  } catch (error) {
+    console.error("[Auth] Failed to get Supabase session:", error);
+    // Don't throw - allow app to continue
   }
-});
+};
+
+// Start session restoration immediately, but don't block if there's no session
+sessionRestorePromise = restoreBackendSession();
 
 const trpcClient = trpc.createClient({
   links: [
@@ -223,8 +288,29 @@ const trpcClient = trpc.createClient({
 });
 
 // Ensure DOM is ready before rendering
-const initializeApp = () => {
+// CRITICAL: Wait for session restoration to complete before rendering IF there's a session
+// This prevents users from being logged out on app restart
+// BUT: Don't block if there's no session - allow login page to load immediately
+const initializeApp = async () => {
   try {
+    // Check if there's a session first
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Only wait for session restoration if there's actually a session to restore
+    // This prevents blocking the login page when user needs to authenticate
+    if (session?.access_token && sessionRestorePromise) {
+      // Wait for restoration with a timeout to prevent infinite waiting
+      try {
+        await Promise.race([
+          sessionRestorePromise,
+          new Promise<void>((resolve) => setTimeout(resolve, 2000)) // Max 2 second wait
+        ]);
+      } catch (error) {
+        console.warn("[Auth] Session restoration timed out or failed, proceeding anyway:", error);
+        // Continue anyway - don't block the app
+      }
+    }
+    
     const rootElement = document.getElementById("root");
     if (!rootElement) {
       throw new Error("Root element not found");
@@ -276,10 +362,11 @@ const initializeApp = () => {
 };
 
 // Initialize when DOM is ready
+// CRITICAL: Wait for session restoration before initializing app
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
     try {
-      initializeApp();
+      await initializeApp();
       initializeLogos();
     } catch (error) {
       console.error("[App] Failed to initialize on DOMContentLoaded:", error);
@@ -287,12 +374,14 @@ if (document.readyState === "loading") {
   });
 } else {
   // DOM is already ready
-  try {
-    initializeApp();
-    initializeLogos();
-  } catch (error) {
-    console.error("[App] Failed to initialize:", error);
-  }
+  (async () => {
+    try {
+      await initializeApp();
+      initializeLogos();
+    } catch (error) {
+      console.error("[App] Failed to initialize:", error);
+    }
+  })();
 }
 
 // Additional error handlers (redundant but safe)

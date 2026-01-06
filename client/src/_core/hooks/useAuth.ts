@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
+import { UNAUTHED_ERR_MSG } from "@shared/const";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -15,7 +16,17 @@ export function useAuth(options?: UseAuthOptions) {
   const utils = trpc.useUtils();
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
-    retry: false,
+    // Retry once on initial load to handle race condition with session restoration
+    retry: (failureCount, error) => {
+      // Only retry once, and only if it's an auth error (might be session not ready yet)
+      if (failureCount >= 1) return false;
+      // Retry if it's an unauthorized error (session might not be restored yet)
+      if (error instanceof TRPCClientError && error.message === UNAUTHED_ERR_MSG) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: 1000, // Wait 1 second before retry to allow session restoration
     refetchOnWindowFocus: false,
     // User info rarely changes - keep it fresh for 5 minutes
     staleTime: 5 * 60 * 1000,
