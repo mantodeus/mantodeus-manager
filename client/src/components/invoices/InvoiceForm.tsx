@@ -860,17 +860,15 @@ export function InvoiceForm({
               Delete
             </Button>
           )}
-          {!isReadOnly && (
-            <Button 
-              type="submit" 
-              form="invoice-form" 
-              className={!isCreate && invoice ? "flex-1" : "flex-1"} 
-              disabled={isLoading}
-            >
-              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              {isCreate ? "Save" : "Update"}
-            </Button>
-          )}
+          <Button 
+            type="submit" 
+            form="invoice-form" 
+            className={!isCreate && invoice ? "flex-1" : "flex-1"} 
+            disabled={isLoading || isReadOnly}
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            {isCreate ? "Save" : "Update"}
+          </Button>
         </div>
       </div>
 
