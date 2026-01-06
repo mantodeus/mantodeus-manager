@@ -2233,7 +2233,8 @@ export async function invalidateInvoiceShareLinks(invoiceId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db
+  // Only update if there are rows to update - this prevents errors when no share links exist
+  const result = await db
     .update(sharedDocuments)
     .set({
       invalidated: true,
@@ -2246,6 +2247,9 @@ export async function invalidateInvoiceShareLinks(invoiceId: number) {
         eq(sharedDocuments.invalidated, false)
       )
     );
+  
+  // Return result even if no rows were updated (invoice might not have share links)
+  return result;
 }
 
 // ===== INVOICE ITEMS QUERIES =====

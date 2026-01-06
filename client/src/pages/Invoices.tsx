@@ -418,7 +418,20 @@ export default function Invoices() {
     });
   };
 
-  const filteredInvoices = filterInvoices(allInvoices);
+  const filteredInvoices = useMemo(() => {
+    const filtered = filterInvoices(allInvoices);
+    // Ensure selected items remain visible even if they don't match filters
+    const selectedInvoiceIds = Array.from(selectedIds);
+    const selectedInvoices = selectedInvoiceIds
+      .map(id => allInvoices.find(inv => inv.id === id))
+      .filter(Boolean) as typeof allInvoices;
+    
+    // Combine filtered invoices with selected invoices (remove duplicates)
+    const filteredIds = new Set(filtered.map(inv => inv.id));
+    const additionalSelected = selectedInvoices.filter(inv => !filteredIds.has(inv.id));
+    
+    return [...filtered, ...additionalSelected];
+  }, [allInvoices, selectedIds, searchQuery, filters]);
 
   // Calculate invoice totals for all years and quarters
   const { yearTotal, quarterTotal, allYearTotals, allQuarterTotals } = useMemo(() => {
@@ -1483,8 +1496,9 @@ export default function Invoices() {
         const hasNotSent = selectedInvoiceStates.some(s => !s || s === 'DRAFT' || s === 'REVIEW');
         const hasNotPaid = selectedInvoiceStates.some(s => s !== 'PAID');
         
-        // Allow marking paid invoices as sent (with warning)
-        const canMarkAsSent = hasNotSent || hasPaid;
+        // Only show "Mark as sent" if there are non-sent invoices AND no paid invoices
+        // If paid invoices are selected, only show "Revert to sent"
+        const canMarkAsSent = hasNotSent && !hasPaid;
 
         return (
           <MultiSelectBar

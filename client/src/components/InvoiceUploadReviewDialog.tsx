@@ -528,15 +528,6 @@ export function InvoiceUploadReviewDialog({
             </>
           )}
 
-          {/* Read-only overlay message for sent/paid invoices */}
-          {isReadOnly && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                This invoice is locked because it has been {isPaid ? 'paid' : 'sent'}.
-              </AlertDescription>
-            </Alert>
-          )}
 
           <div className="space-y-2">
             <Label htmlFor="client">Client</Label>
