@@ -138,6 +138,7 @@ export function ModuleScroller() {
   const [, setLocation] = useLocation();
   const {
     activeTab,
+    gestureTab,
     scrollerVisible,
     highlightedIndex,
     setHighlightedIndex,
@@ -145,14 +146,17 @@ export function ModuleScroller() {
     setGestureState,
     pointerPosition,
     setLastUsedModule,
+    setGestureTab,
   } = useMobileNav();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const capabilities = useDeviceCapabilities(); // Phase 2: Device capability detection
 
-  // Â§ 6.1: Scope - only show modules for active tab
-  const modules = MODULE_REGISTRY[activeTab];
+  // Â§ 6.1: Scope - use gestureTab if set (the tab being gestured), otherwise activeTab
+  // This allows gestures to work on any tab, not just the currently active one
+  const currentTab = gestureTab ?? activeTab;
+  const modules = MODULE_REGISTRY[currentTab];
   useEffect(() => {
     if (
       !scrollerVisible ||
@@ -175,7 +179,7 @@ export function ModuleScroller() {
     const virtualTop = Math.max(0, window.innerHeight - listRect.height);
     const relativeY = pointerPosition.y - virtualTop;
     // Tab-specific sensitivity: faster for field (center), slower for office/tools (sides)
-    const sensitivityMultiplier = activeTab === 'field' ? 2.0 : 1.2;
+    const sensitivityMultiplier = currentTab === 'field' ? 2.0 : 1.2;
     const rawIndex = Math.floor((relativeY * sensitivityMultiplier) / itemHeight);
     const clampedIndex = Math.max(0, Math.min(modules.length - 1, rawIndex));
 
@@ -189,7 +193,7 @@ export function ModuleScroller() {
     modules.length,
     highlightedIndex,
     setHighlightedIndex,
-    activeTab,
+    currentTab,
   ]);
   // Â§ 6.2: State Safety - navigation occurs only on release
   useEffect(() => {
@@ -197,14 +201,19 @@ export function ModuleScroller() {
       const module = modules[highlightedIndex];
 
       if (module) {
-        // Navigate to selected module
-        setLastUsedModule(activeTab, module.path);
+        // Navigate to selected module - use currentTab (gestureTab or activeTab)
+        setLastUsedModule(currentTab, module.path);
         setLocation(module.path);
       }
 
       // Reset state
       setHighlightedIndex(null);
       setGestureState('idle');
+      // Clear gestureTab now that navigation is complete
+      // This ensures next gesture uses the correct tab
+      if (gestureTab !== null) {
+        setGestureTab(null);
+      }
     }
   }, [
     gestureState,
@@ -213,6 +222,8 @@ export function ModuleScroller() {
     setLocation,
     setHighlightedIndex,
     setGestureState,
+    currentTab,
+    setLastUsedModule,
   ]);
 
   // Initialize highlighted index to first item when scroller appears
@@ -227,7 +238,7 @@ export function ModuleScroller() {
   }
 
   const scrollerSide =
-    activeTab === 'office' ? 'left' : activeTab === 'tools' ? 'right' : 'center';
+    currentTab === 'office' ? 'left' : currentTab === 'tools' ? 'right' : 'center';
 
   return (
     <div

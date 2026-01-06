@@ -66,6 +66,8 @@ export interface MobileNavContextValue {
   setPointerPosition: (point: Point | null) => void;
   lastUsedModuleByTab: Record<TabId, string | null>;
   setLastUsedModule: (tab: TabId, path: string) => void;
+  gestureTab: TabId | null;
+  setGestureTab: (tab: TabId | null) => void;
 }
 
 /**

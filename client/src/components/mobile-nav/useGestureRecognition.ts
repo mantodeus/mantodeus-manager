@@ -27,6 +27,7 @@ export function useGestureRecognition() {
     setActiveTab,
     setHighlightedIndex,
     activeTab,
+    setGestureTab,
   } = useMobileNav();
 
   const holdTimerRef = useRef<number | undefined>(undefined);
@@ -78,8 +79,9 @@ export function useGestureRecognition() {
     activePointerIdRef.current = null;
     setPointerPosition(null);
     setGestureState('idle');
+    setGestureTab(null); // Clear gesture tab in context
     gestureTabRef.current = null; // Clear gesture tab ref
-  }, [isMobile, removeWindowListeners, setGestureState, setPointerPosition]);
+  }, [isMobile, removeWindowListeners, setGestureState, setPointerPosition, setGestureTab]);
 
   const processPointerMove = useCallback(
     (clientX: number, clientY: number, pointerId: number) => {
@@ -182,12 +184,12 @@ export function useGestureRecognition() {
         const lastIndex = Math.max(0, MODULE_REGISTRY[gestureTab].length - 1);
         setHighlightedIndex(prev => prev ?? lastIndex);
         setGestureState('snapping');
+        // Don't clear gestureTab yet - let ModuleScroller use it for navigation
+        // It will be cleared when gesture completes (in ModuleScroller or on next gesture start)
       } else if (wasJustTap) {
         // Just a tap - cancel gesture and let the click handler fire
-        gestureTabRef.current = null; // Clear ref on tap
         cancelGesture();
       } else {
-        gestureTabRef.current = null; // Clear ref on cancel
         cancelGesture();
       }
     },
@@ -243,6 +245,8 @@ export function useGestureRecognition() {
       // CRITICAL: Set the active tab to the one being touched FIRST
       // This allows gestures to work on any tab, not just the currently active one
       setActiveTab(tabId);
+      // Also set gestureTab in context for immediate use (before activeTab state updates)
+      setGestureTab(tabId);
       // Also store it in a ref for immediate use (React state updates are async)
       gestureTabRef.current = tabId;
       
@@ -322,6 +326,7 @@ export function useGestureRecognition() {
       setGestureState,
       setPointerPosition,
       setActiveTab,
+      setGestureTab,
     ]
   );
 

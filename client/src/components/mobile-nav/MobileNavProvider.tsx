@@ -71,6 +71,9 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
 
   const [pointerPosition, setPointerPosition] = useState<Point | null>(null);
 
+  // Store the tab that initiated the current gesture (for immediate use before state updates)
+  const [gestureTab, setGestureTab] = useState<TabId | null>(null);
+
   const [lastUsedModuleByTab, setLastUsedModuleByTab] = useState<
     Record<TabId, string | null>
   >(persistedState.lastUsedModuleByTab);
@@ -119,6 +122,8 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
     setPointerPosition,
     lastUsedModuleByTab,
     setLastUsedModule,
+    gestureTab,
+    setGestureTab,
   };
 
   return (
