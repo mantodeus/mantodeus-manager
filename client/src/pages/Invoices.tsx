@@ -176,7 +176,8 @@ function YearTotalCard({
     };
   }, [cardRect]);
 
-  const otherYears = allYearTotals.filter(y => y.year !== selectedYear);
+  // Show all years, sorted by year descending
+  const availableYears = [...allYearTotals].sort((a, b) => b.year - a.year);
 
   return (
     <>
@@ -211,8 +212,8 @@ function YearTotalCard({
           ) : (
             <>
               <div className="flex items-center justify-end gap-2">
-                <span className="text-sm text-muted-foreground">Paid</span>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xl font-semibold">Paid</span>
+                <span className="text-xl font-semibold">
                   {formatCurrency(yearPaid)}
                 </span>
               </div>
@@ -270,16 +271,19 @@ function YearTotalCard({
             onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="space-y-1 w-full py-1">
-              {/* Other years */}
-              {otherYears.length > 0 ? (
-                otherYears.map(({ year, total }) => (
+              {/* All available years */}
+              {availableYears.length > 0 ? (
+                availableYears.map(({ year, total }) => (
                   <button
                     key={year}
                     onClick={() => {
                       onYearSelect(year);
                       onPopoverOpenChange(false);
                     }}
-                    className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                    className={cn(
+                      "glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
+                      year === selectedYear && "bg-accent/30"
+                    )}
                     style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
                   >
                     <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Total {year}</span>
@@ -287,7 +291,7 @@ function YearTotalCard({
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-2 text-sm text-muted-foreground">No other years available</div>
+                <div className="px-3 py-2 text-sm text-muted-foreground">No years available</div>
               )}
             </div>
           </div>
@@ -413,9 +417,11 @@ function QuarterTotalCard({
     };
   }, [cardRect]);
 
-  const otherQuarters = allQuarterTotals.filter(
-    q => !(q.year === selectedQuarter.year && q.quarter === selectedQuarter.quarter)
-  );
+  // Show all quarters, sorted by year and quarter descending
+  const availableQuarters = [...allQuarterTotals].sort((a, b) => {
+    if (a.year !== b.year) return b.year - a.year;
+    return b.quarter - a.quarter;
+  });
 
   return (
     <>
@@ -453,8 +459,8 @@ function QuarterTotalCard({
           ) : (
             <>
               <div className="flex items-center justify-end gap-2">
-                <span className="text-sm text-muted-foreground">Paid</span>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xl font-semibold">Paid</span>
+                <span className="text-xl font-semibold">
                   {formatCurrency(quarterPaid)}
                 </span>
               </div>
@@ -512,16 +518,19 @@ function QuarterTotalCard({
             onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="space-y-1 w-full py-1">
-              {/* Other quarters */}
-              {otherQuarters.length > 0 ? (
-                otherQuarters.map(({ key, quarter, year, total }) => (
+              {/* All available quarters */}
+              {availableQuarters.length > 0 ? (
+                availableQuarters.map(({ key, quarter, year, total }) => (
                   <button
                     key={key}
                     onClick={() => {
                       onQuarterSelect(quarter, year);
                       onPopoverOpenChange(false);
                     }}
-                    className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                    className={cn(
+                      "glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
+                      year === selectedQuarter.year && quarter === selectedQuarter.quarter && "bg-accent/30"
+                    )}
                     style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
                   >
                     <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{key}</span>
@@ -529,7 +538,7 @@ function QuarterTotalCard({
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-2 text-sm text-muted-foreground">No other quarters available</div>
+                <div className="px-3 py-2 text-sm text-muted-foreground">No quarters available</div>
               )}
             </div>
           </div>
