@@ -41,6 +41,8 @@ const defaultFilters: FilterState = {
 };
 
 export default function InvoicesRubbish() {
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'green-mantis';
   const isMobile = useIsMobile();
   const [, navigate] = useLocation();
   const { data: trashedInvoices = [], isLoading } = trpc.invoices.listTrashed.useQuery();
@@ -194,7 +196,18 @@ export default function InvoicesRubbish() {
     const { status, sentAt, paidAt, dueDate } = invoice;
 
     if (status === 'paid') {
-      return <Badge variant="outline" className="text-xs !bg-pink-500 !text-white dark:!bg-[#00FF88] dark:!text-black !border-pink-500/50 dark:!border-[#00FF88]/50">PAID</Badge>;
+      return (
+        <span 
+          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0"
+          style={{
+            backgroundColor: isDarkMode ? '#00FF88' : 'rgb(236, 72, 153)', // green in dark, pink in light
+            color: isDarkMode ? '#000000' : 'white',
+            borderColor: isDarkMode ? 'rgba(0, 255, 136, 0.5)' : 'rgba(236, 72, 153, 0.5)',
+          }}
+        >
+          PAID
+        </span>
+      );
     }
 
     if (status === 'open' && sentAt) {

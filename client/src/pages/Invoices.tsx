@@ -2,8 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X, CheckCircle2, Archive, Trash2, ChevronDown } from "@/components/ui/Icon";
+import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
 import { useEffect, useState, useRef, useMemo } from "react";
+import { useTheme } from "@/hooks/useTheme";
 import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
@@ -14,6 +15,7 @@ import { MarkAsSentWarningDialog } from "@/components/MarkAsSentWarningDialog";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
 import { CreateInvoiceDialog } from "@/components/invoices/CreateInvoiceDialog";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useLongPress } from "@/hooks/useLongPress";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { Link, useLocation } from "wouter";
 import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
@@ -21,7 +23,7 @@ import { BulkInvoiceUploadDialog } from "@/components/invoices/BulkInvoiceUpload
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 function formatCurrency(amount: number | string) {
@@ -57,8 +59,51 @@ const monthDisplayNames = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+// Year Total Button Component with Long Press
+function YearTotalButton({ selectedYear, onLongPress }: { selectedYear: number; onLongPress: () => void }) {
+  const { longPressHandlers } = useLongPress({
+    onLongPress: () => onLongPress(),
+    duration: 550,
+  });
+
+  return (
+    <button
+      {...longPressHandlers}
+      className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+    >
+      Total {selectedYear}
+    </button>
+  );
+}
+
+// Quarter Total Button Component with Long Press
+function QuarterTotalButton({ selectedQuarter, onLongPress }: { selectedQuarter: { quarter: number; year: number }; onLongPress: () => void }) {
+  const { longPressHandlers } = useLongPress({
+    onLongPress: () => onLongPress(),
+    duration: 550,
+  });
+
+  return (
+    <button
+      {...longPressHandlers}
+      className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+    >
+      Q{selectedQuarter.quarter} {selectedQuarter.year}
+    </button>
+  );
+}
+
 export default function Invoices() {
   const isMobile = useIsMobile();
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'green-mantis';
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedQuarter, setSelectedQuarter] = useState<{ quarter: number; year: number }>(() => {
+    const now = new Date();
+    return { quarter: Math.floor(now.getMonth() / 3) + 1, year: now.getFullYear() };
+  });
+  const [yearPopoverOpen, setYearPopoverOpen] = useState(false);
+  const [quarterPopoverOpen, setQuarterPopoverOpen] = useState(false);
   const [, navigate] = useLocation();
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -377,11 +422,13 @@ export default function Invoices() {
 
   // Calculate invoice totals for all years and quarters
   const { yearTotal, quarterTotal, allYearTotals, allQuarterTotals } = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
-    const quarterStart = new Date(currentYear, (currentQuarter - 1) * 3, 1);
-    const quarterEnd = new Date(currentYear, currentQuarter * 3, 0, 23, 59, 59);
+    // Use selected year/quarter for display
+    const displayYear = selectedYear;
+    const displayQuarter = selectedQuarter.quarter;
+    const displayQuarterYear = selectedQuarter.year;
+    
+    const quarterStart = new Date(displayQuarterYear, (displayQuarter - 1) * 3, 1);
+    const quarterEnd = new Date(displayQuarterYear, displayQuarter * 3, 0, 23, 59, 59);
 
     let yearSum = 0;
     let quarterSum = 0;
@@ -413,12 +460,12 @@ export default function Invoices() {
       const existingQuarterTotal = quarterTotalsMap.get(quarterKey) || 0;
       quarterTotalsMap.set(quarterKey, existingQuarterTotal + total);
 
-      // Current year and quarter
-      if (invoiceYear === currentYear) {
+      // Selected year and quarter
+      if (invoiceYear === displayYear) {
         yearSum += total;
-        if (issueDate >= quarterStart && issueDate <= quarterEnd) {
-          quarterSum += total;
-        }
+      }
+      if (invoiceYear === displayQuarterYear && issueDate >= quarterStart && issueDate <= quarterEnd) {
+        quarterSum += total;
       }
     });
 
@@ -453,7 +500,7 @@ export default function Invoices() {
       allYearTotals,
       allQuarterTotals: allQuarters,
     };
-  }, [allInvoices]);
+  }, [allInvoices, selectedYear, selectedQuarter]);
 
   const handlePreviewPDF = async (invoiceId: number, fileName: string) => {
     try {
@@ -685,7 +732,18 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'PAID') {
-      return <Badge variant="outline" className="text-xs !bg-pink-500 !text-white dark:!bg-[#00FF88] dark:!text-black !border-pink-500/50 dark:!border-[#00FF88]/50">PAID</Badge>;
+      return (
+        <span 
+          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0"
+          style={{
+            backgroundColor: isDarkMode ? '#00FF88' : 'rgb(236, 72, 153)', // green in dark, pink in light
+            color: isDarkMode ? '#000000' : 'white',
+            borderColor: isDarkMode ? 'rgba(0, 255, 136, 0.5)' : 'rgba(236, 72, 153, 0.5)',
+          }}
+        >
+          PAID
+        </span>
+      );
     }
     
     if (invoiceState === 'SENT') {
@@ -1065,26 +1123,28 @@ export default function Invoices() {
       <div className="grid gap-3 md:grid-cols-2">
         <Card className="p-4">
           <div className="flex items-center justify-between">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer">
-                  Total {new Date().getFullYear()}
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-2" align="start">
+            <Popover open={yearPopoverOpen} onOpenChange={setYearPopoverOpen}>
+              <YearTotalButton
+                selectedYear={selectedYear}
+                onLongPress={() => setYearPopoverOpen(true)}
+              />
+              <PopoverContent className="w-64 p-2 glass-panel border-border/50 backdrop-blur-xl bg-background/95" align="start">
                 <div className="space-y-1">
                   {allYearTotals.map(({ year, total }) => (
-                    <div
+                    <button
                       key={year}
+                      onClick={() => {
+                        setSelectedYear(year);
+                        setYearPopoverOpen(false);
+                      }}
                       className={cn(
-                        "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent cursor-pointer",
-                        year === new Date().getFullYear() && "bg-accent"
+                        "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
+                        year === selectedYear && "bg-accent"
                       )}
                     >
                       <span className="text-sm font-medium">Total {year}</span>
                       <span className="text-sm font-semibold">{formatCurrency(total)}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </PopoverContent>
@@ -1096,30 +1156,32 @@ export default function Invoices() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center justify-between">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer">
-                  Q{Math.floor(new Date().getMonth() / 3) + 1} {new Date().getFullYear()}
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-2" align="start">
+            <Popover open={quarterPopoverOpen} onOpenChange={setQuarterPopoverOpen}>
+              <QuarterTotalButton
+                selectedQuarter={selectedQuarter}
+                onLongPress={() => setQuarterPopoverOpen(true)}
+              />
+              <PopoverContent className="w-64 p-2 glass-panel border-border/50 backdrop-blur-xl bg-background/95" align="start">
                 <div className="space-y-1 max-h-[300px] overflow-y-auto">
                   {allQuarterTotals.map(({ key, quarter, year, total }) => {
-                    const isCurrentQuarter = 
-                      year === new Date().getFullYear() && 
-                      quarter === Math.floor(new Date().getMonth() / 3) + 1;
+                    const isSelectedQuarter = 
+                      year === selectedQuarter.year && 
+                      quarter === selectedQuarter.quarter;
                     return (
-                      <div
+                      <button
                         key={key}
+                        onClick={() => {
+                          setSelectedQuarter({ quarter, year });
+                          setQuarterPopoverOpen(false);
+                        }}
                         className={cn(
-                          "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent cursor-pointer",
-                          isCurrentQuarter && "bg-accent"
+                          "w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors",
+                          isSelectedQuarter && "bg-accent"
                         )}
                       >
                         <span className="text-sm font-medium">{key}</span>
                         <span className="text-sm font-semibold">{formatCurrency(total)}</span>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
