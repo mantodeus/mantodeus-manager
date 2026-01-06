@@ -24,16 +24,43 @@ function formatCurrency(amount: number | string) {
   }).format(num || 0);
 }
 
+const monthDisplayNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+type FilterState = {
+  project: string;
+  client: string;
+  time: string; // "all" | "2024" | "2024-10" (year-month format)
+};
+
+const defaultFilters: FilterState = {
+  project: "all",
+  client: "all",
+  time: "all",
+};
+
 export default function InvoicesArchived() {
   const isMobile = useIsMobile();
+  const [, navigate] = useLocation();
   const { data: archivedInvoices = [], isLoading } = trpc.invoices.listArchived.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: projects = [] } = trpc.projects.list.useQuery();
   const utils = trpc.useUtils();
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
   const [moveToRubbishDialogOpen, setMoveToRubbishDialogOpen] = useState(false);
   const [moveToRubbishTargetId, setMoveToRubbishTargetId] = useState<number | null>(null);
+
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const restoreMutation = trpc.invoices.restore.useMutation({
     onSuccess: () => {

@@ -1537,7 +1537,31 @@ async function getRecentInvoiceNumbersByUserId(userId: number, limit = 1000) {
 function buildDefaultInvoiceSeed(issueDate: Date, fallbackPrefix?: string | null) {
   const year = issueDate.getFullYear();
   const safePrefix = fallbackPrefix?.trim() || "RE";
-  return `${safePrefix}-${year}-0001`;
+  return `${safePrefix}-${year}-001`;
+}
+
+/**
+ * Extract year from invoice number in format PREFIX-YYYY-XXX
+ * Returns null if year cannot be extracted
+ */
+function extractYearFromInvoiceNumber(invoiceNumber: string): number | null {
+  // Match pattern: PREFIX-YYYY-XXX (e.g., RE-2025-001)
+  const match = invoiceNumber.match(/^[^-]+-(\d{4})-\d+$/);
+  if (!match) return null;
+  const year = parseInt(match[1], 10);
+  return Number.isFinite(year) ? year : null;
+}
+
+/**
+ * Extract sequence number from invoice number in format PREFIX-YYYY-XXX
+ * Returns the numeric value of the sequence part (e.g., "001" -> 1, "010" -> 10)
+ */
+function extractSequenceFromInvoiceNumber(invoiceNumber: string): number | null {
+  // Match pattern: PREFIX-YYYY-XXX (e.g., RE-2025-001)
+  const match = invoiceNumber.match(/^[^-]+-\d{4}-(\d+)$/);
+  if (!match) return null;
+  const sequence = parseInt(match[1], 10);
+  return Number.isFinite(sequence) ? sequence : null;
 }
 
 export async function generateInvoiceNumber(
@@ -1559,7 +1583,17 @@ export async function generateInvoiceNumber(
   const allInvoices = await getRecentInvoiceNumbersByUserId(userId);
   
   // Filter invoices for the same year and matching format
+  // For format RE-YYYY-XXX, we need to:
+  // 1. Extract year from invoice number
+  // 2. Match only invoices from the same year
+  // 3. Match prefix pattern (e.g., "RE-")
   const yearInvoices = allInvoices.filter((row) => {
+    // Extract year from invoice number
+    const invoiceYearFromNumber = extractYearFromInvoiceNumber(row.invoiceNumber);
+    if (invoiceYearFromNumber !== invoiceYear) {
+      return false; // Must be same year
+    }
+    
     const parsed = parseInvoiceNumber(row.invoiceNumber);
     if (!parsed) return false;
     
@@ -1573,46 +1607,82 @@ export async function generateInvoiceNumber(
     }
   });
 
-  // Find the highest number among matching invoices
-  let maxValue = 0;
-  let maxParsed: ParsedInvoiceNumber | null = null;
+  // Find the highest sequence number among matching invoices for this year
+  let maxSequence = 0;
   
   for (const row of yearInvoices) {
-    const parsed = parseInvoiceNumber(row.invoiceNumber);
-    if (!parsed) continue;
-    if (parsed.value > maxValue) {
-      maxValue = parsed.value;
-      maxParsed = parsed;
+    const sequence = extractSequenceFromInvoiceNumber(row.invoiceNumber);
+    if (sequence !== null && sequence > maxSequence) {
+      maxSequence = sequence;
     }
   }
 
-  // If no matching invoices found, use the seed as starting point
-  if (!maxParsed) {
+  // Extract prefix from seed (e.g., "RE-" from "RE-2025-0001")
+  // For format RE-YYYY-XXX, parseInvoiceNumber gives us:
+  // - prefix: "RE-2025-" (everything before the sequence number)
+  // We need to extract just "RE-" (everything before the year)
+  let invoicePrefix: string;
+  if (seedValue) {
+    // Extract prefix from seed by removing the year part
+    // Pattern: PREFIX-YYYY-XXX -> extract PREFIX-
+    // seedParsed.prefix is like "RE-2025-", we want "RE-"
+    const prefixWithYear = seedParsed.prefix;
+    // Remove the year part (last 5 chars: "-YYYY")
+    const yearPattern = /-\d{4}-?$/;
+    invoicePrefix = prefixWithYear.replace(yearPattern, "-");
+    // Fallback if pattern doesn't match
+    if (invoicePrefix === prefixWithYear) {
+      // Try to extract prefix by finding the part before the first 4-digit year
+      const prefixMatch = effectiveSeed.match(/^(.+?)(-\d{4}-)/);
+      invoicePrefix = prefixMatch ? prefixMatch[1] + "-" : (fallbackPrefix?.trim() || "RE") + "-";
+    }
+  } else {
+    // Use fallback prefix or default "RE"
+    invoicePrefix = (fallbackPrefix?.trim() || "RE") + "-";
+  }
+
+  // If no matching invoices found for this year, start at 001
+  if (maxSequence === 0) {
+    const SEQUENCE_PADDING = 3;
+    const paddedSequence = String(1).padStart(SEQUENCE_PADDING, "0");
+    const candidateNumber = `${invoicePrefix}${invoiceYear}-${paddedSequence}`;
     const candidate = {
-      invoiceNumber: effectiveSeed,
-      invoiceCounter: seedParsed.value,
+      invoiceNumber: candidateNumber,
+      invoiceCounter: 1,
       invoiceYear,
     };
     try {
       await ensureUniqueInvoiceNumber(userId, candidate.invoiceNumber);
       return candidate;
     } catch {
-      // Collision on seed; fall through to retry logic below.
-      maxParsed = seedParsed;
-      maxValue = seedParsed.value;
+      // Collision on seed; increment and retry
+      maxSequence = 1;
     }
   }
 
   // Increment from the highest found number
-  const padding = seedValue ? seedParsed.padding : maxParsed.padding;
-  let nextCounter = maxParsed.value + 1;
+  // CRITICAL: Always use 3-digit padding for format RE-YYYY-XXX
+  const SEQUENCE_PADDING = 3;
+  let nextCounter = maxSequence + 1;
+  
+  // Validate sequence range (001-999)
+  if (nextCounter > 999) {
+    throw new Error(`Invoice sequence number exceeds maximum (999) for year ${invoiceYear}. Please contact support.`);
+  }
+  
+  // Build the invoice number with fixed 3-digit padding
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    const invoiceNumber = formatInvoiceNumber(maxParsed, nextCounter, padding);
+    const paddedSequence = String(nextCounter).padStart(SEQUENCE_PADDING, "0");
+    const invoiceNumber = `${invoicePrefix}${invoiceYear}-${paddedSequence}`;
+    
     try {
       await ensureUniqueInvoiceNumber(userId, invoiceNumber);
       return { invoiceNumber, invoiceCounter: nextCounter, invoiceYear };
     } catch {
       nextCounter += 1;
+      if (nextCounter > 999) {
+        throw new Error(`Failed to generate a unique invoice number after multiple attempts for year ${invoiceYear}.`);
+      }
     }
   }
 
