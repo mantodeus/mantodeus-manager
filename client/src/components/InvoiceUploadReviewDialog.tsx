@@ -614,7 +614,7 @@ export function InvoiceUploadReviewDialog({
                   disabled={isLoading || markAsSentMutation.isPending}
                   className={cn(
                     isMobile ? "w-full" : "",
-                    "border bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-transparent dark:border-input dark:hover:bg-input/50"
+                    "bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700 border-blue-500/50"
                   )}
                 >
                   {markAsSentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

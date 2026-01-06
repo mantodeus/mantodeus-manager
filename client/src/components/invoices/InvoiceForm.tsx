@@ -120,15 +120,18 @@ export function InvoiceForm({
         ? String(invoice.contactId)
         : undefined;
 
-      setFormState({
+      // Always update form state from invoice data to ensure consistency
+      // The dueDate should always come from the database invoice
+      setFormState((prev) => ({
         invoiceNumber: invoice.invoiceNumber,
         clientId: normalizeSelectValue(normalizedClientId),
         issueDate: invoice.issueDate
           ? new Date(invoice.issueDate).toISOString().split("T")[0]
           : new Date().toISOString().split("T")[0],
+        // Preserve dueDate from invoice - it should always be saved before sending
         dueDate: invoice.dueDate
           ? new Date(invoice.dueDate).toISOString().split("T")[0]
-          : undefined,
+          : prev.dueDate || undefined, // Fallback to previous value if invoice doesn't have it
         notes: invoice.notes || "",
         servicePeriodStart: invoice.servicePeriodStart
           ? new Date(invoice.servicePeriodStart).toISOString().split("T")[0]
@@ -138,7 +141,7 @@ export function InvoiceForm({
           : undefined,
         referenceNumber: invoice.referenceNumber || "",
         partialInvoice: Boolean(invoice.partialInvoice),
-      });
+      }));
       const normalizedItems = (invoice.items as InvoiceLineItem[]).map((item) => ({
         ...item,
         quantity: Number(item.quantity),
@@ -271,8 +274,8 @@ export function InvoiceForm({
 
   const editingItem = itemEditor.index !== null ? items[itemEditor.index] : defaultLineItem;
 
-  const handleSend = () => {
-    if (!invoice) return;
+  const handleSend = async () => {
+    if (!invoice || !invoiceId) return;
     // Validate before sending
     if (!formState.dueDate) {
       toast.error("Invoice must have a due date before it can be sent");
@@ -283,7 +286,46 @@ export function InvoiceForm({
       toast.error("Invoice total must be greater than 0");
       return;
     }
-    setShareDialogOpen(true);
+    
+    // Save the invoice first to ensure dueDate is persisted before sending
+    const validItems = items.filter((item) => item.name && item.quantity > 0);
+    if (!validItems.length) {
+      toast.error("Add at least one line item");
+      return;
+    }
+
+    const payload = {
+      invoiceNumber: formState.invoiceNumber.trim(),
+      clientId: formState.clientId ? parseInt(formState.clientId) : undefined,
+      issueDate: new Date(formState.issueDate),
+      dueDate: formState.dueDate ? new Date(formState.dueDate) : undefined,
+      notes: formState.notes?.trim() || undefined,
+      servicePeriodStart: formState.servicePeriodStart
+        ? new Date(formState.servicePeriodStart)
+        : undefined,
+      servicePeriodEnd: formState.servicePeriodEnd
+        ? new Date(formState.servicePeriodEnd)
+        : undefined,
+      referenceNumber: formState.referenceNumber?.trim() || undefined,
+      partialInvoice: formState.partialInvoice,
+      items: validItems.map((item) => ({
+        name: item.name,
+        description: item.description || undefined,
+        category: item.category || undefined,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        currency: item.currency || "EUR",
+      })),
+    };
+
+    try {
+      // Save invoice first to ensure dueDate is persisted
+      await updateMutation.mutateAsync({ id: invoiceId, ...payload });
+      // Then open share dialog
+      setShareDialogOpen(true);
+    } catch (error) {
+      // Error is already handled by mutation
+    }
   };
 
   const handleRevertToDraft = () => {
@@ -714,7 +756,7 @@ export function InvoiceForm({
         {/* Revert buttons - only in footer */}
         {invoice && !isCreate && (
           <>
-            {invoiceState === 'SENT' && Number(invoice.amountPaid || 0) === 0 && (
+            {(invoiceState === 'SENT' || invoiceState === 'PARTIAL') && (
               <Button
                 type="button"
                 variant="outline"

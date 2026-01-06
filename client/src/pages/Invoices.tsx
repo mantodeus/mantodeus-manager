@@ -542,7 +542,7 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'PARTIAL') {
-      return <Badge variant="default" className="text-xs bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/50">PARTIAL</Badge>;
+      return <Badge variant="default" className="text-xs bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50">PARTIAL</Badge>;
     }
     
     if (invoiceState === 'PAID') {

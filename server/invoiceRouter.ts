@@ -727,15 +727,7 @@ export const invoiceRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled invoices are read-only." });
       }
 
-      // Validate: can only revert to draft if no payments received
-      const amountPaid = Number(invoice.amountPaid || 0);
-      if (amountPaid > 0) {
-        throw new TRPCError({ 
-          code: "BAD_REQUEST", 
-          message: "Cannot revert to draft: invoice has received payments" 
-        });
-      }
-
+      // Allow reverting to draft even with payments - warning dialog handles confirmation
       if (!invoice.sentAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice is not in sent state" });
       }

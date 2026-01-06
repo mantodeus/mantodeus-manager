@@ -2141,24 +2141,25 @@ export async function revertInvoiceToDraft(id: number) {
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
 
-  // Check if invoice has received payments
+  // Verify invoice exists
   const invoice = await getInvoiceById(id);
   if (!invoice) {
     throw new Error("Invoice not found");
   }
-  
-  const amountPaid = Number(invoice.amountPaid || 0);
-  if (amountPaid > 0) {
-    throw new Error("Cannot revert to draft: invoice has received payments");
-  }
 
+  // Allow reverting to draft even with payments - warning dialog handles confirmation
   // Invalidate all share links for this invoice
   await invalidateInvoiceShareLinks(id);
 
-  // Revert to draft: clear sentAt and paidAt
+  // Revert to draft: clear sentAt, paidAt, and amountPaid
   return db
     .update(invoices)
-    .set({ status: 'draft', sentAt: null, paidAt: null })
+    .set({ 
+      status: 'draft', 
+      sentAt: null, 
+      paidAt: null,
+      amountPaid: "0.00" // Reset payments when reverting to draft
+    })
     .where(eq(invoices.id, id));
 }
 
