@@ -519,8 +519,7 @@
   /* Glass menu item hover state */
   .glass-menu-item:hover,
   .glass-menu-item[data-highlighted] {
-    background: rgba(12, 245, 126, 0.08);
-    box-shadow: inset 0 0 0 1px rgba(12, 245, 126, 0.25);
+    background: rgba(255, 255, 255, 0.08);
     color: rgba(255, 255, 255, 0.95);
   }
 
@@ -568,7 +567,7 @@
   /* Increase opacity and blur on desktop for better readability */
   @media (min-width: 768px) {
     .multi-select-bar {
-      background: rgba(15, 18, 25, 0.98);
+      background: rgba(15, 18, 25, 1);
       backdrop-filter: blur(32px);
       -webkit-backdrop-filter: blur(32px);
     }
