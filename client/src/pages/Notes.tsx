@@ -44,6 +44,7 @@ import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { Markdown } from "@/components/Markdown";
 import { useIsMobile } from "@/hooks/useMobile";
+import { extractNotePreview } from "@/lib/notesPreview";
 
 type Note = {
   id: number;
@@ -375,17 +376,9 @@ export default function Notes() {
       });
     };
 
-    // Get plain text from markdown content for preview
+    // Get plain text from markdown content for preview (preserves paragraph structure)
     const getPlainText = (content: string | null) => {
-      if (!content) return "";
-      // Remove markdown syntax for preview
-      return content
-        .replace(/#{1,6}\s+/g, "") // Remove headers
-        .replace(/\*\*([^*]+)\*\*/g, "$1") // Remove bold
-        .replace(/\*([^*]+)\*/g, "$1") // Remove italic
-        .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1") // Remove links
-        .replace(/\n+/g, " ") // Replace newlines with spaces
-        .trim();
+      return extractNotePreview(content);
     };
 
     return (

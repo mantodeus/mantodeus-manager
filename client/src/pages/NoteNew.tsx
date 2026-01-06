@@ -64,8 +64,6 @@ export default function NoteNew() {
   const createInFlightRef = useRef(false);
   // Track if an update request is in flight
   const updateInFlightRef = useRef(false);
-  // Track if another save is pending after current one completes
-  const pendingSaveRef = useRef(false);
 
   // Debounce values for autosave (increased to 2000ms for mobile typing latency)
   const debouncedTitle = useDebounce(title, 2000);
@@ -84,24 +82,15 @@ export default function NoteNew() {
       
       createInFlightRef.current = false;
       setNoteId(data.id);
-      // Update last saved content
+      // Update last saved content (preserve exact whitespace)
       lastSavedContentRef.current = {
         title: debouncedTitle.trim() || "Untitled Note",
-        content: debouncedContent.trim() || "",
+        content: debouncedContent || "", // DO NOT trim body - preserve whitespace exactly
         jobId: debouncedProjectId,
         contactId: debouncedContactId,
       };
       
       utils.notes.list.invalidate();
-      
-      // If another save was pending, trigger it now
-      if (pendingSaveRef.current) {
-        pendingSaveRef.current = false;
-        // Trigger autosave check (will be handled by useEffect)
-        setTimeout(() => {
-          // Force re-evaluation of autosave conditions
-        }, 100);
-      }
     },
     onError: (error) => {
       const timestamp = new Date().toISOString();
@@ -122,24 +111,15 @@ export default function NoteNew() {
       console.log(`[NOTES_NEW] ${timestamp} | UPDATE_SUCCESS | note: ${noteId}`);
       
       updateInFlightRef.current = false;
-      // Update last saved content
+      // Update last saved content (preserve exact whitespace)
       lastSavedContentRef.current = {
         title: debouncedTitle.trim() || "Untitled Note",
-        content: debouncedContent.trim() || "",
+        content: debouncedContent || "", // DO NOT trim body - preserve whitespace exactly
         jobId: debouncedProjectId,
         contactId: debouncedContactId,
       };
       
       utils.notes.list.invalidate();
-      
-      // If another save was pending, trigger it now
-      if (pendingSaveRef.current) {
-        pendingSaveRef.current = false;
-        // Trigger autosave check (will be handled by useEffect)
-        setTimeout(() => {
-          // Force re-evaluation of autosave conditions
-        }, 100);
-      }
     },
     onError: (error) => {
       const timestamp = new Date().toISOString();
@@ -173,7 +153,7 @@ export default function NoteNew() {
     // Rule 3.1: Skip if no changes exist
     const currentContent = {
       title: debouncedTitle.trim() || "Untitled Note",
-      content: debouncedContent.trim() || "",
+      content: debouncedContent || "", // DO NOT trim body - preserve whitespace exactly
       jobId: debouncedProjectId,
       contactId: debouncedContactId,
     };
@@ -203,8 +183,7 @@ export default function NoteNew() {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteNew.tsx:203',message:'autosave skipped - update in flight',data:{noteId,updateInFlight:updateInFlightRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
       // #endregion
-      pendingSaveRef.current = true; // Mark that another save is pending
-      return;
+      return; // Skip if save already in flight - next debounce will catch it
     }
     
     // Rule 3.1: Don't autosave if title is empty
@@ -226,7 +205,7 @@ export default function NoteNew() {
     updateNoteMutation.mutate({
       id: noteId,
       title: currentContent.title,
-      body: currentContent.content || undefined,
+      body: currentContent.content || undefined, // Already not trimmed above
       jobId: currentContent.jobId && currentContent.jobId !== "none" ? parseInt(currentContent.jobId) : undefined,
       contactId: currentContent.contactId && currentContent.contactId !== "none" ? parseInt(currentContent.contactId) : undefined,
     });
@@ -282,7 +261,7 @@ export default function NoteNew() {
     createInFlightRef.current = true;
     createNoteMutation.mutate({
       title: debouncedTitle.trim() || "Untitled Note",
-      content: debouncedContent.trim() || undefined,
+      content: debouncedContent || undefined, // DO NOT trim body - preserve whitespace exactly
       jobId: debouncedProjectId && debouncedProjectId !== "none" ? parseInt(debouncedProjectId) : undefined,
       contactId: debouncedContactId && debouncedContactId !== "none" ? parseInt(debouncedContactId) : undefined,
       clientCreationKey: clientCreationKey,
@@ -298,7 +277,7 @@ export default function NoteNew() {
       // Create note if it doesn't exist (with idempotency key)
       const result = await createNoteMutation.mutateAsync({
         title: title.trim() || "Untitled Note",
-        content: content.trim() || undefined,
+        content: content || undefined, // DO NOT trim body - preserve whitespace exactly
         jobId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
         contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
         clientCreationKey: clientCreationKey,
@@ -310,7 +289,7 @@ export default function NoteNew() {
       await updateNoteMutation.mutateAsync({
         id: noteId,
         title: title.trim() || "Untitled Note",
-        body: content.trim() || undefined,
+        body: content || undefined, // DO NOT trim body - preserve whitespace exactly
         jobId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
         contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
       });

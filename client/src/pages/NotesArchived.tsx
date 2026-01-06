@@ -16,7 +16,7 @@ import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
-import { Markdown } from "@/components/Markdown";
+import { extractNotePreview } from "@/lib/notesPreview";
 
 type Note = {
   id: number;
@@ -130,8 +130,8 @@ export default function NotesArchived() {
       </div>
 
       {note.content && (
-        <div className="text-sm text-muted-foreground mb-3 line-clamp-3 prose prose-sm dark:prose-invert max-w-none">
-          <Markdown>{note.content}</Markdown>
+        <div className="text-sm text-muted-foreground mb-3 line-clamp-3">
+          {extractNotePreview(note.content)}
         </div>
       )}
 

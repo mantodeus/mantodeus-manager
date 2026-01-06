@@ -132,8 +132,6 @@ export default function NoteDetail() {
 
   // Track if an update request is in flight
   const updateInFlightRef = useRef(false);
-  // Track if another save is pending after current one completes
-  const pendingSaveRef = useRef(false);
 
   // Debounce title and body for autosave (increased to 2000ms for mobile typing latency)
   const debouncedTitle = useDebounce(title, 2000);
@@ -161,7 +159,7 @@ export default function NoteDetail() {
       // Update last saved content (DO NOT overwrite editor state)
       lastSavedContentRef.current = {
         title: debouncedTitle.trim(),
-        body: debouncedBody.trim() || "",
+        body: debouncedBody || "", // DO NOT trim body - preserve whitespace exactly
         jobId: debouncedProjectId,
         contactId: debouncedContactId,
       };
@@ -171,15 +169,6 @@ export default function NoteDetail() {
       // to avoid overwriting editor content
       utils.notes.list.invalidate();
       utils.notes.getById.invalidate({ id: noteId });
-      
-      // If another save was pending, trigger it now
-      if (pendingSaveRef.current) {
-        pendingSaveRef.current = false;
-        // Trigger autosave check (will be handled by useEffect)
-        setTimeout(() => {
-          // Force re-evaluation of autosave conditions
-        }, 100);
-      }
     },
     onError: (err) => {
       const timestamp = new Date().toISOString();
@@ -218,7 +207,7 @@ export default function NoteDetail() {
     // Rule 3.1: Skip if no changes exist
     const currentContent = {
       title: debouncedTitle.trim(),
-      body: debouncedBody.trim() || "",
+      body: debouncedBody || "", // DO NOT trim body - preserve whitespace exactly
       jobId: debouncedProjectId,
       contactId: debouncedContactId,
     };
@@ -259,8 +248,7 @@ export default function NoteDetail() {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:245',message:'autosave skipped - save in flight',data:{noteId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
-      pendingSaveRef.current = true; // Mark that another save is pending
-      return;
+      return; // Skip if save already in flight - next debounce will catch it
     }
     
     // Rule 3.1: Don't autosave if title is empty
@@ -280,7 +268,7 @@ export default function NoteDetail() {
     updateMutation.mutate({
       id: noteId,
       title: currentContent.title,
-      body: currentContent.body || undefined,
+      body: currentContent.body || undefined, // Already not trimmed above
       jobId: currentContent.jobId && currentContent.jobId !== "none" ? parseInt(currentContent.jobId) : undefined,
       contactId: currentContent.contactId && currentContent.contactId !== "none" ? parseInt(currentContent.contactId) : undefined,
     });
@@ -312,10 +300,10 @@ export default function NoteDetail() {
       setSelectedProjectId(note.jobId?.toString() || "none");
       setSelectedContactId(note.contactId?.toString() || "none");
       
-      // Initialize last saved content
+      // Initialize last saved content (preserve exact whitespace)
       lastSavedContentRef.current = {
         title: note.title,
-        body: note.content || "",
+        body: note.content || "", // Preserve exact whitespace
         jobId: note.jobId?.toString() || "none",
         contactId: note.contactId?.toString() || "none",
       };
@@ -345,7 +333,7 @@ export default function NoteDetail() {
     updateMutation.mutate({
       id: noteId,
       title: title.trim(),
-      body: body.trim() || undefined,
+      body: body || undefined, // DO NOT trim body - preserve whitespace exactly
       jobId: selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined,
       contactId: selectedContactId && selectedContactId !== "none" ? parseInt(selectedContactId) : undefined,
     });
@@ -359,10 +347,10 @@ export default function NoteDetail() {
       setSelectedProjectId(note.jobId?.toString() || "none");
       setSelectedContactId(note.contactId?.toString() || "none");
       
-      // Reset last saved content to original
+      // Reset last saved content to original (preserve exact whitespace)
       lastSavedContentRef.current = {
         title: note.title,
-        body: note.content || "",
+        body: note.content || "", // Preserve exact whitespace
         jobId: note.jobId?.toString() || "none",
         contactId: note.contactId?.toString() || "none",
       };

@@ -160,7 +160,8 @@ function htmlToMarkdown(element: HTMLElement | null): string {
     }
   }
   
-  return markdown.trim();
+  // DO NOT trim - preserve whitespace exactly (including trailing newlines/spaces)
+  return markdown;
 }
 
 // Process inline markdown formatting in an element
@@ -676,65 +677,61 @@ export function SimpleMarkdownEditor({
   };
 
   const showToolbar = isMobile ? isFocused : true;
-  
-  // On mobile, position toolbar at top of keyboard (keyboardHeight from bottom)
-  // On desktop, position at bottom of action bar
-  const toolbarBottom = isMobile
-    ? (keyboardHeight > 0 
-        ? `${keyboardHeight}px` 
-        : `var(--bottom-safe-area, 0px)`)
-    : "var(--notes-action-bar-height, 0px)";
 
   return (
-    <div className={cn("relative", className)}>
-      <div ref={containerRef}>
-        {/* WYSIWYG Editor - contentEditable div showing formatted text */}
-        <div
-          ref={editorRef}
-          contentEditable
-          onInput={handleInput}
-          onKeyDown={handleKeyDown}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          className={cn(
-            "border rounded-md bg-background px-4 py-3 text-sm",
-            "focus:outline-none focus:ring-2 focus:ring-ring",
-            "prose prose-sm dark:prose-invert max-w-none",
-            "[&_strong]:font-semibold [&_em]:italic [&_del]:line-through",
-            "[&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono",
-            "[&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-0 [&_ul]:my-0",
-            "[&_ol]:list-decimal [&_ol]:list-inside [&_ol]:ml-0 [&_ol]:my-0",
-            "[&_li]:ml-0 [&_p]:my-0 [&_div]:my-0",
-            isMobile ? "min-h-[300px]" : "min-h-[400px]"
-          )}
-          style={{
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            lineHeight: "1.5",
-          }}
-          data-placeholder={placeholder}
-          suppressContentEditableWarning
-        />
-        <style>{`
-          [contenteditable][data-placeholder]:empty:before {
-            content: attr(data-placeholder);
-            color: hsl(var(--muted-foreground));
-            pointer-events: none;
-          }
-        `}</style>
-      </div>
+    <div className={cn("relative flex flex-col", className)} ref={containerRef}>
+      {/* WYSIWYG Editor - contentEditable div showing formatted text */}
+      <div
+        ref={editorRef}
+        contentEditable
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        className={cn(
+          "border rounded-md bg-background px-4 py-3 text-sm",
+          "focus:outline-none focus:ring-2 focus:ring-ring",
+          "prose prose-sm dark:prose-invert max-w-none",
+          "[&_strong]:font-semibold [&_em]:italic [&_del]:line-through",
+          "[&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono",
+          "[&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-0 [&_ul]:my-0",
+          "[&_ol]:list-decimal [&_ol]:list-inside [&_ol]:ml-0 [&_ol]:my-0",
+          "[&_li]:ml-0 [&_p]:my-0 [&_div]:my-0",
+          isMobile ? "min-h-[300px]" : "min-h-[400px]",
+          // Add padding bottom on mobile to account for sticky toolbar
+          isMobile && showToolbar ? "pb-16" : ""
+        )}
+        style={{
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          lineHeight: "1.5",
+        }}
+        data-placeholder={placeholder}
+        suppressContentEditableWarning
+      />
+      <style>{`
+        [contenteditable][data-placeholder]:empty:before {
+          content: attr(data-placeholder);
+          color: hsl(var(--muted-foreground));
+          pointer-events: none;
+        }
+      `}</style>
 
-      {/* Formatting Toolbar */}
+      {/* Formatting Toolbar - sticky inside container */}
       {showToolbar && (
         <div
           className={cn(
-            "fixed left-0 right-0 border-t bg-background/95 backdrop-blur-sm shadow-lg",
-            !isMobile && "mx-auto max-w-screen-2xl"
+            "sticky border-t bg-background/95 backdrop-blur-sm shadow-lg",
+            isMobile ? "bottom-0" : "bottom-0"
           )}
           style={{
-            bottom: toolbarBottom,
-            zIndex: 9999,
-            paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)`,
+            bottom: isMobile && keyboardHeight > 0 
+              ? `${keyboardHeight}px` 
+              : `calc(env(safe-area-inset-bottom, 0px) + 0px)`,
+            zIndex: 10,
+            paddingBottom: isMobile 
+              ? `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)` 
+              : "0.5rem",
             transform: 'translateZ(0)',
             willChange: 'transform',
           }}
