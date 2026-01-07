@@ -72,6 +72,14 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   // Get accent color from company settings, default to #00ff88
   const accentColor = company.invoiceAccentColor || '#00ff88';
   
+  // Convert hex color to rgba for gradient
+  const hexToRgba = (hex: string, alpha: number): string => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+  
   // Format address from structured fields or fallback to address text
   const formatCompanyAddress = () => {
     if (company.address) {
@@ -112,7 +120,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     })
     .join('');
 
-  // Service period date range
+  // Service period date range (placed between Zahlungsziel and Erstellt)
   const servicePeriodHTML = (servicePeriodStart && servicePeriodEnd)
     ? `<div class="date-row"><span class="date-label">Leistungszeitraum</span>${formatDate(servicePeriodStart)} – ${formatDate(servicePeriodEnd)}</div>`
     : '';
@@ -134,7 +142,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 
   // Kleinunternehmer notice card
   const kleinunternehmerCardHTML = company.isKleinunternehmer
-    ? `<div class="card">
+    ? `<div class="card vat-note">
         Umsatzsteuerbefreiung aufgrund des Kleinunternehmerstatus gemäß § 19 UStG
       </div>`
     : '';
@@ -207,6 +215,11 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       line-height: 1.55;
     }
 
+    /* GLOBAL ALIGNMENT GRID */
+    .content-grid {
+      padding: 0 24px; /* aligns with card padding, not shadow */
+    }
+
     /* HEADER */
     .header {
       display: grid;
@@ -233,7 +246,6 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     .logo {
       display: flex;
       justify-content: center;
-      align-items: flex-start;
     }
 
     .logo-box {
@@ -252,6 +264,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       text-align: right;
       font-size: 10.5pt;
       color: var(--text-secondary);
+      white-space: nowrap;
     }
 
     .date-row { margin-bottom: 6px; }
@@ -295,12 +308,11 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 
     thead th {
       background: #f7f7f7;
-      color: var(--text-primary);
       padding: 16px 14px;
       font-size: 12px;
       font-weight: 500;
-      text-align: left;
       border-bottom: 1px solid var(--border-soft);
+      text-align: left;
     }
 
     tbody td {
@@ -309,7 +321,6 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       border-bottom: 1px solid #f0f0f0;
     }
 
-    tbody tr:last-child td { border-bottom: none; }
     .right { text-align: right; }
 
     /* TOTALS */
@@ -317,17 +328,17 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       margin-top: 28px;
       margin-left: auto;
       width: 320px;
-      background: #ffffff;
-      border-radius: 16px;
       padding: 20px 22px;
+      border-radius: 16px;
       box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+      background: #fff;
     }
 
     .totals-row {
       display: flex;
       justify-content: space-between;
-      padding: 6px 0;
       font-size: 11.5px;
+      padding: 6px 0;
     }
 
     .totals-row.total {
@@ -338,39 +349,37 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       position: relative;
     }
 
-    /* gradient divider */
     .totals-row.total::before {
       content: "";
       position: absolute;
       top: 0;
       left: 0;
       right: 0;
-      height: 2px;
+      height: 1px;
       background: linear-gradient(
         to right,
-        ${accentColor}00 0%,
-        ${accentColor} 50%,
-        ${accentColor}00 100%
+        ${hexToRgba(accentColor, 0)} 0%,
+        ${hexToRgba(accentColor, 1)} 50%,
+        ${hexToRgba(accentColor, 0)} 100%
       );
     }
 
-    /* INFO SECTIONS */
+    /* INFO */
     .info-section {
       margin-top: 24px;
       display: grid;
       gap: 18px;
     }
 
-    .info-title {
-      font-weight: 500;
-      margin-bottom: 6px;
-      color: var(--text-primary);
+    .vat-note {
+      font-size: 10.5px;
+      color: var(--text-muted);
     }
 
     /* FOOTER */
     .footer {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1.3fr 1fr 1.3fr;
       gap: 36px;
       margin-top: 64px;
       font-size: 10.5px;
@@ -383,6 +392,8 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 
 <body>
 
+<div class="content-grid">
+
   <!-- HEADER -->
   <div class="header">
     <div>
@@ -393,9 +404,9 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     ${logoHTML}
 
     <div class="dates">
-      <div class="date-row"><span class="date-label">Erstellt</span>${formatDate(invoiceDate)}</div>
-      ${servicePeriodHTML}
       <div class="date-row"><span class="date-label">Zahlungsziel</span>${formatDate(dueDate)}</div>
+      ${servicePeriodHTML}
+      <div class="date-row"><span class="date-label">Erstellt</span>${formatDate(invoiceDate)}</div>
     </div>
   </div>
 
@@ -454,18 +465,19 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       Verwendungszweck: ${escapeHtml(invoiceNumber)}
     </div>
 
-    <div style="text-align: center;">
+    <div>
       <strong>Adresse</strong><br>
       ${companyAddressParts.join('<br>')}
     </div>
 
-    <div style="text-align: right;">
+    <div>
       <strong>Kontakt</strong><br>
-      ${company.companyName ? escapeHtml(company.companyName) : ''}
-      ${company.email ? `<br>${escapeHtml(company.email)}` : ''}
+      ${company.email ? escapeHtml(company.email) : ''}
       ${company.phone ? `<br>${escapeHtml(company.phone)}` : ''}
     </div>
   </div>
+
+</div>
 
 </body>
 </html>
