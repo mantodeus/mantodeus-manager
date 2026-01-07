@@ -76,6 +76,9 @@ export function InvoiceUploadReviewDialog({
   const [revertTarget, setRevertTarget] = useState<"draft" | "sent" | null>(null);
   const [markAsSentAndPaidDialogOpen, setMarkAsSentAndPaidDialogOpen] = useState(false);
   const [markAsNotPaidDialogOpen, setMarkAsNotPaidDialogOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
@@ -86,35 +89,79 @@ export function InvoiceUploadReviewDialog({
   const handlePreviewPDF = async () => {
     if (!invoiceId || !invoice) return;
     
-    // For uploaded invoices, open file directly via file-proxy in new tab (native browser preview)
-    if (invoice.source === "uploaded" && invoice.originalPdfS3Key) {
-      const fileName = invoice.invoiceName || invoice.originalFileName || invoice.invoiceNumber || "invoice.pdf";
-      const fileUrl = `/api/file-proxy?key=${encodeURIComponent(invoice.originalPdfS3Key)}&filename=${encodeURIComponent(fileName)}`;
-      window.open(fileUrl, '_blank');
+    // On mobile, open in new tab as before
+    if (isMobile) {
+      // For uploaded invoices, open file directly via file-proxy in new tab (native browser preview)
+      if (invoice.source === "uploaded" && invoice.originalPdfS3Key) {
+        const fileName = invoice.invoiceName || invoice.originalFileName || invoice.invoiceNumber || "invoice.pdf";
+        const fileUrl = `/api/file-proxy?key=${encodeURIComponent(invoice.originalPdfS3Key)}&filename=${encodeURIComponent(fileName)}`;
+        window.open(fileUrl, '_blank');
+        return;
+      }
+      
+      // For created invoices, generate PDF and open in new tab
+      try {
+        const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+        if (!session?.access_token) {
+          toast.error("Please log in to preview invoices");
+          return;
+        }
+        const response = await fetch(`/api/invoices/${invoiceId}/pdf?preview=true`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          toast.error(errorData.error || 'Failed to generate preview');
+          return;
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      } catch (error) {
+        console.error('Preview error:', error);
+        toast.error('Failed to open preview');
+      }
       return;
     }
     
-    // For created invoices, generate PDF and open in new tab
+    // On desktop, open preview in left panel
     try {
-      const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
-      if (!session?.access_token) {
-        toast.error("Please log in to preview invoices");
-        return;
+      let url: string;
+      let fileName: string;
+      
+      // For uploaded invoices, use file-proxy
+      if (invoice.source === "uploaded" && invoice.originalPdfS3Key) {
+        fileName = invoice.invoiceName || invoice.originalFileName || invoice.invoiceNumber || "invoice.pdf";
+        url = `/api/file-proxy?key=${encodeURIComponent(invoice.originalPdfS3Key)}&filename=${encodeURIComponent(fileName)}`;
+      } else {
+        // For created invoices, generate PDF
+        const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+        if (!session?.access_token) {
+          toast.error("Please log in to preview invoices");
+          return;
+        }
+        const response = await fetch(`/api/invoices/${invoiceId}/pdf?preview=true`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          toast.error(errorData.error || 'Failed to generate preview');
+          return;
+        }
+        const blob = await response.blob();
+        url = URL.createObjectURL(blob);
+        fileName = invoice.invoiceName || invoice.invoiceNumber || "invoice.pdf";
       }
-      const response = await fetch(`/api/invoices/${invoiceId}/pdf?preview=true`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        toast.error(errorData.error || 'Failed to generate preview');
-        return;
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      
+      setPreviewUrl(url);
+      setPreviewFileName(fileName);
+      setPreviewOpen(true);
     } catch (error) {
       console.error('Preview error:', error);
       toast.error('Failed to open preview');
@@ -444,29 +491,94 @@ export function InvoiceUploadReviewDialog({
     }
   };
 
+  // Clean up preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
-        className={cn(
-          "flex flex-col p-0",
-          // Desktop: fit within main content area (excluding sidebar)
-          // Main content has p-4 (16px) padding, so we add that to sidebar width
-          "sm:!top-[1rem] sm:!right-[1rem] sm:!bottom-[1rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!w-auto sm:!h-auto sm:max-h-[calc(100vh-2rem)]",
-          // Mobile: fullscreen with safe margins
-          isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
-        )}
-        style={{
-          // Adjust left position based on sidebar state
-          // When expanded: use --sidebar-width (default 280px or user-set width)
-          // When collapsed to icon: use --sidebar-width-icon (3rem = 48px)
-          left: isMobile 
-            ? undefined 
-            : isSidebarCollapsed 
+    <>
+      {/* Preview Panel - Left side on desktop */}
+      {!isMobile && previewOpen && previewUrl && (
+        <div
+          className="fixed z-[60] bg-background border-r shadow-lg"
+          style={{
+            top: '1rem',
+            left: isSidebarCollapsed 
               ? "calc(var(--sidebar-width-icon, 3rem) + 1rem)"
               : "calc(var(--sidebar-width, 280px) + 1rem)",
-        } as React.CSSProperties}
-        showCloseButton={false}
-      >
+            width: isSidebarCollapsed
+              ? 'calc((100vw - var(--sidebar-width-icon, 3rem) - 2rem) / 2)'
+              : 'calc((100vw - var(--sidebar-width, 280px) - 2rem) / 2)',
+            height: 'calc(100vh - 2rem)',
+          }}
+        >
+          <div className="flex flex-col h-full">
+            {/* Preview Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">Preview</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setPreviewOpen(false);
+                  if (previewUrl && previewUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(previewUrl);
+                  }
+                  setPreviewUrl(null);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            {/* Preview Content */}
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={previewUrl}
+                className="w-full h-full border-0"
+                title={previewFileName}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent 
+          className={cn(
+            "flex flex-col p-0",
+            // Desktop: take up right half of screen (50% width)
+            // When preview is open, dialog stays on right, preview on left
+            "sm:!top-[1rem] sm:!bottom-[1rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!h-auto sm:max-h-[calc(100vh-2rem)]",
+            // Mobile: fullscreen with safe margins
+            isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+          )}
+          style={{
+            // Adjust position and width based on sidebar state and preview state
+            // When preview is open: dialog on right half, preview on left half
+            // When preview is closed: dialog takes full right half
+            left: isMobile 
+              ? undefined 
+              : previewOpen
+                ? isSidebarCollapsed
+                  ? "calc(var(--sidebar-width-icon, 3rem) + 1rem + (100vw - var(--sidebar-width-icon, 3rem) - 2rem) / 2 + 0.5rem)"
+                  : "calc(var(--sidebar-width, 280px) + 1rem + (100vw - var(--sidebar-width, 280px) - 2rem) / 2 + 0.5rem)"
+                : isSidebarCollapsed 
+                  ? "calc(var(--sidebar-width-icon, 3rem) + 1rem)"
+                  : "calc(var(--sidebar-width, 280px) + 1rem)",
+            right: isMobile ? undefined : "1rem",
+            width: isMobile 
+              ? undefined 
+              : isSidebarCollapsed
+                ? "calc((100vw - var(--sidebar-width-icon, 3rem) - 2rem) / 2)"
+                : "calc((100vw - var(--sidebar-width, 280px) - 2rem) / 2)",
+          } as React.CSSProperties}
+          showCloseButton={false}
+        >
         {/* PageHeader-like structure */}
         <div className="flex-shrink-0 p-6 pb-2 space-y-4">
           <div className="flex items-start justify-between gap-4">
@@ -745,21 +857,38 @@ export function InvoiceUploadReviewDialog({
                   variant="outline"
                   onClick={handleRevertToSent}
                   disabled={isLoading}
-                  className={isMobile ? "w-full" : ""}
+                  className={cn(
+                    isMobile ? "w-full" : "",
+                    "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
+                  )}
                 >
                   Revert to Sent
                 </Button>
               )}
+
+              {/* Delete - highlighted (destructive) - moved below revert buttons */}
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isLoading || (isReview ? cancelMutation.isPending : moveToTrashMutation.isPending)}
+                className={isMobile ? "w-full" : ""}
+              >
+                {(isReview ? cancelMutation.isPending : moveToTrashMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Delete
+              </Button>
 
               {/* Cancel/Uncancel buttons - only for draft/review invoices */}
               {(isDraft || isReview) && (
                 <>
                   {isCancelled ? (
                     <Button
-                      variant="default"
+                      variant="outline"
                       onClick={() => markAsNotCancelledMutation.mutate({ id: invoiceId! })}
                       disabled={isLoading || markAsNotCancelledMutation.isPending}
-                      className={isMobile ? "w-full" : ""}
+                      className={cn(
+                        isMobile ? "w-full" : "",
+                        "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
+                      )}
                     >
                       {markAsNotCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Mark as Not Cancelled
@@ -777,23 +906,26 @@ export function InvoiceUploadReviewDialog({
                   )}
                 </>
               )}
-
-              {/* Delete - highlighted (destructive) */}
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isLoading || (isReview ? cancelMutation.isPending : moveToTrashMutation.isPending)}
-                className={isMobile ? "w-full" : ""}
-              >
-                {(isReview ? cancelMutation.isPending : moveToTrashMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Delete
-              </Button>
             </div>
           )}
 
           {/* After review and draft states (sent/paid) - standard layout for uploaded invoices */}
           {!isReview && !isDraft && invoice?.source === "uploaded" && (
             <div className="pt-4 border-t flex flex-col gap-2">
+              {/* Revert to Draft - shown for sent invoices, above Delete */}
+              {isSent && !isPaid && derivedValues.outstanding === 0 && (
+                <Button
+                  variant="outline"
+                  onClick={handleRevertToDraft}
+                  disabled={isLoading}
+                  className={cn(
+                    "w-full",
+                    "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
+                  )}
+                >
+                  Revert to Draft
+                </Button>
+              )}
               <div className="flex gap-2">
                 {/* Delete (replaces Cancel) */}
                 <Button 
@@ -816,31 +948,20 @@ export function InvoiceUploadReviewDialog({
                   </Button>
                 )}
               </div>
-              {/* Revert buttons - only shown when sent/paid, on separate line */}
-              {(isSent && !isPaid && derivedValues.outstanding === 0) || isPaid ? (
-                <div className="flex gap-2">
-                  {isSent && !isPaid && derivedValues.outstanding === 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={handleRevertToDraft}
-                      disabled={isLoading}
-                      className="w-full"
-                    >
-                      Revert to Draft
-                    </Button>
+              {/* Revert to Sent - only shown when paid, on separate line */}
+              {isPaid && (
+                <Button
+                  variant="outline"
+                  onClick={handleRevertToSent}
+                  disabled={isLoading}
+                  className={cn(
+                    "w-full",
+                    "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
                   )}
-                  {isPaid && (
-                    <Button
-                      variant="outline"
-                      onClick={handleRevertToSent}
-                      disabled={isLoading}
-                      className="w-full"
-                    >
-                      Revert to Sent
-                    </Button>
-                  )}
-                </div>
-              ) : null}
+                >
+                  Revert to Sent
+                </Button>
+              )}
             </div>
           )}
         </div>

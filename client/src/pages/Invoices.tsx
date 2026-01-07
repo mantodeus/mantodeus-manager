@@ -191,9 +191,10 @@ function YearTotalCard({
     };
   }, [cardRect]);
 
-  // Show only years with data, excluding the currently selected year, sorted by year descending
+  // Show all years with data OR the current year (even if 0 total), sorted by year descending
+  const currentYear = new Date().getFullYear();
   const availableYears = [...allYearTotals]
-    .filter(({ year, total }) => total > 0 && year !== selectedYear)
+    .filter(({ year, total }) => total > 0 || year === currentYear)
     .sort((a, b) => b.year - a.year);
 
   return (
@@ -451,9 +452,12 @@ function QuarterTotalCard({
     };
   }, [cardRect]);
 
-  // Show only quarters with data, excluding the currently selected quarter, sorted by year and quarter descending
+  // Show all quarters with data OR the current quarter (even if 0 total), sorted by year and quarter descending
+  const currentDate = new Date();
+  const currentQuarterYear = currentDate.getFullYear();
+  const currentQuarterNum = Math.floor(currentDate.getMonth() / 3) + 1;
   const availableQuarters = [...allQuarterTotals]
-    .filter(({ quarter, year, total }) => total > 0 && !(year === selectedQuarter.year && quarter === selectedQuarter.quarter))
+    .filter(({ year, quarter, total }) => total > 0 || (year === currentQuarterYear && quarter === currentQuarterNum))
     .sort((a, b) => {
       if (a.year !== b.year) return b.year - a.year;
       return b.quarter - a.quarter;
@@ -1021,8 +1025,13 @@ export default function Invoices() {
     // Get all years with data (only include years that have invoice data)
     const yearsWithData = Array.from(new Set([...yearPaidMap.keys(), ...yearDueMap.keys()]));
     
-    // Convert to sorted array - only include years with data
-    const allYears = yearsWithData.sort((a, b) => b - a);
+    // Always include the current year, even if it has no data yet
+    const currentYear = new Date().getFullYear();
+    const allYearsSet = new Set(yearsWithData);
+    allYearsSet.add(currentYear);
+    
+    // Convert to sorted array - includes years with data plus current year
+    const allYears = Array.from(allYearsSet).sort((a, b) => b - a);
     const allYearTotals = allYears.map(year => ({
       year,
       paid: yearPaidMap.get(year) || 0,
@@ -1033,8 +1042,17 @@ export default function Invoices() {
     // Get all quarters with data (only include quarters that have invoice data)
     const quartersWithData = Array.from(new Set([...quarterPaidMap.keys(), ...quarterDueMap.keys()]));
     
-    // Convert quarter map to sorted array (by year desc, then quarter desc) - only include quarters with data
-    const allQuarters = quartersWithData
+    // Always include the current quarter, even if it has no data yet
+    const currentDate = new Date();
+    const currentQuarterYear = currentDate.getFullYear();
+    const currentQuarterNum = Math.floor(currentDate.getMonth() / 3) + 1;
+    const currentQuarterKey = `Q${currentQuarterNum} ${currentQuarterYear}`;
+    const quartersWithDataSet = new Set(quartersWithData);
+    quartersWithDataSet.add(currentQuarterKey);
+    
+    // Convert quarter map to sorted array (by year desc, then quarter desc)
+    // Includes quarters with data plus current quarter
+    const allQuarters = Array.from(quartersWithDataSet)
       .map((key) => {
         const match = key.match(/Q(\d+) (\d+)/);
         if (!match) return null;
