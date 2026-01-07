@@ -33,12 +33,6 @@ export function CreateInvoiceDialog({
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
 
-  // Desktop: Use workspace (no dialog)
-  if (!isMobile && open) {
-    return <CreateInvoiceWorkspace onSuccess={onSuccess} />;
-  }
-
-  // Mobile: Use dialog
   const handleSuccess = async () => {
     toast.success("Invoice created");
     await utils.invoices.list.invalidate();
@@ -47,7 +41,15 @@ export function CreateInvoiceDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      {!isMobile ? (
+        <CreateInvoiceWorkspace
+          open={open}
+          onClose={() => onOpenChange(false)}
+          onSuccess={onSuccess}
+        />
+      ) : (
+        <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className={cn(
           "flex flex-col p-0",
@@ -99,6 +101,8 @@ export function CreateInvoiceDialog({
         </div>
       </DialogContent>
     </Dialog>
+      )}
+    </>
   );
 }
 

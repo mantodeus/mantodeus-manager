@@ -15,11 +15,18 @@ import { supabase } from "@/lib/supabase";
 import { useLocation } from "wouter";
 
 interface CreateInvoiceWorkspaceProps {
+  open: boolean;
+  onClose: () => void;
   onSuccess?: () => void;
 }
 
-export function CreateInvoiceWorkspace({ onSuccess }: CreateInvoiceWorkspaceProps) {
+export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoiceWorkspaceProps) {
   const [, navigate] = useLocation();
+  
+  // Required: Return null if not open (replaces Dialog behavior)
+  if (!open) return null;
+
+  console.log("CreateInvoiceWorkspace mounted");
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   
@@ -33,7 +40,7 @@ export function CreateInvoiceWorkspace({ onSuccess }: CreateInvoiceWorkspaceProp
   const handleSuccess = async () => {
     toast.success("Invoice created");
     await utils.invoices.list.invalidate();
-    navigate("/invoices");
+    onClose();
     onSuccess?.();
   };
 
@@ -131,7 +138,8 @@ export function CreateInvoiceWorkspace({ onSuccess }: CreateInvoiceWorkspaceProp
   }, [previewUrl, lastValidPreviewUrl]);
 
   return (
-    <div className="flex h-svh w-full">
+    <div className="fixed inset-0 z-50 bg-background">
+      <div className="flex h-svh w-full">
       {/* LEFT: Preview */}
       <div className="w-[40vw] border-r bg-muted/20 flex flex-col">
         <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
@@ -175,7 +183,7 @@ export function CreateInvoiceWorkspace({ onSuccess }: CreateInvoiceWorkspaceProp
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/invoices")}
+                onClick={onClose}
                 className="h-10 w-10"
                 aria-label="Close"
               >
@@ -191,7 +199,7 @@ export function CreateInvoiceWorkspace({ onSuccess }: CreateInvoiceWorkspaceProp
           <InvoiceForm
             mode="create"
             contacts={contacts}
-            onClose={() => navigate("/invoices")}
+            onClose={onClose}
             onSuccess={handleSuccess}
             onFormChange={generatePreview}
           />
