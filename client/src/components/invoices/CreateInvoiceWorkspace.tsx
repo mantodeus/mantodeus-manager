@@ -79,6 +79,8 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
           issueDate: formData.issueDate,
           dueDate: formData.dueDate,
           notes: formData.notes,
+          servicePeriodStart: formData.servicePeriodStart,
+          servicePeriodEnd: formData.servicePeriodEnd,
           items: formData.items,
         }),
       });
@@ -109,11 +111,16 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       }
       
       console.error("Preview generation error:", error);
+      // Show error to user
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate preview";
+      toast.error(errorMessage);
       // On error, keep showing last valid preview (don't blank it)
       if (lastValidPreviewUrl) {
         setPreviewUrl(lastValidPreviewUrl);
+      } else {
+        // If no previous preview, clear the URL to show the placeholder
+        setPreviewUrl(null);
       }
-      // Silently fail - preview just won't update
     } finally {
       setIsGeneratingPreview(false);
       previewGenerationRef.current = null;

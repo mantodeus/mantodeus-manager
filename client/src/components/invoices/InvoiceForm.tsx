@@ -65,6 +65,8 @@ export type InvoicePreviewData = {
   issueDate: string;
   dueDate?: string;
   notes?: string;
+  servicePeriodStart?: string;
+  servicePeriodEnd?: string;
   items: Array<{
     name: string;
     description?: string;
@@ -200,6 +202,8 @@ export function InvoiceForm({
           issueDate: formState.issueDate,
           dueDate: formState.dueDate,
           notes: formState.notes,
+          servicePeriodStart: formState.servicePeriodStart,
+          servicePeriodEnd: formState.servicePeriodEnd,
           items: items.map(item => ({
             name: item.name,
             description: item.description || undefined,
