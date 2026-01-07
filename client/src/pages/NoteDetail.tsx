@@ -17,6 +17,7 @@ import { ArrowLeft, Edit, Save, X, Loader2, Paperclip, Trash2, Download, Image a
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
 import { SimpleMarkdownEditor } from "@/components/SimpleMarkdownEditor";
 import { FormattingButtons } from "@/components/FormattingButtons";
+import { MobileMarkdownBar } from "@/components/MobileMarkdownBar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -287,7 +288,6 @@ export default function NoteDetail() {
   }, [debouncedTitle, debouncedBody, debouncedProjectId, debouncedContactId, isEditMode, noteId]);
 
   const uploadFileMutation = trpc.notes.uploadNoteFile.useMutation();
-  const registerFileMutation = trpc.notes.registerNoteFile.useMutation();
   const deleteFileMutation = trpc.notes.deleteNoteFile.useMutation({
     onSuccess: () => {
       toast.success("Attachment removed");
@@ -369,14 +369,23 @@ export default function NoteDetail() {
     setIsEditMode(false);
   };
 
+  // Convert file to base64 (without data:xxx;base64, prefix)
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove the data:xxx;base64, prefix
+        const base64 = result.split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileUpload = async (files: File[]) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:352',message:'handleFileUpload entry',data:{noteId,filesCount:files.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     if (!noteId || files.length === 0) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:354',message:'handleFileUpload skipped',data:{noteId,filesCount:files.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       return;
     }
 
@@ -385,46 +394,22 @@ export default function NoteDetail() {
 
     for (const file of files) {
       try {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:360',message:'file upload starting',data:{noteId,filename:file.name,fileSize:file.size,mimeType:file.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-        const { uploadUrl, s3Key } = await uploadFileMutation.mutateAsync({
+        // Convert file to base64
+        const base64Data = await fileToBase64(file);
+
+        // Upload via server (server uploads to S3, no CORS needed)
+        await uploadFileMutation.mutateAsync({
           noteId,
           filename: file.name,
           mimeType: file.type,
-          fileSize: file.size,
-        });
-
-        const uploadResponse = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": file.type,
-          },
-          body: file,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error(`Storage upload failed (${uploadResponse.status})`);
-        }
-
-        await registerFileMutation.mutateAsync({
-          noteId,
-          s3Key,
-          mimeType: file.type,
-          originalFilename: file.name,
-          fileSize: file.size,
+          base64Data,
         });
 
         successCount += 1;
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:387',message:'file upload success',data:{noteId,filename:file.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
       } catch (error) {
         console.error("Failed to upload file:", file.name, error);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:389',message:'file upload error',data:{noteId,filename:file.name,errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         failureCount += 1;
+        toast.error(`Failed to upload ${file.name}`);
       }
     }
 
@@ -439,9 +424,6 @@ export default function NoteDetail() {
     if (successCount > 0) {
       await refetch();
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/16f098e1-fe8b-46cb-be1e-f0f07a5af48a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NoteDetail.tsx:404',message:'handleFileUpload exit',data:{noteId,successCount,failureCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
   };
 
   const handleFileDelete = (fileId: number) => {
@@ -639,7 +621,7 @@ export default function NoteDetail() {
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadFileMutation.isPending || registerFileMutation.isPending}
+              disabled={uploadFileMutation.isPending}
               className="h-9"
             >
               <Paperclip className="h-4 w-4 mr-2" />
@@ -786,11 +768,11 @@ export default function NoteDetail() {
                   variant="outline"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadFileMutation.isPending || registerFileMutation.isPending}
+                  disabled={uploadFileMutation.isPending}
                   className="h-9 flex-1"
                 >
                   <Paperclip className="h-4 w-4 mr-2" />
-                  {uploadFileMutation.isPending || registerFileMutation.isPending
+                  {uploadFileMutation.isPending
                     ? "Uploading..."
                     : "Attach"}
                 </Button>
@@ -911,6 +893,18 @@ export default function NoteDetail() {
         )}
       </div>
 
+      {/* Mobile Markdown Bar - rendered at page level, outside editor */}
+      {isEditMode && !isDesktop && (
+        <MobileMarkdownBar 
+          editorRef={editorRef} 
+          onFormat={() => {
+            if (editorRef.current) {
+              const event = new Event('input', { bubbles: true });
+              editorRef.current.dispatchEvent(event);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

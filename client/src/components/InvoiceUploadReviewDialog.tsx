@@ -438,8 +438,10 @@ export function InvoiceUploadReviewDialog({
       <DialogContent 
         className={cn(
           "flex flex-col p-0",
-          // Desktop: almost fullscreen with small margins (override default centered positioning)
-          "sm:!top-[1.5rem] sm:!left-[1.5rem] sm:!right-[1.5rem] sm:!bottom-[1.5rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!w-auto sm:!h-auto sm:max-h-[calc(100vh-3rem)]",
+          // Desktop: fit within main content area (excluding sidebar)
+          // Sidebar width is stored in --sidebar-width CSS variable (default 280px)
+          // Main content has p-4 (16px) padding, so we add that to sidebar width
+          "sm:!top-[1rem] sm:!left-[calc(var(--sidebar-width,280px)+1rem)] sm:!right-[1rem] sm:!bottom-[1rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!w-auto sm:!h-auto sm:max-h-[calc(100vh-2rem)]",
           // Mobile: fullscreen with safe margins
           isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
         )}
@@ -651,8 +653,8 @@ export function InvoiceUploadReviewDialog({
               "pt-4 border-t",
               isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
             )}>
-              {/* Mark as Sent (only if not already sent) - appears in REVIEW and DRAFT for uploaded invoices */}
-              {!invoice.sentAt && (
+              {/* Mark as Sent (only if not already sent and not cancelled) - appears in REVIEW and DRAFT for uploaded invoices */}
+              {!invoice.sentAt && !isCancelled && (
                 <Button 
                   variant="outline"
                   onClick={handleMarkAsSent} 
@@ -667,8 +669,8 @@ export function InvoiceUploadReviewDialog({
                 </Button>
               )}
 
-              {/* Mark as Paid / Mark as Not Paid - appears in REVIEW and DRAFT for uploaded invoices */}
-              {!invoice.paidAt ? (
+              {/* Mark as Paid / Mark as Not Paid - appears in REVIEW and DRAFT for uploaded invoices (only if not cancelled) */}
+              {!isCancelled && !invoice.paidAt ? (
                 <Button 
                   variant="outline"
                   onClick={handleMarkAsPaid} 
@@ -681,7 +683,7 @@ export function InvoiceUploadReviewDialog({
                   {markAsPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Mark as Paid
                 </Button>
-              ) : (
+              ) : !isCancelled ? (
                 <Button 
                   variant="outline"
                   onClick={handleMarkAsNotPaid} 
@@ -693,10 +695,10 @@ export function InvoiceUploadReviewDialog({
                 >
                   Mark as Not Paid
                 </Button>
-              )}
+              ) : null}
 
-              {/* Save/Update - highlighted (primary) */}
-              {!isReadOnly && (
+              {/* Save/Update - highlighted (primary) - only if not cancelled */}
+              {!isReadOnly && !isCancelled && (
                 <Button 
                   onClick={handleSave} 
                   disabled={isLoading || !isFormValid}
@@ -783,7 +785,7 @@ export function InvoiceUploadReviewDialog({
                   {moveToTrashMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Delete
                 </Button>
-                {!isReadOnly && (
+                {!isReadOnly && !isCancelled && (
                   <Button 
                     onClick={handleSave} 
                     disabled={isLoading || !isFormValid}

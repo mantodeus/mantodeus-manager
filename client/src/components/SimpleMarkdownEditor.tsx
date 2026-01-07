@@ -12,8 +12,6 @@
 import { useRef, useEffect, useState } from "react";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
 import { cn } from "@/lib/utils";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { FormattingButtons } from "@/components/FormattingButtons";
 
 interface SimpleMarkdownEditorProps {
   content: string; // Raw markdown text
@@ -70,7 +68,7 @@ function ListOrderedIcon({ className }: { className?: string }) {
   );
 }
 
-// Convert HTML/DOM to markdown
+// Convert HTML/DOM to markdown with proper line break preservation
 function htmlToMarkdown(element: HTMLElement | null): string {
   if (!element) return "";
   
@@ -84,6 +82,7 @@ function htmlToMarkdown(element: HTMLElement | null): string {
   const nodes = Array.from(element.childNodes);
   let inList = false;
   let listType: "ul" | "ol" | null = null;
+  let lastWasBlock = false;
   
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
@@ -95,13 +94,16 @@ function htmlToMarkdown(element: HTMLElement | null): string {
         continue;
       }
       markdown += text;
+      lastWasBlock = false;
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       const el = node as HTMLElement;
       const tagName = el.tagName.toLowerCase();
       
       if (tagName === "ul") {
         if (inList && listType !== "ul") {
-          markdown += "\n";
+          markdown += "\n\n";
+        } else if (markdown && !markdown.endsWith("\n\n")) {
+          markdown += "\n\n";
         }
         inList = true;
         listType = "ul";
@@ -118,9 +120,12 @@ function htmlToMarkdown(element: HTMLElement | null): string {
         }
         inList = false;
         listType = null;
+        lastWasBlock = true;
       } else if (tagName === "ol") {
         if (inList && listType !== "ol") {
-          markdown += "\n";
+          markdown += "\n\n";
+        } else if (markdown && !markdown.endsWith("\n\n")) {
+          markdown += "\n\n";
         }
         inList = true;
         listType = "ol";
@@ -131,32 +136,60 @@ function htmlToMarkdown(element: HTMLElement | null): string {
         });
         inList = false;
         listType = null;
+        lastWasBlock = true;
       } else if (tagName === "li") {
         // Handled by parent ul/ol
         continue;
       } else if (tagName === "div" || tagName === "p") {
         if (inList) {
-          markdown += "\n";
+          markdown += "\n\n";
           inList = false;
           listType = null;
         }
         const inner = processInlineMarkdown(el);
-        // Include div content even if it's just whitespace (might be a line break)
-        if (inner.trim() || (inner && i < nodes.length - 1)) {
+        
+        // Check if div contains only <br> tags (empty paragraph)
+        const hasOnlyBreaks = el.querySelectorAll("br").length > 0 && 
+                              el.textContent?.trim() === "";
+        
+        // Add paragraph break before this block if there was previous content
+        if (markdown && !markdown.endsWith("\n\n") && lastWasBlock) {
+          markdown += "\n\n";
+        }
+        
+        if (hasOnlyBreaks || (!inner.trim() && i < nodes.length - 1)) {
+          // Empty paragraph - add double newline
+          if (markdown && !markdown.endsWith("\n\n")) {
+            markdown += "\n\n";
+          }
+        } else if (inner.trim()) {
           markdown += inner;
-          if (i < nodes.length - 1 && inner.trim()) {
+          // Add paragraph break after if not last node
+          if (i < nodes.length - 1) {
+            markdown += "\n\n";
+          }
+        }
+        lastWasBlock = true;
+      } else if (tagName === "br") {
+        if (!inList) {
+          // Single <br> = soft line break (\n)
+          // Multiple consecutive <br> = paragraph break (\n\n)
+          if (markdown.endsWith("\n")) {
+            // Already has one newline, make it double
+            if (!markdown.endsWith("\n\n")) {
+              markdown += "\n";
+            }
+          } else {
             markdown += "\n";
           }
         }
-      } else if (tagName === "br") {
-        if (!inList) {
-          markdown += "\n";
-        }
+        lastWasBlock = false;
       } else {
         // Inline elements are handled by processInlineMarkdown
         if (!inList) {
           markdown += processInlineMarkdown(el);
         }
+        lastWasBlock = false;
       }
     }
   }
@@ -198,38 +231,19 @@ function processInlineMarkdown(element: HTMLElement): string {
   return result;
 }
 
-// Convert markdown to HTML for display
+// Convert markdown to HTML for display, preserving line breaks correctly
 function markdownToHtml(markdown: string): string {
   if (!markdown) return "";
-  
-  // Use a temporary div to render markdown and extract HTML
-  const tempDiv = document.createElement("div");
-  tempDiv.className = "prose prose-sm dark:prose-invert max-w-none";
-  
-  // Create a wrapper to render SimpleMarkdown component output
-  // Since we can't directly render React components here, we'll parse manually
-  const lines = markdown.split("\n");
-  const elements: string[] = [];
-  let inList = false;
-  let listType: "bullet" | "numbered" | "checkbox" | null = null;
-  let listItems: string[] = [];
-  
-  const flushList = () => {
-    if (listItems.length > 0) {
-      if (listType === "numbered") {
-        elements.push(`<ol>${listItems.join("")}</ol>`);
-      } else {
-        elements.push(`<ul>${listItems.join("")}</ul>`);
-      }
-      listItems = [];
-      listType = null;
-      inList = false;
-    }
-  };
-  
+
+  // Process inline markdown: code, bold, strikethrough, italic
   const processInline = (text: string): string => {
-    // Process inline markdown: code, bold, strikethrough, italic
     let result = text;
+    
+    // Escape HTML first
+    result = result
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
     
     // Code (highest priority)
     result = result.replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -245,13 +259,48 @@ function markdownToHtml(markdown: string): string {
     
     return result;
   };
+
+  const elements: string[] = [];
+  let inList = false;
+  let listType: "bullet" | "numbered" | "checkbox" | null = null;
+  let listItems: string[] = [];
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      if (listType === "numbered") {
+        elements.push(`<ol>${listItems.join("")}</ol>`);
+      } else {
+        elements.push(`<ul>${listItems.join("")}</ul>`);
+      }
+      listItems = [];
+      listType = null;
+      inList = false;
+    }
+  };
+
+  // Process line by line, detecting paragraph breaks (\n\n) vs soft breaks (\n)
+  const lines = markdown.split("\n");
+  let currentParagraph: string[] = [];
   
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const trimmed = line.trim();
+    const isLastLine = i === lines.length - 1;
+    const nextLine = !isLastLine ? lines[i + 1] : null;
+    const nextIsEmpty = nextLine !== null && nextLine.trim() === "";
+    
+    // Check if this is a paragraph break (current line empty AND next line empty)
+    const isParagraphBreak = trimmed === "" && nextIsEmpty;
     
     // Checkbox list
     if (/^-\s+\[([ x])\]\s+/.test(trimmed)) {
       flushList();
+      // Flush any current paragraph
+      if (currentParagraph.length > 0) {
+        const paraContent = currentParagraph.join("<br>");
+        elements.push(`<div>${processInline(paraContent)}</div>`);
+        currentParagraph = [];
+      }
       inList = true;
       listType = "checkbox";
       const content = trimmed.replace(/^-\s+\[([ x])\]\s+/, "");
@@ -260,9 +309,15 @@ function markdownToHtml(markdown: string): string {
     }
     
     // Bullet list
-    if (/^-\s+/.test(trimmed)) {
+    if (/^-\s+/.test(trimmed) && !/^-\s+\[/.test(trimmed)) {
+      flushList();
+      // Flush any current paragraph
+      if (currentParagraph.length > 0) {
+        const paraContent = currentParagraph.join("<br>");
+        elements.push(`<div>${processInline(paraContent)}</div>`);
+        currentParagraph = [];
+      }
       if (!inList || listType !== "bullet") {
-        flushList();
         inList = true;
         listType = "bullet";
       }
@@ -273,8 +328,14 @@ function markdownToHtml(markdown: string): string {
     
     // Numbered list
     if (/^\d+\.\s+/.test(trimmed)) {
+      flushList();
+      // Flush any current paragraph
+      if (currentParagraph.length > 0) {
+        const paraContent = currentParagraph.join("<br>");
+        elements.push(`<div>${processInline(paraContent)}</div>`);
+        currentParagraph = [];
+      }
       if (!inList || listType !== "numbered") {
-        flushList();
         inList = true;
         listType = "numbered";
       }
@@ -283,17 +344,36 @@ function markdownToHtml(markdown: string): string {
       continue;
     }
     
-    // Regular line
+    // Regular content
     flushList();
-    if (trimmed) {
-      elements.push(`<div>${processInline(trimmed)}</div>`);
-    } else {
+    
+    if (isParagraphBreak) {
+      // Flush current paragraph and add paragraph break
+      if (currentParagraph.length > 0) {
+        const paraContent = currentParagraph.join("<br>");
+        elements.push(`<div>${processInline(paraContent)}</div>`);
+        currentParagraph = [];
+      }
       elements.push(`<div><br></div>`);
+      i++; // Skip next empty line
+    } else if (trimmed === "") {
+      // Empty line but not a paragraph break - treat as soft break
+      if (currentParagraph.length > 0) {
+        currentParagraph.push("");
+      }
+    } else {
+      // Add line to current paragraph (will be joined with <br>)
+      currentParagraph.push(trimmed);
     }
   }
   
+  // Flush any remaining paragraph
   flushList();
-  
+  if (currentParagraph.length > 0) {
+    const paraContent = currentParagraph.join("<br>");
+    elements.push(`<div>${processInline(paraContent)}</div>`);
+  }
+
   return elements.join("");
 }
 
@@ -308,34 +388,10 @@ export function SimpleMarkdownEditor({
   const internalEditorRef = useRef<HTMLDivElement>(null);
   const editorRef = externalEditorRef || internalEditorRef;
   const containerRef = useRef<HTMLDivElement>(null);
-  const isDesktop = useMediaQuery("(min-width: 768px)");
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
   const isUpdatingRef = useRef(false);
   const isUserInputRef = useRef(false);
   const lastContentRef = useRef<string>("");
-
-  // Pin toolbar to top of keyboard using visualViewport (mobile only)
-  useEffect(() => {
-    if (isDesktop) return;
-    
-    const vv = window.visualViewport;
-    if (!vv) return;
-
-    const update = () => {
-      const offset = window.innerHeight - vv.height - vv.offsetTop;
-      setKeyboardOffset(Math.max(0, offset));
-    };
-
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-    };
-  }, [isDesktop]);
 
   // Update editor HTML when markdown content changes (from props)
   // BUT only if the change came from outside (not from user typing)
@@ -605,31 +661,65 @@ export function SimpleMarkdownEditor({
     }
   };
 
-  // Handle Enter key for list continuation
+  // Handle Enter key: Enter = paragraph, Shift+Enter = soft break
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        let node = range.commonAncestorContainer;
-        
-        while (node && node.nodeType !== Node.ELEMENT_NODE) {
-          node = node.parentNode;
-        }
-        
-        if (node) {
-          const el = node as HTMLElement;
-          if (el.tagName.toLowerCase() === "li") {
-            const text = el.textContent?.trim() || "";
-            if (!text) {
-              // Exit list on empty line
-              return;
-            }
-            // Continue list - handled by browser default
-          }
-        }
-      }
+    if (e.key !== "Enter") return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    let node = range.commonAncestorContainer;
+    
+    // Find containing block element
+    while (node && node.nodeType !== Node.ELEMENT_NODE) {
+      node = node.parentNode;
     }
+    
+    if (!node) return;
+    const el = node as HTMLElement;
+    const tagName = el.tagName.toLowerCase();
+
+    // Shift+Enter = soft line break (<br>)
+    if (e.shiftKey) {
+      e.preventDefault();
+      document.execCommand("insertLineBreak"); // inserts <br>
+      // Trigger input event to update markdown
+      setTimeout(() => {
+        if (editorRef.current) {
+          const event = new Event('input', { bubbles: true });
+          editorRef.current.dispatchEvent(event);
+        }
+      }, 0);
+      return;
+    }
+
+    // Enter = new paragraph
+    // Special handling for list items
+    if (tagName === "li") {
+      const text = el.textContent?.trim() || "";
+      if (!text) {
+        // Exit list on empty line - let browser default handle it
+        return;
+      }
+      // Continue list - let browser default handle it
+      return;
+    }
+
+    // For non-list elements, create explicit paragraph break
+    e.preventDefault();
+    
+    // Insert <br><br> to create a paragraph break
+    // Then wrap in div structure if needed
+    document.execCommand("insertHTML", false, "<br><br>");
+    
+    // Trigger input event to update markdown
+    setTimeout(() => {
+      if (editorRef.current) {
+        const event = new Event('input', { bubbles: true });
+        editorRef.current.dispatchEvent(event);
+      }
+    }, 0);
   };
 
   const handleToolbarPointerDown = (event: ReactPointerEvent) => {
@@ -656,7 +746,7 @@ export function SimpleMarkdownEditor({
           "[&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-0 [&_ul]:my-0",
           "[&_ol]:list-decimal [&_ol]:list-inside [&_ol]:ml-0 [&_ol]:my-0",
           "[&_li]:ml-0 [&_p]:my-0 [&_div]:my-0",
-          isDesktop ? "min-h-[400px]" : "min-h-[300px]"
+"min-h-[300px] md:min-h-[400px]"
         )}
         style={{
           whiteSpace: "pre-wrap",
@@ -674,15 +764,6 @@ export function SimpleMarkdownEditor({
         }
       `}</style>
 
-      {/* Mobile Markdown Bar - keyboard-pinned, formatting only */}
-      {!isDesktop && isFocused && (
-        <div
-          className="fixed left-0 right-0 bottom-0 bg-background border-t border-border z-[80] px-2 py-1.5 flex justify-center gap-[6px]"
-          style={{ transform: `translateY(-${keyboardOffset}px)` }}
-        >
-          <FormattingButtons editorRef={editorRef} onFormat={handleInput} compact />
-        </div>
-      )}
     </div>
   );
 }

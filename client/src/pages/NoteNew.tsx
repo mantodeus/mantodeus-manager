@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Save, Loader2, Paperclip, FileText, Image as ImageIcon, User, FolderOpen } from "@/components/ui/Icon";
 import { SimpleMarkdownEditor } from "@/components/SimpleMarkdownEditor";
 import { FormattingButtons } from "@/components/FormattingButtons";
+import { MobileMarkdownBar } from "@/components/MobileMarkdownBar";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -619,6 +620,18 @@ export default function NoteNew() {
         </div>
       )}
 
+      {/* Mobile Markdown Bar - rendered at page level, outside editor */}
+      {!isDesktop && (
+        <MobileMarkdownBar 
+          editorRef={editorRef} 
+          onFormat={() => {
+            if (editorRef.current) {
+              const event = new Event('input', { bubbles: true });
+              editorRef.current.dispatchEvent(event);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

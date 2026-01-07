@@ -7,7 +7,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Bold, Italic, List, Check as CheckIcon, Code } from "@/components/ui/Icon";
-import { useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 // Strikethrough icon
 function StrikethroughIcon({ className }: { className?: string }) {
@@ -62,6 +62,133 @@ interface FormattingButtonsProps {
 }
 
 export function FormattingButtons({ editorRef, onFormat, compact = false }: FormattingButtonsProps) {
+  const [activeStates, setActiveStates] = useState({
+    bold: false,
+    italic: false,
+    strikethrough: false,
+    code: false,
+    bulletList: false,
+    numberedList: false,
+    checkbox: false,
+  });
+
+  // Check formatting state based on current selection
+  const checkFormattingState = useCallback(() => {
+    if (!editorRef.current) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      setActiveStates({
+        bold: false,
+        italic: false,
+        strikethrough: false,
+        code: false,
+        bulletList: false,
+        numberedList: false,
+        checkbox: false,
+      });
+      return;
+    }
+
+    // Check execCommand states (for bold, italic, strikethrough)
+    const bold = document.queryCommandState("bold");
+    const italic = document.queryCommandState("italic");
+    const strikethrough = document.queryCommandState("strikeThrough");
+
+    // Check if selection is inside a <code> element
+    const range = selection.getRangeAt(0);
+    let node: Node | null = range.commonAncestorContainer;
+    let code = false;
+    while (node && node !== editorRef.current) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        if (el.tagName.toLowerCase() === "code") {
+          code = true;
+          break;
+        }
+      }
+      node = node.parentNode;
+    }
+
+    // Check if selection is inside a list
+    node = range.commonAncestorContainer;
+    let bulletList = false;
+    let numberedList = false;
+    let checkbox = false;
+    while (node && node !== editorRef.current) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        const tagName = el.tagName.toLowerCase();
+        if (tagName === "ul") {
+          bulletList = true;
+          // Check if it's a checkbox list
+          const hasCheckbox = el.querySelector('input[type="checkbox"]');
+          if (hasCheckbox) {
+            checkbox = true;
+          }
+          break;
+        } else if (tagName === "ol") {
+          numberedList = true;
+          break;
+        } else if (tagName === "li") {
+          const parent = el.parentElement;
+          if (parent) {
+            const parentTag = parent.tagName.toLowerCase();
+            if (parentTag === "ul") {
+              bulletList = true;
+              const hasCheckbox = el.querySelector('input[type="checkbox"]');
+              if (hasCheckbox) {
+                checkbox = true;
+              }
+            } else if (parentTag === "ol") {
+              numberedList = true;
+            }
+          }
+          break;
+        }
+      }
+      node = node.parentNode;
+    }
+
+    setActiveStates({
+      bold,
+      italic,
+      strikethrough,
+      code,
+      bulletList,
+      numberedList,
+      checkbox,
+    });
+  }, [editorRef]);
+
+  // Listen to selection changes
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      // Only check if editor is focused
+      if (editorRef.current && document.activeElement === editorRef.current) {
+        checkFormattingState();
+      }
+    };
+
+    // Also check on input events (typing)
+    const handleInput = () => {
+      setTimeout(checkFormattingState, 0);
+    };
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+    const editor = editorRef.current;
+    if (editor) {
+      editor.addEventListener("input", handleInput);
+    }
+
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+      if (editor) {
+        editor.removeEventListener("input", handleInput);
+      }
+    };
+  }, [editorRef, checkFormattingState]);
+
   const handleToolbarPointerDown = (event: React.PointerEvent) => {
     event.preventDefault();
     editorRef.current?.focus();
@@ -78,6 +205,8 @@ export function FormattingButtons({ editorRef, onFormat, compact = false }: Form
       const event = new Event('input', { bubbles: true });
       editorRef.current?.dispatchEvent(event);
     }
+    // Update active states after a brief delay
+    setTimeout(checkFormattingState, 0);
   };
 
   const handleBold = () => execCommand("bold");
@@ -219,7 +348,7 @@ export function FormattingButtons({ editorRef, onFormat, compact = false }: Form
   return (
     <>
       <Button
-        variant="ghost"
+        variant={activeStates.bold ? "default" : "ghost"}
         size={buttonSize}
         onPointerDown={handleToolbarPointerDown}
         onClick={(e) => {
@@ -232,7 +361,7 @@ export function FormattingButtons({ editorRef, onFormat, compact = false }: Form
         <Bold className={iconSize} />
       </Button>
       <Button
-        variant="ghost"
+        variant={activeStates.italic ? "default" : "ghost"}
         size={buttonSize}
         onPointerDown={handleToolbarPointerDown}
         onClick={(e) => {
@@ -245,7 +374,7 @@ export function FormattingButtons({ editorRef, onFormat, compact = false }: Form
         <Italic className={iconSize} />
       </Button>
       <Button
-        variant="ghost"
+        variant={activeStates.strikethrough ? "default" : "ghost"}
         size={buttonSize}
         onPointerDown={handleToolbarPointerDown}
         onClick={(e) => {
@@ -258,7 +387,7 @@ export function FormattingButtons({ editorRef, onFormat, compact = false }: Form
         <StrikethroughIcon className={iconSize} />
       </Button>
       <Button
-        variant="ghost"
+        variant={activeStates.bulletList ? "default" : "ghost"}
         size={buttonSize}
         onPointerDown={handleToolbarPointerDown}
         onClick={(e) => {
@@ -271,7 +400,7 @@ export function FormattingButtons({ editorRef, onFormat, compact = false }: Form
         <List className={iconSize} />
       </Button>
       <Button
-        variant="ghost"
+        variant={activeStates.numberedList ? "default" : "ghost"}
         size={buttonSize}
         onPointerDown={handleToolbarPointerDown}
         onClick={(e) => {
@@ -284,7 +413,7 @@ export function FormattingButtons({ editorRef, onFormat, compact = false }: Form
         <ListOrderedIcon className={iconSize} />
       </Button>
       <Button
-        variant="ghost"
+        variant={activeStates.checkbox ? "default" : "ghost"}
         size={buttonSize}
         onPointerDown={handleToolbarPointerDown}
         onClick={(e) => {
@@ -297,7 +426,7 @@ export function FormattingButtons({ editorRef, onFormat, compact = false }: Form
         <CheckIcon className={iconSize} />
       </Button>
       <Button
-        variant="ghost"
+        variant={activeStates.code ? "default" : "ghost"}
         size={buttonSize}
         onPointerDown={handleToolbarPointerDown}
         onClick={(e) => {

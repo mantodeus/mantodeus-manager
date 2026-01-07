@@ -1692,7 +1692,7 @@ export const appRouter = router({
         noteId: z.number(),
         filename: z.string().min(1),
         mimeType: z.string(),
-        fileSize: z.number().int().positive(),
+        base64Data: z.string(), // Base64-encoded file content (without data:xxx;base64, prefix)
       }))
       .mutation(async ({ input, ctx }) => {
         const note = await db.getNoteById(input.noteId);
@@ -1703,9 +1703,22 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to attach files to this note" });
         }
 
+        // Convert base64 to buffer
+        let buffer: Buffer;
+        try {
+          buffer = Buffer.from(input.base64Data, "base64");
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid base64 data",
+          });
+        }
+
+        const fileSize = buffer.length;
+
         // Validate file size (15MB max)
         const MAX_FILE_SIZE = 15 * 1024 * 1024;
-        if (input.fileSize > MAX_FILE_SIZE) {
+        if (fileSize > MAX_FILE_SIZE) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: `File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
@@ -1735,13 +1748,27 @@ export const appRouter = router({
         const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
         const s3Key = `notes/${input.noteId}/${dateStr}-${safeFilename}`;
 
-        // Create presigned upload URL
-        const { uploadUrl } = await createPresignedUploadUrl(s3Key, input.mimeType, 15 * 60); // 15 minutes
+        // Upload directly to S3 (server-side upload bypasses CORS)
+        await storagePut(s3Key, buffer, input.mimeType);
 
-        return {
-          uploadUrl,
+        // Register file in database
+        const result = await db.createNoteFile({
+          noteId: input.noteId,
           s3Key,
-        };
+          mimeType: input.mimeType,
+          originalFilename: input.filename,
+          fileSize,
+        });
+
+        const file = await db.getNoteFileById(result[0].id);
+        if (!file) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "File metadata not found after upload",
+          });
+        }
+
+        return file;
       }),
 
     registerNoteFile: protectedProcedure
