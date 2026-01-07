@@ -18,6 +18,6 @@ primary_region = 'fra'
   processes = ['app']
 
 [[vm]]
-  memory = '1gb'  # Increased from 512mb to 1gb for wkhtmltopdf stability
+  memory = '1gb'  # Puppeteer/Chromium needs at least 1GB
   cpus = 1
-  memory_mb = 1024  # Increased from 512
+  memory_mb = 1024

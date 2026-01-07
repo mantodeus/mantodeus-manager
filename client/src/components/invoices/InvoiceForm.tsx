@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { trpc } from "@/lib/trpc";
 import { Eye, Loader2, PencilLine, Plus, X, Send, CheckCircle2, AlertCircle } from "@/components/ui/Icon";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues, formatCurrency as formatCurrencyUtil } from "@/lib/invoiceState";
 import { AddPaymentDialog } from "./AddPaymentDialog";
@@ -59,6 +59,21 @@ function normalizeSelectValue(value: string | undefined | null): string | undefi
   return trimmed === "" ? undefined : trimmed;
 }
 
+export type InvoicePreviewData = {
+  invoiceNumber: string;
+  clientId?: string;
+  issueDate: string;
+  dueDate?: string;
+  notes?: string;
+  items: Array<{
+    name: string;
+    description?: string;
+    quantity: number;
+    unitPrice: number;
+    currency: string;
+  }>;
+};
+
 export function InvoiceForm({
   mode,
   invoiceId,
@@ -68,6 +83,7 @@ export function InvoiceForm({
   onOpenInvoice,
   onPreview,
   showPreview = false,
+  onFormChange,
 }: {
   mode: "create" | "edit";
   invoiceId?: number;
@@ -77,6 +93,7 @@ export function InvoiceForm({
   onOpenInvoice?: (invoiceId: number) => void;
   onPreview?: () => void;
   showPreview?: boolean;
+  onFormChange?: (formData: InvoicePreviewData) => void;
 }) {
   const isCreate = mode === "create";
   const [formState, setFormState] = useState<InvoiceFormState>(() => ({
@@ -163,6 +180,50 @@ export function InvoiceForm({
       total: subtotal,
     };
   }, [items]);
+
+  // Debounced form change callback for preview
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    // Only call onFormChange in create mode
+    if (!isCreate || !onFormChange) return;
+    
+    // Validate minimum form data before calling callback
+    if (!formState.invoiceNumber || items.length === 0 || items.every(item => !item.name)) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    // Debounce callback (500ms)
+    debounceTimeoutRef.current = setTimeout(() => {
+      const previewData: InvoicePreviewData = {
+        invoiceNumber: formState.invoiceNumber,
+        clientId: formState.clientId,
+        issueDate: formState.issueDate,
+        dueDate: formState.dueDate,
+        notes: formState.notes,
+        items: items.map(item => ({
+          name: item.name,
+          description: item.description || undefined,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+          currency: item.currency || "EUR",
+        })),
+      };
+      onFormChange(previewData);
+    }, 500);
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [formState, items, isCreate, onFormChange]);
 
   const createMutation = trpc.invoices.create.useMutation({
     onSuccess,

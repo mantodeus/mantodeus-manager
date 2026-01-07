@@ -4028,21 +4028,39 @@ function buildCompanyAddress(settings: {
 
 export async function getCompanySettingsByUserId(userId: number) {
   const db = await getDb();
-  if (!db) return null;
-  
-  const result = await db.select().from(companySettings)
-    .where(eq(companySettings.userId, userId))
-    .limit(1);
-
-  if (result.length === 0) return null;
-  const settings = result[0];
-  if (!settings.address) {
-    const formattedAddress = buildCompanyAddress(settings);
-    if (formattedAddress) {
-      return { ...settings, address: formattedAddress };
-    }
+  if (!db) {
+    console.error("[Database] ❌ Cannot get company settings: database not available");
+    return null;
   }
-  return settings;
+  
+  try {
+    const result = await db.select().from(companySettings)
+      .where(eq(companySettings.userId, userId))
+      .limit(1);
+
+    if (result.length === 0) return null;
+    const settings = result[0];
+    if (!settings.address) {
+      const formattedAddress = buildCompanyAddress(settings);
+      if (formattedAddress) {
+        return { ...settings, address: formattedAddress };
+      }
+    }
+    return settings;
+  } catch (error) {
+    console.error("[Database] ❌ Failed to get company settings:", error);
+    if (error instanceof Error) {
+      console.error("[Database] Error message:", error.message);
+      console.error("[Database] Error stack:", error.stack);
+      // Check if it's a column-related error
+      if (error.message.includes("Unknown column") || error.message.includes("doesn't exist")) {
+        console.error("[Database] ⚠️ Schema mismatch detected! The database table may be missing columns.");
+        console.error("[Database] Please ensure all migrations have been applied.");
+      }
+    }
+    // Re-throw with more context
+    throw new Error(`Failed to get company settings: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 export async function createCompanySettings(data: InsertCompanySettings) {

@@ -221,6 +221,167 @@ async function startServer() {
     }
   });
 
+  // Type declaration for global preview locks
+  declare global {
+    var previewLocks: Map<number, number> | undefined;
+  }
+
+  // Preview invoice PDF from form data (without saving to DB)
+  app.post("/api/invoices/preview", async (req, res) => {
+    try {
+      const user = await supabaseAuth.authenticateRequest(req);
+      if (!user || !user.id) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // CRITICAL: Rate limiting - prevent concurrent preview renders per user
+      const userId = user.id;
+      const now = Date.now();
+      const lockTimeout = 30000; // 30 seconds max lock time
+      
+      // Simple in-memory lock (Map<userId, timestamp>)
+      // In production, consider Redis for distributed systems
+      if (!global.previewLocks) {
+        global.previewLocks = new Map<number, number>();
+      }
+      
+      const previewLocks = global.previewLocks as Map<number, number>;
+      
+      // Check if user has active preview render
+      const existingLock = previewLocks.get(userId);
+      if (existingLock && (now - existingLock) < lockTimeout) {
+        return res.status(429).json({ 
+          error: "Too many requests",
+          message: "Preview generation already in progress. Please wait." 
+        });
+      }
+      
+      // Set lock
+      previewLocks.set(userId, now);
+      
+      // Cleanup old locks (older than timeout)
+      for (const [uid, timestamp] of previewLocks.entries()) {
+        if (now - timestamp > lockTimeout) {
+          previewLocks.delete(uid);
+        }
+      }
+
+      const { invoiceNumber, clientId, issueDate, dueDate, notes, items } = req.body;
+
+      if (!invoiceNumber || !issueDate || !items || !Array.isArray(items) || items.length === 0) {
+        previewLocks.delete(userId);
+        return res.status(400).json({ error: "Missing required fields: invoiceNumber, issueDate, items" });
+      }
+
+      const { getCompanySettingsByUserId, getContactById, createCompanySettings } = await import("../db");
+      const { generateInvoiceHTML } = await import("../templates/invoice");
+      const { renderPDF } = await import("../services/pdfService");
+
+      // Get company settings
+      let companySettings = await getCompanySettingsByUserId(user.id);
+      
+      // Create default settings if none exist
+      if (!companySettings) {
+        const year = new Date().getFullYear();
+        await createCompanySettings({
+          userId: user.id,
+          companyName: user.name || 'Mantodeus Manager',
+          address: null,
+          streetName: null,
+          streetNumber: null,
+          postalCode: null,
+          city: null,
+          country: null,
+          isKleinunternehmer: false,
+          vatRate: '19.00',
+          invoicePrefix: 'RE',
+          invoiceNumberFormat: `RE-${year}-0001`,
+          nextInvoiceNumber: 1,
+        });
+        companySettings = await getCompanySettingsByUserId(user.id);
+        if (!companySettings) {
+          previewLocks.delete(userId);
+          return res.status(500).json({ error: "Failed to create company settings" });
+        }
+      }
+
+      // Get client if provided
+      let client: { name: string; address: string | null } | null = null;
+      if (clientId) {
+        const contact = await getContactById(clientId);
+        if (contact) {
+          client = {
+            name: contact.name,
+            address: contact.address,
+          };
+        }
+      }
+
+      // Calculate totals
+      const normalizedItems = items.map((item: any) => {
+        const quantity = Number(item.quantity);
+        const unitPrice = Number(item.unitPrice);
+        const lineTotal = Number((quantity * unitPrice).toFixed(2));
+        return {
+          description: item.name + (item.description ? ` - ${item.description}` : ""),
+          quantity,
+          unitPrice,
+          total: lineTotal,
+        };
+      });
+      
+      const subtotal = normalizedItems.reduce((sum: number, item: any) => sum + item.total, 0);
+      const vatAmount = companySettings.isKleinunternehmer 
+        ? 0 
+        : subtotal * (Number(companySettings.vatRate) / 100);
+      const total = subtotal + vatAmount;
+
+      // Generate HTML
+      const html = generateInvoiceHTML({
+        invoiceNumber: String(invoiceNumber),
+        invoiceDate: new Date(issueDate),
+        dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        company: companySettings,
+        client,
+        items: normalizedItems,
+        subtotal,
+        vatAmount,
+        total,
+        notes: notes || undefined,
+        logoUrl: '',
+      });
+
+      // Generate PDF
+      const pdfBuffer = await renderPDF(html);
+      const filename = `INVOICE_PREVIEW_${invoiceNumber}_UNSAVED.pdf`;
+
+      // Release lock
+      previewLocks.delete(userId);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      // Release lock on error
+      if (global.previewLocks) {
+        const previewLocks = global.previewLocks as Map<number, number>;
+        const user = await supabaseAuth.authenticateRequest(req).catch(() => null);
+        if (user?.id) {
+          previewLocks.delete(user.id);
+        }
+      }
+
+      if (error instanceof Error && error.message.includes("Invalid or missing session")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      req.log.error({ err: error }, "Invoice preview generation failed");
+      res.status(500).json({
+        error: "Failed to generate preview",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   app.post("/api/invoices/:id/issue", async (req, res) => {
     try {
       const user = await supabaseAuth.authenticateRequest(req);

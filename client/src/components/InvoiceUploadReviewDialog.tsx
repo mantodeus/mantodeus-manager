@@ -73,6 +73,7 @@ export function InvoiceUploadReviewDialog({
   const [issueDate, setIssueDate] = useState<string>("");
   const [totalAmount, setTotalAmount] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
+  const [paymentDate, setPaymentDate] = useState<string>("");
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [revertTarget, setRevertTarget] = useState<"draft" | "sent" | null>(null);
@@ -305,6 +306,11 @@ export function InvoiceUploadReviewDialog({
       setDueDate(
         invoice.dueDate
           ? new Date(invoice.dueDate).toISOString().split("T")[0]
+          : ""
+      );
+      setPaymentDate(
+        invoice.paidAt
+          ? new Date(invoice.paidAt).toISOString().split("T")[0]
           : ""
       );
     } 
@@ -862,6 +868,21 @@ export function InvoiceUploadReviewDialog({
               Due date is required before sending the invoice
             </p>
           </div>
+
+          {/* Payment Date - shown only when invoice is paid */}
+          {invoice?.paidAt && (
+            <div className="space-y-2">
+              <Label htmlFor="paymentDate">Payment Date</Label>
+              <Input
+                id="paymentDate"
+                type="date"
+                value={paymentDate}
+                disabled
+                readOnly
+                className="bg-muted"
+              />
+            </div>
+          )}
 
           {/* Action buttons: Section 19 layout - REVIEW and DRAFT states for uploaded invoices */}
           {(isReview || isDraft) && invoice?.source === "uploaded" && (
