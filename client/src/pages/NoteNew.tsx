@@ -13,8 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Save, Loader2, Paperclip, FileText, Image as ImageIcon, User, FolderOpen } from "@/components/ui/Icon";
 import { SimpleMarkdownEditor } from "@/components/SimpleMarkdownEditor";
+import { FormattingButtons } from "@/components/FormattingButtons";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { PageHeader } from "@/components/PageHeader";
 import {
   Select,
@@ -23,6 +25,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type NoteFile = {
   id: number;
@@ -34,14 +41,18 @@ type NoteFile = {
 };
 
 export default function NoteNew() {
+  const isDesktop = useMediaQuery("(min-width: 768px)");
   const [, navigate] = useLocation();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("none");
   const [selectedContactId, setSelectedContactId] = useState<string>("none");
+  const [contactSelectOpen, setContactSelectOpen] = useState(false);
+  const [projectSelectOpen, setProjectSelectOpen] = useState(false);
   const [files, setFiles] = useState<NoteFile[]>([]);
   const [noteId, setNoteId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -364,9 +375,121 @@ export default function NoteNew() {
         </Button>
       </div>
 
+      {/* Desktop Unified Bar */}
+      {isDesktop && (
+        <div className="editor-bar-desktop flex items-center gap-2 px-3 py-2 border-b border-border bg-background">
+          <div className="flex gap-2">
+            <FormattingButtons 
+              editorRef={editorRef} 
+              onFormat={() => {
+                // Trigger input event on editor to update markdown
+                if (editorRef.current) {
+                  const event = new Event('input', { bubbles: true });
+                  editorRef.current.dispatchEvent(event);
+                }
+              }}
+            />
+          </div>
+          <div className="ml-auto flex gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const fileList = Array.from(e.target.files || []);
+                if (fileList.length > 0) {
+                  handleFileUpload(fileList);
+                }
+                if (e.target) {
+                  e.target.value = "";
+                }
+              }}
+              accept="image/*,application/pdf,.doc,.docx"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-9"
+            >
+              <Paperclip className="h-4 w-4 mr-2" />
+              Attach
+            </Button>
+            <Popover open={contactSelectOpen} onOpenChange={setContactSelectOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                  <User className="h-4 w-4 mr-2" />
+                  Contact
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-0" align="end">
+                <div className="p-1">
+                  <button
+                    className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => {
+                      setSelectedContactId("none");
+                      setContactSelectOpen(false);
+                    }}
+                  >
+                    No Contact
+                  </button>
+                  {contacts.map((contact) => (
+                    <button
+                      key={contact.id}
+                      className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                      onClick={() => {
+                        setSelectedContactId(contact.id.toString());
+                        setContactSelectOpen(false);
+                      }}
+                    >
+                      {contact.name}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Popover open={projectSelectOpen} onOpenChange={setProjectSelectOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Project
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-0" align="end" side="top" sideOffset={8}>
+                <div className="p-1">
+                  <button
+                    className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => {
+                      setSelectedProjectId("none");
+                      setProjectSelectOpen(false);
+                    }}
+                  >
+                    No Project
+                  </button>
+                  {projects.map((project) => (
+                    <button
+                      key={project.id}
+                      className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                      onClick={() => {
+                        setSelectedProjectId(project.id.toString());
+                        setProjectSelectOpen(false);
+                      }}
+                    >
+                      {project.name}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      )}
+
       {/* Editor */}
       <div className="w-full">
         <SimpleMarkdownEditor
+          editorRef={editorRef}
           content={content}
           onChange={setContent}
           placeholder="Start writing..."
@@ -399,77 +522,102 @@ export default function NoteNew() {
         </Card>
       )}
 
-      {/* Bottom Action Bar (Edit Mode) */}
-      <div 
-        className="fixed left-0 right-0 bg-background border-t p-4 flex items-center justify-center gap-3 md:justify-end md:pr-8 z-40 md:bottom-0 overflow-visible" 
-        style={{ bottom: 'var(--bottom-safe-area, 0px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const fileList = Array.from(e.target.files || []);
-            if (fileList.length > 0) {
-              handleFileUpload(fileList);
-            }
-            if (e.target) {
-              e.target.value = "";
-            }
-          }}
-          accept="image/*,application/pdf,.doc,.docx"
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          className="h-9 flex-1 md:flex-initial"
-        >
-          <Paperclip className="h-4 w-4 mr-2" />
-          Attach
-        </Button>
-        <Select value={selectedContactId} onValueChange={(val) => setSelectedContactId(val || "none")}>
-          <SelectTrigger className="h-9 px-3 gap-2 flex-1 md:flex-initial md:w-[140px]">
-            <User className="h-4 w-4 text-muted-foreground shrink-0" />
-            <SelectValue>
-              {selectedContactId === "none" ? (
-                <span className="text-foreground">Contact</span>
-              ) : (
-                contacts.find(c => c.id.toString() === selectedContactId)?.name || "Contact"
-              )}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">No Contact</SelectItem>
-            {contacts.map((contact) => (
-              <SelectItem key={contact.id} value={contact.id.toString()}>
-                {contact.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={selectedProjectId} onValueChange={(val) => setSelectedProjectId(val || "none")}>
-          <SelectTrigger className="h-9 px-3 gap-2 flex-1 md:flex-initial md:w-[140px]">
-            <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-            <SelectValue>
-              {selectedProjectId === "none" ? (
-                <span className="text-foreground">Project</span>
-              ) : (
-                projects.find(p => p.id.toString() === selectedProjectId)?.name || "Project"
-              )}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent side="top" align="end" sideOffset={8}>
-            <SelectItem value="none">No Project</SelectItem>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id.toString()}>
-                {project.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Mobile Action Bar (in scroll flow, after editor) */}
+      {!isDesktop && (
+        <div className="notes-action-bar-mobile mt-4 px-3 py-3 border-t border-border flex gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const fileList = Array.from(e.target.files || []);
+              if (fileList.length > 0) {
+                handleFileUpload(fileList);
+              }
+              if (e.target) {
+                e.target.value = "";
+              }
+            }}
+            accept="image/*,application/pdf,.doc,.docx"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="h-9 flex-1"
+          >
+            <Paperclip className="h-4 w-4 mr-2" />
+            Attach
+          </Button>
+          <Popover open={contactSelectOpen} onOpenChange={setContactSelectOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 flex-1">
+                <User className="h-4 w-4 mr-2" />
+                Contact
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-0" align="end">
+              <div className="p-1">
+                <button
+                  className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => {
+                    setSelectedContactId("none");
+                    setContactSelectOpen(false);
+                  }}
+                >
+                  No Contact
+                </button>
+                {contacts.map((contact) => (
+                  <button
+                    key={contact.id}
+                    className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => {
+                      setSelectedContactId(contact.id.toString());
+                      setContactSelectOpen(false);
+                    }}
+                  >
+                    {contact.name}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Popover open={projectSelectOpen} onOpenChange={setProjectSelectOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 flex-1">
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Project
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-0" align="end" side="top" sideOffset={8}>
+              <div className="p-1">
+                <button
+                  className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => {
+                    setSelectedProjectId("none");
+                    setProjectSelectOpen(false);
+                  }}
+                >
+                  No Project
+                </button>
+                {projects.map((project) => (
+                  <button
+                    key={project.id}
+                    className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => {
+                      setSelectedProjectId(project.id.toString());
+                      setProjectSelectOpen(false);
+                    }}
+                  >
+                    {project.name}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
 
     </div>
   );

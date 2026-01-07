@@ -62,19 +62,23 @@ export function getInvoiceActions({
     actions.push("select");
   }
 
+  // Check if invoice is cancelled - cancelled invoices cannot have markAsSent or markAsPaid actions
+  const isCancelled = invoice.cancelledAt !== null;
+
   // Lifecycle actions based on state
   if (isDraft || isReview) {
-    // Mark as Sent - always available for draft/review invoices
+    // Mark as Sent - only available for draft/review invoices that are NOT cancelled
     // Validation (dueDate and total>0) happens in the handler
-    actions.push("markAsSent");
+    if (!isCancelled) {
+      actions.push("markAsSent");
+    }
     
-    // Mark as Paid - for uploaded invoices that haven't been sent
-    if (invoice.source === "uploaded" && !invoice.sentAt) {
+    // Mark as Paid - for uploaded invoices that haven't been sent (only if not cancelled)
+    if (!isCancelled && invoice.source === "uploaded" && !invoice.sentAt) {
       actions.push("markAsPaid");
     }
 
     // Mark as Cancelled / Mark as Not Cancelled - only for draft/review invoices
-    const isCancelled = invoice.cancelledAt !== null;
     if (isCancelled) {
       actions.push("markAsNotCancelled");
     } else {
@@ -83,8 +87,8 @@ export function getInvoiceActions({
   }
 
   if (isSent || isPaid) {
-    // Mark as Paid - for sent invoices
-    if (isSent && !isPaid) {
+    // Mark as Paid - for sent invoices (only if not cancelled)
+    if (!isCancelled && isSent && !isPaid) {
       actions.push("markAsPaid");
     }
   }
@@ -132,8 +136,15 @@ export function isActionValidForInvoice(
   const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
   const isPaid = invoiceState === 'PAID';
 
+  // Check if invoice is cancelled - cancelled invoices cannot have markAsSent or markAsPaid actions
+  const isCancelled = invoice.cancelledAt !== null;
+
   switch (action) {
     case "markAsSent":
+      // Cancelled invoices cannot be marked as sent
+      if (isCancelled) {
+        return { valid: false, reason: "Cancelled invoices cannot be marked as sent" };
+      }
       // Only for draft/needsReview
       if (!isDraft && !isReview) {
         return { valid: false, reason: "Invoice must be in draft or review state" };
@@ -143,6 +154,10 @@ export function isActionValidForInvoice(
       return { valid: true };
 
     case "markAsPaid":
+      // Cancelled invoices cannot be marked as paid
+      if (isCancelled) {
+        return { valid: false, reason: "Cancelled invoices cannot be marked as paid" };
+      }
       // For sent invoices or draft/uploaded invoices
       if (isPaid) {
         return { valid: false, reason: "Invoice is already paid" };

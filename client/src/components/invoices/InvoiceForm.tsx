@@ -864,7 +864,7 @@ export function InvoiceForm({
             type="submit" 
             form="invoice-form" 
             className={!isCreate && invoice ? "flex-1" : "flex-1"} 
-            disabled={isLoading || isReadOnly}
+            disabled={isLoading || isReadOnly || isCancelled}
           >
             {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
             {isCreate ? "Save" : "Update"}

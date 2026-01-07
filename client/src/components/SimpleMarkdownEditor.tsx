@@ -9,11 +9,11 @@
  * - Lists auto-continue on Enter
  */
 
-import { useRef, useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Button } from "@/components/ui/button";
-import { Bold, Italic, List, Check as CheckIcon, Code } from "@/components/ui/Icon";
+import { useRef, useEffect, useState } from "react";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { FormattingButtons } from "@/components/FormattingButtons";
 
 interface SimpleMarkdownEditorProps {
   content: string; // Raw markdown text
@@ -21,6 +21,7 @@ interface SimpleMarkdownEditorProps {
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
+  editorRef?: React.RefObject<HTMLDivElement>; // Optional external ref
 }
 
 // Strikethrough icon (simple SVG)
@@ -302,37 +303,28 @@ export function SimpleMarkdownEditor({
   placeholder = "Start writing...",
   className,
   autoFocus = false,
+  editorRef: externalEditorRef,
 }: SimpleMarkdownEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
+  const internalEditorRef = useRef<HTMLDivElement>(null);
+  const editorRef = externalEditorRef || internalEditorRef;
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const isDesktop = useMediaQuery("(min-width: 768px)");
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
   const isUpdatingRef = useRef(false);
   const isUserInputRef = useRef(false);
   const lastContentRef = useRef<string>("");
 
-  // Detect mobile for toolbar positioning
+  // Pin toolbar to top of keyboard using visualViewport (mobile only)
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  // Pin toolbar to top of keyboard using visualViewport
-  useEffect(() => {
+    if (isDesktop) return;
+    
     const vv = window.visualViewport;
     if (!vv) return;
 
     const update = () => {
-      const offset = Math.max(
-        0,
-        window.innerHeight - vv.height - vv.offsetTop
-      );
-      setKeyboardOffset(offset);
+      const offset = window.innerHeight - vv.height - vv.offsetTop;
+      setKeyboardOffset(Math.max(0, offset));
     };
 
     update();
@@ -343,7 +335,7 @@ export function SimpleMarkdownEditor({
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
     };
-  }, []);
+  }, [isDesktop]);
 
   // Update editor HTML when markdown content changes (from props)
   // BUT only if the change came from outside (not from user typing)
@@ -645,8 +637,6 @@ export function SimpleMarkdownEditor({
     editorRef.current?.focus();
   };
 
-  const showToolbar = isMobile ? isFocused : true;
-
   return (
     <div className={cn("relative flex flex-col", className)} ref={containerRef}>
       {/* WYSIWYG Editor - contentEditable div showing formatted text */}
@@ -666,9 +656,7 @@ export function SimpleMarkdownEditor({
           "[&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-0 [&_ul]:my-0",
           "[&_ol]:list-decimal [&_ol]:list-inside [&_ol]:ml-0 [&_ol]:my-0",
           "[&_li]:ml-0 [&_p]:my-0 [&_div]:my-0",
-          isMobile ? "min-h-[300px]" : "min-h-[400px]",
-          // Add padding bottom on mobile to account for sticky toolbar
-          isMobile && showToolbar ? "pb-16" : ""
+          isDesktop ? "min-h-[400px]" : "min-h-[300px]"
         )}
         style={{
           whiteSpace: "pre-wrap",
@@ -686,111 +674,13 @@ export function SimpleMarkdownEditor({
         }
       `}</style>
 
-      {/* Formatting Toolbar - pinned to top of keyboard */}
-      {showToolbar && (
+      {/* Mobile Markdown Bar - keyboard-pinned, formatting only */}
+      {!isDesktop && isFocused && (
         <div
-          className="notes-editor-bar sticky bottom-0 z-50 border-t bg-background/95 backdrop-blur-sm shadow-lg"
-          style={{
-            transform: `translateY(-${keyboardOffset}px)`,
-            transition: 'transform 180ms ease-out',
-            paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)`,
-          }}
+          className="fixed left-0 right-0 bottom-0 bg-background border-t border-border z-[80] px-2 py-1.5 flex justify-center gap-[6px]"
+          style={{ transform: `translateY(-${keyboardOffset}px)` }}
         >
-          <div className="flex items-center gap-1 p-2 overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <Button
-              variant="ghost"
-              size="default"
-              onPointerDown={handleToolbarPointerDown}
-              onClick={(e) => {
-                e.preventDefault();
-                handleBold();
-              }}
-              className="min-w-[44px] h-[44px] flex-shrink-0"
-              type="button"
-            >
-              <Bold className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="default"
-              onPointerDown={handleToolbarPointerDown}
-              onClick={(e) => {
-                e.preventDefault();
-                handleItalic();
-              }}
-              className="min-w-[44px] h-[44px] flex-shrink-0"
-              type="button"
-            >
-              <Italic className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="default"
-              onPointerDown={handleToolbarPointerDown}
-              onClick={(e) => {
-                e.preventDefault();
-                handleStrikethrough();
-              }}
-              className="min-w-[44px] h-[44px] flex-shrink-0"
-              type="button"
-            >
-              <StrikethroughIcon className="h-5 w-5" />
-            </Button>
-            <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
-            <Button
-              variant="ghost"
-              size="default"
-              onPointerDown={handleToolbarPointerDown}
-              onClick={(e) => {
-                e.preventDefault();
-                handleBulletList();
-              }}
-              className="min-w-[44px] h-[44px] flex-shrink-0"
-              type="button"
-            >
-              <List className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="default"
-              onPointerDown={handleToolbarPointerDown}
-              onClick={(e) => {
-                e.preventDefault();
-                handleNumberedList();
-              }}
-              className="min-w-[44px] h-[44px] flex-shrink-0"
-              type="button"
-            >
-              <ListOrderedIcon className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="default"
-              onPointerDown={handleToolbarPointerDown}
-              onClick={(e) => {
-                e.preventDefault();
-                handleCheckbox();
-              }}
-              className="min-w-[44px] h-[44px] flex-shrink-0"
-              type="button"
-            >
-              <CheckIcon className="h-5 w-5" />
-            </Button>
-            <div className="w-px h-6 bg-border mx-1 flex-shrink-0" />
-            <Button
-              variant="ghost"
-              size="default"
-              onPointerDown={handleToolbarPointerDown}
-              onClick={(e) => {
-                e.preventDefault();
-                handleCode();
-              }}
-              className="min-w-[44px] h-[44px] flex-shrink-0"
-              type="button"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </div>
+          <FormattingButtons editorRef={editorRef} onFormat={handleInput} compact />
         </div>
       )}
     </div>

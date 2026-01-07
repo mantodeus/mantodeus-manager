@@ -2015,10 +2015,15 @@ export default function Invoices() {
                         <div className="text-sm font-light">{displayTotal}</div>
                         <Badge variant="outline" className="text-xs">NEEDS REVIEW</Badge>
                         <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
-                        {!isMultiSelectMode && (
-                          <ItemActionsMenu
-                            actions={["edit", "duplicate", "select", "archive", "delete", "markAsSent", "markAsPaid"]}
-                            onAction={(action) => {
+                        {!isMultiSelectMode && (() => {
+                          const availableActions = getInvoiceActions({
+                            invoice,
+                            selectionMode: false,
+                          });
+                          return (
+                            <ItemActionsMenu
+                              actions={availableActions}
+                              onAction={(action) => {
                               // Use switch statement to ensure only one action executes
                               switch (action) {
                                 case "edit":
@@ -2069,7 +2074,8 @@ export default function Invoices() {
                               }
                             }}
                           />
-                        )}
+                          );
+                        })()}
                       </div>
                     </div>
                 </Card>
