@@ -61,8 +61,6 @@ async function getBrowser() {
 app.use(express.json({ limit: "5mb" }));
 
 app.post("/render", async (req, res) => {
-  let page = null;
-
   try {
     // Skip auth in DEV mode for faster validation
     if (!IS_DEV) {
@@ -72,67 +70,32 @@ app.post("/render", async (req, res) => {
       }
     }
 
-    const { html, options = {} } = req.body;
-    if (!html) {
-      return res.status(400).json({ error: "Missing html" });
-    }
+    const { html, options } = req.body;
 
     // Get browser instance (reused across requests)
     const browserInstance = await getBrowser();
-    
-    // Create new page per request
-    page = await browserInstance.newPage();
+    const page = await browserInstance.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
 
-    // Set content
-    await page.setContent(html, {
-      waitUntil: 'networkidle0',
-      timeout: 30000,
-    });
-
-    // Parse options
-    const format = options.format || "A4";
-    const marginTop = options.margin?.top || "10mm";
-    const marginRight = options.margin?.right || "10mm";
-    const marginBottom = options.margin?.bottom || "10mm";
-    const marginLeft = options.margin?.left || "10mm";
-    const printBackground = options.printBackground !== false;
-
-    // Generate PDF
     const pdfBuffer = await page.pdf({
-      format: format,
-      margin: {
-        top: marginTop,
-        right: marginRight,
-        bottom: marginBottom,
-        left: marginLeft,
-      },
-      printBackground: printBackground,
-      preferCSSPageSize: false,
+      format: "A4",
+      printBackground: true,
+      ...options,
     });
 
-    // Close page after PDF generation
     await page.close();
-    page = null;
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.send(pdfBuffer);
-  } catch (err) {
-    console.error("PDF ERROR:", err);
-    
-    // Clean up page on error
-    if (page) {
-      try {
-        await page.close();
-      } catch (closeErr) {
-        console.error("Error closing page:", closeErr);
-      }
-    }
-    
-    const errorMessage = err?.message || String(err) || "Unknown error";
-    res.status(500).json({
-      error: "PDF generation failed",
-      message: errorMessage
+    res.writeHead(200, {
+      "Content-Type": "application/pdf",
+      "Content-Length": pdfBuffer.length,
+      "Content-Disposition": 'inline; filename="test.pdf"',
+      "Cache-Control": "no-store",
     });
+
+    res.end(pdfBuffer); // ✅ THIS IS CRITICAL
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "PDF render failed" });
   }
 });
 
