@@ -562,7 +562,7 @@ export function InvoiceUploadReviewDialog({
       {/* Preview Panel - Left side on desktop - optimized for A4 display */}
       {!isMobile && previewOpen && previewUrl && (
         <div
-          className="fixed z-[60] bg-background border-r shadow-lg rounded-r-lg"
+          className="fixed z-[60] bg-background border-r shadow-lg rounded-lg"
           style={{
             top: '1.5rem',
             left: '1.5rem',
@@ -570,13 +570,13 @@ export function InvoiceUploadReviewDialog({
             height: 'calc(100vh - 3rem)', // Full height with margins
           }}
         >
-          <div className="flex flex-col h-full">
+          <div className="flex flex-col h-full overflow-hidden rounded-lg">
             {/* Preview Header - no close button on desktop (always open) */}
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-lg font-semibold">Preview</h2>
             </div>
             {/* Preview Content */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden rounded-b-lg">
               <iframe
                 src={previewUrl}
                 className="w-full h-full border-0"
