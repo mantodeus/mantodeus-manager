@@ -559,15 +559,15 @@ export function InvoiceUploadReviewDialog({
 
   return (
     <>
-      {/* Preview Panel - Left side on desktop - full screen, ignoring sidebar */}
+      {/* Preview Panel - Left side on desktop - optimized for A4 display */}
       {!isMobile && previewOpen && previewUrl && (
         <div
-          className="fixed z-[60] bg-background border-r shadow-lg"
+          className="fixed z-[60] bg-background border-r shadow-lg rounded-r-lg"
           style={{
-            top: 0,
-            left: 0,
-            width: '50vw',
-            height: '100vh',
+            top: '1.5rem',
+            left: '1.5rem',
+            width: 'calc(40vw - 2rem)', // 40% width with margins for blurred border
+            height: 'calc(100vh - 3rem)', // Full height with margins
           }}
         >
           <div className="flex flex-col h-full">
@@ -591,21 +591,21 @@ export function InvoiceUploadReviewDialog({
         <DialogContent 
           className={cn(
             "flex flex-col p-0",
-            // Desktop: full screen on right half (50% width), ignoring sidebar
-            "sm:!top-0 sm:!bottom-0 sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!h-full sm:!max-h-none",
+            // Desktop: right side with margins, showing blurred background border
+            "sm:!top-[1.5rem] sm:!bottom-[1.5rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!h-auto sm:max-h-[calc(100vh-3rem)]",
             // Mobile: fullscreen with safe margins
             isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
           )}
           style={{
-            // Desktop: always on right half, full screen (ignoring sidebar)
+            // Desktop: right side, 60% width with margins for blurred border
             // Mobile: normal dialog behavior
-            left: isMobile ? undefined : "50vw",
-            right: isMobile ? undefined : 0,
-            top: isMobile ? undefined : 0,
-            bottom: isMobile ? undefined : 0,
-            width: isMobile ? undefined : "50vw",
-            height: isMobile ? undefined : "100vh",
-            maxHeight: isMobile ? undefined : "100vh",
+            left: isMobile ? undefined : "calc(40vw + 0.5rem)", // Start after preview + small gap
+            right: isMobile ? undefined : "1.5rem",
+            top: isMobile ? undefined : "1.5rem",
+            bottom: isMobile ? undefined : "1.5rem",
+            width: isMobile ? undefined : "calc(60vw - 2rem)", // 60% width with margins
+            height: isMobile ? undefined : "calc(100vh - 3rem)",
+            maxHeight: isMobile ? undefined : "calc(100vh - 3rem)",
           } as React.CSSProperties}
           showCloseButton={false}
         >
