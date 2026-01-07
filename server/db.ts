@@ -4052,10 +4052,43 @@ export async function getCompanySettingsByUserId(userId: number) {
     if (error instanceof Error) {
       console.error("[Database] Error message:", error.message);
       console.error("[Database] Error stack:", error.stack);
-      // Check if it's a column-related error
+      // Check if it's a column-related error (missing invoiceAccentColor or invoiceAccountHolderName)
       if (error.message.includes("Unknown column") || error.message.includes("doesn't exist")) {
         console.error("[Database] ⚠️ Schema mismatch detected! The database table may be missing columns.");
-        console.error("[Database] Please ensure all migrations have been applied.");
+        console.error("[Database] Attempting to query with fallback for missing columns...");
+        
+        // Try to query with a manual SELECT that excludes the new columns
+        // This handles the case where migration hasn't been run yet
+        try {
+          const fallbackResult = await db.execute(
+            sql`SELECT id, userId, companyName, streetName, streetNumber, postalCode, city, country, address, email, phone, steuernummer, ustIdNr, iban, bic, isKleinunternehmer, accountingMethod, vatMethod, vatRate, invoicePrefix, invoiceNumberFormat, nextInvoiceNumber, logoS3Key, logoUrl, logoWidth, logoHeight, createdAt, updatedAt FROM company_settings WHERE userId = ${userId} LIMIT 1`
+          ) as any;
+          
+          // MySQL2 returns [rows, fields] format
+          const rows = Array.isArray(fallbackResult) && fallbackResult[0] ? fallbackResult[0] : fallbackResult;
+          if (rows && rows.length > 0) {
+            const row = rows[0];
+            // Add default values for missing columns
+            const settings = {
+              ...row,
+              invoiceAccentColor: '#00ff88',
+              invoiceAccountHolderName: null,
+            };
+            
+            if (!settings.address) {
+              const formattedAddress = buildCompanyAddress(settings);
+              if (formattedAddress) {
+                return { ...settings, address: formattedAddress };
+              }
+            }
+            return settings;
+          }
+        } catch (fallbackError) {
+          console.error("[Database] ❌ Fallback query also failed:", fallbackError);
+        }
+        
+        console.error("[Database] Please run migration: drizzle/0025_add_invoice_design_fields.sql");
+        console.error("[Database] Or run: npm run db:migrate");
       }
     }
     // Re-throw with more context
