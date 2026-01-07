@@ -2103,7 +2103,7 @@ export async function issueInvoice(id: number) {
     .where(eq(invoices.id, id));
 }
 
-export async function markInvoiceAsPaid(id: number, alsoSetSentAt: boolean = false) {
+export async function markInvoiceAsPaid(id: number, paidAt: Date, alsoSetSentAt: boolean = false) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
@@ -2115,7 +2115,8 @@ export async function markInvoiceAsPaid(id: number, alsoSetSentAt: boolean = fal
   }
 
   const totalAmount = invoice.total ? String(invoice.total) : "0.00";
-  const paymentDate = new Date();
+  // Use provided paidAt date (mandatory)
+  const paymentDate = paidAt;
 
   const updateData: any = {
     status: 'paid', 
@@ -2124,7 +2125,7 @@ export async function markInvoiceAsPaid(id: number, alsoSetSentAt: boolean = fal
     lastPaymentAt: paymentDate
   };
 
-  // If alsoSetSentAt is true and sentAt is not already set, set it
+  // If alsoSetSentAt is true and sentAt is not already set, set it to the same date as paidAt
   if (alsoSetSentAt && !invoice.sentAt) {
     updateData.sentAt = paymentDate;
     updateData.status = 'paid'; // Already set above, but explicit
@@ -2296,7 +2297,10 @@ export async function addInvoicePayment(id: number, amount: number) {
     lastPaymentAt: new Date(),
   };
 
-  // If fully paid, set paidAt
+  // If fully paid, set paidAt to current date
+  // Note: For partial payments that complete the invoice, we use the current date automatically
+  // The user is actively adding a payment, so using today's date is appropriate
+  // For "Mark as Paid" action, the user must explicitly select a date via the dialog
   if (newAmountPaid >= total) {
     updateData.paidAt = new Date();
     updateData.status = 'paid';

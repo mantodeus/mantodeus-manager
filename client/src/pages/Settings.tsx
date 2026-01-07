@@ -73,6 +73,8 @@ export default function Settings() {
     iban: "",
     bic: "",
     isKleinunternehmer: false,
+    accountingMethod: "EÜR" as "EÜR" | "BILANZ",
+    vatMethod: null as "IST" | "SOLL" | null,
     vatRate: "19.00",
     invoiceNumberFormat: `RE-${currentYear}-0001`,
   });
@@ -103,6 +105,8 @@ export default function Settings() {
         iban: settings.iban || "",
         bic: settings.bic || "",
         isKleinunternehmer: settings.isKleinunternehmer || false,
+        accountingMethod: (settings.accountingMethod as "EÜR" | "BILANZ") || "EÜR",
+        vatMethod: (settings.vatMethod as "IST" | "SOLL" | null) || null,
         vatRate: settings.vatRate || "19.00",
         invoiceNumberFormat: settings.invoiceNumberFormat || `RE-${currentYear}-0001`,
       });
@@ -141,7 +145,7 @@ export default function Settings() {
     await updatePreferencesMutation.mutateAsync(normalized);
   };
 
-  const handleChange = (field: string, value: string | boolean) => {
+  const handleChange = (field: string, value: string | boolean | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -617,6 +621,53 @@ export default function Settings() {
                 <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <p className="text-sm text-muted-foreground">
                   When enabled, invoices will include: "Keine Umsatzsteuer aufgrund der Kleinunternehmerregelung, § 19 UStG"
+                </p>
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Accounting Method */}
+            <div className="space-y-2">
+              <Label htmlFor="accountingMethod">Accounting Method</Label>
+              <Select
+                value={formData.accountingMethod}
+                onValueChange={(value) => handleChange("accountingMethod", value as "EÜR" | "BILANZ")}
+              >
+                <SelectTrigger id="accountingMethod">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EÜR">Einnahmen-Überschuss-Rechnung (EÜR)</SelectItem>
+                  <SelectItem value="BILANZ">Bilanz</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.accountingMethod === "EÜR" 
+                  ? "Income recognized when payment is received"
+                  : "Income recognized when service is completed (service period end)"}
+              </p>
+            </div>
+
+            {/* VAT Method - only shown if not Kleinunternehmer */}
+            {!formData.isKleinunternehmer && (
+              <div className="space-y-2">
+                <Label htmlFor="vatMethod">VAT Method (optional)</Label>
+                <Select
+                  value={formData.vatMethod || "none"}
+                  onValueChange={(value) => handleChange("vatMethod", value === "none" ? null : value as "IST" | "SOLL")}
+                >
+                  <SelectTrigger id="vatMethod">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not specified</SelectItem>
+                    <SelectItem value="IST">Ist-Versteuerung (cash basis)</SelectItem>
+                    <SelectItem value="SOLL">Soll-Versteuerung (accrual basis)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  VAT accounting method (only relevant if not Kleinunternehmer)
                 </p>
               </div>
             )}

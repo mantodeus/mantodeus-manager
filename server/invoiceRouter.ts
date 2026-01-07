@@ -510,6 +510,7 @@ export const invoiceRouter = router({
   markAsPaid: protectedProcedure
     .input(z.object({ 
       id: z.number(),
+      paidAt: z.date(), // REQUIRED: Payment date must be provided
       alsoMarkAsSent: z.boolean().optional() // For uploaded invoices: also set sentAt if not already set
     }))
     .mutation(async ({ input, ctx }) => {
@@ -540,7 +541,7 @@ export const invoiceRouter = router({
         checkInvoiceNeedsReview(invoice, "marked as paid");
       }
 
-      await db.markInvoiceAsPaid(invoice.id, input.alsoMarkAsSent && !invoice.sentAt);
+      await db.markInvoiceAsPaid(invoice.id, input.paidAt, input.alsoMarkAsSent && !invoice.sentAt);
       const updated = await db.getInvoiceById(invoice.id);
       return mapInvoiceToPayload(updated);
     }),

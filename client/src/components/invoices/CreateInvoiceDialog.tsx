@@ -44,9 +44,23 @@ export function CreateInvoiceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className={cn(
-          "sm:max-w-[500px] flex flex-col p-0",
+          "flex flex-col p-0",
+          // Desktop: right side with margins, showing blurred background border
+          "sm:!top-[1.5rem] sm:!bottom-[1.5rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!h-auto sm:max-h-[calc(100vh-3rem)]",
+          // Mobile: fullscreen with safe margins
           isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
         )}
+        style={{
+          // Desktop: right side, 60% width with margins for blurred border
+          // Mobile: normal dialog behavior
+          left: isMobile ? undefined : "calc(40vw + 0.5rem)", // Start after preview + small gap
+          right: isMobile ? undefined : "1.5rem",
+          top: isMobile ? undefined : "1.5rem",
+          bottom: isMobile ? undefined : "1.5rem",
+          width: isMobile ? undefined : "calc(60vw - 2rem)", // 60% width with margins
+          height: isMobile ? undefined : "calc(100vh - 3rem)",
+          maxHeight: isMobile ? undefined : "calc(100vh - 3rem)",
+        } as React.CSSProperties}
         showCloseButton={false}
       >
         {/* PageHeader-like structure */}

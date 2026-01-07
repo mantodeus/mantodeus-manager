@@ -9,11 +9,13 @@ import { useTheme } from "@/hooks/useTheme";
 import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
 import { getInvoiceActions, isActionValidForInvoice } from "@/lib/invoiceActions";
+import { getAccountingDate, getAccountingHelperText } from "@/lib/accountingDate";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { MarkAsSentWarningDialog } from "@/components/MarkAsSentWarningDialog";
+import { MarkAsPaidDialog } from "@/components/invoices/MarkAsPaidDialog";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
 import { CreateInvoiceDialog } from "@/components/invoices/CreateInvoiceDialog";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -622,6 +624,8 @@ export default function Invoices() {
   } | null>(null);
   const [markAsSentDialogOpen, setMarkAsSentDialogOpen] = useState(false);
   const [markAsSentTarget, setMarkAsSentTarget] = useState<{ id: number; invoiceNumber?: string | null; alreadySent: boolean } | null>(null);
+  const [markAsPaidDialogOpen, setMarkAsPaidDialogOpen] = useState(false);
+  const [markAsPaidTarget, setMarkAsPaidTarget] = useState<{ id: number; invoiceNumber?: string | null; alsoMarkAsSent?: boolean } | null>(null);
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [cancellationTarget, setCancellationTarget] = useState<{ id: number; invoiceNumber: string } | null>(null);
   const [needsReviewDeleteTarget, setNeedsReviewDeleteTarget] = useState<{ id: number; name: string } | null>(null);
@@ -693,6 +697,8 @@ export default function Invoices() {
       toast.success("Invoice marked as paid");
       refetch();
       refetchNeedsReview();
+      setMarkAsPaidDialogOpen(false);
+      setMarkAsPaidTarget(null);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -992,18 +998,24 @@ export default function Invoices() {
       const paidAmount = isPaid ? total : amountPaid;
       const dueAmount = total - paidAmount;
 
-      const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
-      if (!issueDate) return;
+      // CRITICAL: Use accounting date instead of issue date
+      // Accounting date is determined by company settings (paidAt for EÜR, servicePeriodEnd for Bilanz)
+      const accountingResult = getAccountingDate(invoice, companySettings);
+      
+      // Skip invoices without accounting date (not yet recognized as income)
+      if (!accountingResult.accountingDate || !accountingResult.accountingYear || !accountingResult.accountingQuarter) {
+        return;
+      }
 
-      const invoiceYear = issueDate.getFullYear();
-      const invoiceQuarter = Math.floor(issueDate.getMonth() / 3) + 1;
-      const quarterKey = `Q${invoiceQuarter} ${invoiceYear}`;
+      const accountingYear = accountingResult.accountingYear;
+      const accountingQuarter = accountingResult.accountingQuarter;
+      const quarterKey = `Q${accountingQuarter} ${accountingYear}`;
 
       // Add to year totals
-      const existingYearPaid = yearPaidMap.get(invoiceYear) || 0;
-      yearPaidMap.set(invoiceYear, existingYearPaid + paidAmount);
-      const existingYearDue = yearDueMap.get(invoiceYear) || 0;
-      yearDueMap.set(invoiceYear, existingYearDue + dueAmount);
+      const existingYearPaid = yearPaidMap.get(accountingYear) || 0;
+      yearPaidMap.set(accountingYear, existingYearPaid + paidAmount);
+      const existingYearDue = yearDueMap.get(accountingYear) || 0;
+      yearDueMap.set(accountingYear, existingYearDue + dueAmount);
 
       // Add to quarter totals
       const existingQuarterPaid = quarterPaidMap.get(quarterKey) || 0;
@@ -1012,11 +1024,11 @@ export default function Invoices() {
       quarterDueMap.set(quarterKey, existingQuarterDue + dueAmount);
 
       // Selected year and quarter
-      if (invoiceYear === displayYear) {
+      if (accountingYear === displayYear) {
         yearPaidSum += paidAmount;
         yearDueSum += dueAmount;
       }
-      if (invoiceYear === displayQuarterYear && issueDate >= quarterStart && issueDate <= quarterEnd) {
+      if (accountingYear === displayQuarterYear && accountingResult.accountingDate >= quarterStart && accountingResult.accountingDate <= quarterEnd) {
         quarterPaidSum += paidAmount;
         quarterDueSum += dueAmount;
       }
@@ -1083,7 +1095,7 @@ export default function Invoices() {
       allYearTotals,
       allQuarterTotals: allQuarters,
     };
-  }, [allInvoices, selectedYear, selectedQuarter]);
+  }, [allInvoices, selectedYear, selectedQuarter, companySettings]);
 
   const handlePreviewPDF = async (invoiceId: number, fileName: string) => {
     try {
@@ -1258,13 +1270,18 @@ export default function Invoices() {
       }
     });
     
+    // For batch operations, use today's date as default
+    // User can mark individually if they need different dates
+    const paidAt = new Date();
+    paidAt.setHours(0, 0, 0, 0);
+
     // Process valid invoices
     validInvoices.forEach((invoice) => {
       // For uploaded invoices that haven't been sent, mark as sent and paid
       if (!invoice.sentAt && invoice.source === "uploaded") {
-        markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
+        markAsPaidMutation.mutate({ id: invoice.id, paidAt, alsoMarkAsSent: true });
       } else {
-        markAsPaidMutation.mutate({ id: invoice.id });
+        markAsPaidMutation.mutate({ id: invoice.id, paidAt });
       }
     });
     
@@ -1961,25 +1978,33 @@ export default function Invoices() {
       />
 
       {/* Total Cards */}
-      <div className="grid gap-3 md:grid-cols-2">
-        <YearTotalCard
-          selectedYear={selectedYear}
-          yearPaid={yearPaid}
-          yearDue={yearDue}
-          allYearTotals={allYearTotals}
-          onYearSelect={(year) => setSelectedYear(year)}
-          popoverOpen={yearPopoverOpen}
-          onPopoverOpenChange={setYearPopoverOpen}
-        />
-        <QuarterTotalCard
-          selectedQuarter={selectedQuarter}
-          quarterPaid={quarterPaid}
-          quarterDue={quarterDue}
-          allQuarterTotals={allQuarterTotals}
-          onQuarterSelect={(quarter, year) => setSelectedQuarter({ quarter, year })}
-          popoverOpen={quarterPopoverOpen}
-          onPopoverOpenChange={setQuarterPopoverOpen}
-        />
+      <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
+          <YearTotalCard
+            selectedYear={selectedYear}
+            yearPaid={yearPaid}
+            yearDue={yearDue}
+            allYearTotals={allYearTotals}
+            onYearSelect={(year) => setSelectedYear(year)}
+            popoverOpen={yearPopoverOpen}
+            onPopoverOpenChange={setYearPopoverOpen}
+          />
+          <QuarterTotalCard
+            selectedQuarter={selectedQuarter}
+            quarterPaid={quarterPaid}
+            quarterDue={quarterDue}
+            allQuarterTotals={allQuarterTotals}
+            onQuarterSelect={(quarter, year) => setSelectedQuarter({ quarter, year })}
+            popoverOpen={quarterPopoverOpen}
+            onPopoverOpenChange={setQuarterPopoverOpen}
+          />
+        </div>
+        {/* Helper text explaining income recognition method */}
+        {companySettings && (
+          <p className="text-xs text-muted-foreground px-1">
+            {getAccountingHelperText(companySettings)}
+          </p>
+        )}
       </div>
 
       {needsReviewInvoices.length > 0 && (
@@ -2079,7 +2104,13 @@ export default function Invoices() {
                                 case "markAsPaid":
                                   // CRITICAL: Only call markAsPaid mutation
                                   // For uploaded invoices that haven't been sent, mark as sent and paid
-                                  markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
+                                  // Show date picker dialog
+                                  setMarkAsPaidTarget({ 
+                                    id: invoice.id, 
+                                    invoiceNumber: invoice.invoiceNumber,
+                                    alsoMarkAsSent: true
+                                  });
+                                  setMarkAsPaidDialogOpen(true);
                                   break;
                                 case "markAsCancelled":
                                   markAsCancelledMutation.mutate({ id: invoice.id });
@@ -2228,13 +2259,13 @@ export default function Invoices() {
                                 }
                                 break;
                               case "markAsPaid":
-                                // CRITICAL: Only call markAsPaid mutation
-                                // For uploaded invoices that haven't been sent, mark as sent and paid
-                                if (!invoice.sentAt && invoice.source === "uploaded") {
-                                  markAsPaidMutation.mutate({ id: invoice.id, alsoMarkAsSent: true });
-                                } else {
-                                  markAsPaidMutation.mutate({ id: invoice.id });
-                                }
+                                // Show date picker dialog for payment date
+                                setMarkAsPaidTarget({ 
+                                  id: invoice.id, 
+                                  invoiceNumber: invoice.invoiceNumber,
+                                  alsoMarkAsSent: !invoice.sentAt && invoice.source === "uploaded"
+                                });
+                                setMarkAsPaidDialogOpen(true);
                                 break;
                               case "revertToDraft":
                                 // Show revert dialog with warning and checkbox requirement
@@ -2498,6 +2529,28 @@ export default function Invoices() {
         description={`This will create a new cancellation invoice that reverses invoice ${cancellationTarget?.invoiceNumber ?? ""}. The original invoice will remain unchanged.`}
         confirmLabel="Create cancellation invoice"
         isDeleting={createCancellationMutation.isPending}
+      />
+
+      {/* Mark as Paid Dialog */}
+      <MarkAsPaidDialog
+        open={markAsPaidDialogOpen}
+        onOpenChange={(open) => {
+          setMarkAsPaidDialogOpen(open);
+          if (!open) {
+            setMarkAsPaidTarget(null);
+          }
+        }}
+        onConfirm={(paidAt) => {
+          if (markAsPaidTarget) {
+            markAsPaidMutation.mutate({ 
+              id: markAsPaidTarget.id, 
+              paidAt,
+              alsoMarkAsSent: markAsPaidTarget.alsoMarkAsSent 
+            });
+          }
+        }}
+        isProcessing={markAsPaidMutation.isPending}
+        invoiceNumber={markAsPaidTarget?.invoiceNumber || undefined}
       />
 
       {/* Mark as Sent Warning Dialog */}

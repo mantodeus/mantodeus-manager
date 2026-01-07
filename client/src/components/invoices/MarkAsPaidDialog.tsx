@@ -3,19 +3,21 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
-interface MarkAsSentAndPaidDialogProps {
+interface MarkAsPaidDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (paidAt: Date) => void;
   isProcessing: boolean;
+  invoiceNumber?: string;
 }
 
-export function MarkAsSentAndPaidDialog({
+export function MarkAsPaidDialog({
   open,
   onOpenChange,
   onConfirm,
   isProcessing,
-}: MarkAsSentAndPaidDialogProps) {
+  invoiceNumber,
+}: MarkAsPaidDialogProps) {
   // Default to today's date
   const today = new Date().toISOString().split("T")[0];
   const [paidAtDate, setPaidAtDate] = useState(today);
@@ -38,13 +40,13 @@ export function MarkAsSentAndPaidDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Mark as Sent and Paid?</AlertDialogTitle>
+          <AlertDialogTitle>Mark as Paid</AlertDialogTitle>
           <AlertDialogDescription className="pt-2 space-y-4">
-            <p>
-              This invoice has not been sent yet. Do you want to mark this invoice as sent and paid?
-              <br /><br />
-              This is useful for historical invoices that were sent and paid in the past.
-            </p>
+            {invoiceNumber && (
+              <p>
+                Mark invoice <strong>{invoiceNumber}</strong> as paid?
+              </p>
+            )}
             <div className="space-y-2">
               <Label htmlFor="paidAtDate">Payment Date *</Label>
               <Input
@@ -71,7 +73,7 @@ export function MarkAsSentAndPaidDialog({
             disabled={isProcessing || !paidAtDate}
             onClick={handleConfirm}
           >
-            {isProcessing ? "Processing..." : "Mark as Sent and Paid"}
+            {isProcessing ? "Processing..." : "Mark as Paid"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -539,6 +539,8 @@ export const companySettings = mysqlTable("company_settings", {
   iban: varchar("iban", { length: 34 }),
   bic: varchar("bic", { length: 11 }),
   isKleinunternehmer: boolean("isKleinunternehmer").default(false).notNull(),
+  accountingMethod: varchar("accountingMethod", { length: 20 }).default("EÜR").notNull(), // 'EÜR' | 'BILANZ'
+  vatMethod: varchar("vatMethod", { length: 10 }), // 'IST' | 'SOLL' (optional, ignored if Kleinunternehmer)
   vatRate: decimal("vatRate", { precision: 5, scale: 2 }).default("19.00").notNull(),
   invoicePrefix: varchar("invoicePrefix", { length: 10 }).default("RE").notNull(),
   invoiceNumberFormat: varchar("invoiceNumberFormat", { length: 50 }),

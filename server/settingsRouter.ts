@@ -30,6 +30,8 @@ export const settingsRouter = router({
         iban: null,
         bic: null,
         isKleinunternehmer: false,
+        accountingMethod: 'EÜR',
+        vatMethod: null,
         vatRate: '19.00',
         invoicePrefix: 'RE',
         invoiceNumberFormat: `RE-${year}-0001`,
@@ -60,6 +62,8 @@ export const settingsRouter = router({
         iban: z.string().optional(),
         bic: z.string().optional(),
         isKleinunternehmer: z.boolean().optional(),
+        accountingMethod: z.enum(['EÜR', 'BILANZ']).optional(),
+        vatMethod: z.enum(['IST', 'SOLL']).optional().nullable(),
         vatRate: z.string().optional(),
         invoicePrefix: z.string().optional(),
         invoiceNumberFormat: z
@@ -96,6 +100,8 @@ export const settingsRouter = router({
         iban: string | null;
         bic: string | null;
         isKleinunternehmer: boolean;
+        accountingMethod: string | null;
+        vatMethod: string | null;
         vatRate: string | null;
         invoicePrefix: string | null;
         invoiceNumberFormat: string | null;
@@ -116,6 +122,8 @@ export const settingsRouter = router({
       if (input.iban !== undefined) normalizedInput.iban = normalizeString(input.iban);
       if (input.bic !== undefined) normalizedInput.bic = normalizeString(input.bic);
       if (input.isKleinunternehmer !== undefined) normalizedInput.isKleinunternehmer = input.isKleinunternehmer;
+      if (input.accountingMethod !== undefined) normalizedInput.accountingMethod = input.accountingMethod || null;
+      if (input.vatMethod !== undefined) normalizedInput.vatMethod = input.vatMethod || null;
       if (input.vatRate !== undefined) normalizedInput.vatRate = normalizeString(input.vatRate);
       if (input.invoicePrefix !== undefined) normalizedInput.invoicePrefix = normalizeString(input.invoicePrefix);
       if (input.invoiceNumberFormat !== undefined) normalizedInput.invoiceNumberFormat = normalizeString(input.invoiceNumberFormat);

@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, X } from "@/components/ui/Icon";
 import { toast } from "sonner";
@@ -30,6 +31,7 @@ import { AlertCircle } from "@/components/ui/Icon";
 import { ShareInvoiceDialog } from "./invoices/ShareInvoiceDialog";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { MarkAsSentAndPaidDialog } from "./invoices/MarkAsSentAndPaidDialog";
+import { MarkAsPaidDialog } from "./invoices/MarkAsPaidDialog";
 import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
 import { useSidebar } from "@/components/ui/sidebar";
 
@@ -75,6 +77,7 @@ export function InvoiceUploadReviewDialog({
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [revertTarget, setRevertTarget] = useState<"draft" | "sent" | null>(null);
   const [markAsSentAndPaidDialogOpen, setMarkAsSentAndPaidDialogOpen] = useState(false);
+  const [markAsPaidDialogOpen, setMarkAsPaidDialogOpen] = useState(false);
   const [markAsNotPaidDialogOpen, setMarkAsNotPaidDialogOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -349,6 +352,65 @@ export function InvoiceUploadReviewDialog({
   const isPaid = invoiceState === 'PAID';
   const isReadOnly = isSent || isPaid; // Only disable when sent/paid, not when draft
   const isCancelled = invoice?.cancelledAt !== null && invoice?.cancelledAt !== undefined;
+
+  // Get status badge (same as in Invoices.tsx)
+  const getStatusBadge = (invoice: any) => {
+    if (!invoice) return null;
+    
+    const invoiceState = getInvoiceState(invoice);
+    const derivedValues = getDerivedValues(invoice);
+    
+    // Cancelled badge (dark color) - highest priority
+    if (invoice.cancelledAt) {
+      return (
+        <Badge 
+          variant="default" 
+          className="text-xs border-[#F2F1EE]/50 dark:border-[#0A0F14]/50" 
+          style={{
+            backgroundColor: isDarkMode ? '#0A0F14' : '#F2F1EE',
+            color: isDarkMode ? '#FFFFFF' : undefined,
+            borderColor: isDarkMode ? 'rgba(10, 15, 20, 0.5)' : 'rgba(242, 241, 238, 0.5)',
+          }}
+        >
+          CANCELLED
+        </Badge>
+      );
+    }
+    
+    // Badge priority: OVERDUE > PARTIAL > SENT/PAID
+    if (derivedValues.isOverdue) {
+      return <Badge variant="destructive" className="text-xs">OVERDUE</Badge>;
+    }
+    
+    if (invoiceState === 'PARTIAL') {
+      return <Badge variant="default" className="text-xs bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50">PARTIAL</Badge>;
+    }
+    
+    if (invoiceState === 'PAID') {
+      return (
+        <span 
+          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0"
+          style={{
+            backgroundColor: isDarkMode ? '#00FF88' : 'rgb(236, 72, 153)', // green in dark, pink in light
+            color: isDarkMode ? '#000000' : 'white',
+            borderColor: isDarkMode ? 'rgba(0, 255, 136, 0.5)' : 'rgba(236, 72, 153, 0.5)',
+          }}
+        >
+          PAID
+        </span>
+      );
+    }
+    
+    if (invoiceState === 'SENT') {
+      return <Badge variant="default" className="text-xs bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50">SENT</Badge>;
+    }
+    
+    if (invoiceState === 'DRAFT') {
+      return <Badge variant="outline" className="text-xs">DRAFT</Badge>;
+    }
+    
+    return null;
+  };
   
   const handleSend = () => {
     if (!invoice) return;
@@ -448,19 +510,24 @@ export function InvoiceUploadReviewDialog({
   const handleMarkAsPaid = async () => {
     if (!invoiceId || !invoice) return;
     
-    // If invoice hasn't been sent yet, show confirmation dialog
+    // If invoice hasn't been sent yet, show confirmation dialog with date picker
     if (!invoice.sentAt && invoice.source === "uploaded") {
       setMarkAsSentAndPaidDialogOpen(true);
       return;
     }
     
-    // Otherwise, mark as paid directly
-    await markAsPaidMutation.mutateAsync({ id: invoiceId });
+    // Otherwise, show date picker dialog
+    setMarkAsPaidDialogOpen(true);
   };
 
-  const handleConfirmMarkAsSentAndPaid = async () => {
+  const handleConfirmMarkAsPaid = async (paidAt: Date) => {
     if (!invoiceId) return;
-    await markAsPaidMutation.mutateAsync({ id: invoiceId, alsoMarkAsSent: true });
+    await markAsPaidMutation.mutateAsync({ id: invoiceId, paidAt });
+  };
+
+  const handleConfirmMarkAsSentAndPaid = async (paidAt: Date) => {
+    if (!invoiceId) return;
+    await markAsPaidMutation.mutateAsync({ id: invoiceId, paidAt, alsoMarkAsSent: true });
   };
 
   const handleMarkAsNotPaid = () => {
@@ -690,45 +757,8 @@ export function InvoiceUploadReviewDialog({
                 Send
               </Button>
             )}
-            {/* Sent/Paid button - shown when sent/paid */}
-            {invoiceState === 'SENT' && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                className="gap-2 bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Sent
-              </Button>
-            )}
-            {invoiceState === 'PARTIAL' && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                className="gap-2 bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Sent
-              </Button>
-            )}
-            {invoiceState === 'PAID' && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                className="gap-2"
-                style={{
-                  backgroundColor: isDarkMode ? '#00FF88' : 'rgb(236, 72, 153)',
-                  color: isDarkMode ? '#000000' : 'white',
-                  borderColor: isDarkMode ? 'rgba(0, 255, 136, 0.5)' : 'rgba(236, 72, 153, 0.5)',
-                }}
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Paid
-              </Button>
-            )}
+            {/* Status badge - shown when sent/paid/draft/cancelled/overdue */}
+            {invoice && getStatusBadge(invoice)}
           </div>
         </div>
 
