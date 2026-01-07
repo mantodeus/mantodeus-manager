@@ -4,7 +4,15 @@ import puppeteer from "puppeteer";
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.PDF_SERVICE_SECRET;
-const IS_DEV = process.env.NODE_ENV !== "production";
+
+// Auth middleware for internal service-to-service communication
+const internalAuthMiddleware = (req, res, next) => {
+  const auth = req.headers.authorization || "";
+  if (!SECRET || auth !== `Bearer ${SECRET}`) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  next();
+};
 
 // CRITICAL: Browser instance reuse pattern
 // Launch browser once on service startup, create pages per request
@@ -60,16 +68,8 @@ async function getBrowser() {
 
 app.use(express.json({ limit: "5mb" }));
 
-app.post("/render", async (req, res) => {
+app.post("/render", internalAuthMiddleware, async (req, res) => {
   try {
-    // Skip auth in DEV mode for faster validation
-    if (!IS_DEV) {
-      const auth = req.headers.authorization || "";
-      if (!SECRET || auth !== `Bearer ${SECRET}`) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-    }
-
     const { html, options } = req.body;
 
     // Get browser instance (reused across requests)
