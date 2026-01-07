@@ -5,14 +5,13 @@
  * Split layout: Preview (left) + Form (right)
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { DocumentCurrencyEuro, X } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { InvoiceForm, InvoicePreviewData } from "./InvoiceForm";
 import { supabase } from "@/lib/supabase";
-import { useLocation } from "wouter";
 
 interface CreateInvoiceWorkspaceProps {
   open: boolean;
@@ -21,8 +20,6 @@ interface CreateInvoiceWorkspaceProps {
 }
 
 export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoiceWorkspaceProps) {
-  const [, navigate] = useLocation();
-  
   // Required: Return null if not open (replaces Dialog behavior)
   if (!open) return null;
 
@@ -37,15 +34,15 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const previewGenerationRef = useRef<AbortController | null>(null);
 
-  const handleSuccess = async () => {
+  const handleSuccess = useCallback(async () => {
     toast.success("Invoice created");
     await utils.invoices.list.invalidate();
     onClose();
     onSuccess?.();
-  };
+  }, [utils, onClose, onSuccess]);
 
-  // Generate preview from form data
-  const generatePreview = async (formData: InvoicePreviewData) => {
+  // Generate preview from form data - memoized to prevent infinite re-renders
+  const generatePreview = useCallback(async (formData: InvoicePreviewData) => {
     // Cancel any in-flight request
     if (previewGenerationRef.current) {
       previewGenerationRef.current.abort();
@@ -116,7 +113,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       setIsGeneratingPreview(false);
       previewGenerationRef.current = null;
     }
-  };
+  }, [lastValidPreviewUrl]);
 
   // Clean up blob URLs on unmount
   useEffect(() => {
