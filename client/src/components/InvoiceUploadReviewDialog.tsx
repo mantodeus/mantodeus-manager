@@ -1013,5 +1013,6 @@ export function InvoiceUploadReviewDialog({
         />
       )}
     </Dialog>
+    </>
   );
 }
