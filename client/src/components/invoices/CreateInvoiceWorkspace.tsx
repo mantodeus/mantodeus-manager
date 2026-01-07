@@ -205,6 +205,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
           />
         </div>
       </div>
+      </div>
     </div>
   );
 }
