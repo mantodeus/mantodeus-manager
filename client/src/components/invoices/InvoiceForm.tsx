@@ -1003,7 +1003,7 @@ function LineItemModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg" zIndex={60}>
         <DialogHeader>
           <DialogTitle>Add Line Item</DialogTitle>
         </DialogHeader>
