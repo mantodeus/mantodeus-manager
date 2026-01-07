@@ -31,6 +31,7 @@ import { ShareInvoiceDialog } from "./invoices/ShareInvoiceDialog";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { MarkAsSentAndPaidDialog } from "./invoices/MarkAsSentAndPaidDialog";
 import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
+import { useSidebar } from "@/components/ui/sidebar";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -55,6 +56,16 @@ export function InvoiceUploadReviewDialog({
   const isMobile = useIsMobile();
   const { theme } = useTheme();
   const isDarkMode = theme === 'green-mantis';
+  // Get sidebar state to adjust dialog position
+  // The dialog is always used within DashboardLayout which has SidebarProvider
+  let isSidebarCollapsed = false;
+  try {
+    const sidebar = useSidebar();
+    isSidebarCollapsed = sidebar.state === "collapsed";
+  } catch {
+    // useSidebar not available (shouldn't happen in normal usage), assume expanded
+    isSidebarCollapsed = false;
+  }
   const [clientId, setClientId] = useState<string>("none");
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [issueDate, setIssueDate] = useState<string>("");
@@ -439,12 +450,21 @@ export function InvoiceUploadReviewDialog({
         className={cn(
           "flex flex-col p-0",
           // Desktop: fit within main content area (excluding sidebar)
-          // Sidebar width is stored in --sidebar-width CSS variable (default 280px)
           // Main content has p-4 (16px) padding, so we add that to sidebar width
-          "sm:!top-[1rem] sm:!left-[calc(var(--sidebar-width,280px)+1rem)] sm:!right-[1rem] sm:!bottom-[1rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!w-auto sm:!h-auto sm:max-h-[calc(100vh-2rem)]",
+          "sm:!top-[1rem] sm:!right-[1rem] sm:!bottom-[1rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!w-auto sm:!h-auto sm:max-h-[calc(100vh-2rem)]",
           // Mobile: fullscreen with safe margins
           isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
         )}
+        style={{
+          // Adjust left position based on sidebar state
+          // When expanded: use --sidebar-width (default 280px or user-set width)
+          // When collapsed to icon: use --sidebar-width-icon (3rem = 48px)
+          left: isMobile 
+            ? undefined 
+            : isSidebarCollapsed 
+              ? "calc(var(--sidebar-width-icon, 3rem) + 1rem)"
+              : "calc(var(--sidebar-width, 280px) + 1rem)",
+        } as React.CSSProperties}
         showCloseButton={false}
       >
         {/* PageHeader-like structure */}

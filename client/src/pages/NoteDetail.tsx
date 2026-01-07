@@ -625,7 +625,7 @@ export default function NoteDetail() {
               className="h-9"
             >
               <Paperclip className="h-4 w-4 mr-2" />
-              {uploadFileMutation.isPending || registerFileMutation.isPending
+              {uploadFileMutation.isPending
                 ? "Uploading..."
                 : "Attach"}
             </Button>

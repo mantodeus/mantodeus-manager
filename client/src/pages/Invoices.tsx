@@ -2219,12 +2219,22 @@ export default function Invoices() {
                                 }
                                 break;
                               case "revertToDraft":
-                                // Show revert dialog - for now, directly revert with confirmation
-                                revertToDraftMutation.mutate({ id: invoice.id, confirmed: true });
+                                // Show revert dialog with warning and checkbox requirement
+                                setRevertTarget({ 
+                                  id: invoice.id, 
+                                  targetStatus: "draft", 
+                                  currentStatus: "open" 
+                                });
+                                setRevertDialogOpen(true);
                                 break;
                               case "revertToSent":
-                                // Show revert dialog - for now, directly revert with confirmation
-                                revertToSentMutation.mutate({ id: invoice.id, confirmed: true });
+                                // Show revert dialog with warning and checkbox requirement
+                                setRevertTarget({ 
+                                  id: invoice.id, 
+                                  targetStatus: "open", 
+                                  currentStatus: "paid" 
+                                });
+                                setRevertDialogOpen(true);
                                 break;
                               case "markAsCancelled":
                                 markAsCancelledMutation.mutate({ id: invoice.id });
@@ -2414,16 +2424,19 @@ export default function Invoices() {
         onOpenChange={setRevertDialogOpen}
         currentStatus={revertTarget?.currentStatus || "open"}
         targetStatus={revertTarget?.targetStatus || "draft"}
+        invoiceNumber={revertTarget ? ([...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === revertTarget.id)?.invoiceNumber || null) : null}
+        invoiceAmount={revertTarget ? ([...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === revertTarget.id)?.total || null) : null}
         onConfirm={() => {
           if (!revertTarget) return;
-          revertMutation.mutate({
-            id: revertTarget.id,
-            targetStatus: revertTarget.targetStatus,
-            confirmed: true,
-          });
+          // Use the appropriate mutation based on target status
+          if (revertTarget.targetStatus === "draft") {
+            revertToDraftMutation.mutate({ id: revertTarget.id, confirmed: true });
+          } else {
+            revertToSentMutation.mutate({ id: revertTarget.id, confirmed: true });
+          }
           setRevertDialogOpen(false);
         }}
-        isReverting={revertMutation.isPending}
+        isReverting={revertToDraftMutation.isPending || revertToSentMutation.isPending}
       />
       
       {/* Batch revert dialog - CRITICAL: Batch revert actions MUST show confirmation dialog */}

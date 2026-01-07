@@ -87,42 +87,44 @@ export function RevertInvoiceStatusDialog({
               : `Revert invoice to ${targetStatus === "draft" ? "draft" : "sent"}?`
             }
           </AlertDialogTitle>
-          <AlertDialogDescription className="pt-2 space-y-3">
-            {getMessage()}
-            
-            {/* Invoice details - only show for single invoice mode */}
-            {!isBatch && (invoiceNumber || invoiceAmount) && (
-              <div className="rounded-md border bg-muted/30 p-3 space-y-1 text-sm">
-                {invoiceNumber && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Invoice Number:</span>
-                    <span className="font-medium">{invoiceNumber}</span>
-                  </div>
-                )}
-                {invoiceAmount && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Amount:</span>
-                    <span className="font-medium">{formatAmount(invoiceAmount)}</span>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Batch summary - show counts */}
-            {isBatch && (
-              <div className="rounded-md border bg-muted/30 p-3 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Invoices to revert:</span>
-                  <span className="font-medium">{batchCount}</span>
+          <AlertDialogDescription className="pt-2">
+            <div className="space-y-4">
+              <p className="mb-0">{getMessage()}</p>
+              
+              {/* Invoice details - only show for single invoice mode */}
+              {!isBatch && (invoiceNumber || invoiceAmount) && (
+                <div className="rounded-md border bg-muted/30 p-3 space-y-1 text-sm mt-4">
+                  {invoiceNumber && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Invoice Number:</span>
+                      <span className="font-medium">{invoiceNumber}</span>
+                    </div>
+                  )}
+                  {invoiceAmount && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Amount:</span>
+                      <span className="font-medium">{formatAmount(invoiceAmount)}</span>
+                    </div>
+                  )}
                 </div>
-                {skippedCount > 0 && (
+              )}
+              
+              {/* Batch summary - show counts */}
+              {isBatch && (
+                <div className="rounded-md border bg-muted/30 p-3 space-y-1 text-sm mt-4">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Invoices skipped:</span>
-                    <span className="font-medium text-orange-600">{skippedCount}</span>
+                    <span className="text-muted-foreground">Invoices to revert:</span>
+                    <span className="font-medium">{batchCount}</span>
                   </div>
-                )}
-              </div>
-            )}
+                  {skippedCount > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Invoices skipped:</span>
+                      <span className="font-medium text-orange-600">{skippedCount}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         

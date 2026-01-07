@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Building2, Loader2, Mail, MapPin, Phone, Plus, Search, User, Users, X, ArrowLeft, Edit, CheckCircle2 } from "@/components/ui/Icon";
+import { Building2, Loader2, Mail, MapPin, Phone, Plus, Search, User, Users, X, ArrowLeft, Edit, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { useEffect, useRef, useState, useMemo } from "react";
