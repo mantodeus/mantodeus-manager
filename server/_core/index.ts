@@ -299,6 +299,8 @@ async function startServer() {
           vatRate: '19.00',
           invoicePrefix: 'RE',
           invoiceNumberFormat: `RE-${year}-0001`,
+          invoiceAccentColor: '#00ff88',
+          invoiceAccountHolderName: null,
           nextInvoiceNumber: 1,
         });
         companySettings = await getCompanySettingsByUserId(user.id);
@@ -306,6 +308,14 @@ async function startServer() {
           previewLocks.delete(userId);
           return res.status(500).json({ error: "Failed to create company settings" });
         }
+      }
+      
+      // Ensure new fields have defaults (in case migration hasn't run or fallback query was used)
+      if (!companySettings.invoiceAccentColor) {
+        companySettings = { ...companySettings, invoiceAccentColor: '#00ff88' };
+      }
+      if (companySettings.invoiceAccountHolderName === undefined) {
+        companySettings = { ...companySettings, invoiceAccountHolderName: null };
       }
 
       // Get client if provided

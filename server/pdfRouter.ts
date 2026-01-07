@@ -150,6 +150,8 @@ export const pdfRouter = router({
           vatRate: '19.00',
           invoicePrefix: 'RE',
           invoiceNumberFormat: `RE-${year}-0001`,
+          invoiceAccentColor: '#00ff88',
+          invoiceAccountHolderName: null,
           nextInvoiceNumber: 1,
         });
         companySettings = await db.getCompanySettingsByUserId(ctx.user.id);
@@ -159,6 +161,14 @@ export const pdfRouter = router({
             message: "Failed to create company settings",
           });
         }
+      }
+      
+      // Ensure new fields have defaults (in case migration hasn't run or fallback query was used)
+      if (!companySettings.invoiceAccentColor) {
+        companySettings = { ...companySettings, invoiceAccentColor: '#00ff88' };
+      }
+      if (companySettings.invoiceAccountHolderName === undefined) {
+        companySettings = { ...companySettings, invoiceAccountHolderName: null };
       }
 
       // Get client if provided
