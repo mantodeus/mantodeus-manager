@@ -70,15 +70,51 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   };
 
   // Get accent color from company settings, default to #00ff88
-  const accentColor = company.invoiceAccentColor || '#00ff88';
+  const accentColor = (company.invoiceAccentColor && typeof company.invoiceAccentColor === 'string') 
+    ? company.invoiceAccentColor 
+    : '#00ff88';
   
-  // Convert hex color to rgba for gradient
-  const hexToRgba = (hex: string, alpha: number): string => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  // Convert hex color to rgba for gradient (handles various hex formats)
+  const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
+    // Handle null/undefined/empty
+    if (!hex || typeof hex !== 'string') {
+      return `rgba(0, 255, 136, ${alpha})`; // Default green
+    }
+    
+    // Normalize hex color - remove # if present, ensure it's 6 characters
+    let normalizedHex = hex.replace('#', '').trim();
+    
+    // Handle 3-character hex (e.g., #f88 -> #ff8888)
+    if (normalizedHex.length === 3) {
+      normalizedHex = normalizedHex.split('').map(char => char + char).join('');
+    }
+    
+    // If still not 6 characters, use default
+    if (normalizedHex.length !== 6) {
+      return `rgba(0, 255, 136, ${alpha})`; // Default green
+    }
+    
+    try {
+      const r = parseInt(normalizedHex.slice(0, 2), 16);
+      const g = parseInt(normalizedHex.slice(2, 4), 16);
+      const b = parseInt(normalizedHex.slice(4, 6), 16);
+      
+      // Validate parsed values
+      if (isNaN(r) || isNaN(g) || isNaN(b)) {
+        return `rgba(0, 255, 136, ${alpha})`; // Default green
+      }
+      
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    } catch (error) {
+      // Fallback to default green if parsing fails
+      return `rgba(0, 255, 136, ${alpha})`;
+    }
   };
+  
+  // Pre-compute rgba values for gradient to avoid issues in template string
+  const gradientStart = hexToRgba(accentColor, 0);
+  const gradientMiddle = hexToRgba(accentColor, 1);
+  const gradientEnd = hexToRgba(accentColor, 0);
   
   // Format address from structured fields or fallback to address text
   const formatCompanyAddress = () => {
@@ -358,9 +394,9 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       height: 1px;
       background: linear-gradient(
         to right,
-        ${hexToRgba(accentColor, 0)} 0%,
-        ${hexToRgba(accentColor, 1)} 50%,
-        ${hexToRgba(accentColor, 0)} 100%
+        ${gradientStart} 0%,
+        ${gradientMiddle} 50%,
+        ${gradientEnd} 100%
       );
     }
 
