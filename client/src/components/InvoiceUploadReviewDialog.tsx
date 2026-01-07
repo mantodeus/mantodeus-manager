@@ -491,6 +491,63 @@ export function InvoiceUploadReviewDialog({
     }
   };
 
+  // Auto-open preview on desktop when dialog opens
+  useEffect(() => {
+    if (!isMobile && open && invoiceId && invoice && !previewUrl) {
+      // Auto-load preview on desktop
+      const loadPreview = async () => {
+        try {
+          let url: string;
+          let fileName: string;
+          
+          // For uploaded invoices, use file-proxy
+          if (invoice.source === "uploaded" && invoice.originalPdfS3Key) {
+            fileName = invoice.invoiceName || invoice.originalFileName || invoice.invoiceNumber || "invoice.pdf";
+            url = `/api/file-proxy?key=${encodeURIComponent(invoice.originalPdfS3Key)}&filename=${encodeURIComponent(fileName)}`;
+          } else {
+            // For created invoices, generate PDF
+            const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+            if (!session?.access_token) {
+              return; // Silently fail - preview just won't show
+            }
+            const response = await fetch(`/api/invoices/${invoiceId}/pdf?preview=true`, {
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              credentials: 'include',
+            });
+            if (!response.ok) {
+              return; // Silently fail
+            }
+            const blob = await response.blob();
+            url = URL.createObjectURL(blob);
+            fileName = invoice.invoiceName || invoice.invoiceNumber || "invoice.pdf";
+          }
+          
+          setPreviewUrl(url);
+          setPreviewFileName(fileName);
+          setPreviewOpen(true);
+        } catch (error) {
+          console.error('Preview error:', error);
+          // Silently fail - preview just won't show
+        }
+      };
+      
+      loadPreview();
+    }
+  }, [open, invoiceId, invoice, isMobile, previewUrl]);
+
+  // Clean up preview URL on unmount or when dialog closes
+  useEffect(() => {
+    if (!open) {
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setPreviewUrl(null);
+      setPreviewOpen(false);
+    }
+  }, [open, previewUrl]);
+
   // Clean up preview URL on unmount
   useEffect(() => {
     return () => {
@@ -502,38 +559,21 @@ export function InvoiceUploadReviewDialog({
 
   return (
     <>
-      {/* Preview Panel - Left side on desktop */}
+      {/* Preview Panel - Left side on desktop - full screen, ignoring sidebar */}
       {!isMobile && previewOpen && previewUrl && (
         <div
           className="fixed z-[60] bg-background border-r shadow-lg"
           style={{
-            top: '1rem',
-            left: isSidebarCollapsed 
-              ? "calc(var(--sidebar-width-icon, 3rem) + 1rem)"
-              : "calc(var(--sidebar-width, 280px) + 1rem)",
-            width: isSidebarCollapsed
-              ? 'calc((100vw - var(--sidebar-width-icon, 3rem) - 2rem) / 2)'
-              : 'calc((100vw - var(--sidebar-width, 280px) - 2rem) / 2)',
-            height: 'calc(100vh - 2rem)',
+            top: 0,
+            left: 0,
+            width: '50vw',
+            height: '100vh',
           }}
         >
           <div className="flex flex-col h-full">
-            {/* Preview Header */}
+            {/* Preview Header - no close button on desktop (always open) */}
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-lg font-semibold">Preview</h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setPreviewOpen(false);
-                  if (previewUrl && previewUrl.startsWith('blob:')) {
-                    URL.revokeObjectURL(previewUrl);
-                  }
-                  setPreviewUrl(null);
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
             {/* Preview Content */}
             <div className="flex-1 overflow-hidden">
@@ -551,31 +591,21 @@ export function InvoiceUploadReviewDialog({
         <DialogContent 
           className={cn(
             "flex flex-col p-0",
-            // Desktop: take up right half of screen (50% width)
-            // When preview is open, dialog stays on right, preview on left
-            "sm:!top-[1rem] sm:!bottom-[1rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!h-auto sm:max-h-[calc(100vh-2rem)]",
+            // Desktop: full screen on right half (50% width), ignoring sidebar
+            "sm:!top-0 sm:!bottom-0 sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!h-full sm:!max-h-none",
             // Mobile: fullscreen with safe margins
             isMobile && "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
           )}
           style={{
-            // Adjust position and width based on sidebar state and preview state
-            // When preview is open: dialog on right half, preview on left half
-            // When preview is closed: dialog takes full right half
-            left: isMobile 
-              ? undefined 
-              : previewOpen
-                ? isSidebarCollapsed
-                  ? "calc(var(--sidebar-width-icon, 3rem) + 1rem + (100vw - var(--sidebar-width-icon, 3rem) - 2rem) / 2 + 0.5rem)"
-                  : "calc(var(--sidebar-width, 280px) + 1rem + (100vw - var(--sidebar-width, 280px) - 2rem) / 2 + 0.5rem)"
-                : isSidebarCollapsed 
-                  ? "calc(var(--sidebar-width-icon, 3rem) + 1rem)"
-                  : "calc(var(--sidebar-width, 280px) + 1rem)",
-            right: isMobile ? undefined : "1rem",
-            width: isMobile 
-              ? undefined 
-              : isSidebarCollapsed
-                ? "calc((100vw - var(--sidebar-width-icon, 3rem) - 2rem) / 2)"
-                : "calc((100vw - var(--sidebar-width, 280px) - 2rem) / 2)",
+            // Desktop: always on right half, full screen (ignoring sidebar)
+            // Mobile: normal dialog behavior
+            left: isMobile ? undefined : "50vw",
+            right: isMobile ? undefined : 0,
+            top: isMobile ? undefined : 0,
+            bottom: isMobile ? undefined : 0,
+            width: isMobile ? undefined : "50vw",
+            height: isMobile ? undefined : "100vh",
+            maxHeight: isMobile ? undefined : "100vh",
           } as React.CSSProperties}
           showCloseButton={false}
         >
@@ -614,16 +644,19 @@ export function InvoiceUploadReviewDialog({
           
           {/* Action buttons below header */}
           <div className="flex items-center justify-end gap-2 pt-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handlePreviewPDF}
-              disabled={isLoading}
-              className="gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              Preview
-            </Button>
+            {/* Preview button - only on mobile (desktop auto-opens preview) */}
+            {isMobile && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handlePreviewPDF}
+                disabled={isLoading}
+                className="gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                Preview
+              </Button>
+            )}
             {/* Send button - only shown when draft and not in review */}
             {!isReview && isDraft && (
               <Button

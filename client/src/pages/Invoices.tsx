@@ -202,7 +202,7 @@ function YearTotalCard({
       <Card 
         ref={cardRef}
         className={cn(
-          "p-4 has-context-menu cursor-pointer",
+          "p-4 has-context-menu cursor-pointer min-h-[86px]",
           popoverOpen && "context-menu-active"
         )}
         {...longPressHandlers}
@@ -468,7 +468,7 @@ function QuarterTotalCard({
       <Card 
         ref={cardRef}
         className={cn(
-          "p-4 has-context-menu cursor-pointer",
+          "p-4 has-context-menu cursor-pointer min-h-[86px]",
           popoverOpen && "context-menu-active"
         )}
         {...longPressHandlers}
