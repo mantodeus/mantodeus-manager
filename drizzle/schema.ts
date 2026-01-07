@@ -549,6 +549,8 @@ export const companySettings = mysqlTable("company_settings", {
   logoUrl: text("logoUrl"),
   logoWidth: int("logoWidth"),
   logoHeight: int("logoHeight"),
+  invoiceAccentColor: varchar("invoiceAccentColor", { length: 7 }).default("#00ff88"),
+  invoiceAccountHolderName: varchar("invoiceAccountHolderName", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

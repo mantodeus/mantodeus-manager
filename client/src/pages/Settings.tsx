@@ -77,6 +77,8 @@ export default function Settings() {
     vatMethod: null as "IST" | "SOLL" | null,
     vatRate: "19.00",
     invoiceNumberFormat: `RE-${currentYear}-0001`,
+    invoiceAccentColor: "#00ff88",
+    invoiceAccountHolderName: "",
   });
 
   const [preferencesData, setPreferencesData] = useState({
@@ -109,6 +111,8 @@ export default function Settings() {
         vatMethod: (settings.vatMethod as "IST" | "SOLL" | null) || null,
         vatRate: settings.vatRate || "19.00",
         invoiceNumberFormat: settings.invoiceNumberFormat || `RE-${currentYear}-0001`,
+        invoiceAccentColor: settings.invoiceAccentColor || "#00ff88",
+        invoiceAccountHolderName: settings.invoiceAccountHolderName || "",
       });
     }
   }, [settings, currentYear]);
@@ -706,6 +710,49 @@ export default function Settings() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Example: RE-{currentYear}-0001, INV0001, MM-24-099
+                </p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="invoiceAccentColor">Invoice Accent Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="invoiceAccentColor"
+                    type="color"
+                    value={formData.invoiceAccentColor}
+                    onChange={(e) => handleChange("invoiceAccentColor", e.target.value)}
+                    className="w-20 h-10 cursor-pointer"
+                  />
+                  <Input
+                    type="text"
+                    value={formData.invoiceAccentColor}
+                    onChange={(e) => handleChange("invoiceAccentColor", e.target.value)}
+                    placeholder="#00ff88"
+                    pattern="^#[0-9A-Fa-f]{6}$"
+                    maxLength={7}
+                    className="flex-1"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Color used for invoice dividers and accents (hex format)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="invoiceAccountHolderName">Kontoinhaber (für Bankverbindung)</Label>
+                <Input
+                  id="invoiceAccountHolderName"
+                  value={formData.invoiceAccountHolderName}
+                  onChange={(e) => handleChange("invoiceAccountHolderName", e.target.value)}
+                  placeholder={formData.companyName || "Account holder name"}
+                  maxLength={255}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Account holder name shown in invoice footer (defaults to company name)
                 </p>
               </div>
             </div>

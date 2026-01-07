@@ -16,18 +16,38 @@ interface InvoiceData {
     quantity: number;
     unitPrice: number;
     total: number;
+    vatRate?: number;
   }>;
   subtotal: number;
   vatAmount: number;
   total: number;
   notes?: string;
+  terms?: string;
   logoUrl?: string;
+  servicePeriodStart?: Date | null;
+  servicePeriodEnd?: Date | null;
 }
 
 export function generateInvoiceHTML(data: InvoiceData): string {
-  const { invoiceNumber, invoiceDate, dueDate, company, client, items, subtotal, vatAmount, total, notes, logoUrl = '' } = data;
+  const { 
+    invoiceNumber, 
+    invoiceDate, 
+    dueDate, 
+    company, 
+    client, 
+    items, 
+    subtotal, 
+    vatAmount, 
+    total, 
+    notes, 
+    terms,
+    logoUrl = '',
+    servicePeriodStart,
+    servicePeriodEnd
+  } = data;
 
-  const formatDate = (date: Date | string) => {
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return '';
     const d = typeof date === 'string' ? new Date(date) : date;
     return d.toLocaleDateString('de-DE');
   };
@@ -49,307 +69,405 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       .replace(/'/g, '&#039;');
   };
 
+  // Get accent color from company settings, default to #00ff88
+  const accentColor = company.invoiceAccentColor || '#00ff88';
+  
+  // Format address from structured fields or fallback to address text
+  const formatCompanyAddress = () => {
+    if (company.address) {
+      return escapeHtml(company.address).replace(/\n/g, '<br>');
+    }
+    const parts: string[] = [];
+    if (company.streetName && company.streetNumber) {
+      parts.push(`${escapeHtml(company.streetName)} ${escapeHtml(company.streetNumber)}`);
+    }
+    if (company.postalCode && company.city) {
+      parts.push(`${escapeHtml(company.postalCode)} ${escapeHtml(company.city)}`);
+    }
+    if (company.country) {
+      parts.push(escapeHtml(company.country));
+    }
+    return parts.join('<br>');
+  };
+
+  // Format client address
+  const formatClientAddress = () => {
+    if (!client || !client.address) return '';
+    return escapeHtml(client.address).replace(/\n/g, '<br>');
+  };
+
+  // Build items table rows with VAT rate column
   const itemsHTML = items
-    .map(
-      (item) => `
-    <tr>
-      <td style="padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 11px; font-family: Arial, sans-serif;">
-        ${escapeHtml(item.description)}
-      </td>
-      <td style="padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 11px; text-align: center; font-family: Arial, sans-serif;">
-        ${item.quantity}
-      </td>
-      <td style="padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 11px; text-align: right; font-family: Arial, sans-serif;">
-        ${formatCurrency(item.unitPrice)}
-      </td>
-      <td style="padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 11px; text-align: right; font-family: Arial, sans-serif;">
-        ${formatCurrency(item.total)}
-      </td>
-    </tr>
-  `
-    )
+    .map((item) => {
+      const vatRate = company.isKleinunternehmer ? 0 : (item.vatRate ?? Number(company.vatRate));
+      return `
+        <tr>
+          <td>${escapeHtml(item.description)}</td>
+          <td class="right">${item.quantity}</td>
+          <td class="right">${formatCurrency(item.unitPrice)}</td>
+          <td class="right">${vatRate} %</td>
+          <td class="right">${formatCurrency(item.total)}</td>
+        </tr>
+      `;
+    })
     .join('');
 
-  const vatSection = company.isKleinunternehmer
-    ? `
-    <div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-left: 3px solid #00ff88; font-size: 10px; color: #666;">
-      <strong>Keine Umsatzsteuer aufgrund der Kleinunternehmerregelung, § 19 UStG</strong>
-    </div>
-  `
-    : `
-    <div style="display: flex; justify-content: space-between; margin-top: 20px; padding: 15px; background: #f9f9f9; border-left: 3px solid #00ff88;">
-      <div style="font-size: 11px; font-weight: bold; color: #0a0a0a;">Zwischensumme:</div>
-      <div style="font-size: 11px; color: #333;">${formatCurrency(subtotal)}</div>
-    </div>
-    <div style="display: flex; justify-content: space-between; padding: 10px 15px; background: #f9f9f9; border-left: 3px solid #00ff88;">
-      <div style="font-size: 11px; font-weight: bold; color: #0a0a0a;">MwSt. (${Number(company.vatRate)}%):</div>
-      <div style="font-size: 11px; color: #333;">${formatCurrency(vatAmount)}</div>
-    </div>
-  `;
+  // Service period date range
+  const servicePeriodHTML = (servicePeriodStart && servicePeriodEnd)
+    ? `<div class="date-row"><span class="date-label">Leistungszeitraum</span>${formatDate(servicePeriodStart)} – ${formatDate(servicePeriodEnd)}</div>`
+    : '';
+
+  // Logo HTML (hide container if no logo)
+  const logoHTML = logoUrl 
+    ? `<div class="logo">
+        <img src="${escapeHtml(logoUrl)}" alt="Logo" style="max-width: 80px; max-height: 80px; object-fit: contain;" />
+      </div>`
+    : '';
+
+  // VAT totals section
+  const vatRowHTML = !company.isKleinunternehmer && vatAmount > 0
+    ? `<div class="totals-row">
+        <span>Umsatzsteuer</span>
+        <span>${formatCurrency(vatAmount)}</span>
+      </div>`
+    : '';
+
+  // Kleinunternehmer notice card
+  const kleinunternehmerCardHTML = company.isKleinunternehmer
+    ? `<div class="card">
+        Umsatzsteuerbefreiung aufgrund des Kleinunternehmerstatus gemäß § 19 UStG
+      </div>`
+    : '';
+
+  // Notes card
+  const notesCardHTML = notes
+    ? `<div class="card">
+        <div class="info-title">Anmerkungen</div>
+        ${escapeHtml(notes).replace(/\n/g, '<br>')}
+      </div>`
+    : '';
+
+  // Terms card
+  const termsCardHTML = terms
+    ? `<div class="card">
+        <div class="info-title">Bedingungen</div>
+        ${escapeHtml(terms).replace(/\n/g, '<br>')}
+      </div>`
+    : '';
+
+  // Info sections (only render if any exist)
+  const infoSectionsHTML = (kleinunternehmerCardHTML || notesCardHTML || termsCardHTML)
+    ? `<div class="info-section">
+        ${kleinunternehmerCardHTML}
+        ${notesCardHTML}
+        ${termsCardHTML}
+      </div>`
+    : '';
+
+  // Account holder name for bank details
+  const accountHolderName = company.invoiceAccountHolderName || company.companyName || '';
+
+  // Format company address for footer
+  const companyAddressParts: string[] = [];
+  if (company.streetName && company.streetNumber) {
+    companyAddressParts.push(`${escapeHtml(company.streetName)} ${escapeHtml(company.streetNumber)}`);
+  }
+  if (company.postalCode && company.city) {
+    companyAddressParts.push(`${escapeHtml(company.postalCode)} ${escapeHtml(company.city)}`);
+  }
 
   return `
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8" />
   <title>Rechnung ${escapeHtml(invoiceNumber)}</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@100;300;400;500&display=swap" rel="stylesheet">
+
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root {
+      --accent: ${accentColor};
+      --text-primary: #1C1F23;
+      --text-secondary: #4A5058;
+      --text-muted: #7A8087;
+      --border-soft: #ececec;
     }
-    html, body {
-      width: 100%;
-      background: white;
-    }
+
+    * { box-sizing: border-box; }
+
     body {
-      font-family: Arial, sans-serif;
-      color: #333;
-      line-height: 1.4;
-      padding: 40px;
-      background-color: #ffffff;
+      font-family: 'Kanit', Arial, sans-serif;
+      font-weight: 300;
+      color: var(--text-primary);
+      background: #fff;
+      padding: 56px;
+      max-width: 900px;
+      margin: auto;
+      line-height: 1.55;
     }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: white;
-    }
+
+    /* HEADER */
     .header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #00ff88;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: start;
+      margin-bottom: 42px;
     }
-    .header-left {
-      flex: 1;
+
+    h1 {
+      font-size: 32pt;
+      font-weight: 100;
+      letter-spacing: 1.6px;
+      margin: 0;
+      line-height: 1;
     }
-    .header-right {
-      flex: 1;
-      text-align: right;
-    }
-    .logo {
-      max-width: 60px;
-      height: auto;
-      margin-bottom: 15px;
-    }
-    .company-name {
-      font-size: 14px;
-      font-weight: bold;
-      color: #0a0a0a;
-      margin-bottom: 10px;
-    }
-    .company-details {
-      font-size: 10px;
-      color: #666;
-      line-height: 1.6;
-    }
-    .invoice-title {
-      font-size: 24px;
-      font-weight: bold;
-      color: #0a0a0a;
-      margin-bottom: 10px;
-    }
+
     .invoice-number {
-      font-size: 12px;
-      color: #666;
+      margin-top: 4px;
+      font-size: 14pt;
+      font-weight: 500;
+      color: var(--text-secondary);
     }
-    .invoice-info {
-      margin-top: 30px;
-      font-size: 11px;
-    }
-    .invoice-info-row {
-      margin-bottom: 5px;
-    }
-    .invoice-info-label {
-      font-weight: bold;
-      color: #0a0a0a;
-      display: inline-block;
-      min-width: 100px;
-    }
-    .billing-section {
+
+    .logo {
       display: flex;
-      justify-content: space-between;
-      margin-bottom: 40px;
+      justify-content: center;
+      align-items: flex-start;
     }
-    .billing-box {
-      flex: 1;
-      padding: 20px;
-      background: #f9f9f9;
-      border-left: 3px solid #00ff88;
-    }
-    .billing-label {
+
+    .logo-box {
+      width: 80px;
+      height: 80px;
+      background: #f0f0f0;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 10px;
       color: #999;
-      font-weight: bold;
-      letter-spacing: 1px;
+    }
+
+    .dates {
+      text-align: right;
+      font-size: 10.5pt;
+      color: var(--text-secondary);
+    }
+
+    .date-row { margin-bottom: 6px; }
+    .date-label { color: var(--text-muted); margin-right: 8px; }
+
+    /* CARDS */
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 22px 24px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+    }
+
+    .billing {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      margin-bottom: 40px;
+    }
+
+    .box-label {
+      text-transform: uppercase;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
       margin-bottom: 10px;
     }
-    .billing-content {
-      font-size: 11px;
-      color: #333;
-      line-height: 1.6;
+
+    /* TABLE */
+    .table-wrapper {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border-soft);
+      margin-top: 32px;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 20px;
     }
-    th {
-      background-color: #00ff88;
-      padding: 12px;
+
+    thead th {
+      background: #f7f7f7;
+      color: var(--text-primary);
+      padding: 16px 14px;
+      font-size: 12px;
+      font-weight: 500;
       text-align: left;
-      font-weight: bold;
-      font-size: 10px;
-      letter-spacing: 0.5px;
-      color: #0a0a0a;
+      border-bottom: 1px solid var(--border-soft);
     }
-    th:last-child {
-      text-align: right;
+
+    tbody td {
+      padding: 14px;
+      font-size: 11.5px;
+      border-bottom: 1px solid #f0f0f0;
     }
-    td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #e0e0e0;
-      font-size: 11px;
+
+    tbody tr:last-child td { border-bottom: none; }
+    .right { text-align: right; }
+
+    /* TOTALS */
+    .totals {
+      margin-top: 28px;
+      margin-left: auto;
+      width: 320px;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px 22px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.04);
     }
-    .total-section {
-      margin-top: 20px;
-      padding: 20px;
-      background: #f9f9f9;
-      border-left: 3px solid #00ff88;
-    }
-    .total-row {
+
+    .totals-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 10px;
+      padding: 6px 0;
+      font-size: 11.5px;
     }
-    .total-label {
-      font-size: 12px;
-      font-weight: bold;
-      color: #0a0a0a;
-    }
-    .total-amount {
+
+    .totals-row.total {
       font-size: 16px;
-      font-weight: bold;
-      color: #0a0a0a;
+      font-weight: 500;
+      margin-top: 8px;
+      padding-top: 10px;
+      position: relative;
     }
+
+    /* gradient divider */
+    .totals-row.total::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(
+        to right,
+        ${accentColor}00 0%,
+        ${accentColor} 50%,
+        ${accentColor}00 100%
+      );
+    }
+
+    /* INFO SECTIONS */
+    .info-section {
+      margin-top: 24px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .info-title {
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text-primary);
+    }
+
+    /* FOOTER */
     .footer {
-      margin-top: 60px;
-      padding-top: 20px;
-      border-top: 1px solid #e0e0e0;
-      font-size: 9px;
-      color: #666;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 36px;
+      margin-top: 64px;
+      font-size: 10.5px;
+      color: var(--text-secondary);
     }
-    .footer-section {
-      margin-bottom: 15px;
-    }
-    .footer-label {
-      font-weight: bold;
-      color: #0a0a0a;
-      margin-bottom: 5px;
-    }
-    @media print {
-      body {
-        margin: 0;
-        padding: 20mm;
-      }
-    }
+
+    strong { font-weight: 400; }
   </style>
 </head>
+
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="header-left">
-        ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="Logo" class="logo" />` : ''}
-        <div class="company-name">${escapeHtml(company.companyName || '')}</div>
-        <div class="company-details">
-          ${company.address ? escapeHtml(company.address).replace(/\n/g, '<br>') : ''}
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="invoice-title">RECHNUNG</div>
-        <div class="invoice-number">${escapeHtml(invoiceNumber)}</div>
-        <div class="invoice-info">
-          <div class="invoice-info-row">
-            <span class="invoice-info-label">Rechnungsdatum:</span>
-            <span>${formatDate(invoiceDate)}</span>
-          </div>
-          <div class="invoice-info-row">
-            <span class="invoice-info-label">Fälligkeitsdatum:</span>
-            <span>${formatDate(dueDate)}</span>
-          </div>
-        </div>
-      </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <h1>RECHNUNG</h1>
+      <div class="invoice-number">${escapeHtml(invoiceNumber)}</div>
     </div>
 
-    <div class="billing-section">
-      <div class="billing-box">
-        <div class="billing-label">RECHNUNGSSTELLER</div>
-        <div class="billing-content">
-          ${escapeHtml(company.companyName || '')}<br>
-          ${company.address ? escapeHtml(company.address).replace(/\n/g, '<br>') : ''}<br>
-          ${company.steuernummer ? `Steuernummer: ${escapeHtml(company.steuernummer)}<br>` : ''}
-          ${company.ustIdNr ? `USt-IdNr.: ${escapeHtml(company.ustIdNr)}<br>` : ''}
-        </div>
-      </div>
-      <div class="billing-box" style="margin-left: 20px;">
-        <div class="billing-label">RECHNUNGSEMPFÄNGER</div>
-        <div class="billing-content">
-          ${client ? `
-            ${escapeHtml(client.name)}<br>
-            ${client.address ? escapeHtml(client.address).replace(/\n/g, '<br>') : ''}
-          ` : 'Nicht angegeben'}
-        </div>
-      </div>
+    ${logoHTML}
+
+    <div class="dates">
+      <div class="date-row"><span class="date-label">Erstellt</span>${formatDate(invoiceDate)}</div>
+      ${servicePeriodHTML}
+      <div class="date-row"><span class="date-label">Zahlungsziel</span>${formatDate(dueDate)}</div>
+    </div>
+  </div>
+
+  <!-- BILLING -->
+  <div class="billing">
+    <div class="card">
+      <div class="box-label">An</div>
+      <strong>${client ? escapeHtml(client.name) : 'Nicht angegeben'}</strong><br>
+      ${client ? formatClientAddress() : ''}
     </div>
 
+    <div class="card">
+      <div class="box-label">Von</div>
+      <strong>${escapeHtml(company.companyName || '')}</strong><br>
+      ${formatCompanyAddress()}
+      ${company.steuernummer ? `<br><br>Steuernummer: ${escapeHtml(company.steuernummer)}` : ''}
+    </div>
+  </div>
+
+  <!-- ITEMS -->
+  <div class="table-wrapper">
     <table>
       <thead>
         <tr>
           <th>Beschreibung</th>
-          <th style="text-align: center;">Menge</th>
-          <th style="text-align: right;">Einzelpreis</th>
-          <th style="text-align: right;">Gesamt</th>
+          <th class="right">Anzahl</th>
+          <th class="right">Preis (ohne USt.)</th>
+          <th class="right">USt.-Satz</th>
+          <th class="right">Gesamt</th>
         </tr>
       </thead>
       <tbody>
         ${itemsHTML}
       </tbody>
     </table>
+  </div>
 
-    <div class="total-section">
-      ${vatSection}
-      <div class="total-row" style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #00ff88;">
-        <div class="total-label">GESAMTSUMME:</div>
-        <div class="total-amount">${formatCurrency(total)}</div>
-      </div>
-    </div>
-
-    ${notes ? `
-    <div style="margin-top: 30px; padding: 15px; background: #f9f9f9; border-left: 3px solid #00ff88;">
-      <div style="font-size: 10px; font-weight: bold; color: #0a0a0a; margin-bottom: 8px;">Hinweise:</div>
-      <div style="font-size: 10px; color: #666; white-space: pre-line;">${escapeHtml(notes)}</div>
-    </div>
-    ` : ''}
-
-    <div class="footer">
-      ${company.iban || company.bic ? `
-      <div class="footer-section">
-        <div class="footer-label">Bankverbindung:</div>
-        ${company.iban ? `IBAN: ${escapeHtml(company.iban)}<br>` : ''}
-        ${company.bic ? `BIC: ${escapeHtml(company.bic)}` : ''}
-      </div>
-      ` : ''}
-      <div class="footer-section">
-        <div style="font-size: 8px; color: #999; text-align: center; margin-top: 20px;">
-          © ${new Date().getFullYear()} ${escapeHtml(company.companyName || '')}. Alle Rechte vorbehalten.
-        </div>
-      </div>
+  <!-- TOTALS -->
+  <div class="totals">
+    ${vatRowHTML}
+    <div class="totals-row total">
+      <span>Gesamtbetrag</span>
+      <span>${formatCurrency(total)}</span>
     </div>
   </div>
+
+  <!-- INFO SECTIONS -->
+  ${infoSectionsHTML}
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div>
+      <strong>Bankverbindung</strong><br>
+      ${accountHolderName ? `Kontoinhaber: ${escapeHtml(accountHolderName)}<br>` : ''}
+      ${company.iban ? `IBAN: ${escapeHtml(company.iban)}<br>` : ''}
+      Verwendungszweck: ${escapeHtml(invoiceNumber)}
+    </div>
+
+    <div style="text-align: center;">
+      <strong>Adresse</strong><br>
+      ${companyAddressParts.join('<br>')}
+    </div>
+
+    <div style="text-align: right;">
+      <strong>Kontakt</strong><br>
+      ${company.companyName ? escapeHtml(company.companyName) : ''}
+      ${company.email ? `<br>${escapeHtml(company.email)}` : ''}
+      ${company.phone ? `<br>${escapeHtml(company.phone)}` : ''}
+    </div>
+  </div>
+
 </body>
 </html>
   `;
 }
-

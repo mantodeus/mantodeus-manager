@@ -221,7 +221,10 @@ export const pdfRouter = router({
         vatAmount,
         total,
         notes: input.notes,
-        logoUrl: '', // TODO: Add logo URL to settings
+        terms: undefined, // Terms field not yet in schema
+        logoUrl: companySettings.logoUrl || '',
+        servicePeriodStart: input.servicePeriodStart ? new Date(input.servicePeriodStart) : undefined,
+        servicePeriodEnd: input.servicePeriodEnd ? new Date(input.servicePeriodEnd) : undefined,
       });
 
       // Generate PDF
@@ -348,7 +351,18 @@ export const pdfRouter = router({
           vatAmount: Number(invoice.vatAmount ?? 0),
           total: Number(invoice.total ?? 0),
           notes: invoice.notes || undefined,
-          logoUrl: "",
+          terms: undefined,
+          logoUrl: companySettings.logoUrl || "",
+          servicePeriodStart: invoice.servicePeriodStart || undefined,
+          servicePeriodEnd: invoice.servicePeriodEnd || undefined,
+          subtotal: Number(invoice.subtotal ?? 0),
+          vatAmount: Number(invoice.vatAmount ?? 0),
+          total: Number(invoice.total ?? 0),
+          notes: invoice.notes || undefined,
+          terms: undefined,
+          logoUrl: companySettings.logoUrl || "",
+          servicePeriodStart: invoice.servicePeriodStart || undefined,
+          servicePeriodEnd: invoice.servicePeriodEnd || undefined,
         });
 
         const pdfBuffer = await renderPDF(html);

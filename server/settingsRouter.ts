@@ -35,6 +35,8 @@ export const settingsRouter = router({
         vatRate: '19.00',
         invoicePrefix: 'RE',
         invoiceNumberFormat: `RE-${year}-0001`,
+        invoiceAccentColor: '#00ff88',
+        invoiceAccountHolderName: null,
         nextInvoiceNumber: 1,
       };
     }
@@ -72,6 +74,13 @@ export const settingsRouter = router({
           .refine((value) => value === undefined || /\d/.test(value), {
             message: "Invoice number format must include a numeric sequence.",
           }),
+        invoiceAccentColor: z
+          .string()
+          .optional()
+          .refine((value) => value === undefined || /^#[0-9A-Fa-f]{6}$/.test(value), {
+            message: "Invoice accent color must be a valid hex color (e.g., #00ff88).",
+          }),
+        invoiceAccountHolderName: z.string().optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -105,6 +114,8 @@ export const settingsRouter = router({
         vatRate: string | null;
         invoicePrefix: string | null;
         invoiceNumberFormat: string | null;
+        invoiceAccentColor: string | null;
+        invoiceAccountHolderName: string | null;
       }> = {};
       
       // Process all fields that might be in the input
@@ -127,6 +138,8 @@ export const settingsRouter = router({
       if (input.vatRate !== undefined) normalizedInput.vatRate = normalizeString(input.vatRate);
       if (input.invoicePrefix !== undefined) normalizedInput.invoicePrefix = normalizeString(input.invoicePrefix);
       if (input.invoiceNumberFormat !== undefined) normalizedInput.invoiceNumberFormat = normalizeString(input.invoiceNumberFormat);
+      if (input.invoiceAccentColor !== undefined) normalizedInput.invoiceAccentColor = normalizeString(input.invoiceAccentColor);
+      if (input.invoiceAccountHolderName !== undefined) normalizedInput.invoiceAccountHolderName = normalizeString(input.invoiceAccountHolderName);
       if (normalizedInput.vatRate === null) normalizedInput.vatRate = undefined;
 
       const hasStructuredAddress = [
@@ -172,6 +185,8 @@ export const settingsRouter = router({
           vatRate: normalizedInput.vatRate ?? '19.00',
           invoicePrefix: normalizedInput.invoicePrefix ?? 'RE',
           invoiceNumberFormat: normalizedInput.invoiceNumberFormat ?? `RE-${year}-0001`,
+          invoiceAccentColor: normalizedInput.invoiceAccentColor ?? '#00ff88',
+          invoiceAccountHolderName: normalizedInput.invoiceAccountHolderName ?? null,
           nextInvoiceNumber: 1,
         });
       }
