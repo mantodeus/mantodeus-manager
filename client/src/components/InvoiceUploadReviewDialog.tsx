@@ -562,6 +562,7 @@ export function InvoiceUploadReviewDialog({
       {/* Preview Panel - Left side on desktop - optimized for A4 display */}
       {!isMobile && previewOpen && previewUrl && (
         <div
+          data-preview-panel
           className="fixed z-[60] bg-background border-r shadow-lg rounded-lg"
           style={{
             top: '1.5rem',
@@ -569,6 +570,10 @@ export function InvoiceUploadReviewDialog({
             width: 'calc(40vw - 2rem)', // 40% width with margins for blurred border
             height: 'calc(100vh - 3rem)', // Full height with margins
           }}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
         >
           <div className="flex flex-col h-full overflow-hidden rounded-lg">
             {/* Preview Header - no close button on desktop (always open) */}
@@ -608,6 +613,22 @@ export function InvoiceUploadReviewDialog({
             maxHeight: isMobile ? undefined : "calc(100vh - 3rem)",
           } as React.CSSProperties}
           showCloseButton={false}
+          onInteractOutside={(e) => {
+            // Prevent closing when clicking on preview panel
+            const target = e.target as HTMLElement;
+            const previewPanel = document.querySelector('[data-preview-panel]');
+            if (previewPanel && previewPanel.contains(target)) {
+              e.preventDefault();
+            }
+          }}
+          onPointerDownOutside={(e) => {
+            // Prevent closing when clicking on preview panel
+            const target = e.target as HTMLElement;
+            const previewPanel = document.querySelector('[data-preview-panel]');
+            if (previewPanel && previewPanel.contains(target)) {
+              e.preventDefault();
+            }
+          }}
         >
         {/* PageHeader-like structure */}
         <div className="flex-shrink-0 p-6 pb-2 space-y-4">
