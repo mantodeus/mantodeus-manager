@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, X } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, X, Download } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useTheme } from "@/hooks/useTheme";
@@ -636,7 +636,7 @@ export function InvoiceUploadReviewDialog({
       {!isMobile && previewOpen && previewUrl && (
         <div
           data-preview-panel
-          className="fixed z-[60] bg-background border-r shadow-lg rounded-lg"
+          className="fixed z-[60] bg-background rounded-lg"
           style={{
             top: '1.5rem',
             left: '1.5rem',
@@ -648,17 +648,70 @@ export function InvoiceUploadReviewDialog({
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
         >
-          <div className="flex flex-col h-full overflow-hidden rounded-lg">
-            {/* Preview Header - no close button on desktop (always open) */}
-            <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex flex-col h-full overflow-hidden rounded-lg bg-background">
+            {/* Preview Header - with download button */}
+            <div className="flex items-center justify-between p-4 border-b bg-background">
               <h2 className="text-lg font-semibold">Preview</h2>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={async () => {
+                  try {
+                    let urlToDownload = previewUrl;
+                    
+                    // If it's a file-proxy URL, we need to fetch it first
+                    if (previewUrl.startsWith('/api/file-proxy')) {
+                      const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+                      if (!session?.access_token) {
+                        toast.error("Please log in to download invoices");
+                        return;
+                      }
+                      const response = await fetch(previewUrl, {
+                        headers: {
+                          'Authorization': `Bearer ${session.access_token}`,
+                        },
+                        credentials: 'include',
+                      });
+                      if (!response.ok) {
+                        toast.error('Failed to download invoice');
+                        return;
+                      }
+                      const blob = await response.blob();
+                      urlToDownload = URL.createObjectURL(blob);
+                    }
+                    
+                    // Create a temporary anchor element to trigger download
+                    const link = document.createElement('a');
+                    link.href = urlToDownload;
+                    link.download = previewFileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // Clean up blob URL if we created one
+                    if (urlToDownload.startsWith('blob:') && urlToDownload !== previewUrl) {
+                      URL.revokeObjectURL(urlToDownload);
+                    }
+                    
+                    toast.success("Download started");
+                  } catch (error) {
+                    console.error('Download error:', error);
+                    toast.error('Failed to download invoice');
+                  }
+                }}
+                className="h-8 w-8"
+                aria-label="Download invoice"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
             </div>
-            {/* Preview Content */}
-            <div className="flex-1 overflow-hidden rounded-b-lg">
+            {/* Preview Content - full page, no borders */}
+            <div className="flex-1 overflow-hidden bg-background">
               <iframe
                 src={previewUrl}
                 className="w-full h-full border-0"
                 title={previewFileName}
+                style={{ pointerEvents: 'auto' }}
               />
             </div>
           </div>

@@ -84,6 +84,8 @@ export function InvoiceForm({
   onPreview,
   showPreview = false,
   onFormChange,
+  getFormDataRef,
+  renderBeforeFooter,
 }: {
   mode: "create" | "edit";
   invoiceId?: number;
@@ -94,6 +96,8 @@ export function InvoiceForm({
   onPreview?: () => void;
   showPreview?: boolean;
   onFormChange?: (formData: InvoicePreviewData) => void;
+  getFormDataRef?: React.MutableRefObject<(() => InvoicePreviewData | null) | null>;
+  renderBeforeFooter?: React.ReactNode;
 }) {
   const isCreate = mode === "create";
   const [formState, setFormState] = useState<InvoiceFormState>(() => ({
@@ -181,49 +185,38 @@ export function InvoiceForm({
     };
   }, [items]);
 
-  // Debounced form change callback for preview
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+  // Expose function to get current form data (for manual preview updates)
   useEffect(() => {
-    // Only call onFormChange in create mode
-    if (!isCreate || !onFormChange) return;
-    
-    // Validate minimum form data before calling callback
-    if (!formState.invoiceNumber || items.length === 0 || items.every(item => !item.name)) {
-      return;
-    }
-
-    // Clear existing timeout
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    // Debounce callback (500ms)
-    debounceTimeoutRef.current = setTimeout(() => {
-      const previewData: InvoicePreviewData = {
-        invoiceNumber: formState.invoiceNumber,
-        clientId: formState.clientId,
-        issueDate: formState.issueDate,
-        dueDate: formState.dueDate,
-        notes: formState.notes,
-        items: items.map(item => ({
-          name: item.name,
-          description: item.description || undefined,
-          quantity: Number(item.quantity),
-          unitPrice: Number(item.unitPrice),
-          currency: item.currency || "EUR",
-        })),
+    if (getFormDataRef) {
+      getFormDataRef.current = () => {
+        // Validate minimum form data
+        if (!formState.invoiceNumber || items.length === 0 || items.every(item => !item.name)) {
+          return null;
+        }
+        
+        return {
+          invoiceNumber: formState.invoiceNumber,
+          clientId: formState.clientId,
+          issueDate: formState.issueDate,
+          dueDate: formState.dueDate,
+          notes: formState.notes,
+          items: items.map(item => ({
+            name: item.name,
+            description: item.description || undefined,
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.unitPrice),
+            currency: item.currency || "EUR",
+          })),
+        };
       };
-      onFormChange(previewData);
-    }, 500);
-
-    // Cleanup timeout on unmount
+    }
+    
     return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
+      if (getFormDataRef) {
+        getFormDataRef.current = null;
       }
     };
-  }, [formState, items, isCreate, onFormChange]);
+  }, [formState, items, getFormDataRef]);
 
   const createMutation = trpc.invoices.create.useMutation({
     onSuccess,
@@ -831,6 +824,8 @@ export function InvoiceForm({
 
       {/* Footer buttons */}
       <div className="flex flex-col gap-2 pt-4 border-t">
+        {/* Custom content before footer buttons (e.g., Update Preview button) */}
+        {renderBeforeFooter}
         {/* Action buttons - above Delete/Update */}
         
         {/* Cancelled invoices - only show Mark as Not Cancelled */}

@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { DocumentCurrencyEuro, X } from "@/components/ui/Icon";
+import { DocumentCurrencyEuro, X, Eye, Loader2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { InvoiceForm, InvoicePreviewData } from "./InvoiceForm";
 import { supabase } from "@/lib/supabase";
@@ -33,6 +33,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   const [lastValidPreviewUrl, setLastValidPreviewUrl] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const previewGenerationRef = useRef<AbortController | null>(null);
+  const getFormDataRef = useRef<(() => InvoicePreviewData | null) | null>(null);
 
   const handleSuccess = useCallback(async () => {
     toast.success("Invoice created");
@@ -42,7 +43,11 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   }, [utils, onClose, onSuccess]);
 
   // Generate preview from form data - memoized to prevent infinite re-renders
-  const generatePreview = useCallback(async (formData: InvoicePreviewData) => {
+  const generatePreview = useCallback(async (formData: InvoicePreviewData | null) => {
+    if (!formData) {
+      toast.error("Please fill in invoice number and at least one item");
+      return;
+    }
     // Cancel any in-flight request
     if (previewGenerationRef.current) {
       previewGenerationRef.current.abort();
@@ -115,6 +120,17 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     }
   }, [lastValidPreviewUrl]);
 
+  // Manual preview update handler
+  const handleUpdatePreview = useCallback(async () => {
+    if (!getFormDataRef.current) {
+      toast.error("Form not ready");
+      return;
+    }
+    
+    const formData = getFormDataRef.current();
+    await generatePreview(formData);
+  }, [generatePreview]);
+
   // Clean up blob URLs on unmount
   useEffect(() => {
     return () => {
@@ -135,34 +151,71 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   }, [previewUrl, lastValidPreviewUrl]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-background">
-      <div className="flex h-svh w-full">
-      {/* LEFT: Preview */}
-      <div className="w-[40vw] border-r bg-muted/20 flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-          <h2 className="text-lg font-semibold">Preview</h2>
-          {isGeneratingPreview && (
-            <div className="text-sm text-muted-foreground">Generating...</div>
-          )}
-        </div>
-        <div className="flex-1 overflow-hidden">
-          {previewUrl ? (
-            <iframe
-              src={previewUrl}
-              className="w-full h-full border-0"
-              title={previewFileName}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              <p>Preview will appear here as you fill in the form</p>
-            </div>
-          )}
+    <>
+      {/* Backdrop overlay - matches edit invoice dialog */}
+      <div 
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+        onClick={onClose}
+        style={{ pointerEvents: 'auto' }}
+        aria-hidden="true"
+      />
+      
+      {/* Preview Panel - Left side - matches edit invoice dialog */}
+      <div
+        className="fixed z-[60] bg-background border-r shadow-lg rounded-lg"
+        style={{
+          top: '1.5rem',
+          left: '1.5rem',
+          width: 'calc(40vw - 2rem)',
+          height: 'calc(100vh - 3rem)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-col h-full overflow-hidden rounded-lg">
+          <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+            <h2 className="text-lg font-semibold">Preview</h2>
+            {isGeneratingPreview && (
+              <div className="text-sm text-muted-foreground">Generating...</div>
+            )}
+          </div>
+          <div className="flex-1 overflow-hidden rounded-b-lg">
+            {previewUrl ? (
+              <iframe
+                src={previewUrl}
+                className="w-full h-full border-0"
+                title={previewFileName}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <p>Preview will appear here when you update it</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* RIGHT: Form */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-6 space-y-6">
+      {/* Form Panel - Right side - matches edit invoice dialog */}
+      <div
+        className="fixed z-[60] bg-background shadow-lg rounded-lg flex flex-col"
+        style={{
+          top: '1.5rem',
+          right: '1.5rem',
+          bottom: '1.5rem',
+          left: 'calc(0.5rem + 40vw)',
+          width: 'calc(-2rem + 60vw)',
+          height: 'calc(-3rem + 100vh)',
+          maxHeight: 'calc(-3rem + 100vh)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 min-w-0 flex-1">
@@ -189,21 +242,42 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
             </div>
           </div>
 
-          {/* Fade-out separator */}
-          <div className="separator-fade" />
+            {/* Fade-out separator */}
+            <div className="separator-fade" />
 
-          {/* Form */}
-          <InvoiceForm
-            mode="create"
-            contacts={contacts}
-            onClose={onClose}
-            onSuccess={handleSuccess}
-            onFormChange={generatePreview}
-          />
+            {/* Form */}
+            <InvoiceForm
+              mode="create"
+              contacts={contacts}
+              onClose={onClose}
+              onSuccess={handleSuccess}
+              getFormDataRef={getFormDataRef}
+              renderBeforeFooter={
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleUpdatePreview}
+                  disabled={isGeneratingPreview}
+                  className="w-full"
+                >
+                  {isGeneratingPreview ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Update Preview
+                    </>
+                  )}
+                </Button>
+              }
+            />
+          </div>
         </div>
       </div>
-      </div>
-    </div>
+    </>
   );
 }
 
