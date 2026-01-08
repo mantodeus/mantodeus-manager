@@ -1051,55 +1051,61 @@ export function InvoiceUploadReviewDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="invoiceNumber">Invoice Number</Label>
-            <Input
-              id="invoiceNumber"
-              value={invoiceNumber}
-              onChange={(e) => setInvoiceNumber(e.target.value)}
-              placeholder="Auto-generated if empty"
-              disabled={isReadOnly || isCancelled}
-            />
+          {/* Row 1: Invoice Number and Total Amount side by side on desktop */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="invoiceNumber">Invoice Number</Label>
+              <Input
+                id="invoiceNumber"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                placeholder="Auto-generated if empty"
+                disabled={isReadOnly || isCancelled}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="totalAmount">Total Amount (€) *</Label>
+              <Input
+                id="totalAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={totalAmount}
+                onChange={(e) => setTotalAmount(e.target.value)}
+                placeholder="0.00"
+                required
+                disabled={isReadOnly || isCancelled}
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="issueDate">Invoice Date *</Label>
-            <Input
-              id="issueDate"
-              type="date"
-              value={issueDate}
-              onChange={(e) => setIssueDate(e.target.value)}
-              required
-              disabled={isReadOnly || isCancelled}
-            />
-          </div>
+          {/* Row 2: Invoice Date and Due Date side by side on desktop */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="issueDate">Invoice Date *</Label>
+              <Input
+                id="issueDate"
+                type="date"
+                value={issueDate}
+                onChange={(e) => setIssueDate(e.target.value)}
+                required
+                disabled={isReadOnly || isCancelled}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="totalAmount">Total Amount (€) *</Label>
-            <Input
-              id="totalAmount"
-              type="number"
-              step="0.01"
-              min="0"
-              value={totalAmount}
-              onChange={(e) => setTotalAmount(e.target.value)}
-              placeholder="0.00"
-              required
-              disabled={isReadOnly || isCancelled}
-            />
-          </div>
-
-          {/* Due Date - shown for both review and draft states, required for sending */}
-          <div className="space-y-2">
-            <Label htmlFor="dueDate">Due Date *</Label>
-            <Input
-              id="dueDate"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              required
-              disabled={isReadOnly || isCancelled}
-            />
+            {/* Due Date - shown for both review and draft states, required for sending */}
+            <div className="space-y-2">
+              <Label htmlFor="dueDate">Due Date *</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                required
+                disabled={isReadOnly || isCancelled}
+              />
+            </div>
           </div>
 
           {/* Payment Date - shown only when invoice is paid */}
