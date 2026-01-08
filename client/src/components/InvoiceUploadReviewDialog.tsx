@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, X } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, X, RotateCcw } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useTheme } from "@/hooks/useTheme";
@@ -367,8 +367,8 @@ export function InvoiceUploadReviewDialog({
   const isDraft = invoiceState === 'DRAFT' || (invoice?.source === "uploaded" && !invoice.needsReview && !invoice.sentAt);
   const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
   const isPaid = invoiceState === 'PAID';
-  const isReadOnly = isSent || isPaid; // Only disable when sent/paid, not when draft
   const isCancelled = invoice?.cancelledAt !== null && invoice?.cancelledAt !== undefined;
+  const isReadOnly = isSent || isPaid || isCancelled; // Disable when sent/paid or cancelled
 
   const handleSend = () => {
     if (!invoice) return;
@@ -581,11 +581,25 @@ export function InvoiceUploadReviewDialog({
         icon: <CheckCircle2 className="h-4 w-4" />,
         onClick: handleMarkAsPaid,
       });
-      if (!isPaid && derivedValues.outstanding === 0) {
+      // Always show "Revert to Draft" for SENT/OVERDUE invoices
+      // Enabled if no payments, disabled if payments exist (to preserve payment data)
+      const amountPaid = Number(invoice.amountPaid || 0);
+      const hasPayments = amountPaid > 0;
+      if (!hasPayments) {
         actions.push({
-          action: "revertToDraftAfterPayment",
+          action: "revertToDraft",
           label: "Revert to Draft",
+          icon: <RotateCcw className="h-4 w-4" />,
           onClick: handleRevertToDraft,
+        });
+      } else {
+        actions.push({
+          action: "revertToDraft",
+          label: "Revert to Draft",
+          icon: <RotateCcw className="h-4 w-4" />,
+          disabled: true,
+          disabledReason: "Cannot revert to draft: invoice has received payments",
+          onClick: () => {},
         });
       }
     }
@@ -1022,7 +1036,7 @@ export function InvoiceUploadReviewDialog({
 
           <div className="space-y-2">
             <Label htmlFor="client">Client</Label>
-            <Select value={clientId} onValueChange={setClientId} disabled={isReadOnly}>
+            <Select value={clientId} onValueChange={setClientId} disabled={isReadOnly || isCancelled}>
               <SelectTrigger id="client">
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
@@ -1044,7 +1058,7 @@ export function InvoiceUploadReviewDialog({
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
               placeholder="Auto-generated if empty"
-              disabled={isReadOnly}
+              disabled={isReadOnly || isCancelled}
             />
           </div>
 
@@ -1056,7 +1070,7 @@ export function InvoiceUploadReviewDialog({
               value={issueDate}
               onChange={(e) => setIssueDate(e.target.value)}
               required
-              disabled={isReadOnly}
+              disabled={isReadOnly || isCancelled}
             />
           </div>
 
@@ -1071,7 +1085,7 @@ export function InvoiceUploadReviewDialog({
               onChange={(e) => setTotalAmount(e.target.value)}
               placeholder="0.00"
               required
-              disabled={isReadOnly}
+              disabled={isReadOnly || isCancelled}
             />
           </div>
 
@@ -1084,7 +1098,7 @@ export function InvoiceUploadReviewDialog({
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
               required
-              disabled={isReadOnly}
+              disabled={isReadOnly || isCancelled}
             />
           </div>
 
@@ -1124,17 +1138,28 @@ export function InvoiceUploadReviewDialog({
                 </Button>
               )}
 
-              {/* Save/Update - highlighted (primary) - only if not cancelled */}
-              {!isReadOnly && !isCancelled && (
-                <Button 
-                  onClick={handleSave} 
-                  disabled={isLoading || !isFormValid}
-                  className={isMobile ? "w-full" : ""}
+              {/* Delete and Save buttons on same line - Delete left, Save right */}
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={isLoading || (isReview ? cancelMutation.isPending : moveToTrashMutation.isPending)}
+                  className="flex-1"
                 >
-                  {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save
+                  {(isReview ? cancelMutation.isPending : moveToTrashMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Delete
                 </Button>
-              )}
+                {!isReadOnly && !isCancelled && (
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={isLoading || !isFormValid}
+                    className="flex-1"
+                  >
+                    {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save
+                  </Button>
+                )}
+              </div>
               
               {/* Revert buttons - only shown when sent/paid (after review) */}
               {!isReview && isSent && !isPaid && derivedValues.outstanding === 0 && (
@@ -1160,17 +1185,6 @@ export function InvoiceUploadReviewDialog({
                   Mark as Not Paid
                 </Button>
               )}
-
-              {/* Delete - highlighted (destructive) - moved below revert buttons */}
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isLoading || (isReview ? cancelMutation.isPending : moveToTrashMutation.isPending)}
-                className={isMobile ? "w-full" : ""}
-              >
-                {(isReview ? cancelMutation.isPending : moveToTrashMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Delete
-              </Button>
 
               {/* Cancel/Uncancel buttons - only for draft/review invoices */}
               {/* Mark as Not Cancelled - only for cancelled invoices in review state */}

@@ -1969,7 +1969,7 @@ export default function Invoices() {
               className="h-10 whitespace-nowrap"
             >
               <Plus className="w-4 h-4 mr-1" />
-              New
+              Create
             </Button>
           </>
         }
