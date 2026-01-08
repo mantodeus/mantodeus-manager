@@ -105,13 +105,17 @@ function Router() {
 
   // Show loading screen during initial auth check
   // Wait for auth to load before making routing decisions
+  // Note: useAuth has an 8-second timeout to prevent infinite loading
   if (loading) {
     return <AppLoadingScreen />;
   }
 
-  // If not authenticated and not on login page, show loading while redirecting
+  // If not authenticated and not on login page, redirect to login
   // But allow "/" to load to let session restoration happen
+  // After timeout, if no user, we'll redirect via the route restoration logic below
   if (!user && location !== "/login" && location !== "/") {
+    // Show loading briefly while redirecting, but don't block indefinitely
+    // The route restoration effect will handle the redirect
     return <AppLoadingScreen />;
   }
 

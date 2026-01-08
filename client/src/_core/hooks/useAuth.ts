@@ -2,7 +2,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
 import { TRPCClientError } from "@trpc/client";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { UNAUTHED_ERR_MSG } from "@shared/const";
 
 type UseAuthOptions = {
@@ -14,6 +14,9 @@ export function useAuth(options?: UseAuthOptions) {
   const { redirectOnUnauthenticated = false, redirectPath = getLoginUrl() } =
     options ?? {};
   const utils = trpc.useUtils();
+  
+  // Track if we should stop showing loading after timeout
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
     // Retry once on initial load to handle race condition with session restoration
@@ -30,7 +33,24 @@ export function useAuth(options?: UseAuthOptions) {
     refetchOnWindowFocus: false,
     // User info rarely changes - keep it fresh for 5 minutes
     staleTime: 5 * 60 * 1000,
+    networkMode: "online",
   });
+
+  // Set a timeout to stop showing loading after 8 seconds
+  // This prevents infinite loading screen if the server isn't responding
+  useEffect(() => {
+    if (meQuery.isLoading && !loadingTimeout) {
+      const timer = setTimeout(() => {
+        console.warn("[Auth] Query taking too long, stopping loading state");
+        setLoadingTimeout(true);
+      }, 8000); // 8 second timeout
+
+      return () => clearTimeout(timer);
+    } else if (!meQuery.isLoading) {
+      // Reset timeout flag when query completes
+      setLoadingTimeout(false);
+    }
+  }, [meQuery.isLoading, loadingTimeout]);
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: async () => {
@@ -60,9 +80,12 @@ export function useAuth(options?: UseAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
+    // Stop showing loading if timeout is reached, even if query is still pending
+    const isLoading = (meQuery.isLoading && !loadingTimeout) || logoutMutation.isPending;
+    
     return {
       user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      loading: isLoading,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
     };
@@ -72,6 +95,7 @@ export function useAuth(options?: UseAuthOptions) {
     meQuery.isLoading,
     logoutMutation.error,
     logoutMutation.isPending,
+    loadingTimeout,
   ]);
 
   useEffect(() => {
