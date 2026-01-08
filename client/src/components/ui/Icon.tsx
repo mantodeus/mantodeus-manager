@@ -50,6 +50,7 @@ export {
   DocumentTextIcon as FileText,
   DocumentCheckIcon as FileCheck,
   DocumentArrowDownIcon as FileDown,
+  DocumentXMarkIcon as FileX,
   FolderOpenIcon as FolderOpen,
   DocumentDuplicateIcon as Copy,
   ArrowDownTrayIcon as Download,
