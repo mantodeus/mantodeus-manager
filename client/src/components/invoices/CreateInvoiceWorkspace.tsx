@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { DocumentCurrencyEuro, X, Eye, Loader2 } from "@/components/ui/Icon";
@@ -168,19 +169,29 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   return (
     <>
       {/* Backdrop overlay - matches edit invoice dialog */}
-      <div 
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-        onClick={onClose}
-        onWheel={(e) => e.preventDefault()}
-        onTouchMove={(e) => e.preventDefault()}
-        onScroll={(e) => e.preventDefault()}
-        style={{ 
-          pointerEvents: 'auto',
-          overflow: 'hidden',
-          touchAction: 'none',
-        }}
-        aria-hidden="true"
-      />
+      {createPortal(
+        <div 
+          className="fixed z-[100] bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          onClick={onClose}
+          onWheel={(e) => e.preventDefault()}
+          onTouchMove={(e) => e.preventDefault()}
+          onScroll={(e) => e.preventDefault()}
+          style={{ 
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100%',
+            height: '100%',
+            minHeight: '100vh',
+            pointerEvents: 'auto',
+            overflow: 'hidden',
+            touchAction: 'none',
+          }}
+          aria-hidden="true"
+        />,
+        document.body
+      )}
       
       {/* Preview Panel - Left side - matches edit invoice dialog */}
       <div

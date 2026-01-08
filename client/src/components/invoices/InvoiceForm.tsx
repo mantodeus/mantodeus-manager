@@ -547,8 +547,8 @@ export function InvoiceForm({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+          <div className="flex gap-4">
+            <div className="space-y-2 flex-1 min-w-0">
               <Label>Issue Date</Label>
               <Input
                 type="date"
@@ -557,7 +557,7 @@ export function InvoiceForm({
                 disabled={isReadOnly || isCancelled}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1 min-w-0">
               <Label>Due Date</Label>
               <Input
                 type="date"
