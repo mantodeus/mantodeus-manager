@@ -412,6 +412,11 @@ export function InvoiceStatusActionsDropdown({
   const handleAction = (action: InvoiceStatusAction) => {
     switch (action) {
       case "send":
+        // Check if invoice is cancelled - must be marked as not cancelled before sending
+        if (invoice.cancelledAt !== null && invoice.cancelledAt !== undefined) {
+          toast.error("Cancelled invoices cannot be sent. Please mark the invoice as not cancelled first.");
+          return;
+        }
         // Validate before sending
         if (!invoice.dueDate) {
           toast.error("Invoice must have a due date before it can be sent");

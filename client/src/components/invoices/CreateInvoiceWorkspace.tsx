@@ -29,6 +29,8 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   
   // Prevent body scrolling when workspace is open
   useEffect(() => {
+    if (!open) return; // Only prevent scrolling when workspace is open
+
     const originalBodyOverflow = document.body.style.overflow;
     const originalBodyPosition = document.body.style.position;
     const originalBodyWidth = document.body.style.width;
@@ -61,7 +63,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       window.removeEventListener('wheel', preventScroll, { capture: true });
       window.removeEventListener('touchmove', preventScroll, { capture: true });
     };
-  }, []);
+  }, [open]);
   
   // Preview state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -265,7 +267,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
         onMouseDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-start justify-between gap-4">

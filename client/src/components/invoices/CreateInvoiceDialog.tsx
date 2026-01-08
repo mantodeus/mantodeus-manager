@@ -89,7 +89,7 @@ export function CreateInvoiceDialog({
         <div className="separator-fade" />
 
         <div className={cn(
-          "px-6 pt-4 overflow-y-auto flex-1",
+          "px-6 pt-4 overflow-y-auto flex-1 min-h-0",
           "pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
         )}>
           <InvoiceForm

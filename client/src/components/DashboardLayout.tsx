@@ -278,7 +278,7 @@ function DashboardLayoutContent({
         {isMobile && (
           <div className="h-0" />
         )}
-        <main className="app-content flex-1 min-w-0 p-4 md:pb-4">
+        <main className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 md:pb-4">
           {children}
         </main>
       </SidebarInset>
@@ -319,7 +319,7 @@ function MobileDashboardLayoutContent({
     <div className="flex min-h-svh w-full flex-col">
       <div className="h-0" />
 
-      <main className="app-content flex-1 min-w-0 p-4">
+      <main className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4">
         {children}
       </main>
 

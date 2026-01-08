@@ -341,6 +341,11 @@ export function InvoiceForm({
 
   const handleSend = async () => {
     if (!invoice || !invoiceId) return;
+    // Check if invoice is cancelled - must be marked as not cancelled before sending
+    if (isCancelled) {
+      toast.error("Cancelled invoices cannot be sent. Please mark the invoice as not cancelled first.");
+      return;
+    }
     // Validate before sending
     if (!formState.dueDate) {
       toast.error("Invoice must have a due date before it can be sent");
@@ -395,80 +400,6 @@ export function InvoiceForm({
   };
 
   // Lifecycle action handlers removed - all actions now handled via InvoiceStatusActionsDropdown
-
-  // Header button logic
-  const getHeaderButtons = () => {
-    if (isCreate) return null;
-    
-    return (
-      <div className="flex items-center gap-2">
-        {/* Preview button - always visible */}
-        {onPreview && (
-          <Button
-            type="button"
-            variant="outline"
-            size={isMobile ? "sm" : "icon"}
-            onClick={onPreview}
-            disabled={isLoading}
-            className={cn(isMobile && "gap-2")}
-          >
-            <Eye className="h-4 w-4" />
-            {isMobile && "Preview"}
-          </Button>
-        )}
-        
-        {/* Lifecycle button - Send/Sent/Paid */}
-        {invoiceState === 'DRAFT' && (
-          <Button
-            type="button"
-            onClick={handleSend}
-            disabled={isLoading || !formState.dueDate || totals.total <= 0}
-            size={isMobile ? "sm" : "default"}
-            className={cn(isMobile && "gap-2", "bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700")}
-          >
-            <Send className="h-4 w-4" />
-            {isMobile ? "Send" : "Send"}
-          </Button>
-        )}
-        {invoiceState === 'SENT' && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled
-            size={isMobile ? "sm" : "default"}
-            className={cn(isMobile && "gap-2", "bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50")}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            {isMobile ? "Sent" : "Sent"}
-          </Button>
-        )}
-        {invoiceState === 'PARTIAL' && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled
-            size={isMobile ? "sm" : "default"}
-            className={cn(isMobile && "gap-2", "bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50")}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            {isMobile ? "Sent" : "Sent"}
-          </Button>
-        )}
-        {invoiceState === 'PAID' && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled
-            size={isMobile ? "sm" : "default"}
-            className={cn(isMobile && "gap-2", "bg-pink-500 text-white dark:bg-[#00FF88] dark:text-black border-pink-500/50 dark:border-[#00FF88]/50")}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            {isMobile ? "Paid" : "Paid"}
-          </Button>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6 w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -795,6 +726,19 @@ export function InvoiceForm({
       <div className="flex flex-col gap-2 pt-4 border-t">
         {/* Custom content before footer buttons (e.g., Update Preview button) */}
         {renderBeforeFooter}
+        
+        {/* Send button - only for non-cancelled draft invoices */}
+        {!isCreate && invoice && invoiceState === 'DRAFT' && !isCancelled && (
+          <Button
+            type="button"
+            onClick={handleSend}
+            disabled={isLoading || !formState.dueDate || totals.total <= 0}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
+          >
+            <Send className="h-4 w-4 mr-2" />
+            Send
+          </Button>
+        )}
         
         {/* Delete and Update buttons - lifecycle actions are now in status badge dropdown */}
         <div className="flex gap-2 pt-2 border-t">
