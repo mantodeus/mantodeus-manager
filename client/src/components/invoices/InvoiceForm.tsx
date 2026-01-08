@@ -533,10 +533,10 @@ export function InvoiceForm({
                 }}
                 disabled={isReadOnly || isCancelled}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a client" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="start">
                   <SelectItem value="none">None</SelectItem>
                   {contacts.map((contact) => (
                     <SelectItem key={contact.id} value={String(contact.id)}>
@@ -547,8 +547,8 @@ export function InvoiceForm({
               </Select>
             </div>
           </div>
-          <div className="flex gap-4">
-            <div className="space-y-2 flex-1 min-w-0">
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
+            <div className="space-y-2">
               <Label>Issue Date</Label>
               <Input
                 type="date"
@@ -557,7 +557,8 @@ export function InvoiceForm({
                 disabled={isReadOnly || isCancelled}
               />
             </div>
-            <div className="space-y-2 flex-1 min-w-0">
+            <div></div>
+            <div className="space-y-2">
               <Label>Due Date</Label>
               <Input
                 type="date"
@@ -571,7 +572,7 @@ export function InvoiceForm({
           </div>
           <div className="space-y-2">
             <Label>Service Period</Label>
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
               <Input
                 type="date"
                 value={formState.servicePeriodStart ?? ""}
@@ -579,9 +580,9 @@ export function InvoiceForm({
                   setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
                 }
                 disabled={isReadOnly || isCancelled}
-                className="flex-1 min-w-0"
+                className="w-full"
               />
-              <span className="text-muted-foreground text-sm shrink-0">→</span>
+              <span className="text-muted-foreground text-sm">→</span>
               <Input
                 type="date"
                 value={formState.servicePeriodEnd ?? ""}
@@ -589,7 +590,7 @@ export function InvoiceForm({
                   setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
                 }
                 disabled={isReadOnly || isCancelled}
-                className="flex-1 min-w-0"
+                className="w-full"
               />
             </div>
           </div>
