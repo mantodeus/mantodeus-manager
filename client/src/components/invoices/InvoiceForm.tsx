@@ -253,6 +253,13 @@ export function InvoiceForm({
     },
     onError: (err) => toast.error(err.message),
   });
+  const markAsNotCancelledMutation = trpc.invoices.markAsNotCancelled.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice marked as not cancelled");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const invoice = getInvoiceQuery.data ?? null;
   const isMobile = useIsMobile();
@@ -276,8 +283,8 @@ export function InvoiceForm({
   const isReview = invoiceState === 'REVIEW';
   const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
   const isPaid = invoiceState === 'PAID';
-  const isReadOnly = isSent || isPaid;
   const isCancelled = invoice?.cancelledAt !== null && invoice?.cancelledAt !== undefined;
+  const isReadOnly = isSent || isPaid || isCancelled; // Cancelled invoices are also read-only
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -507,7 +514,7 @@ export function InvoiceForm({
                 value={formState.invoiceNumber}
                 onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
                 placeholder="RE-2025-0007"
-                disabled={isReadOnly}
+                disabled={isReadOnly || isCancelled}
               />
               <p className="text-xs text-muted-foreground">
                 Invoice numbers must be unique and sequential (German tax requirement).
@@ -524,7 +531,7 @@ export function InvoiceForm({
                     clientId: normalized === undefined || val === "none" ? undefined : normalized,
                   }));
                 }}
-                disabled={isReadOnly}
+                disabled={isReadOnly || isCancelled}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a client" />
@@ -547,7 +554,7 @@ export function InvoiceForm({
                 type="date"
                 value={formState.issueDate}
                 onChange={(e) => setFormState((prev) => ({ ...prev, issueDate: e.target.value }))}
-                disabled={isReadOnly}
+                disabled={isReadOnly || isCancelled}
               />
             </div>
             <div className="space-y-2">
@@ -558,7 +565,7 @@ export function InvoiceForm({
                 onChange={(e) =>
                   setFormState((prev) => ({ ...prev, dueDate: e.target.value || undefined }))
                 }
-                disabled={isReadOnly}
+                disabled={isReadOnly || isCancelled}
               />
             </div>
           </div>
@@ -571,7 +578,7 @@ export function InvoiceForm({
                 onChange={(e) =>
                   setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
                 }
-                disabled={isReadOnly}
+                disabled={isReadOnly || isCancelled}
                 className="w-full"
               />
               <span className="text-muted-foreground text-sm">→</span>
@@ -581,7 +588,7 @@ export function InvoiceForm({
                 onChange={(e) =>
                   setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
                 }
-                disabled={isReadOnly}
+                disabled={isReadOnly || isCancelled}
                 className="w-full"
               />
             </div>
@@ -605,7 +612,7 @@ export function InvoiceForm({
             <Label>Line Items</Label>
             <p className="text-xs text-muted-foreground">Add services or products via the dedicated modal.</p>
           </div>
-          {!isReadOnly && (
+          {!isReadOnly && !isCancelled && (
             <Button type="button" variant="outline" onClick={() => openItemEditor(null)} className="gap-2">
               <Plus className="w-4 h-4" />
               Add Line Item
@@ -700,7 +707,7 @@ export function InvoiceForm({
             value={formState.referenceNumber ?? ""}
             onChange={(e) => setFormState((prev) => ({ ...prev, referenceNumber: e.target.value }))}
             placeholder="Optional reference"
-            disabled={isReadOnly}
+            disabled={isReadOnly || isCancelled}
           />
         </div>
       </div>
@@ -767,9 +774,25 @@ export function InvoiceForm({
             disabled={isLoading || isReadOnly || isCancelled}
           >
             {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            {isCreate ? "Save" : "Update"}
+            Save
           </Button>
         </div>
+        
+        {/* Mark as Not Cancelled button - only for cancelled invoices, at bottom */}
+        {!isCreate && invoice && isCancelled && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              markAsNotCancelledMutation.mutate({ id: invoiceId! });
+            }}
+            disabled={isLoading || markAsNotCancelledMutation.isPending}
+            className="w-full bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
+          >
+            {markAsNotCancelledMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Mark as Not Cancelled
+          </Button>
+        )}
       </div>
 
       {/* Dialogs */}

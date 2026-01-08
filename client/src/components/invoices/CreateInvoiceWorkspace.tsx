@@ -27,31 +27,8 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   
-  // Prevent body scrolling when workspace is open
-  useEffect(() => {
-    if (!open) return; // Only prevent scrolling when workspace is open
-
-    const originalBodyOverflow = document.body.style.overflow;
-    const originalBodyPosition = document.body.style.position;
-    const originalBodyWidth = document.body.style.width;
-    const originalBodyTop = document.body.style.top;
-    const scrollY = window.scrollY;
-
-    // Lock body scroll
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.top = `-${scrollY}px`;
-
-    return () => {
-      // Restore original body styles
-      document.body.style.overflow = originalBodyOverflow;
-      document.body.style.position = originalBodyPosition;
-      document.body.style.width = originalBodyWidth;
-      document.body.style.top = originalBodyTop;
-      window.scrollTo(0, scrollY);
-    };
-  }, [open]);
+  // Note: We don't prevent body scrolling - the background page should remain scrollable
+  // The workspace dialog handles its own internal scrolling
   
   // Preview state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);

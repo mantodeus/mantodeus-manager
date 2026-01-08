@@ -201,7 +201,7 @@ export function InvoiceUploadReviewDialog({
   });
   const updateMutation = trpc.invoices.update.useMutation({
     onSuccess: () => {
-      toast.success("Invoice updated");
+      toast.success("Invoice saved");
       onOpenChange(false);
       utils.invoices.list.invalidate();
       utils.invoices.listNeedsReview.invalidate();
@@ -1086,9 +1086,6 @@ export function InvoiceUploadReviewDialog({
               required
               disabled={isReadOnly}
             />
-            <p className="text-xs text-muted-foreground">
-              Due date is required before sending the invoice
-            </p>
           </div>
 
           {/* Payment Date - shown only when invoice is paid */}
@@ -1135,7 +1132,7 @@ export function InvoiceUploadReviewDialog({
                   className={isMobile ? "w-full" : ""}
                 >
                   {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isReview ? "Save" : "Update"}
+                  Save
                 </Button>
               )}
               
@@ -1176,33 +1173,20 @@ export function InvoiceUploadReviewDialog({
               </Button>
 
               {/* Cancel/Uncancel buttons - only for draft/review invoices */}
-              {(isDraft || isReview) && (
-                <>
-                  {isCancelled ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => markAsNotCancelledMutation.mutate({ id: invoiceId! })}
-                      disabled={isLoading || markAsNotCancelledMutation.isPending}
-                      className={cn(
-                        isMobile ? "w-full" : "",
-                        "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
-                      )}
-                    >
-                      {markAsNotCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Mark as Not Cancelled
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="destructive"
-                      onClick={() => markAsCancelledMutation.mutate({ id: invoiceId! })}
-                      disabled={isLoading || markAsCancelledMutation.isPending}
-                      className={isMobile ? "w-full" : ""}
-                    >
-                      {markAsCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Mark as Cancelled
-                    </Button>
+              {/* Mark as Not Cancelled - only for cancelled invoices in review state */}
+              {isReview && isCancelled && (
+                <Button
+                  variant="outline"
+                  onClick={() => markAsNotCancelledMutation.mutate({ id: invoiceId! })}
+                  disabled={isLoading || markAsNotCancelledMutation.isPending}
+                  className={cn(
+                    isMobile ? "w-full" : "",
+                    "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
                   )}
-                </>
+                >
+                  {markAsNotCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Mark as Not Cancelled
+                </Button>
               )}
             </div>
           )}
@@ -1242,7 +1226,7 @@ export function InvoiceUploadReviewDialog({
                     className="flex-1"
                   >
                     {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Update
+                    Save
                   </Button>
                 )}
               </div>
