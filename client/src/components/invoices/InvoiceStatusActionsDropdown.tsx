@@ -332,8 +332,8 @@ export function InvoiceStatusActionsDropdown({
       return (
         <Button
           variant="default"
-          size="sm"
-          className="text-xs border-[#F2F1EE]/50 dark:border-[#0A0F14]/50 cursor-pointer"
+          size="default"
+          className="text-sm font-semibold border-[#F2F1EE]/50 dark:border-[#0A0F14]/50 cursor-pointer"
           style={{
             backgroundColor: isDarkMode ? "#0A0F14" : "#F2F1EE",
             color: isDarkMode ? "#FFFFFF" : undefined,
@@ -348,7 +348,7 @@ export function InvoiceStatusActionsDropdown({
     // Button priority: OVERDUE > PARTIAL > SENT/PAID
     if (derivedValues.isOverdue) {
       return (
-        <Button variant="destructive" size="sm" className="text-xs cursor-pointer">
+        <Button variant="destructive" size="default" className="text-sm font-semibold cursor-pointer">
           OVERDUE
         </Button>
       );
@@ -358,8 +358,8 @@ export function InvoiceStatusActionsDropdown({
       return (
         <Button
           variant="default"
-          size="sm"
-          className="text-xs bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50 cursor-pointer hover:bg-orange-600 dark:hover:bg-orange-700"
+          size="default"
+          className="text-sm font-semibold bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50 cursor-pointer hover:bg-orange-600 dark:hover:bg-orange-700"
         >
           PARTIAL
         </Button>
@@ -370,8 +370,8 @@ export function InvoiceStatusActionsDropdown({
       return (
         <Button
           variant="default"
-          size="sm"
-          className="text-xs cursor-pointer"
+          size="default"
+          className="text-sm font-semibold cursor-pointer"
           style={{
             backgroundColor: isDarkMode ? "#00FF88" : "rgb(236, 72, 153)",
             color: isDarkMode ? "#000000" : "white",
@@ -387,8 +387,8 @@ export function InvoiceStatusActionsDropdown({
       return (
         <Button
           variant="default"
-          size="sm"
-          className="text-xs bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50 cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700"
+          size="default"
+          className="text-sm font-semibold bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50 cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700"
         >
           SENT
         </Button>
@@ -396,11 +396,11 @@ export function InvoiceStatusActionsDropdown({
     }
 
     if (invoiceState === "DRAFT") {
-      return <Button variant="outline" size="sm" className="text-xs cursor-pointer">DRAFT</Button>;
+      return <Button variant="outline" size="default" className="text-sm font-semibold cursor-pointer">DRAFT</Button>;
     }
 
     if (invoiceState === "REVIEW") {
-      return <Button variant="outline" size="sm" className="text-xs cursor-pointer">NEEDS REVIEW</Button>;
+      return <Button variant="outline" size="default" className="text-sm font-semibold cursor-pointer">NEEDS REVIEW</Button>;
     }
 
     return null;
@@ -514,22 +514,22 @@ export function InvoiceStatusActionsDropdown({
   return (
     <>
       <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-        <DropdownMenuTrigger asChild>
-          <div
-            ref={badgeRef}
-            className="inline-block cursor-pointer select-none"
-            {...longPressHandlers}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (availableActions.length > 0) {
-                setDropdownOpen(true);
-              }
-            }}
-          >
+        <div
+          ref={badgeRef}
+          className="inline-block"
+          {...longPressHandlers}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (availableActions.length > 0) {
+              setDropdownOpen(true);
+            }
+          }}
+        >
+          <DropdownMenuTrigger asChild>
             {renderStatusBadge()}
-          </div>
-        </DropdownMenuTrigger>
+          </DropdownMenuTrigger>
+        </div>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />

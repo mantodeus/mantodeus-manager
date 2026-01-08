@@ -156,13 +156,11 @@ function Router() {
     });
   }
 
-  // If not authenticated and not on login page, redirect to login
-  // But allow "/" to load to let session restoration happen
-  // After timeout, if no user, we'll redirect via the route restoration logic below
-  if (!user && location !== "/login" && location !== "/") {
-    // Show loading briefly while redirecting, but don't block indefinitely
-    // The route restoration effect will handle the redirect
-    return <AppLoadingScreen />;
+  // If not authenticated and the auth query is complete, go to login immediately.
+  // Avoid showing the loading screen here (Cursor/PWA can get stuck).
+  if (!user && isQueryComplete && location !== "/login") {
+    setLocation("/login");
+    return <Login />;
   }
 
   return (
