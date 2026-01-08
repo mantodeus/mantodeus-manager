@@ -16,7 +16,7 @@ import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMe
 import { createPortal } from "react-dom";
 import { useLongPress } from "@/hooks/useLongPress";
 import { cn } from "@/lib/utils";
-import { Edit, Trash2, Copy, CheckCircle2, Archive, RotateCcw, Eye, DollarSign, XCircle, Send } from "@/components/ui/Icon";
+import { Edit, Trash2, Copy, CheckCircle2, Archive, RotateCcw, Eye, DollarSign, XCircle, Send, DocumentCurrencyEuro } from "@/components/ui/Icon";
 
 export type CenteredContextMenuAction =
   | "edit"
@@ -66,7 +66,7 @@ const actionConfig: Record<
   revertToDraft: { icon: RotateCcw, label: "Revert to draft", variant: "destructive" },
   revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" },
   markAsSent: { icon: Send, label: "Mark as sent", variant: "default" },
-  markAsPaid: { icon: DollarSign, label: "Mark as paid", variant: "default" },
+  markAsPaid: { icon: DocumentCurrencyEuro, label: "Mark as paid", variant: "default" },
   markAsCancelled: { icon: XCircle, label: "Mark as cancelled", variant: "destructive" },
   markAsNotCancelled: { icon: CheckCircle2, label: "Mark as not cancelled", variant: "default" },
   markAsInOrder: { icon: CheckCircle2, label: "Mark as In Order", variant: "default" },

@@ -562,7 +562,7 @@ export function InvoiceUploadReviewDialog({
         actions.push({
           action: "markAsPaid",
           label: "Mark as Paid",
-          icon: <CheckCircle2 className="h-4 w-4" />,
+          icon: <DocumentCurrencyEuro className="h-4 w-4" />,
           onClick: handleMarkAsPaid,
         });
         actions.push({
@@ -578,7 +578,7 @@ export function InvoiceUploadReviewDialog({
       actions.push({
         action: "markAsPaid",
         label: "Mark as Paid",
-        icon: <CheckCircle2 className="h-4 w-4" />,
+        icon: <DocumentCurrencyEuro className="h-4 w-4" />,
         onClick: handleMarkAsPaid,
       });
       // Always show "Revert to Draft" for SENT/OVERDUE invoices

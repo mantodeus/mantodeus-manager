@@ -14,7 +14,7 @@ import { MarkAsNotPaidDialog } from "./MarkAsNotPaidDialog";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Send, CheckCircle2, X, FileX, RotateCcw, Plus, XCircle } from "@/components/ui/Icon";
+import { Loader2, Send, CheckCircle2, X, FileX, RotateCcw, Plus, XCircle, DocumentCurrencyEuro } from "@/components/ui/Icon";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { useLongPress } from "@/hooks/useLongPress";
@@ -138,7 +138,7 @@ function getInvoiceStatusActions(invoice: InvoiceStatusActionsDropdownProps["inv
     actions.push({
       action: "markAsPaid",
       label: "Mark as Paid",
-      icon: <CheckCircle2 className="h-4 w-4" />,
+      icon: <DocumentCurrencyEuro className="h-4 w-4" />,
     });
     // Always show "Revert to Draft" option for SENT/OVERDUE invoices
     // Enabled if no payments, disabled if payments exist (to preserve payment data)
@@ -176,7 +176,7 @@ function getInvoiceStatusActions(invoice: InvoiceStatusActionsDropdownProps["inv
     actions.push({
       action: "markAsPaid",
       label: "Mark as Paid",
-      icon: <CheckCircle2 className="h-4 w-4" />,
+      icon: <DocumentCurrencyEuro className="h-4 w-4" />,
     });
     // Mark as not paid is allowed (preserves payment data)
     actions.push({
