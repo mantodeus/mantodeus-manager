@@ -276,9 +276,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
           right: '1.5rem',
           bottom: '1.5rem',
           left: 'calc(0.5rem + 40vw)',
-          width: 'calc(-2rem + 60vw)',
-          height: 'calc(-3rem + 100vh)',
-          maxHeight: 'calc(-3rem + 100vh)',
+          width: 'calc(60vw - 2rem)',
         }}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
