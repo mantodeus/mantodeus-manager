@@ -35,7 +35,8 @@ export function useAuth(options?: UseAuthOptions) {
     refetchOnWindowFocus: false,
     // User info rarely changes - keep it fresh for 5 minutes
     staleTime: 5 * 60 * 1000,
-    networkMode: "online",
+    // Avoid "paused" queries when the browser reports offline (Cursor/PWA).
+    networkMode: "always",
   });
 
   // Debug logging for Cursor browser issues
@@ -53,28 +54,33 @@ export function useAuth(options?: UseAuthOptions) {
 
   // Set a timeout to stop showing loading after 5 seconds (more aggressive)
   // This prevents infinite loading screen if the server isn't responding
+  const isQueryLoading = meQuery.status === "pending" || meQuery.status === "loading";
+
   useEffect(() => {
-    if (meQuery.isLoading && !loadingTimeout) {
+    if (isQueryLoading && !loadingTimeout) {
       const timer = setTimeout(() => {
         console.warn("[Auth] Query taking too long, stopping loading state after 5s");
         setLoadingTimeout(true);
       }, 5000); // 5 second timeout (more aggressive)
 
       return () => clearTimeout(timer);
-    } else if (!meQuery.isLoading) {
+    } else if (!isQueryLoading) {
       // Reset timeout flag when query completes
       setLoadingTimeout(false);
     }
-  }, [meQuery.isLoading, loadingTimeout]);
+  }, [isQueryLoading, loadingTimeout]);
 
   // Absolute maximum timeout: stop loading after 10 seconds no matter what
   useEffect(() => {
-    const elapsed = Date.now() - mountTime;
-    if (elapsed > 10000 && meQuery.isLoading) {
-      console.error("[Auth] Absolute timeout reached (10s), forcing loading to stop");
-      setLoadingTimeout(true);
-    }
-  }, [mountTime, meQuery.isLoading]);
+    if (!isQueryLoading) return;
+    const timer = setTimeout(() => {
+      if (isQueryLoading) {
+        console.error("[Auth] Absolute timeout reached (10s), forcing loading to stop");
+        setLoadingTimeout(true);
+      }
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [isQueryLoading]);
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: async () => {
@@ -107,7 +113,6 @@ export function useAuth(options?: UseAuthOptions) {
     // Stop showing loading if timeout is reached, even if query is still pending
     // Also check status directly - if it's 'error' or 'success', we're not loading
     const queryStatus = meQuery.status;
-    const isQueryLoading = queryStatus === 'pending' || queryStatus === 'loading';
     const isLoading = (isQueryLoading && !loadingTimeout) || logoutMutation.isPending;
     
     return {

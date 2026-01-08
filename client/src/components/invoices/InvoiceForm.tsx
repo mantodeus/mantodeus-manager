@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues, formatCurrency as formatCurrencyUtil } from "@/lib/invoiceState";
 import { AddPaymentDialog } from "./AddPaymentDialog";
 import { ShareInvoiceDialog } from "./ShareInvoiceDialog";
-import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 
@@ -232,48 +231,9 @@ export function InvoiceForm({
     onError: (err) => toast.error(err.message || "Failed to save invoice"),
   });
 
-  // Mutations for lifecycle actions - MUST be called before any early returns
+  // NOTE: Lifecycle action mutations removed - all lifecycle actions are now handled
+  // via the InvoiceStatusActionsDropdown component in InvoiceDetail page
   const utils = trpc.useUtils();
-  const revertToDraftMutation = trpc.invoices.revertToDraft.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice reverted to draft");
-      utils.invoices.get.invalidate({ id: invoiceId! });
-      onSuccess?.();
-    },
-    onError: (error) => toast.error(error.message || "Failed to revert invoice"),
-  });
-  const revertToSentMutation = trpc.invoices.revertToSent.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice reverted to sent");
-      utils.invoices.get.invalidate({ id: invoiceId! });
-      onSuccess?.();
-    },
-    onError: (error) => toast.error(error.message || "Failed to revert invoice"),
-  });
-  const markAsPaidMutation = trpc.invoices.markAsPaid.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice marked as paid");
-      utils.invoices.get.invalidate({ id: invoiceId! });
-      onSuccess?.();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-  const markAsCancelledMutation = trpc.invoices.markAsCancelled.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice marked as cancelled");
-      utils.invoices.get.invalidate({ id: invoiceId! });
-      onSuccess?.();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-  const markAsNotCancelledMutation = trpc.invoices.markAsNotCancelled.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice marked as not cancelled");
-      utils.invoices.get.invalidate({ id: invoiceId! });
-      onSuccess?.();
-    },
-    onError: (err) => toast.error(err.message),
-  });
   const moveToTrashMutation = trpc.invoices.moveToTrash.useMutation({
     onSuccess: () => {
       toast.success("Invoice moved to Rubbish");
@@ -293,7 +253,6 @@ export function InvoiceForm({
   const isMobile = useIsMobile();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
 
   if (!isCreate && !invoice) {
     return <div className="text-sm text-muted-foreground">Loading invoice...</div>;
@@ -426,17 +385,7 @@ export function InvoiceForm({
     }
   };
 
-  const handleRevertToDraft = () => {
-    if (!invoiceId) return;
-    setRevertDialogOpen(false);
-    revertToDraftMutation.mutate({ id: invoiceId, confirmed: true });
-  };
-
-  const handleRevertToSent = () => {
-    if (!invoiceId) return;
-    setRevertDialogOpen(false);
-    revertToSentMutation.mutate({ id: invoiceId, confirmed: true });
-  };
+  // Lifecycle action handlers removed - all actions now handled via InvoiceStatusActionsDropdown
 
   // Header button logic
   const getHeaderButtons = () => {
@@ -884,16 +833,6 @@ export function InvoiceForm({
               utils.invoices.get.invalidate({ id: invoiceId });
               onSuccess?.();
             }}
-          />
-          <RevertInvoiceStatusDialog
-            open={revertDialogOpen}
-            onOpenChange={setRevertDialogOpen}
-            currentStatus={invoiceState === 'PAID' ? 'paid' : 'open'}
-            targetStatus={invoiceState === 'PAID' ? 'open' : 'draft'}
-            invoiceNumber={invoice.invoiceNumber}
-            invoiceAmount={invoice.total}
-            onConfirm={invoiceState === 'PAID' ? handleRevertToSent : handleRevertToDraft}
-            isReverting={revertToDraftMutation.isPending || revertToSentMutation.isPending}
           />
         </>
       )}

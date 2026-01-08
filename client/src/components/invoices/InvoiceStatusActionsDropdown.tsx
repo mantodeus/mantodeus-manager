@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -324,31 +325,14 @@ export function InvoiceStatusActionsDropdown({
     hapticFeedback: true,
   });
 
-  // Handle right-click (context menu) for desktop
-  useEffect(() => {
-    const badgeElement = badgeRef.current;
-    if (!badgeElement || availableActions.length === 0) return;
-
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDropdownOpen(true);
-    };
-
-    badgeElement.addEventListener("contextmenu", handleContextMenu);
-
-    return () => {
-      badgeElement.removeEventListener("contextmenu", handleContextMenu);
-    };
-  }, [availableActions.length]);
-
-  // Render status badge (same styling as Invoices.tsx)
+  // Render status badge as button (bigger, more touch-friendly)
   const renderStatusBadge = () => {
-    // Cancelled badge (dark color) - highest priority
+    // Cancelled button (dark color) - highest priority
     if (isCancelled) {
       return (
-        <Badge
+        <Button
           variant="default"
+          size="sm"
           className="text-xs border-[#F2F1EE]/50 dark:border-[#0A0F14]/50 cursor-pointer"
           style={{
             backgroundColor: isDarkMode ? "#0A0F14" : "#F2F1EE",
@@ -357,34 +341,37 @@ export function InvoiceStatusActionsDropdown({
           }}
         >
           CANCELLED
-        </Badge>
+        </Button>
       );
     }
 
-    // Badge priority: OVERDUE > PARTIAL > SENT/PAID
+    // Button priority: OVERDUE > PARTIAL > SENT/PAID
     if (derivedValues.isOverdue) {
       return (
-        <Badge variant="destructive" className="text-xs cursor-pointer">
+        <Button variant="destructive" size="sm" className="text-xs cursor-pointer">
           OVERDUE
-        </Badge>
+        </Button>
       );
     }
 
     if (invoiceState === "PARTIAL") {
       return (
-        <Badge
+        <Button
           variant="default"
-          className="text-xs bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50 cursor-pointer"
+          size="sm"
+          className="text-xs bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50 cursor-pointer hover:bg-orange-600 dark:hover:bg-orange-700"
         >
           PARTIAL
-        </Badge>
+        </Button>
       );
     }
 
     if (invoiceState === "PAID") {
       return (
-        <span
-          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 cursor-pointer"
+        <Button
+          variant="default"
+          size="sm"
+          className="text-xs cursor-pointer"
           style={{
             backgroundColor: isDarkMode ? "#00FF88" : "rgb(236, 72, 153)",
             color: isDarkMode ? "#000000" : "white",
@@ -392,27 +379,28 @@ export function InvoiceStatusActionsDropdown({
           }}
         >
           PAID
-        </span>
+        </Button>
       );
     }
 
     if (invoiceState === "SENT") {
       return (
-        <Badge
+        <Button
           variant="default"
-          className="text-xs bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50 cursor-pointer"
+          size="sm"
+          className="text-xs bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50 cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700"
         >
           SENT
-        </Badge>
+        </Button>
       );
     }
 
     if (invoiceState === "DRAFT") {
-      return <Badge variant="outline" className="text-xs cursor-pointer">DRAFT</Badge>;
+      return <Button variant="outline" size="sm" className="text-xs cursor-pointer">DRAFT</Button>;
     }
 
     if (invoiceState === "REVIEW") {
-      return <Badge variant="outline" className="text-xs cursor-pointer">NEEDS REVIEW</Badge>;
+      return <Button variant="outline" size="sm" className="text-xs cursor-pointer">NEEDS REVIEW</Button>;
     }
 
     return null;
@@ -531,6 +519,13 @@ export function InvoiceStatusActionsDropdown({
             ref={badgeRef}
             className="inline-block cursor-pointer select-none"
             {...longPressHandlers}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (availableActions.length > 0) {
+                setDropdownOpen(true);
+              }
+            }}
           >
             {renderStatusBadge()}
           </div>
