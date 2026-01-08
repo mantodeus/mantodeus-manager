@@ -434,17 +434,6 @@ export function InvoiceUploadReviewDialog({
   // Get derived values for revert logic
   const derivedValues = invoice ? getDerivedValues(invoice) : { outstanding: 0, isPaid: false, isPartial: false, isOverdue: false };
 
-  const statusActions = invoice ? getStatusActions(invoice) : [];
-  const { longPressHandlers } = useLongPress({
-    onLongPress: () => {
-      if (statusActions.length > 0) {
-        setStatusMenuOpen(true);
-      }
-    },
-    duration: 500,
-    hapticFeedback: true,
-  });
-  
   // Revert handlers
   const handleRevertToDraft = () => {
     if (!invoice || derivedValues.outstanding > 0) {
@@ -703,6 +692,17 @@ export function InvoiceUploadReviewDialog({
     
     return null;
   }
+
+  const statusActions = invoice ? getStatusActions(invoice) : [];
+  const { longPressHandlers } = useLongPress({
+    onLongPress: () => {
+      if (statusActions.length > 0) {
+        setStatusMenuOpen(true);
+      }
+    },
+    duration: 500,
+    hapticFeedback: true,
+  });
 
   // Auto-open preview on desktop when dialog opens
   useEffect(() => {
