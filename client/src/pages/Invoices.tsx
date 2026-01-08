@@ -1999,12 +1999,6 @@ export default function Invoices() {
             onPopoverOpenChange={setQuarterPopoverOpen}
           />
         </div>
-        {/* Helper text explaining income recognition method */}
-        {companySettings && (
-          <p className="text-xs text-muted-foreground px-1">
-            {getAccountingHelperText(companySettings)}
-          </p>
-        )}
       </div>
 
       {needsReviewInvoices.length > 0 && (
