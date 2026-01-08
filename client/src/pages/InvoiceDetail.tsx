@@ -181,7 +181,7 @@ export default function InvoiceDetail() {
         
         {/* Action buttons below header - Preview and Status Badge Dropdown */}
         {invoice && invoice.source === "created" && (
-          <div className="flex items-center justify-end gap-2 pb-2 border-b">
+          <div className="flex items-center justify-start md:justify-end gap-2 pb-2 border-b">
             <Button
               type="button"
               variant="outline"

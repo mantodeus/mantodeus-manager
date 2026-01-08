@@ -547,51 +547,58 @@ export function InvoiceForm({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
-            <div className="space-y-2">
-              <Label>Issue Date</Label>
-              <Input
-                type="date"
-                value={formState.issueDate}
-                onChange={(e) => setFormState((prev) => ({ ...prev, issueDate: e.target.value }))}
-                disabled={isReadOnly || isCancelled}
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
+              <div className="space-y-2">
+                <Label>Issue Date</Label>
+                <Input
+                  type="date"
+                  value={formState.issueDate}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, issueDate: e.target.value }))}
+                  disabled={isReadOnly || isCancelled}
+                />
+              </div>
+              <div></div>
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  value={formState.dueDate ?? ""}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, dueDate: e.target.value || undefined }))
+                  }
+                  disabled={isReadOnly || isCancelled}
+                />
+              </div>
             </div>
-            <div></div>
-            <div className="space-y-2">
-              <Label>Due Date</Label>
-              <Input
-                type="date"
-                value={formState.dueDate ?? ""}
-                onChange={(e) =>
-                  setFormState((prev) => ({ ...prev, dueDate: e.target.value || undefined }))
-                }
-                disabled={isReadOnly || isCancelled}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Service Period</Label>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
-              <Input
-                type="date"
-                value={formState.servicePeriodStart ?? ""}
-                onChange={(e) =>
-                  setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
-                }
-                disabled={isReadOnly || isCancelled}
-                className="w-full"
-              />
-              <span className="text-muted-foreground text-sm">→</span>
-              <Input
-                type="date"
-                value={formState.servicePeriodEnd ?? ""}
-                onChange={(e) =>
-                  setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
-                }
-                disabled={isReadOnly || isCancelled}
-                className="w-full"
-              />
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
+              <div className="space-y-2">
+                <Label>Service Period</Label>
+                <Input
+                  type="date"
+                  value={formState.servicePeriodStart ?? ""}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
+                  }
+                  disabled={isReadOnly || isCancelled}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex items-end pb-2">
+                <span className="text-muted-foreground text-sm">→</span>
+              </div>
+              <div className="space-y-2">
+                <div className="h-[14px]"></div>
+                <Input
+                  type="date"
+                  value={formState.servicePeriodEnd ?? ""}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
+                  }
+                  disabled={isReadOnly || isCancelled}
+                  className="w-full"
+                />
+              </div>
             </div>
           </div>
           <div className="flex items-center justify-between">
