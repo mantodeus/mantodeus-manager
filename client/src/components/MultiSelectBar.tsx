@@ -100,7 +100,7 @@ export function MultiSelectBar({
     }
     if (onRevertToSent) {
       standardActions.push({
-        label: "Revert to sent",
+        label: "Mark as not paid",
         icon: RotateCcw,
         onClick: onRevertToSent,
         variant: "default",

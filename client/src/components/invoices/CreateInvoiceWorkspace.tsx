@@ -72,6 +72,8 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const previewGenerationRef = useRef<AbortController | null>(null);
   const getFormDataRef = useRef<(() => InvoicePreviewData | null) | null>(null);
+  const [previewZoom, setPreviewZoom] = useState(1);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
 
   const handleSuccess = useCallback(async () => {
     toast.success("Invoice created");
@@ -234,13 +236,29 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
               <div className="text-sm text-muted-foreground">Generating...</div>
             )}
           </div>
-          <div className="flex-1 overflow-hidden rounded-b-lg">
+          <div 
+            ref={previewContainerRef}
+            data-preview-container
+            className="flex-1 overflow-auto rounded-b-lg"
+            style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
+          >
             {previewUrl ? (
-              <iframe
-                src={previewUrl}
-                className="w-full h-full border-0"
-                title={previewFileName}
-              />
+              <div
+                style={{
+                  transform: `scale(${previewZoom})`,
+                  transformOrigin: 'top left',
+                  width: `${100 / previewZoom}%`,
+                  height: `${100 / previewZoom}%`,
+                  transition: 'transform 0.1s ease-out',
+                }}
+              >
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full border-0"
+                  title={previewFileName}
+                  style={{ pointerEvents: 'auto' }}
+                />
+              </div>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 <p>Preview will appear here when you update it</p>
@@ -252,7 +270,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
 
       {/* Form Panel - Right side - matches edit invoice dialog */}
       <div
-        className="fixed z-[60] bg-background shadow-lg rounded-lg flex flex-col"
+        className="fixed z-[60] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
         style={{
           top: '1.5rem',
           right: '1.5rem',

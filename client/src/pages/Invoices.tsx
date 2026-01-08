@@ -771,7 +771,7 @@ export default function Invoices() {
   });
   const revertToSentMutation = trpc.invoices.revertToSent.useMutation({
     onSuccess: () => {
-      toast.success("Invoice reverted to sent");
+      toast.success("Invoice marked as not paid");
       refetch();
       refetchNeedsReview();
     },
@@ -1483,7 +1483,7 @@ export default function Invoices() {
       setBatchRevertDialogOpen(true);
     } else {
       // No valid invoices - show error
-      toast.error("No invoices can be reverted to sent. All selected invoices are not eligible for this action.");
+      toast.error("No invoices can be marked as not paid. All selected invoices are not eligible for this action.");
       if (skipped.length > 0) {
         toast.warning(
           `Reasons: ${skipped.map(s => s.reason).join(", ")}`
@@ -1492,7 +1492,7 @@ export default function Invoices() {
     }
   };
   
-  // Handler for confirmed batch revert to sent
+  // Handler for confirmed batch mark as not paid
   // CRITICAL: This handler is ONLY called from RevertInvoiceStatusDialog.onConfirm
   // after the user has acknowledged the warning by checking the checkbox.
   // Never call this directly - always go through the dialog.
@@ -1511,7 +1511,7 @@ export default function Invoices() {
       );
     }
     if (batchRevertData.validInvoiceIds.length > 0) {
-      toast.success(`Reverted ${batchRevertData.validInvoiceIds.length} invoice(s) to sent`);
+      toast.success(`Marked ${batchRevertData.validInvoiceIds.length} invoice(s) as not paid`);
     }
     
     // Close dialog and reset
@@ -2277,7 +2277,7 @@ export default function Invoices() {
                                 setRevertDialogOpen(true);
                                 break;
                               case "revertToSent":
-                                // Show revert dialog with warning and checkbox requirement
+                                // Show mark as not paid dialog with warning and checkbox requirement
                                 setRevertTarget({ 
                                   id: invoice.id, 
                                   targetStatus: "open", 

@@ -47,7 +47,7 @@ export function MarkAsNotPaidDialog({
                 <RadioGroupItem value="sent" id="revert-sent" className="mt-1" />
                 <div className="flex-1 space-y-1">
                   <Label htmlFor="revert-sent" className="cursor-pointer font-medium">
-                    Revert to Sent
+                    Mark as Not Paid
                   </Label>
                   <p className="text-sm text-muted-foreground">
                     Keep the invoice as sent but remove the paid status. This is useful if the payment was recorded incorrectly.

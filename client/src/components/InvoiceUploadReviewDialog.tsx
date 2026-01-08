@@ -92,6 +92,8 @@ export function InvoiceUploadReviewDialog({
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const statusButtonRef = useRef<HTMLDivElement>(null);
+  const [previewZoom, setPreviewZoom] = useState(1);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
@@ -234,7 +236,7 @@ export function InvoiceUploadReviewDialog({
   });
   const revertToSentMutation = trpc.invoices.revertToSent.useMutation({
     onSuccess: () => {
-      toast.success("Invoice reverted to sent");
+      toast.success("Invoice marked as not paid");
       utils.invoices.get.invalidate({ id: invoiceId! });
       utils.invoices.list.invalidate();
       setRevertDialogOpen(false);
@@ -770,6 +772,35 @@ export function InvoiceUploadReviewDialog({
     };
   }, [previewUrl]);
 
+  // Reset zoom when preview closes or changes
+  useEffect(() => {
+    if (!previewOpen || !previewUrl) {
+      setPreviewZoom(1);
+    }
+  }, [previewOpen, previewUrl]);
+
+  // Add mouse wheel and trackpad zoom support for preview iframe
+  useEffect(() => {
+    const container = previewContainerRef.current;
+    if (!container || !previewOpen) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Support both Ctrl/Cmd+wheel (trackpad pinch) and regular wheel zoom
+      if (e.ctrlKey || e.metaKey || e.deltaY !== 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        setPreviewZoom((prev) => Math.max(0.5, Math.min(3, prev + delta)));
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [previewOpen]);
+
   return (
     <>
       {/* Preview Panel - Left side on desktop - optimized for A4 display */}
@@ -793,14 +824,28 @@ export function InvoiceUploadReviewDialog({
             <div className="flex items-center justify-between p-4 border-b bg-background">
               <h2 className="text-lg font-semibold">Preview</h2>
             </div>
-            {/* Preview Content - full page, no borders */}
-            <div className="flex-1 overflow-hidden bg-background">
-              <iframe
-                src={previewUrl}
-                className="w-full h-full border-0"
-                title={previewFileName}
-                style={{ pointerEvents: 'auto' }}
-              />
+            {/* Preview Content - full page, no borders - zoomable */}
+            <div 
+              ref={previewContainerRef}
+              className="flex-1 overflow-auto bg-background relative"
+              style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
+            >
+              <div
+                style={{
+                  transform: `scale(${previewZoom})`,
+                  transformOrigin: 'top left',
+                  width: `${100 / previewZoom}%`,
+                  height: `${100 / previewZoom}%`,
+                  transition: 'transform 0.1s ease-out',
+                }}
+              >
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full border-0"
+                  title={previewFileName}
+                  style={{ pointerEvents: 'auto' }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -1151,7 +1196,7 @@ export function InvoiceUploadReviewDialog({
                     "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
                   )}
                 >
-                  Revert to Sent
+                  Mark as Not Paid
                 </Button>
               )}
 
@@ -1237,7 +1282,7 @@ export function InvoiceUploadReviewDialog({
                   </Button>
                 )}
               </div>
-              {/* Revert to Sent - only shown when paid, on separate line */}
+              {/* Mark as Not Paid - only shown when paid, on separate line */}
               {isPaid && (
                 <Button
                   variant="outline"
@@ -1248,7 +1293,7 @@ export function InvoiceUploadReviewDialog({
                     "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
                   )}
                 >
-                  Revert to Sent
+                  Mark as Not Paid
                 </Button>
               )}
             </div>

@@ -133,13 +133,15 @@ function getInvoiceStatusActions(invoice: InvoiceStatusActionsDropdownProps["inv
     }
   }
 
-  // SENT state
+  // SENT state (includes OVERDUE invoices - overdue is a visual badge, not a separate state)
   if (invoiceState === "SENT") {
     actions.push({
       action: "markAsPaid",
       label: "Mark as Paid",
       icon: <CheckCircle2 className="h-4 w-4" />,
     });
+    // Always show "Revert to Draft" option for SENT/OVERDUE invoices
+    // Enabled if no payments, disabled if payments exist (to preserve payment data)
     if (!hasPayments) {
       actions.push({
         action: "revertToDraft",
@@ -176,10 +178,10 @@ function getInvoiceStatusActions(invoice: InvoiceStatusActionsDropdownProps["inv
       label: "Mark as Paid",
       icon: <CheckCircle2 className="h-4 w-4" />,
     });
-    // Revert to sent is allowed (preserves payment data)
+    // Mark as not paid is allowed (preserves payment data)
     actions.push({
       action: "revertToSent",
-      label: "Revert to Sent",
+      label: "Mark as Not Paid",
       icon: <RotateCcw className="h-4 w-4" />,
     });
   }
@@ -188,7 +190,7 @@ function getInvoiceStatusActions(invoice: InvoiceStatusActionsDropdownProps["inv
   if (invoiceState === "PAID") {
     actions.push({
       action: "revertToSent",
-      label: "Revert to Sent",
+      label: "Mark as Not Paid",
       icon: <RotateCcw className="h-4 w-4" />,
     });
     if (!isCancelled && invoice.type !== "cancellation") {
@@ -268,7 +270,7 @@ export function InvoiceStatusActionsDropdown({
 
   const revertToSentMutation = trpc.invoices.revertToSent.useMutation({
     onSuccess: () => {
-      toast.success("Invoice reverted to sent");
+      toast.success("Invoice marked as not paid");
       utils.invoices.get.invalidate({ id: invoice.id });
       onActionComplete?.();
     },

@@ -586,15 +586,6 @@ export function InvoiceForm({
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label>Order / Reference Number</Label>
-            <Input
-              value={formState.referenceNumber ?? ""}
-              onChange={(e) => setFormState((prev) => ({ ...prev, referenceNumber: e.target.value }))}
-              placeholder="Optional reference"
-              disabled={isReadOnly}
-            />
-          </div>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label>Partial Invoice</Label>
@@ -701,6 +692,15 @@ export function InvoiceForm({
             placeholder="Optional terms and conditions (appears on invoice if filled)"
             disabled={!isDraft}
             rows={3}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Order / Reference Number</Label>
+          <Input
+            value={formState.referenceNumber ?? ""}
+            onChange={(e) => setFormState((prev) => ({ ...prev, referenceNumber: e.target.value }))}
+            placeholder="Optional reference"
+            disabled={isReadOnly}
           />
         </div>
       </div>

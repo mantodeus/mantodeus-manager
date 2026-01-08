@@ -2154,7 +2154,7 @@ export async function revertInvoiceStatus(id: number, targetStatus: 'draft' | 'o
     }
     const amountPaid = Number(invoice.amountPaid || 0);
     if (amountPaid > 0) {
-      throw new Error("Cannot revert to draft: invoice has received payments. Use 'Revert to Sent' instead.");
+      throw new Error("Cannot revert to draft: invoice has received payments. Use 'Mark as Not Paid' instead.");
     }
     return db
       .update(invoices)
@@ -2206,7 +2206,7 @@ export async function revertInvoiceToDraft(id: number) {
   // BLOCK reverting to draft if payments have been received
   const amountPaid = Number(invoice.amountPaid || 0);
   if (amountPaid > 0) {
-    throw new Error("Cannot revert to draft: invoice has received payments. Use 'Revert to Sent' instead.");
+    throw new Error("Cannot revert to draft: invoice has received payments. Use 'Mark as Not Paid' instead.");
   }
 
   // Invalidate all share links for this invoice
@@ -2225,7 +2225,7 @@ export async function revertInvoiceToDraft(id: number) {
 }
 
 /**
- * Revert invoice to sent state (from paid)
+ * Mark invoice as not paid (revert from paid to sent state)
  * Clears paidAt but PRESERVES amountPaid (payment data must never be destroyed)
  * 
  * CRITICAL: This only clears the paidAt timestamp. amountPaid is preserved.

@@ -83,8 +83,8 @@ export function RevertInvoiceStatusDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>
             {isBatch 
-              ? `Revert ${batchCount} ${batchCount === 1 ? 'invoice' : 'invoices'} to ${targetStatus === "draft" ? "draft" : "sent"}?`
-              : `Revert invoice to ${targetStatus === "draft" ? "draft" : "sent"}?`
+              ? `${targetStatus === "draft" ? "Revert" : "Mark as Not Paid"} ${batchCount} ${batchCount === 1 ? 'invoice' : 'invoices'}${targetStatus === "draft" ? " to draft" : ""}?`
+              : `${targetStatus === "draft" ? "Revert invoice to draft" : "Mark invoice as not paid"}?`
             }
           </AlertDialogTitle>
           <AlertDialogDescription className="pt-2">

@@ -31,7 +31,7 @@ export interface GetInvoiceActionsParams {
  * State rules:
  * - Mark as Sent: only for draft/needsReview invoices, requires dueDate and total>0
  * - Mark as Paid: only for sent/draft historical uploaded invoices; if not sent, show confirm "Mark as Sent and Paid?"
- * - Revert to Sent: only from paid
+ * - Mark as Not Paid: only from paid
  * - Revert to Draft: only from sent AND no payments/outstanding==0
  * - Delete: in review => cancel upload (hard delete); else => move to trash (soft delete)
  * - Archive: only for open/sent/paid where allowed
@@ -167,7 +167,7 @@ export function isActionValidForInvoice(
     case "revertToSent":
       // Only from paid
       if (!isPaid) {
-        return { valid: false, reason: "Invoice must be paid to revert to sent" };
+        return { valid: false, reason: "Invoice must be paid to mark as not paid" };
       }
       return { valid: true };
 

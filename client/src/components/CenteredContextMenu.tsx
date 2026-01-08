@@ -64,7 +64,7 @@ const actionConfig: Record<
   restore: { icon: RotateCcw, label: "Restore", variant: "default" },
   deletePermanently: { icon: Trash2, label: "Delete permanently", variant: "destructive" },
   revertToDraft: { icon: RotateCcw, label: "Revert to draft", variant: "destructive" },
-  revertToSent: { icon: RotateCcw, label: "Revert to sent", variant: "destructive" },
+  revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" },
   markAsSent: { icon: Send, label: "Mark as sent", variant: "default" },
   markAsPaid: { icon: DollarSign, label: "Mark as paid", variant: "default" },
   markAsCancelled: { icon: XCircle, label: "Mark as cancelled", variant: "destructive" },
