@@ -6,19 +6,25 @@
  * Buttons ONLY appear in review state for uploaded invoices.
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
 import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, X } from "@/components/ui/Icon";
 import { toast } from "sonner";
@@ -34,6 +40,7 @@ import { MarkAsSentAndPaidDialog } from "./invoices/MarkAsSentAndPaidDialog";
 import { MarkAsPaidDialog } from "./invoices/MarkAsPaidDialog";
 import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useLongPress } from "@/hooks/useLongPress";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -83,6 +90,8 @@ export function InvoiceUploadReviewDialog({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const statusButtonRef = useRef<HTMLDivElement>(null);
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
@@ -359,19 +368,110 @@ export function InvoiceUploadReviewDialog({
   const isReadOnly = isSent || isPaid; // Only disable when sent/paid, not when draft
   const isCancelled = invoice?.cancelledAt !== null && invoice?.cancelledAt !== undefined;
 
-  // Get status badge (same as in Invoices.tsx)
-  const getStatusBadge = (invoice: any) => {
+  type StatusAction = {
+    action: string;
+    label: string;
+    icon?: ReactNode;
+    disabled?: boolean;
+    disabledReason?: string;
+    onClick: () => void;
+  };
+
+  const getStatusActions = (invoice: any): StatusAction[] => {
+    if (!invoice) return [];
+
+    const actions: StatusAction[] = [];
+    const invoiceState = getInvoiceState(invoice);
+    const derivedValues = getDerivedValues(invoice);
+    const isCancelled = Boolean(invoice.cancelledAt);
+    const isReview = invoiceState === "REVIEW";
+    const isDraft = invoiceState === "DRAFT" || (invoice.source === "uploaded" && !invoice.needsReview && !invoice.sentAt);
+    const isSent = invoiceState === "SENT" || invoiceState === "PARTIAL";
+    const isPaid = invoiceState === "PAID";
+
+    if (isDraft || isReview) {
+      if (isCancelled) {
+        actions.push({
+          action: "markAsNotCancelled",
+          label: "Mark as Not Cancelled",
+          icon: <X className="h-4 w-4" />,
+          onClick: () => markAsNotCancelledMutation.mutate({ id: invoiceId! }),
+        });
+      } else {
+        if (!invoice.sentAt) {
+          actions.push({
+            action: "markAsSent",
+            label: "Mark as Sent",
+            icon: <Send className="h-4 w-4" />,
+            onClick: handleMarkAsSent,
+          });
+        }
+        actions.push({
+          action: "markAsPaid",
+          label: "Mark as Paid",
+          icon: <CheckCircle2 className="h-4 w-4" />,
+          onClick: handleMarkAsPaid,
+        });
+        actions.push({
+          action: "cancel",
+          label: "Cancel (Void draft)",
+          icon: <X className="h-4 w-4" />,
+          onClick: () => markAsCancelledMutation.mutate({ id: invoiceId! }),
+        });
+      }
+    }
+
+    if (isSent) {
+      actions.push({
+        action: "markAsPaid",
+        label: "Mark as Paid",
+        icon: <CheckCircle2 className="h-4 w-4" />,
+        onClick: handleMarkAsPaid,
+      });
+      if (!isPaid && derivedValues.outstanding === 0) {
+        actions.push({
+          action: "revertToDraftAfterPayment",
+          label: "Revert to Draft",
+          onClick: handleRevertToDraft,
+        });
+      }
+    }
+
+    if (isPaid) {
+      actions.push({
+        action: "markAsNotPaid",
+        label: "Mark as Not Paid",
+        icon: <CheckCircle2 className="h-4 w-4" />,
+        onClick: handleMarkAsNotPaid,
+      });
+    }
+
+    if (isCancelled && !actions.some((action) => action.action === "markAsNotCancelled")) {
+      actions.push({
+        action: "markAsNotCancelled",
+        label: "Mark as Not Cancelled",
+        icon: <X className="h-4 w-4" />,
+        onClick: () => markAsNotCancelledMutation.mutate({ id: invoiceId! }),
+      });
+    }
+
+    return actions;
+  };
+
+  const renderStatusButton = (invoice: any) => {
     if (!invoice) return null;
     
     const invoiceState = getInvoiceState(invoice);
     const derivedValues = getDerivedValues(invoice);
     
-    // Cancelled badge (dark color) - highest priority
+    // Cancelled button (dark color) - highest priority
     if (invoice.cancelledAt) {
       return (
-        <Badge 
-          variant="default" 
-          className="text-xs border-[#F2F1EE]/50 dark:border-[#0A0F14]/50" 
+        <Button
+          asChild={false}
+          variant="default"
+          size="default"
+          className="text-sm font-semibold border-[#F2F1EE]/50 dark:border-[#0A0F14]/50 cursor-pointer"
           style={{
             backgroundColor: isDarkMode ? '#0A0F14' : '#F2F1EE',
             color: isDarkMode ? '#FFFFFF' : undefined,
@@ -379,23 +479,39 @@ export function InvoiceUploadReviewDialog({
           }}
         >
           CANCELLED
-        </Badge>
+        </Button>
       );
     }
     
-    // Badge priority: OVERDUE > PARTIAL > SENT/PAID
+    // Button priority: OVERDUE > PARTIAL > SENT/PAID
     if (derivedValues.isOverdue) {
-      return <Badge variant="destructive" className="text-xs">OVERDUE</Badge>;
+      return (
+        <Button asChild={false} variant="destructive" size="default" className="text-sm font-semibold cursor-pointer">
+          OVERDUE
+        </Button>
+      );
     }
     
     if (invoiceState === 'PARTIAL') {
-      return <Badge variant="default" className="text-xs bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50">PARTIAL</Badge>;
+      return (
+        <Button
+          asChild={false}
+          variant="default"
+          size="default"
+          className="text-sm font-semibold bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50 cursor-pointer hover:bg-orange-600 dark:hover:bg-orange-700"
+        >
+          PARTIAL
+        </Button>
+      );
     }
     
     if (invoiceState === 'PAID') {
       return (
-        <span 
-          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0"
+        <Button
+          asChild={false}
+          variant="default"
+          size="default"
+          className="text-sm font-semibold cursor-pointer"
           style={{
             backgroundColor: isDarkMode ? '#00FF88' : 'rgb(236, 72, 153)', // green in dark, pink in light
             color: isDarkMode ? '#000000' : 'white',
@@ -403,16 +519,29 @@ export function InvoiceUploadReviewDialog({
           }}
         >
           PAID
-        </span>
+        </Button>
       );
     }
     
     if (invoiceState === 'SENT') {
-      return <Badge variant="default" className="text-xs bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50">SENT</Badge>;
+      return (
+        <Button
+          asChild={false}
+          variant="default"
+          size="default"
+          className="text-sm font-semibold bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50 cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700"
+        >
+          SENT
+        </Button>
+      );
     }
     
     if (invoiceState === 'DRAFT') {
-      return <Badge variant="outline" className="text-xs">DRAFT</Badge>;
+      return (
+        <Button asChild={false} variant="outline" size="default" className="text-sm font-semibold cursor-pointer">
+          DRAFT
+        </Button>
+      );
     }
     
     return null;
@@ -483,6 +612,17 @@ export function InvoiceUploadReviewDialog({
   
   // Get derived values for revert logic
   const derivedValues = invoice ? getDerivedValues(invoice) : { outstanding: 0, isPaid: false, isPartial: false, isOverdue: false };
+
+  const statusActions = invoice ? getStatusActions(invoice) : [];
+  const { longPressHandlers } = useLongPress({
+    onLongPress: () => {
+      if (statusActions.length > 0) {
+        setStatusMenuOpen(true);
+      }
+    },
+    duration: 500,
+    hapticFeedback: true,
+  });
   
   // Revert handlers
   const handleRevertToDraft = () => {
@@ -764,8 +904,51 @@ export function InvoiceUploadReviewDialog({
                 Send
               </Button>
             )}
-            {/* Status badge - shown when sent/paid/draft/cancelled/overdue */}
-            {invoice && getStatusBadge(invoice)}
+            {/* Status button - right click or long-press for status actions */}
+            {invoice && (
+              statusActions.length === 0 ? (
+                renderStatusButton(invoice)
+              ) : (
+                <DropdownMenu open={statusMenuOpen} onOpenChange={setStatusMenuOpen}>
+                  <div
+                    ref={statusButtonRef}
+                    className="inline-block"
+                    {...longPressHandlers}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (statusActions.length > 0) {
+                        setStatusMenuOpen(true);
+                      }
+                    }}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      {renderStatusButton(invoice)}
+                    </DropdownMenuTrigger>
+                  </div>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {statusActions.map((actionItem) => (
+                      <DropdownMenuItem
+                        key={actionItem.action}
+                        onClick={() => !actionItem.disabled && actionItem.onClick()}
+                        disabled={actionItem.disabled}
+                        className={cn("flex items-center gap-2", actionItem.disabled && "opacity-50")}
+                      >
+                        {actionItem.icon}
+                        <div className="flex-1">
+                          <div>{actionItem.label}</div>
+                          {actionItem.disabled && actionItem.disabledReason && (
+                            <div className="text-xs text-muted-foreground">{actionItem.disabledReason}</div>
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )
+            )}
           </div>
         </div>
 
