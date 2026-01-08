@@ -112,7 +112,7 @@ export function InvoiceForm({
     referenceNumber: "",
     partialInvoice: false,
   }));
-  const [items, setItems] = useState<InvoiceLineItem[]>([defaultLineItem]);
+  const [items, setItems] = useState<InvoiceLineItem[]>(() => isCreate ? [] : [defaultLineItem]);
   const [itemEditor, setItemEditor] = useState<{ open: boolean; index: number | null }>({
     open: false,
     index: null,
@@ -317,7 +317,9 @@ export function InvoiceForm({
     }
   };
 
-  const openItemEditor = (index: number | null = null) => setItemEditor({ open: true, index });
+  const openItemEditor = (index: number | null = null) => {
+    setItemEditor({ open: true, index });
+  };
   const closeItemEditor = () => setItemEditor({ open: false, index: null });
 
   const handleSaveItem = (item: InvoiceLineItem) => {
@@ -601,7 +603,7 @@ export function InvoiceForm({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Issue Date</Label>
               <Input
@@ -622,23 +624,12 @@ export function InvoiceForm({
                 disabled={isReadOnly}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Order / Reference Number</Label>
-              <Input
-                value={formState.referenceNumber ?? ""}
-                onChange={(e) => setFormState((prev) => ({ ...prev, referenceNumber: e.target.value }))}
-                placeholder="Optional reference"
-                disabled={isReadOnly}
-              />
-            </div>
           </div>
         </div>
         <div className="lg:col-span-4 space-y-4 rounded-lg border bg-muted/30 p-4">
-          <div>
-            <div className="flex items-center justify-between">
-              <Label>Service Period</Label>
-            </div>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 mt-2 items-center">
+          <div className="space-y-2">
+            <Label>Service Period</Label>
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
               <Input
                 type="date"
                 value={formState.servicePeriodStart ?? ""}
@@ -660,7 +651,16 @@ export function InvoiceForm({
               />
             </div>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Label>Order / Reference Number</Label>
+            <Input
+              value={formState.referenceNumber ?? ""}
+              onChange={(e) => setFormState((prev) => ({ ...prev, referenceNumber: e.target.value }))}
+              placeholder="Optional reference"
+              disabled={isReadOnly}
+            />
+          </div>
+          <div className="flex items-center justify-between pt-2">
             <div className="space-y-1">
               <Label>Partial Invoice</Label>
               <p className="text-xs text-muted-foreground">Flag invoice as partial (future use).</p>
@@ -882,11 +882,11 @@ function LineItemModal({
           <DialogTitle>Add Line Item</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+          <div className="space-y-2">
             <Label>Item Name</Label>
             <Input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Item Description</Label>
             <Textarea
               value={draft.description ?? ""}
@@ -894,7 +894,7 @@ function LineItemModal({
               rows={2}
             />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Category</Label>
             <Input
               value={draft.category ?? ""}
@@ -903,7 +903,7 @@ function LineItemModal({
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="space-y-2">
               <Label>Unit Price</Label>
               <Input
                 type="number"
@@ -913,7 +913,7 @@ function LineItemModal({
                 onChange={(e) => setDraft((prev) => ({ ...prev, unitPrice: parseFloat(e.target.value) || 0 }))}
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Quantity</Label>
               <Input
                 type="number"
@@ -924,7 +924,7 @@ function LineItemModal({
               />
             </div>
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Currency</Label>
             <Input value={draft.currency} disabled />
           </div>

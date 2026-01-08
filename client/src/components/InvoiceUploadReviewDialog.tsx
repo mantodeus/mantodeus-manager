@@ -368,6 +368,163 @@ export function InvoiceUploadReviewDialog({
   const isReadOnly = isSent || isPaid; // Only disable when sent/paid, not when draft
   const isCancelled = invoice?.cancelledAt !== null && invoice?.cancelledAt !== undefined;
 
+  const handleSend = () => {
+    if (!invoice) return;
+    // Validate before sending
+    if (!dueDate && !invoice.dueDate) {
+      toast.error("Invoice must have a due date before it can be sent");
+      return;
+    }
+    const total = Number(invoice.total || 0);
+    if (total <= 0) {
+      toast.error("Invoice total must be greater than 0");
+      return;
+    }
+    setShareDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!invoiceId || !invoice) return;
+
+    // Validate required fields
+    if (!issueDate) {
+      toast.error("Invoice date is required");
+      return;
+    }
+
+    if (!totalAmount || parseFloat(totalAmount) <= 0) {
+      toast.error("Total amount must be greater than 0");
+      return;
+    }
+
+    // If invoice needs review, use confirm mutation
+    // Otherwise, use regular update mutation for already-confirmed uploaded invoices
+    if (invoice.needsReview) {
+      await confirmMutation.mutateAsync({
+        id: invoiceId,
+        clientId: clientId !== "none" ? parseInt(clientId, 10) : null,
+        invoiceNumber: invoiceNumber || undefined,
+        issueDate: new Date(issueDate),
+        totalAmount: String(totalAmount),
+        dueDate: dueDate ? new Date(dueDate) : null,
+      });
+    } else {
+      await updateMutation.mutateAsync({
+        id: invoiceId,
+        invoiceNumber: invoiceNumber || invoice.invoiceNumber,
+        clientId: clientId !== "none" ? parseInt(clientId, 10) : undefined,
+        issueDate: new Date(issueDate),
+        dueDate: dueDate ? new Date(dueDate) : invoice.dueDate,
+        totalAmount: String(totalAmount),
+      });
+    }
+  };
+
+
+  const isLoading = 
+    confirmMutation.isPending || 
+    updateMutation.isPending || 
+    cancelMutation.isPending || 
+    revertToDraftMutation.isPending || 
+    revertToSentMutation.isPending ||
+    markAsSentMutation.isPending ||
+    markAsPaidMutation.isPending ||
+    moveToTrashMutation.isPending;
+  
+  // Get derived values for revert logic
+  const derivedValues = invoice ? getDerivedValues(invoice) : { outstanding: 0, isPaid: false, isPartial: false, isOverdue: false };
+
+  const statusActions = invoice ? getStatusActions(invoice) : [];
+  const { longPressHandlers } = useLongPress({
+    onLongPress: () => {
+      if (statusActions.length > 0) {
+        setStatusMenuOpen(true);
+      }
+    },
+    duration: 500,
+    hapticFeedback: true,
+  });
+  
+  // Revert handlers
+  const handleRevertToDraft = () => {
+    if (!invoice || derivedValues.outstanding > 0) {
+      toast.error("Cannot revert to draft: invoice has payments");
+      return;
+    }
+    setRevertTarget("draft");
+    setRevertDialogOpen(true);
+  };
+  
+  const handleRevertToSent = () => {
+    setRevertTarget("sent");
+    setRevertDialogOpen(true);
+  };
+  
+  const handleRevertConfirm = async () => {
+    if (!invoiceId) return;
+    if (revertTarget === "draft") {
+      await revertToDraftMutation.mutateAsync({ id: invoiceId, confirmed: true });
+    } else if (revertTarget === "sent") {
+      await revertToSentMutation.mutateAsync({ id: invoiceId, confirmed: true });
+    }
+  };
+
+  const handleMarkAsSent = async () => {
+    if (!invoiceId) return;
+    await markAsSentMutation.mutateAsync({ id: invoiceId });
+  };
+
+  const handleMarkAsPaid = async () => {
+    if (!invoiceId || !invoice) return;
+    
+    // If invoice hasn't been sent yet, show confirmation dialog with date picker
+    if (!invoice.sentAt && invoice.source === "uploaded") {
+      setMarkAsSentAndPaidDialogOpen(true);
+      return;
+    }
+    
+    // Otherwise, show date picker dialog
+    setMarkAsPaidDialogOpen(true);
+  };
+
+  const handleConfirmMarkAsPaid = async (paidAt: Date) => {
+    if (!invoiceId) return;
+    await markAsPaidMutation.mutateAsync({ id: invoiceId, paidAt });
+  };
+
+  const handleConfirmMarkAsSentAndPaid = async (paidAt: Date) => {
+    if (!invoiceId) return;
+    await markAsPaidMutation.mutateAsync({ id: invoiceId, paidAt, alsoMarkAsSent: true });
+  };
+
+  const handleMarkAsNotPaid = () => {
+    if (!invoice) return;
+    setMarkAsNotPaidDialogOpen(true);
+  };
+
+  const handleConfirmMarkAsNotPaid = async (target: "sent" | "draft") => {
+    if (!invoiceId) return;
+    setMarkAsNotPaidDialogOpen(false);
+    
+    if (target === "sent") {
+      await revertToSentMutation.mutateAsync({ id: invoiceId, confirmed: true });
+    } else if (target === "draft") {
+      await revertToDraftMutation.mutateAsync({ id: invoiceId, confirmed: true });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!invoiceId || !invoice) return;
+    
+    if (isReview) {
+      // In review state: Cancel upload (hard delete) - Section 19, line 556
+      await cancelMutation.mutateAsync({ id: invoiceId });
+    } else {
+      // After review: Move to trash (soft delete) - Section 19, lines 558-562
+      await moveToTrashMutation.mutateAsync({ id: invoiceId });
+    }
+  };
+
   type StatusAction = {
     action: string;
     label: string;
@@ -545,163 +702,6 @@ export function InvoiceUploadReviewDialog({
     }
     
     return null;
-  };
-  
-  const handleSend = () => {
-    if (!invoice) return;
-    // Validate before sending
-    if (!dueDate && !invoice.dueDate) {
-      toast.error("Invoice must have a due date before it can be sent");
-      return;
-    }
-    const total = Number(invoice.total || 0);
-    if (total <= 0) {
-      toast.error("Invoice total must be greater than 0");
-      return;
-    }
-    setShareDialogOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!invoiceId || !invoice) return;
-
-    // Validate required fields
-    if (!issueDate) {
-      toast.error("Invoice date is required");
-      return;
-    }
-
-    if (!totalAmount || parseFloat(totalAmount) <= 0) {
-      toast.error("Total amount must be greater than 0");
-      return;
-    }
-
-    // If invoice needs review, use confirm mutation
-    // Otherwise, use regular update mutation for already-confirmed uploaded invoices
-    if (invoice.needsReview) {
-      await confirmMutation.mutateAsync({
-        id: invoiceId,
-        clientId: clientId !== "none" ? parseInt(clientId, 10) : null,
-        invoiceNumber: invoiceNumber || undefined,
-        issueDate: new Date(issueDate),
-        totalAmount: String(totalAmount),
-        dueDate: dueDate ? new Date(dueDate) : null,
-      });
-    } else {
-      await updateMutation.mutateAsync({
-        id: invoiceId,
-        invoiceNumber: invoiceNumber || invoice.invoiceNumber,
-        clientId: clientId !== "none" ? parseInt(clientId, 10) : undefined,
-        issueDate: new Date(issueDate),
-        dueDate: dueDate ? new Date(dueDate) : invoice.dueDate,
-        totalAmount: String(totalAmount),
-      });
-    }
-  };
-
-
-  const isLoading = 
-    confirmMutation.isPending || 
-    updateMutation.isPending || 
-    cancelMutation.isPending || 
-    revertToDraftMutation.isPending || 
-    revertToSentMutation.isPending ||
-    markAsSentMutation.isPending ||
-    markAsPaidMutation.isPending ||
-    moveToTrashMutation.isPending;
-  
-  // Get derived values for revert logic
-  const derivedValues = invoice ? getDerivedValues(invoice) : { outstanding: 0, isPaid: false, isPartial: false, isOverdue: false };
-
-  const statusActions = invoice ? getStatusActions(invoice) : [];
-  const { longPressHandlers } = useLongPress({
-    onLongPress: () => {
-      if (statusActions.length > 0) {
-        setStatusMenuOpen(true);
-      }
-    },
-    duration: 500,
-    hapticFeedback: true,
-  });
-  
-  // Revert handlers
-  const handleRevertToDraft = () => {
-    if (!invoice || derivedValues.outstanding > 0) {
-      toast.error("Cannot revert to draft: invoice has payments");
-      return;
-    }
-    setRevertTarget("draft");
-    setRevertDialogOpen(true);
-  };
-  
-  const handleRevertToSent = () => {
-    setRevertTarget("sent");
-    setRevertDialogOpen(true);
-  };
-  
-  const handleRevertConfirm = async () => {
-    if (!invoiceId) return;
-    if (revertTarget === "draft") {
-      await revertToDraftMutation.mutateAsync({ id: invoiceId, confirmed: true });
-    } else if (revertTarget === "sent") {
-      await revertToSentMutation.mutateAsync({ id: invoiceId, confirmed: true });
-    }
-  };
-
-  const handleMarkAsSent = async () => {
-    if (!invoiceId) return;
-    await markAsSentMutation.mutateAsync({ id: invoiceId });
-  };
-
-  const handleMarkAsPaid = async () => {
-    if (!invoiceId || !invoice) return;
-    
-    // If invoice hasn't been sent yet, show confirmation dialog with date picker
-    if (!invoice.sentAt && invoice.source === "uploaded") {
-      setMarkAsSentAndPaidDialogOpen(true);
-      return;
-    }
-    
-    // Otherwise, show date picker dialog
-    setMarkAsPaidDialogOpen(true);
-  };
-
-  const handleConfirmMarkAsPaid = async (paidAt: Date) => {
-    if (!invoiceId) return;
-    await markAsPaidMutation.mutateAsync({ id: invoiceId, paidAt });
-  };
-
-  const handleConfirmMarkAsSentAndPaid = async (paidAt: Date) => {
-    if (!invoiceId) return;
-    await markAsPaidMutation.mutateAsync({ id: invoiceId, paidAt, alsoMarkAsSent: true });
-  };
-
-  const handleMarkAsNotPaid = () => {
-    if (!invoice) return;
-    setMarkAsNotPaidDialogOpen(true);
-  };
-
-  const handleConfirmMarkAsNotPaid = async (target: "sent" | "draft") => {
-    if (!invoiceId) return;
-    setMarkAsNotPaidDialogOpen(false);
-    
-    if (target === "sent") {
-      await revertToSentMutation.mutateAsync({ id: invoiceId, confirmed: true });
-    } else if (target === "draft") {
-      await revertToDraftMutation.mutateAsync({ id: invoiceId, confirmed: true });
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!invoiceId || !invoice) return;
-    
-    if (isReview) {
-      // In review state: Cancel upload (hard delete) - Section 19, line 556
-      await cancelMutation.mutateAsync({ id: invoiceId });
-    } else {
-      // After review: Move to trash (soft delete) - Section 19, lines 558-562
-      await moveToTrashMutation.mutateAsync({ id: invoiceId });
-    }
   };
 
   // Auto-open preview on desktop when dialog opens

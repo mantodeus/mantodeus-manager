@@ -27,6 +27,42 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   
+  // Prevent body scrolling when workspace is open
+  useEffect(() => {
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalBodyPosition = document.body.style.position;
+    const originalBodyWidth = document.body.style.width;
+    const originalBodyTop = document.body.style.top;
+    const scrollY = window.scrollY;
+
+    // Lock body scroll
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.top = `-${scrollY}px`;
+
+    // Prevent scroll events on window
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+    window.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
+
+    return () => {
+      // Restore original body styles
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.position = originalBodyPosition;
+      document.body.style.width = originalBodyWidth;
+      document.body.style.top = originalBodyTop;
+      window.scrollTo(0, scrollY);
+      
+      window.removeEventListener('wheel', preventScroll, { capture: true });
+      window.removeEventListener('touchmove', preventScroll, { capture: true });
+    };
+  }, []);
+  
   // Preview state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
@@ -163,7 +199,14 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       <div 
         className="fixed inset-0 z-50 bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
         onClick={onClose}
-        style={{ pointerEvents: 'auto' }}
+        onWheel={(e) => e.preventDefault()}
+        onTouchMove={(e) => e.preventDefault()}
+        onScroll={(e) => e.preventDefault()}
+        style={{ 
+          pointerEvents: 'auto',
+          overflow: 'hidden',
+          touchAction: 'none',
+        }}
         aria-hidden="true"
       />
       
