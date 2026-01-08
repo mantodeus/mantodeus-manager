@@ -330,6 +330,7 @@ export function InvoiceStatusActionsDropdown({
     if (isCancelled) {
       return (
         <Button
+          asChild={false}
           variant="default"
           size="default"
           className="text-sm font-semibold border-[#F2F1EE]/50 dark:border-[#0A0F14]/50 cursor-pointer"
@@ -347,7 +348,7 @@ export function InvoiceStatusActionsDropdown({
     // Button priority: OVERDUE > PARTIAL > SENT/PAID
     if (derivedValues.isOverdue) {
       return (
-        <Button variant="destructive" size="default" className="text-sm font-semibold cursor-pointer">
+        <Button asChild={false} variant="destructive" size="default" className="text-sm font-semibold cursor-pointer">
           OVERDUE
         </Button>
       );
@@ -356,6 +357,7 @@ export function InvoiceStatusActionsDropdown({
     if (invoiceState === "PARTIAL") {
       return (
         <Button
+          asChild={false}
           variant="default"
           size="default"
           className="text-sm font-semibold bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50 cursor-pointer hover:bg-orange-600 dark:hover:bg-orange-700"
@@ -368,6 +370,7 @@ export function InvoiceStatusActionsDropdown({
     if (invoiceState === "PAID") {
       return (
         <Button
+          asChild={false}
           variant="default"
           size="default"
           className="text-sm font-semibold cursor-pointer"
@@ -385,6 +388,7 @@ export function InvoiceStatusActionsDropdown({
     if (invoiceState === "SENT") {
       return (
         <Button
+          asChild={false}
           variant="default"
           size="default"
           className="text-sm font-semibold bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50 cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700"
@@ -395,11 +399,11 @@ export function InvoiceStatusActionsDropdown({
     }
 
     if (invoiceState === "DRAFT") {
-      return <Button variant="outline" size="default" className="text-sm font-semibold cursor-pointer">DRAFT</Button>;
+      return <Button asChild={false} variant="outline" size="default" className="text-sm font-semibold cursor-pointer">DRAFT</Button>;
     }
 
     if (invoiceState === "REVIEW") {
-      return <Button variant="outline" size="default" className="text-sm font-semibold cursor-pointer">NEEDS REVIEW</Button>;
+      return <Button asChild={false} variant="outline" size="default" className="text-sm font-semibold cursor-pointer">NEEDS REVIEW</Button>;
     }
 
     return null;
