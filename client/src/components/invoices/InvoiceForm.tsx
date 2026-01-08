@@ -556,6 +556,7 @@ export function InvoiceForm({
                   value={formState.issueDate}
                   onChange={(e) => setFormState((prev) => ({ ...prev, issueDate: e.target.value }))}
                   disabled={isReadOnly || isCancelled}
+                  className="w-full"
                 />
               </div>
               <div></div>
@@ -568,6 +569,7 @@ export function InvoiceForm({
                     setFormState((prev) => ({ ...prev, dueDate: e.target.value || undefined }))
                   }
                   disabled={isReadOnly || isCancelled}
+                  className="w-full"
                 />
               </div>
             </div>
@@ -585,7 +587,7 @@ export function InvoiceForm({
                 />
               </div>
               <div className="flex items-end pb-2">
-                <span className="text-muted-foreground text-sm">→</span>
+                <span className="text-muted-foreground text-sm shrink-0">→</span>
               </div>
               <div className="space-y-2">
                 <div className="h-[14px]"></div>

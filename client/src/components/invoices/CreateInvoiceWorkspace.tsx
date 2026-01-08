@@ -196,7 +196,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       {/* Preview Panel - Left side - matches edit invoice dialog */}
       <div
         ref={previewPanelRef}
-        className="fixed z-[60] bg-background border-r shadow-lg rounded-lg"
+        className="fixed z-[110] bg-background border-r shadow-lg rounded-lg"
         style={{
           top: '1.5rem',
           left: '1.5rem',
@@ -250,7 +250,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       {/* Form Panel - Right side - matches edit invoice dialog */}
       <div
         ref={formPanelRef}
-        className="fixed z-[60] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
+        className="fixed z-[110] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
         style={{
           top: '1.5rem',
           right: '1.5rem',
