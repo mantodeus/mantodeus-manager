@@ -134,7 +134,7 @@ export function MultiSelectBar({
     if (onMarkAsNotCancelled) {
       standardActions.push({
         label: "Mark as not cancelled",
-        icon: CheckCircle2,
+        icon: RotateCcw,
         onClick: onMarkAsNotCancelled,
         variant: "default",
       });

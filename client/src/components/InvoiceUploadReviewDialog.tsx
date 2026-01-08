@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, X, RotateCcw } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, CurrencyEuro, X, RotateCcw } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useTheme } from "@/hooks/useTheme";
@@ -562,7 +562,7 @@ export function InvoiceUploadReviewDialog({
         actions.push({
           action: "markAsPaid",
           label: "Mark as Paid",
-          icon: <DocumentCurrencyEuro className="h-4 w-4" />,
+          icon: <CurrencyEuro className="h-4 w-4" />,
           onClick: handleMarkAsPaid,
         });
         actions.push({
@@ -578,7 +578,7 @@ export function InvoiceUploadReviewDialog({
       actions.push({
         action: "markAsPaid",
         label: "Mark as Paid",
-        icon: <DocumentCurrencyEuro className="h-4 w-4" />,
+        icon: <CurrencyEuro className="h-4 w-4" />,
         onClick: handleMarkAsPaid,
       });
       // Always show "Revert to Draft" for SENT/OVERDUE invoices
@@ -617,7 +617,7 @@ export function InvoiceUploadReviewDialog({
       actions.push({
         action: "markAsNotCancelled",
         label: "Mark as Not Cancelled",
-        icon: <X className="h-4 w-4" />,
+        icon: <RotateCcw className="h-4 w-4" />,
         onClick: () => markAsNotCancelledMutation.mutate({ id: invoiceId! }),
       });
     }

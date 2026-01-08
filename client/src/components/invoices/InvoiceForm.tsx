@@ -571,7 +571,7 @@ export function InvoiceForm({
           </div>
           <div className="space-y-2">
             <Label>Service Period</Label>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+            <div className="flex items-center gap-2">
               <Input
                 type="date"
                 value={formState.servicePeriodStart ?? ""}
@@ -579,9 +579,9 @@ export function InvoiceForm({
                   setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
                 }
                 disabled={isReadOnly || isCancelled}
-                className="w-full"
+                className="flex-1 min-w-0"
               />
-              <span className="text-muted-foreground text-sm">→</span>
+              <span className="text-muted-foreground text-sm shrink-0">→</span>
               <Input
                 type="date"
                 value={formState.servicePeriodEnd ?? ""}
@@ -589,7 +589,7 @@ export function InvoiceForm({
                   setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
                 }
                 disabled={isReadOnly || isCancelled}
-                className="w-full"
+                className="flex-1 min-w-0"
               />
             </div>
           </div>

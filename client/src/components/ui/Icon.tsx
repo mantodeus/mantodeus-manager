@@ -89,6 +89,7 @@ export {
   BriefcaseIcon as Briefcase,
   ReceiptPercentIcon as Receipt,
   CurrencyDollarIcon as DollarSign,
+  CurrencyEuroIcon as CurrencyEuro,
   CreditCardIcon as CreditCard,
   
   // Calendar & Time
