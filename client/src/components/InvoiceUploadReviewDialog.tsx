@@ -372,6 +372,11 @@ export function InvoiceUploadReviewDialog({
 
   const handleSend = () => {
     if (!invoice) return;
+    // Check if invoice is cancelled - must be marked as not cancelled before sending
+    if (isCancelled) {
+      toast.error("Cancelled invoices cannot be sent. Please mark the invoice as not cancelled first.");
+      return;
+    }
     // Validate before sending
     if (!dueDate && !invoice.dueDate) {
       toast.error("Invoice must have a due date before it can be sent");
@@ -937,18 +942,6 @@ export function InvoiceUploadReviewDialog({
                 Preview
               </Button>
             )}
-            {/* Send button - only shown when draft and not in review */}
-            {!isReview && isDraft && (
-              <Button
-                size="sm"
-                onClick={handleSend}
-                disabled={isLoading || (!dueDate && !invoice?.dueDate) || Number(totalAmount || 0) <= 0}
-                className="gap-2 bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
-              >
-                <Send className="h-4 w-4" />
-                Send
-              </Button>
-            )}
             {/* Status button - right click or long-press for status actions */}
             {invoice && (
               statusActions.length === 0 ? (
@@ -1113,55 +1106,26 @@ export function InvoiceUploadReviewDialog({
             </div>
           )}
 
-          {/* Action buttons: Section 19 layout - REVIEW and DRAFT states for uploaded invoices */}
+          {/* Action buttons: Footer layout for REVIEW and DRAFT states for uploaded invoices */}
           {(isReview || isDraft) && invoice?.source === "uploaded" && (
             <div className={cn(
               "pt-4 border-t",
               isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
             )}>
-              {/* Mark as Sent (only if not already sent and not cancelled) - appears in REVIEW and DRAFT for uploaded invoices */}
-              {!invoice.sentAt && !isCancelled && (
-                <Button 
-                  variant="outline"
-                  onClick={handleMarkAsSent} 
-                  disabled={isLoading || markAsSentMutation.isPending}
+              {/* Send button - only for non-cancelled draft invoices */}
+              {!isReview && isDraft && !isCancelled && (
+                <Button
+                  onClick={handleSend}
+                  disabled={isLoading || (!dueDate && !invoice?.dueDate) || Number(totalAmount || 0) <= 0}
                   className={cn(
                     isMobile ? "w-full" : "",
-                    "hover:bg-blue-500 hover:text-white hover:border-blue-500/50 dark:hover:bg-blue-600 dark:hover:text-white dark:hover:border-blue-600/50"
+                    "bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
                   )}
                 >
-                  {markAsSentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Mark as Sent
+                  <Send className="h-4 w-4 mr-2" />
+                  Send
                 </Button>
               )}
-
-              {/* Mark as Paid / Mark as Not Paid - appears in REVIEW and DRAFT for uploaded invoices (only if not cancelled) */}
-              {!isCancelled && !invoice.paidAt ? (
-                <Button 
-                  variant="outline"
-                  onClick={handleMarkAsPaid} 
-                  disabled={isLoading || markAsPaidMutation.isPending}
-                  className={cn(
-                    isMobile ? "w-full" : "",
-                    "border bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-transparent dark:border-input dark:hover:bg-input/50"
-                  )}
-                >
-                  {markAsPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Mark as Paid
-                </Button>
-              ) : !isCancelled ? (
-                <Button 
-                  variant="outline"
-                  onClick={handleMarkAsNotPaid} 
-                  disabled={isLoading || revertToSentMutation.isPending || revertToDraftMutation.isPending}
-                  className={cn(
-                    isMobile ? "w-full" : "",
-                    "border bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-transparent dark:border-input dark:hover:bg-input/50"
-                  )}
-                >
-                  Mark as Not Paid
-                </Button>
-              ) : null}
 
               {/* Save/Update - highlighted (primary) - only if not cancelled */}
               {!isReadOnly && !isCancelled && (
