@@ -43,15 +43,6 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     document.body.style.width = '100%';
     document.body.style.top = `-${scrollY}px`;
 
-    // Prevent scroll events on window
-    const preventScroll = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
-    window.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
-
     return () => {
       // Restore original body styles
       document.body.style.overflow = originalBodyOverflow;
@@ -59,9 +50,6 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       document.body.style.width = originalBodyWidth;
       document.body.style.top = originalBodyTop;
       window.scrollTo(0, scrollY);
-      
-      window.removeEventListener('wheel', preventScroll, { capture: true });
-      window.removeEventListener('touchmove', preventScroll, { capture: true });
     };
   }, [open]);
   
@@ -74,6 +62,8 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   const getFormDataRef = useRef<(() => InvoicePreviewData | null) | null>(null);
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const formPanelRef = useRef<HTMLDivElement>(null);
+  const previewPanelRef = useRef<HTMLDivElement>(null);
 
   const handleSuccess = useCallback(async () => {
     toast.success("Invoice created");
@@ -217,6 +207,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       
       {/* Preview Panel - Left side - matches edit invoice dialog */}
       <div
+        ref={previewPanelRef}
         className="fixed z-[60] bg-background border-r shadow-lg rounded-lg"
         style={{
           top: '1.5rem',
@@ -270,6 +261,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
 
       {/* Form Panel - Right side - matches edit invoice dialog */}
       <div
+        ref={formPanelRef}
         className="fixed z-[60] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
         style={{
           top: '1.5rem',
