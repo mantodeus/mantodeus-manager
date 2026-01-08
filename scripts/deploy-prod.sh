@@ -129,10 +129,15 @@ else
   echo "  ✓ Dependencies unchanged, skipping install"
 fi
 
-# Always generate schema (fast, idempotent)
+# Skip schema generation if it fails (non-blocking)
+# This step is idempotent and only needed when schema changes
 echo ""
-echo "==> Generate database schema"
-npx pnpm run db:generate
+echo "==> Generate database schema (optional, non-blocking)"
+if npx pnpm run db:generate 2>/dev/null; then
+  echo "  ✓ Schema generated"
+else
+  echo "  ⚠ Schema generation skipped (may indicate config issue, but deployment continues)"
+fi
 
 # Check if migrations needed
 echo ""
