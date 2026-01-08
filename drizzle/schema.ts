@@ -351,6 +351,7 @@ export const invoices = mysqlTable("invoices", {
   /** Timestamp when invoice was marked as paid (null if not paid) */
   paidAt: timestamp("paidAt"),
   notes: text("notes"),
+  terms: text("terms"),
   servicePeriodStart: timestamp("servicePeriodStart"),
   servicePeriodEnd: timestamp("servicePeriodEnd"),
   referenceNumber: varchar("referenceNumber", { length: 100 }),

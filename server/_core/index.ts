@@ -200,7 +200,7 @@ async function startServer() {
         vatAmount: Number(invoice.vatAmount ?? 0),
         total: Number(invoice.total ?? 0),
         notes: invoice.notes || undefined,
-        terms: undefined, // Terms field not yet in schema, can be added later
+        terms: invoice.terms || undefined,
         logoUrl: companySettings.logoUrl || "",
         servicePeriodStart: invoice.servicePeriodStart || undefined,
         servicePeriodEnd: invoice.servicePeriodEnd || undefined,
@@ -269,7 +269,7 @@ async function startServer() {
         }
       }
 
-      const { invoiceNumber, clientId, issueDate, dueDate, notes, items, servicePeriodStart, servicePeriodEnd } = req.body;
+      const { invoiceNumber, clientId, issueDate, dueDate, notes, terms, items, servicePeriodStart, servicePeriodEnd } = req.body;
 
       if (!invoiceNumber || !issueDate || !items || !Array.isArray(items) || items.length === 0) {
         previewLocks.delete(userId);
@@ -361,7 +361,7 @@ async function startServer() {
         vatAmount,
         total,
         notes: notes || undefined,
-        terms: undefined,
+        terms: terms || undefined,
         logoUrl: companySettings.logoUrl || '',
         servicePeriodStart: servicePeriodStart ? new Date(servicePeriodStart) : undefined,
         servicePeriodEnd: servicePeriodEnd ? new Date(servicePeriodEnd) : undefined,

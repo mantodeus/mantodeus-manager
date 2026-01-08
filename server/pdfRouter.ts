@@ -127,6 +127,7 @@ export const pdfRouter = router({
           })
         ),
         notes: z.string().optional(),
+        terms: z.string().optional(),
         dueDate: z.date().optional(),
       })
     )
@@ -231,7 +232,7 @@ export const pdfRouter = router({
         vatAmount,
         total,
         notes: input.notes,
-        terms: undefined, // Terms field not yet in schema
+        terms: input.terms,
         logoUrl: companySettings.logoUrl || '',
         servicePeriodStart: input.servicePeriodStart ? new Date(input.servicePeriodStart) : undefined,
         servicePeriodEnd: input.servicePeriodEnd ? new Date(input.servicePeriodEnd) : undefined,
@@ -361,7 +362,7 @@ export const pdfRouter = router({
           vatAmount: Number(invoice.vatAmount ?? 0),
           total: Number(invoice.total ?? 0),
           notes: invoice.notes || undefined,
-          terms: undefined,
+          terms: invoice.terms || undefined,
           logoUrl: companySettings.logoUrl || "",
           servicePeriodStart: invoice.servicePeriodStart || undefined,
           servicePeriodEnd: invoice.servicePeriodEnd || undefined,
@@ -369,7 +370,7 @@ export const pdfRouter = router({
           vatAmount: Number(invoice.vatAmount ?? 0),
           total: Number(invoice.total ?? 0),
           notes: invoice.notes || undefined,
-          terms: undefined,
+          terms: invoice.terms || undefined,
           logoUrl: companySettings.logoUrl || "",
           servicePeriodStart: invoice.servicePeriodStart || undefined,
           servicePeriodEnd: invoice.servicePeriodEnd || undefined,

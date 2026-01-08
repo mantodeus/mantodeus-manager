@@ -33,6 +33,7 @@ type InvoiceFormState = {
   issueDate: string;
   dueDate?: string;
   notes?: string;
+  terms?: string;
   servicePeriodStart?: string;
   servicePeriodEnd?: string;
   referenceNumber?: string;
@@ -64,6 +65,7 @@ export type InvoicePreviewData = {
   issueDate: string;
   dueDate?: string;
   notes?: string;
+  terms?: string;
   servicePeriodStart?: string;
   servicePeriodEnd?: string;
   items: Array<{
@@ -107,6 +109,7 @@ export function InvoiceForm({
     issueDate: new Date().toISOString().split("T")[0],
     dueDate: undefined,
     notes: "",
+    terms: "",
     servicePeriodStart: undefined,
     servicePeriodEnd: undefined,
     referenceNumber: "",
@@ -155,6 +158,7 @@ export function InvoiceForm({
           ? new Date(invoice.dueDate).toISOString().split("T")[0]
           : prev.dueDate || undefined, // Fallback to previous value if invoice doesn't have it
         notes: invoice.notes || "",
+        terms: invoice.terms || "",
         servicePeriodStart: invoice.servicePeriodStart
           ? new Date(invoice.servicePeriodStart).toISOString().split("T")[0]
           : undefined,
@@ -201,6 +205,7 @@ export function InvoiceForm({
           issueDate: formState.issueDate,
           dueDate: formState.dueDate,
           notes: formState.notes,
+          terms: formState.terms,
           servicePeriodStart: formState.servicePeriodStart,
           servicePeriodEnd: formState.servicePeriodEnd,
           items: items.map(item => ({
@@ -292,6 +297,7 @@ export function InvoiceForm({
       issueDate: new Date(formState.issueDate),
       dueDate: formState.dueDate ? new Date(formState.dueDate) : undefined,
       notes: formState.notes?.trim() || undefined,
+      terms: formState.terms?.trim() || undefined,
       servicePeriodStart: formState.servicePeriodStart
         ? new Date(formState.servicePeriodStart)
         : undefined,
@@ -359,6 +365,7 @@ export function InvoiceForm({
       issueDate: new Date(formState.issueDate),
       dueDate: formState.dueDate ? new Date(formState.dueDate) : undefined,
       notes: formState.notes?.trim() || undefined,
+      terms: formState.terms?.trim() || undefined,
       servicePeriodStart: formState.servicePeriodStart
         ? new Date(formState.servicePeriodStart)
         : undefined,
@@ -561,8 +568,7 @@ export function InvoiceForm({
           Cancelled by invoice {invoice?.cancelledByInvoiceNumber ?? "(unknown)"}
         </div>
       )}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 space-y-4">
+      <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Invoice Number</Label>
@@ -625,8 +631,6 @@ export function InvoiceForm({
               />
             </div>
           </div>
-        </div>
-        <div className="lg:col-span-4 space-y-4 rounded-lg border bg-muted/30 p-4">
           <div className="space-y-2">
             <Label>Service Period</Label>
             <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
@@ -660,7 +664,7 @@ export function InvoiceForm({
               disabled={isReadOnly}
             />
           </div>
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label>Partial Invoice</Label>
               <p className="text-xs text-muted-foreground">Flag invoice as partial (future use).</p>
@@ -748,14 +752,27 @@ export function InvoiceForm({
         </div>
       </div>
 
-      <div className="space-y-3">
-        <Label>Notes</Label>
-        <Textarea
-          value={formState.notes ?? ""}
-          onChange={(e) => setFormState((prev) => ({ ...prev, notes: e.target.value }))}
-          placeholder="Additional notes or terms"
-          disabled={!isDraft}
-        />
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>Anmerkungen</Label>
+          <Textarea
+            value={formState.notes ?? ""}
+            onChange={(e) => setFormState((prev) => ({ ...prev, notes: e.target.value }))}
+            placeholder="Optional notes (appears on invoice if filled)"
+            disabled={!isDraft}
+            rows={3}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Bedingungen</Label>
+          <Textarea
+            value={formState.terms ?? ""}
+            onChange={(e) => setFormState((prev) => ({ ...prev, terms: e.target.value }))}
+            placeholder="Optional terms and conditions (appears on invoice if filled)"
+            disabled={!isDraft}
+            rows={3}
+          />
+        </div>
       </div>
 
       <div className="border rounded-lg p-4 space-y-2 bg-muted/30">

@@ -115,6 +115,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
           issueDate: formData.issueDate,
           dueDate: formData.dueDate,
           notes: formData.notes,
+          terms: formData.terms,
           servicePeriodStart: formData.servicePeriodStart,
           servicePeriodEnd: formData.servicePeriodEnd,
           items: formData.items,
