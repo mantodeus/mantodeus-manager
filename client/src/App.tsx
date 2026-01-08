@@ -51,10 +51,28 @@ const LAST_ROUTE_KEY = "mantodeus-last-route";
 // Routes that should not be saved/restored
 const EXCLUDED_ROUTES = ["/login", "/404", "/"];
 
+// Detect if we're in Cursor browser
+const isCursorBrowser = typeof navigator !== "undefined" && 
+  (navigator.userAgent.includes("Cursor") || 
+   navigator.userAgent.includes("cursor"));
+
 function Router() {
   const { user, loading } = useAuth();
   const [location, setLocation] = useLocation();
   const [hasRestoredRoute, setHasRestoredRoute] = useState(false);
+  // For Cursor browser, add a manual bypass after 3 seconds
+  const [cursorBypass, setCursorBypass] = useState(false);
+
+  // Cursor browser workaround: allow bypass after 3 seconds
+  useEffect(() => {
+    if (isCursorBrowser && loading && !cursorBypass) {
+      const timer = setTimeout(() => {
+        console.warn("[Router] Cursor browser detected - bypassing loading after 3s");
+        setCursorBypass(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isCursorBrowser, loading, cursorBypass]);
 
   // Save current route to localStorage when it changes (for authenticated users only)
   useEffect(() => {
@@ -106,8 +124,23 @@ function Router() {
   // Show loading screen during initial auth check
   // Wait for auth to load before making routing decisions
   // Note: useAuth has an 8-second timeout to prevent infinite loading
-  if (loading) {
+  // Cursor browser workaround: bypass loading after 3 seconds
+  // Also add a general fallback: if loading for more than 5 seconds total, proceed anyway
+  const [maxLoadingTime] = useState(() => Date.now());
+  const loadingTooLong = Date.now() - maxLoadingTime > 5000;
+  
+  if (loading && !(isCursorBrowser && cursorBypass) && !loadingTooLong) {
     return <AppLoadingScreen />;
+  }
+  
+  // If we've been loading too long, log and proceed
+  if (loading && (isCursorBrowser && cursorBypass) || loadingTooLong) {
+    console.warn("[Router] Loading timeout - proceeding anyway", {
+      isCursorBrowser,
+      cursorBypass,
+      loadingTooLong,
+      hasUser: !!user,
+    });
   }
 
   // If not authenticated and not on login page, redirect to login
