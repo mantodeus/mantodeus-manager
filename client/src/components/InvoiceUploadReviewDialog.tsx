@@ -534,7 +534,7 @@ export function InvoiceUploadReviewDialog({
     onClick: () => void;
   };
 
-  const getStatusActions = (invoice: any): StatusAction[] => {
+  function getStatusActions(invoice: any): StatusAction[] {
     if (!invoice) return [];
 
     const actions: StatusAction[] = [];
@@ -613,9 +613,9 @@ export function InvoiceUploadReviewDialog({
     }
 
     return actions;
-  };
+  }
 
-  const renderStatusButton = (invoice: any) => {
+  function renderStatusButton(invoice: any) {
     if (!invoice) return null;
     
     const invoiceState = getInvoiceState(invoice);
@@ -702,7 +702,7 @@ export function InvoiceUploadReviewDialog({
     }
     
     return null;
-  };
+  }
 
   // Auto-open preview on desktop when dialog opens
   useEffect(() => {
