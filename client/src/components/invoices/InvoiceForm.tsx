@@ -606,13 +606,13 @@ export function InvoiceForm({
         </div>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex-1 min-w-0">
             <Label>Line Items</Label>
-            <p className="text-xs text-muted-foreground">Add services or products via the dedicated modal.</p>
+            <p className="text-xs text-muted-foreground break-words">Add services or products via the dedicated modal.</p>
           </div>
           {!isReadOnly && !isCancelled && (
-            <Button type="button" onClick={() => openItemEditor(null)} className="gap-2">
+            <Button type="button" onClick={() => openItemEditor(null)} className="gap-2 shrink-0">
               <Plus className="w-4 h-4" />
               Add
             </Button>
@@ -688,6 +688,7 @@ export function InvoiceForm({
           checked={formState.partialInvoice}
           onCheckedChange={(val) => setFormState((prev) => ({ ...prev, partialInvoice: val }))}
           disabled={!isDraft}
+          className="data-[state=unchecked]:bg-muted dark:data-[state=unchecked]:bg-muted/60"
         />
       </div>
 
