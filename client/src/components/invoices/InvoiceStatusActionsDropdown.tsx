@@ -14,7 +14,7 @@ import { MarkAsNotPaidDialog } from "./MarkAsNotPaidDialog";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Send, CheckCircle2, X, FileX, RotateCcw, Plus } from "@/components/ui/Icon";
+import { Loader2, Send, CheckCircle2, X, XCircle, RotateCcw, Plus } from "@/components/ui/Icon";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 
@@ -93,7 +93,7 @@ function getInvoiceStatusActions(invoice: InvoiceStatusActionsDropdownProps["inv
       actions.push({
         action: "cancel",
         label: "Cancel (Void draft)",
-        icon: <FileX className="h-4 w-4" />,
+        icon: <XCircle className="h-4 w-4" />,
       });
     }
   }
@@ -127,7 +127,7 @@ function getInvoiceStatusActions(invoice: InvoiceStatusActionsDropdownProps["inv
       actions.push({
         action: "cancel",
         label: "Cancel (Void draft)",
-        icon: <FileX className="h-4 w-4" />,
+        icon: <XCircle className="h-4 w-4" />,
       });
     }
   }
@@ -158,7 +158,7 @@ function getInvoiceStatusActions(invoice: InvoiceStatusActionsDropdownProps["inv
       actions.push({
         action: "cancel",
         label: "Cancel (Create cancellation invoice)",
-        icon: <FileX className="h-4 w-4" />,
+        icon: <XCircle className="h-4 w-4" />,
       });
     }
   }
@@ -194,7 +194,7 @@ function getInvoiceStatusActions(invoice: InvoiceStatusActionsDropdownProps["inv
       actions.push({
         action: "createCancellation",
         label: "Create Cancellation Invoice",
-        icon: <FileX className="h-4 w-4" />,
+        icon: <XCircle className="h-4 w-4" />,
       });
     }
   }
