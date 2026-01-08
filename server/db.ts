@@ -2119,7 +2119,6 @@ export async function markInvoiceAsPaid(id: number, paidAt: Date, alsoSetSentAt:
   const paymentDate = paidAt;
 
   const updateData: any = {
-    status: 'paid', 
     paidAt: paymentDate,
     amountPaid: totalAmount,
     lastPaymentAt: paymentDate
@@ -2128,8 +2127,9 @@ export async function markInvoiceAsPaid(id: number, paidAt: Date, alsoSetSentAt:
   // If alsoSetSentAt is true and sentAt is not already set, set it to the same date as paidAt
   if (alsoSetSentAt && !invoice.sentAt) {
     updateData.sentAt = paymentDate;
-    updateData.status = 'paid'; // Already set above, but explicit
   }
+  
+  // NOTE: Status is derived from timestamps, not set directly
 
   return db
     .update(invoices)
@@ -2142,18 +2142,29 @@ export async function revertInvoiceStatus(id: number, targetStatus: 'draft' | 'o
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
 
-  // Update status field and clear corresponding timestamps
+  // NOTE: Status is derived from timestamps, not set directly
+  // Update timestamps to reflect the target state
   if (targetStatus === 'draft') {
     // Reverting to draft: clear both sentAt and paidAt
+    // CRITICAL: Must check amountPaid - cannot revert if payments exist
+    const invoice = await getInvoiceById(id);
+    if (!invoice) {
+      throw new Error("Invoice not found");
+    }
+    const amountPaid = Number(invoice.amountPaid || 0);
+    if (amountPaid > 0) {
+      throw new Error("Cannot revert to draft: invoice has received payments. Use 'Revert to Sent' instead.");
+    }
     return db
       .update(invoices)
-      .set({ status: targetStatus, sentAt: null, paidAt: null })
+      .set({ sentAt: null, paidAt: null })
       .where(eq(invoices.id, id));
   } else if (targetStatus === 'open') {
     // Reverting to open (from paid): clear paidAt, keep sentAt
+    // CRITICAL: Preserve amountPaid (payment data must never be destroyed)
     return db
       .update(invoices)
-      .set({ status: targetStatus, paidAt: null })
+      .set({ paidAt: null })
       .where(eq(invoices.id, id));
   }
 }
@@ -2167,15 +2178,18 @@ export async function markInvoiceAsSent(id: number) {
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
 
+  // NOTE: Status is derived from timestamps, not set directly
   return db
     .update(invoices)
-    .set({ status: 'open', sentAt: new Date() })
+    .set({ sentAt: new Date() })
     .where(eq(invoices.id, id));
 }
 
 /**
  * Revert invoice to draft (only if no payments received)
  * Invalidates all share links for this invoice
+ * 
+ * CRITICAL: Must NOT destroy payment data. If amountPaid > 0, this operation is blocked.
  */
 export async function revertInvoiceToDraft(id: number) {
   const db = await getDb();
@@ -2188,34 +2202,43 @@ export async function revertInvoiceToDraft(id: number) {
     throw new Error("Invoice not found");
   }
 
-  // Allow reverting to draft even with payments - warning dialog handles confirmation
+  // BLOCK reverting to draft if payments have been received
+  const amountPaid = Number(invoice.amountPaid || 0);
+  if (amountPaid > 0) {
+    throw new Error("Cannot revert to draft: invoice has received payments. Use 'Revert to Sent' instead.");
+  }
+
   // Invalidate all share links for this invoice
   await invalidateInvoiceShareLinks(id);
 
-  // Revert to draft: clear sentAt, paidAt, and amountPaid
+  // Revert to draft: clear sentAt and paidAt (amountPaid is already 0)
+  // NOTE: Status is derived from timestamps, not set directly
   return db
     .update(invoices)
     .set({ 
-      status: 'draft', 
       sentAt: null, 
       paidAt: null,
-      amountPaid: "0.00" // Reset payments when reverting to draft
+      // amountPaid stays at 0.00 (already verified above)
     })
     .where(eq(invoices.id, id));
 }
 
 /**
  * Revert invoice to sent state (from paid)
- * Clears paidAt and resets amountPaid to 0
+ * Clears paidAt but PRESERVES amountPaid (payment data must never be destroyed)
+ * 
+ * CRITICAL: This only clears the paidAt timestamp. amountPaid is preserved.
  */
 export async function revertInvoiceToSent(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
 
+  // NOTE: Status is derived from timestamps, not set directly
+  // Only clear paidAt - amountPaid is preserved to maintain payment history
   return db
     .update(invoices)
-    .set({ status: 'open', paidAt: null, amountPaid: "0.00" })
+    .set({ paidAt: null })
     .where(eq(invoices.id, id));
 }
 
@@ -2301,9 +2324,9 @@ export async function addInvoicePayment(id: number, amount: number) {
   // Note: For partial payments that complete the invoice, we use the current date automatically
   // The user is actively adding a payment, so using today's date is appropriate
   // For "Mark as Paid" action, the user must explicitly select a date via the dialog
+  // NOTE: Status is derived from timestamps, not set directly
   if (newAmountPaid >= total) {
     updateData.paidAt = new Date();
-    updateData.status = 'paid';
   }
 
   return db

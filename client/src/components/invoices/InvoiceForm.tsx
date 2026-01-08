@@ -830,77 +830,8 @@ export function InvoiceForm({
       <div className="flex flex-col gap-2 pt-4 border-t">
         {/* Custom content before footer buttons (e.g., Update Preview button) */}
         {renderBeforeFooter}
-        {/* Action buttons - above Delete/Update */}
         
-        {/* Cancelled invoices - only show Mark as Not Cancelled */}
-        {invoice && !isCreate && isCancelled && (
-          <Button
-            type="button"
-            variant="default"
-            onClick={() => markAsNotCancelledMutation.mutate({ id: invoiceId! })}
-            disabled={isLoading || markAsNotCancelledMutation.isPending}
-            className="w-full"
-          >
-            {markAsNotCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Mark as Not Cancelled
-          </Button>
-        )}
-        
-        {/* Paid invoices - show Revert to Sent */}
-        {invoice && !isCreate && isPaid && !isCancelled && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setRevertDialogOpen(true)}
-            disabled={isLoading || revertToSentMutation.isPending}
-            className="w-full hover:bg-blue-500 hover:text-white hover:border-blue-500/50 dark:hover:bg-blue-600 dark:hover:text-white dark:hover:border-blue-600/50"
-          >
-            {revertToSentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Revert to Sent
-          </Button>
-        )}
-        
-        {/* Overdue invoices (sent but overdue) - show Mark as Paid and Revert to Draft */}
-        {invoice && !isCreate && isSent && !isPaid && !isCancelled && derivedValues.isOverdue && (
-          <>
-            <Button
-              type="button"
-              variant="default"
-              onClick={() => markAsPaidMutation.mutate({ id: invoiceId! })}
-              disabled={isLoading || markAsPaidMutation.isPending}
-              className="w-full"
-            >
-              {markAsPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Mark as Paid
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setRevertDialogOpen(true)}
-              disabled={isLoading || revertToDraftMutation.isPending}
-              className="w-full hover:bg-blue-500 hover:text-white hover:border-blue-500/50 dark:hover:bg-blue-600 dark:hover:text-white dark:hover:border-blue-600/50"
-            >
-              {revertToDraftMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Revert to Draft
-            </Button>
-          </>
-        )}
-        
-        {/* Sent invoices (not overdue) - show Mark as Paid */}
-        {invoice && !isCreate && isSent && !isPaid && !isCancelled && !derivedValues.isOverdue && (
-          <Button
-            type="button"
-            variant="default"
-            onClick={() => markAsPaidMutation.mutate({ id: invoiceId! })}
-            disabled={isLoading || markAsPaidMutation.isPending}
-            className="w-full"
-          >
-            {markAsPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Mark as Paid
-          </Button>
-        )}
-        
-        {/* Delete and Update buttons - always at the bottom in one line */}
+        {/* Delete and Update buttons - lifecycle actions are now in status badge dropdown */}
         <div className="flex gap-2 pt-2 border-t">
           {!isCreate && invoice && (
             <Button 

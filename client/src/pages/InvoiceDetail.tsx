@@ -1,9 +1,10 @@
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
 import { ShareInvoiceDialog } from "@/components/invoices/ShareInvoiceDialog";
+import { InvoiceStatusActionsDropdown } from "@/components/invoices/InvoiceStatusActionsDropdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, X, DocumentCurrencyEuro, Eye, Send, CheckCircle2 } from "@/components/ui/Icon";
+import { ArrowLeft, Loader2, X, DocumentCurrencyEuro, Eye } from "@/components/ui/Icon";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -145,18 +146,6 @@ export default function InvoiceDetail() {
 
   const title = invoice?.invoiceName || invoice?.invoiceNumber || "Invoice";
   const invoiceState = invoice ? getInvoiceState(invoice) : null;
-  const isDraft = invoiceState === 'DRAFT';
-  const isSent = invoiceState === 'SENT' || invoiceState === 'PARTIAL';
-  const isPaid = invoiceState === 'PAID';
-
-  const handleSend = () => {
-    if (!invoice) return;
-    if (!invoice.dueDate) {
-      toast.error("Invoice must have a due date before it can be sent");
-      return;
-    }
-    setShareDialogOpen(true);
-  };
 
   return (
     <div className="space-y-6">
@@ -190,7 +179,7 @@ export default function InvoiceDetail() {
           </div>
         </div>
         
-        {/* Action buttons below header */}
+        {/* Action buttons below header - Preview and Status Badge Dropdown */}
         {invoice && invoice.source === "created" && (
           <div className="flex items-center justify-end gap-2 pb-2 border-b">
             <Button
@@ -203,42 +192,35 @@ export default function InvoiceDetail() {
               <Eye className="h-4 w-4" />
               Preview
             </Button>
-            {isDraft && (
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSend}
-                disabled={!invoice.dueDate}
-                className="gap-2 bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
-              >
-                <Send className="h-4 w-4" />
-                Send
-              </Button>
-            )}
-            {isSent && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled
-                className="gap-2 bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Sent
-              </Button>
-            )}
-            {isPaid && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled
-                className="gap-2 bg-pink-500 text-white dark:bg-[#00FF88] dark:text-black border-pink-500/50 dark:border-[#00FF88]/50"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Paid
-              </Button>
-            )}
+            {/* Status badge with dropdown - single control surface for all lifecycle actions */}
+            <InvoiceStatusActionsDropdown
+              invoice={{
+                id: invoice.id,
+                invoiceNumber: invoice.invoiceNumber || "",
+                needsReview: invoice.needsReview || false,
+                sentAt: invoice.sentAt,
+                paidAt: invoice.paidAt,
+                amountPaid: invoice.amountPaid,
+                total: invoice.total,
+                dueDate: invoice.dueDate,
+                cancelledAt: invoice.cancelledAt,
+                source: invoice.source,
+                type: invoice.type,
+              }}
+              onActionComplete={async () => {
+                await utils.invoices.get.invalidate({ id: invoiceId! });
+                await utils.invoices.list.invalidate();
+              }}
+              onSend={() => {
+                // Open ShareInvoiceDialog when "send" action is triggered
+                setShareDialogOpen(true);
+              }}
+              onAddPayment={() => {
+                // This will be handled by InvoiceForm's payment dialog
+                // For now, we'll need to expose this from InvoiceForm
+                toast.info("Add Payment - use the Payments section in the form");
+              }}
+            />
           </div>
         )}
       </div>

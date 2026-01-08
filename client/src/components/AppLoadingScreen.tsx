@@ -1,7 +1,7 @@
 import { Logo } from "@/components/Logo";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RotateCcw } from "@/components/ui/Icon";
 
 export function AppLoadingScreen() {
   const [showTimeout, setShowTimeout] = useState(false);
@@ -42,7 +42,7 @@ export function AppLoadingScreen() {
               size="sm"
               className="mt-2"
             >
-              <RefreshCw className="mr-2 h-4 w-4" />
+              <RotateCcw className="mr-2 h-4 w-4" />
               Refresh Page
             </Button>
           )}

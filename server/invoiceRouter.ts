@@ -533,12 +533,24 @@ export const invoiceRouter = router({
       if (invoice.source === "uploaded") {
         // Allow - this is the historical import use case
         // If alsoMarkAsSent is true, we'll set sentAt when marking as paid
+        // NOTE: Backend doesn't require issueDate/total for uploaded invoices as they come from PDF parsing
+        // However, if user edited metadata in review dialog, they should save first via confirmUploadedInvoice
       } else {
         // For created invoices, require sentAt
         if (!invoice.sentAt) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can be marked as paid" });
         }
         checkInvoiceNeedsReview(invoice, "marked as paid");
+      }
+      
+      // Ensure invoice has required fields before marking as paid
+      // This prevents marking incomplete invoices as paid
+      if (!invoice.issueDate) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice must have an issue date before it can be marked as paid" });
+      }
+      const total = Number(invoice.total || 0);
+      if (total <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice total must be greater than 0 before it can be marked as paid" });
       }
 
       await db.markInvoiceAsPaid(invoice.id, input.paidAt, input.alsoMarkAsSent && !invoice.sentAt);
@@ -733,13 +745,15 @@ export const invoiceRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled invoices are read-only." });
       }
 
-      // Allow reverting to draft even with payments - warning dialog handles confirmation
+      // Backend enforces: cannot revert to draft if payments exist (db.revertInvoiceToDraft will throw)
+      // This check happens in the database function, not here, to ensure no bypass
       if (!invoice.sentAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice is not in sent state" });
       }
 
       checkInvoiceNeedsReview(invoice, "reverted");
 
+      // db.revertInvoiceToDraft will throw if amountPaid > 0 - backend enforcement
       await db.revertInvoiceToDraft(invoice.id);
       const updated = await db.getInvoiceById(input.id);
       return mapInvoiceToPayload(updated);

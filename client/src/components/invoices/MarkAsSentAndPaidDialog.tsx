@@ -43,7 +43,8 @@ export function MarkAsSentAndPaidDialog({
             <p>
               This invoice has not been sent yet. Do you want to mark this invoice as sent and paid?
               <br /><br />
-              This is useful for historical invoices that were sent and paid in the past.
+              <strong>Note:</strong> This is useful for historical invoices that were sent and paid in the past.
+              Make sure all invoice details (client, dates, amounts) are correct before proceeding.
             </p>
             <div className="space-y-2">
               <Label htmlFor="paidAtDate">Payment Date *</Label>
