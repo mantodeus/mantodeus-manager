@@ -559,7 +559,7 @@ export function InvoiceForm({
                   className="w-full"
                 />
               </div>
-              <div></div>
+              <div className="w-4"></div>
               <div className="space-y-2">
                 <Label>Due Date</Label>
                 <Input
@@ -586,7 +586,7 @@ export function InvoiceForm({
                   className="w-full"
                 />
               </div>
-              <div className="flex items-end pb-2">
+              <div className="flex items-center justify-center w-4">
                 <span className="text-muted-foreground text-sm shrink-0">→</span>
               </div>
               <div className="space-y-2">
@@ -603,17 +603,6 @@ export function InvoiceForm({
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Partial Invoice</Label>
-              <p className="text-xs text-muted-foreground">Flag invoice as partial (future use).</p>
-            </div>
-            <Switch
-              checked={formState.partialInvoice}
-              onCheckedChange={(val) => setFormState((prev) => ({ ...prev, partialInvoice: val }))}
-              disabled={!isDraft}
-            />
-          </div>
         </div>
 
       <div className="space-y-3">
@@ -623,9 +612,9 @@ export function InvoiceForm({
             <p className="text-xs text-muted-foreground">Add services or products via the dedicated modal.</p>
           </div>
           {!isReadOnly && !isCancelled && (
-            <Button type="button" variant="outline" onClick={() => openItemEditor(null)} className="gap-2">
+            <Button type="button" onClick={() => openItemEditor(null)} className="gap-2">
               <Plus className="w-4 h-4" />
-              Add Line Item
+              Add
             </Button>
           )}
         </div>
@@ -688,6 +677,18 @@ export function InvoiceForm({
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <Label>Partial Invoice</Label>
+          <p className="text-xs text-muted-foreground">Flag invoice as partial (future use).</p>
+        </div>
+        <Switch
+          checked={formState.partialInvoice}
+          onCheckedChange={(val) => setFormState((prev) => ({ ...prev, partialInvoice: val }))}
+          disabled={!isDraft}
+        />
       </div>
 
       <div className="space-y-4">
@@ -868,13 +869,54 @@ function LineItemModal({
     onSave({ ...draft, lineTotal });
   };
 
+  const isMobile = useIsMobile();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg" zIndex={60}>
-        <DialogHeader>
-          <DialogTitle>Add Line Item</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <DialogContent 
+        className={cn(
+          "flex flex-col p-0",
+          "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+        )}
+        showCloseButton={false}
+        zIndex={60}
+      >
+        {/* PageHeader-like structure */}
+        <div className="flex-shrink-0 p-6 pb-2 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4 min-w-0 flex-1">
+              <div className="flex-1 min-w-0 flex flex-col">
+                <h1 className="text-3xl font-regular flex items-center gap-2">
+                  <Plus className="h-6 w-6 text-primary" />
+                  Add Line Item
+                </h1>
+                <p className="text-muted-foreground text-sm mt-3">
+                  Add a new item to the invoice
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-3 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChange(false)}
+                className="h-10 w-10"
+                aria-label="Close"
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Fade-out separator */}
+        <div className="separator-fade" />
+
+        <div className={cn(
+          "px-6 pt-4 overflow-y-auto flex-1 min-h-0",
+          "pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+        )}>
+          <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Item Name</Label>
             <Input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} />
@@ -925,7 +967,7 @@ function LineItemModal({
             <span className="text-sm text-muted-foreground">Line Total</span>
             <span className="text-lg">{formatCurrency(lineTotal)}</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 pt-4 border-t">
             <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
@@ -933,7 +975,8 @@ function LineItemModal({
               Save Item
             </Button>
           </div>
-        </form>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
