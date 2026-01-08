@@ -261,6 +261,7 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       // Use synchronous fetch with cached token - no more async getSession() per request!
+      // Add timeout to prevent hanging requests (especially in Cursor browser)
       fetch(input, init) {
         try {
           const headers = new Headers(init?.headers || {});
@@ -272,11 +273,56 @@ const trpcClient = trpc.createClient({
             headers.set("Authorization", `Bearer ${token}`);
           }
 
+          // Add timeout to prevent hanging requests (10 seconds)
+          // This is especially important for Cursor browser which may have different fetch behavior
+          const timeoutMs = 10000;
+          const existingSignal = init?.signal;
+          
+          // Create timeout controller
+          const timeoutController = new AbortController();
+          const timeoutId = setTimeout(() => {
+            console.warn("[tRPC Fetch] Request timeout after", timeoutMs, "ms");
+            timeoutController.abort();
+          }, timeoutMs);
+
+          // Combine signals: abort if either timeout or existing signal aborts
+          const combinedSignal = existingSignal 
+            ? (() => {
+                const combined = new AbortController();
+                const abort = () => {
+                  clearTimeout(timeoutId);
+                  combined.abort();
+                };
+                timeoutController.signal.addEventListener("abort", abort);
+                existingSignal.addEventListener("abort", abort);
+                return combined.signal;
+              })()
+            : timeoutController.signal;
+
           return globalThis.fetch(input, {
             ...(init ?? {}),
             headers,
             credentials: "include",
-          });
+            signal: combinedSignal,
+          }).then(
+            (response) => {
+              clearTimeout(timeoutId);
+              return response;
+            },
+            (error) => {
+              clearTimeout(timeoutId);
+              if (error instanceof Error && error.name === "AbortError") {
+                // Only throw timeout error if it was our timeout, not React Query cancellation
+                if (timeoutController.signal.aborted) {
+                  console.error("[tRPC Fetch] Request timed out after", timeoutMs, "ms");
+                  throw new Error(`Request timed out after ${timeoutMs}ms`);
+                }
+                // Otherwise it was cancelled by React Query, rethrow as-is
+                throw error;
+              }
+              throw error;
+            }
+          );
         } catch (error) {
           console.error("[tRPC Fetch] Error in fetch function:", error);
           // Fallback to basic fetch if there's an error
