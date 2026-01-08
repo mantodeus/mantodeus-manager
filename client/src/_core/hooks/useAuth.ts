@@ -146,5 +146,8 @@ export function useAuth(options?: UseAuthOptions) {
     ...state,
     refresh: () => meQuery.refetch(),
     logout,
+    // Expose query status for Router to check
+    queryStatus: meQuery.status,
+    isQueryComplete: meQuery.status === 'success' || meQuery.status === 'error',
   };
 }

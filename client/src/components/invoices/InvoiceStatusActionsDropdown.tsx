@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -14,9 +14,10 @@ import { MarkAsNotPaidDialog } from "./MarkAsNotPaidDialog";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Send, CheckCircle2, X, XCircle, RotateCcw, Plus } from "@/components/ui/Icon";
+import { Loader2, Send, CheckCircle2, X, FileX, RotateCcw, Plus, XCircle } from "@/components/ui/Icon";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
+import { useLongPress } from "@/hooks/useLongPress";
 
 export type InvoiceStatusAction =
   | "send"
@@ -235,6 +236,8 @@ export function InvoiceStatusActionsDropdown({
   const [markAsNotPaidDialogOpen, setMarkAsNotPaidDialogOpen] = useState(false);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [revertTarget, setRevertTarget] = useState<"sent" | "draft" | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const badgeRef = useRef<HTMLDivElement>(null);
 
   const markAsPaidMutation = trpc.invoices.markAsPaid.useMutation({
     onSuccess: () => {
@@ -309,6 +312,35 @@ export function InvoiceStatusActionsDropdown({
   });
 
   const availableActions = getInvoiceStatusActions(invoice);
+
+  // Use long-press hook for mobile support
+  const { longPressHandlers } = useLongPress({
+    onLongPress: () => {
+      if (availableActions.length > 0) {
+        setDropdownOpen(true);
+      }
+    },
+    duration: 500,
+    hapticFeedback: true,
+  });
+
+  // Handle right-click (context menu) for desktop
+  useEffect(() => {
+    const badgeElement = badgeRef.current;
+    if (!badgeElement || availableActions.length === 0) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDropdownOpen(true);
+    };
+
+    badgeElement.addEventListener("contextmenu", handleContextMenu);
+
+    return () => {
+      badgeElement.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, [availableActions.length]);
 
   // Render status badge (same styling as Invoices.tsx)
   const renderStatusBadge = () => {
@@ -485,6 +517,7 @@ export function InvoiceStatusActionsDropdown({
     setRevertTarget(null);
   };
 
+
   // If no actions available, just show the badge
   if (availableActions.length === 0) {
     return renderStatusBadge();
@@ -492,9 +525,15 @@ export function InvoiceStatusActionsDropdown({
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
-          <div className="inline-block">{renderStatusBadge()}</div>
+          <div
+            ref={badgeRef}
+            className="inline-block cursor-pointer select-none"
+            {...longPressHandlers}
+          >
+            {renderStatusBadge()}
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>

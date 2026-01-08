@@ -57,7 +57,7 @@ const isCursorBrowser = typeof navigator !== "undefined" &&
    navigator.userAgent.includes("cursor"));
 
 function Router() {
-  const { user, loading } = useAuth();
+  const { user, loading, queryStatus, isQueryComplete } = useAuth();
   const [location, setLocation] = useLocation();
   const [hasRestoredRoute, setHasRestoredRoute] = useState(false);
   // For Cursor browser, add a manual bypass after 3 seconds
@@ -74,9 +74,13 @@ function Router() {
     }
   }, [isCursorBrowser, loading, cursorBypass]);
 
+  // If query is complete (success or error), we're done loading regardless of loading state
+  // This fixes the issue where query completes but loading state hasn't updated yet
+  const actuallyLoading = loading && !isQueryComplete;
+
   // Save current route to localStorage when it changes (for authenticated users only)
   useEffect(() => {
-    if (!user || loading) return;
+    if (!user || actuallyLoading) return;
     if (EXCLUDED_ROUTES.includes(location)) return;
     
     try {
@@ -84,11 +88,11 @@ function Router() {
     } catch (error) {
       console.warn("[Router] Failed to save last route:", error);
     }
-  }, [location, user, loading]);
+  }, [location, user, actuallyLoading]);
 
   // Restore last route on app startup (only once)
   useEffect(() => {
-    if (loading || hasRestoredRoute) return;
+    if (actuallyLoading || hasRestoredRoute) return;
     
     if (!user) {
       // Not authenticated - only redirect to login if we're not already there
@@ -119,26 +123,35 @@ function Router() {
       // Already on a route - just mark as restored
       setHasRestoredRoute(true);
     }
-  }, [user, loading, location, setLocation, hasRestoredRoute]);
+  }, [user, actuallyLoading, location, setLocation, hasRestoredRoute]);
 
   // Show loading screen during initial auth check
   // Wait for auth to load before making routing decisions
   // Note: useAuth has an 8-second timeout to prevent infinite loading
   // Cursor browser workaround: bypass loading after 3 seconds
   // Also add a general fallback: if loading for more than 5 seconds total, proceed anyway
+  // CRITICAL: If query is complete (success/error), don't show loading even if loading state is true
   const [maxLoadingTime] = useState(() => Date.now());
   const loadingTooLong = Date.now() - maxLoadingTime > 5000;
   
-  if (loading && !(isCursorBrowser && cursorBypass) && !loadingTooLong) {
+  // Don't show loading if:
+  // 1. Query is complete (success or error) - this is the key fix
+  // 2. Cursor browser bypass is active
+  // 3. Loading has been too long
+  const shouldShowLoading = actuallyLoading && !(isCursorBrowser && cursorBypass) && !loadingTooLong;
+  
+  if (shouldShowLoading) {
     return <AppLoadingScreen />;
   }
   
-  // If we've been loading too long, log and proceed
-  if (loading && (isCursorBrowser && cursorBypass) || loadingTooLong) {
-    console.warn("[Router] Loading timeout - proceeding anyway", {
+  // If we've been loading too long or query is complete, log and proceed
+  if (loading && ((isCursorBrowser && cursorBypass) || loadingTooLong || isQueryComplete)) {
+    console.warn("[Router] Proceeding despite loading state", {
       isCursorBrowser,
       cursorBypass,
       loadingTooLong,
+      isQueryComplete,
+      queryStatus,
       hasUser: !!user,
     });
   }
