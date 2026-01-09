@@ -835,14 +835,32 @@ export function InvoiceUploadReviewDialog({
         e.preventDefault();
         e.stopPropagation();
         
+        // Preserve scroll position during zoom
+        const scrollLeft = container.scrollLeft;
+        const scrollTop = container.scrollTop;
+        const containerRect = container.getBoundingClientRect();
+        const mouseX = e.clientX - containerRect.left + scrollLeft;
+        const mouseY = e.clientY - containerRect.top + scrollTop;
+        
         // Use deltaY for zoom direction (negative = zoom in, positive = zoom out)
         // Trackpad pinch typically has larger deltaY values, so scale accordingly
         // Use a more sensitive multiplier for smoother zoom
         const zoomSensitivity = 0.005; // Fine-tuned for trackpad
         const delta = e.deltaY > 0 ? -zoomSensitivity * Math.abs(e.deltaY) : zoomSensitivity * Math.abs(e.deltaY);
+        
         setPreviewZoom((prev) => {
-          const newZoom = prev + delta;
-          return Math.max(0.5, Math.min(3, newZoom));
+          const newZoom = Math.max(0.5, Math.min(3, prev + delta));
+          
+          // Adjust scroll position to maintain viewport center relative to mouse position
+          requestAnimationFrame(() => {
+            const zoomRatio = newZoom / prev;
+            const newScrollLeft = mouseX * zoomRatio - (e.clientX - containerRect.left);
+            const newScrollTop = mouseY * zoomRatio - (e.clientY - containerRect.top);
+            container.scrollLeft = Math.max(0, newScrollLeft);
+            container.scrollTop = Math.max(0, newScrollTop);
+          });
+          
+          return newZoom;
         });
         return;
       }
@@ -882,10 +900,26 @@ export function InvoiceUploadReviewDialog({
           touch2.clientY - touch1.clientY
         );
         
+        // Preserve scroll position during pinch zoom
+        const scrollLeft = container.scrollLeft;
+        const scrollTop = container.scrollTop;
+        const containerRect = container.getBoundingClientRect();
+        const centerX = (touch1.clientX + touch2.clientX) / 2 - containerRect.left + scrollLeft;
+        const centerY = (touch1.clientY + touch2.clientY) / 2 - containerRect.top + scrollTop;
+        
         const scale = currentDistance / initialDistance;
-        const newZoom = initialZoom * scale;
-        // Allow zoom from 0.3x to 3x
-        setPreviewZoom(Math.max(0.3, Math.min(3, newZoom)));
+        const newZoom = Math.max(0.3, Math.min(3, initialZoom * scale));
+        
+        // Adjust scroll position to maintain viewport center relative to pinch center
+        requestAnimationFrame(() => {
+          const zoomRatio = newZoom / initialZoom;
+          const newScrollLeft = centerX * zoomRatio - ((touch1.clientX + touch2.clientX) / 2 - containerRect.left);
+          const newScrollTop = centerY * zoomRatio - ((touch1.clientY + touch2.clientY) / 2 - containerRect.top);
+          container.scrollLeft = Math.max(0, newScrollLeft);
+          container.scrollTop = Math.max(0, newScrollTop);
+        });
+        
+        setPreviewZoom(newZoom);
       }
     };
 
@@ -976,22 +1010,25 @@ export function InvoiceUploadReviewDialog({
               className="flex-1 overflow-auto bg-background relative"
               style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
             >
-              <div
-                data-iframe-wrapper
-                style={{
-                  transform: `scale(${previewZoom})`,
-                  transformOrigin: 'top left',
-                  width: `${100 / previewZoom}%`,
-                  height: `${100 / previewZoom}%`,
-                  transition: 'transform 0.1s ease-out',
-                }}
-              >
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-full border-0"
-                  title={previewFileName}
-                  style={{ pointerEvents: 'auto' }}
-                />
+              <div className="flex items-center justify-center min-h-full p-4">
+                <div
+                  data-iframe-wrapper
+                  style={{
+                    transform: `scale(${previewZoom})`,
+                    transformOrigin: 'center center',
+                    width: '794px',
+                    height: '1123px',
+                    transition: 'transform 0.1s ease-out',
+                    flexShrink: 0,
+                  }}
+                >
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-full border-0"
+                    title={previewFileName}
+                    style={{ pointerEvents: 'auto', display: 'block' }}
+                  />
+                </div>
               </div>
             </div>
           </div>
