@@ -11,7 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { DocumentUploadZone } from "@/components/documents/DocumentUploadZone";
 import { PageHeader } from "@/components/PageHeader";
-import { DashboardLayout } from "@/components/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "@/components/ui/Icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
