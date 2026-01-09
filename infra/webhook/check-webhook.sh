@@ -76,20 +76,19 @@ echo "      - Verify webhook URL points to: http://your-server:9000/webhook"
 echo "      - Check 'Recent Deliveries' for recent push events"
 echo ""
 
-# Check if deploy.sh exists and has git operations
-echo "6. Checking deploy script..."
-DEPLOY_SCRIPT="/srv/customer/sites/manager.mantodeus.com/infra/deploy/deploy.sh"
+# Check if deploy-prod.sh exists and has git operations
+echo "6. Checking smart deploy script..."
+DEPLOY_SCRIPT="/srv/customer/sites/manager.mantodeus.com/scripts/deploy-prod.sh"
 if [ -f "$DEPLOY_SCRIPT" ]; then
-    echo "   ✅ deploy.sh exists"
+    echo "   ✅ deploy-prod.sh exists"
     if grep -q "git fetch\|git pull\|git reset" "$DEPLOY_SCRIPT"; then
-        echo "   ✅ deploy.sh includes git operations"
+        echo "   ✅ deploy-prod.sh includes git operations"
     else
-        echo "   ⚠️  WARNING: deploy.sh does NOT include git fetch/pull!"
-        echo "   💡 This means deployments won't actually pull new code"
-        echo "   💡 Fix: Add 'git fetch origin && git reset --hard origin/main' to deploy.sh"
+        echo "   ⚠️  WARNING: deploy-prod.sh does NOT include git fetch/pull!"
+        echo "   💡 Fix: Add 'git fetch origin && git reset --hard origin/main' to deploy-prod.sh"
     fi
 else
-    echo "   ❌ deploy.sh not found"
+    echo "   ❌ deploy-prod.sh not found"
 fi
 echo ""
 

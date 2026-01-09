@@ -253,14 +253,12 @@ async function deploy(branch, commitId) {
     const commands = [
       `cd ${APP_PATH}`,
       'git fetch origin',
-      'git pull origin main',
-      `npx pnpm install --frozen-lockfile || (` +
-        `echo "First pnpm install failed, cleaning up..." && ` +
-        `rm -rf node_modules && ` +
-        `npx pnpm install --frozen-lockfile` +
-      `)`,
+      'git reset --hard origin/main',
+      // Use --no-frozen-lockfile because lockfile is in .gitignore
+      'npx pnpm install --no-frozen-lockfile',
       'npx pnpm run db:generate',
       'npx pnpm run db:migrate',
+      'export NODE_OPTIONS=--max-old-space-size=4096',
       'npm run build',
       `npx pm2 restart ${PM2_APP_NAME} || npx pm2 start dist/index.js --name ${PM2_APP_NAME}`,
       'npx pm2 save',

@@ -8,9 +8,18 @@ DEPLOY_STATE_FILE="$APP_DIR/.deploy-state.json"
 echo "==> Deploy start: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 cd "$APP_DIR"
 
-echo "==> Fetching and pulling main"
+echo "==> Fetching and resetting to main"
 git fetch origin
-git pull origin main
+
+# Verify git remote is set to SSH (prevents hangs in production)
+CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
+if echo "$CURRENT_REMOTE" | grep -qE "^https?://"; then
+  echo "ERROR: Git remote uses HTTPS. Automated deploy requires SSH."
+  echo "Run: git remote set-url origin git@github.com:mantodeus/mantodeus-manager.git"
+  exit 1
+fi
+
+git reset --hard origin/main
 
 echo "==> Current commit"
 CURRENT_COMMIT=$(git rev-parse HEAD)
@@ -142,6 +151,20 @@ if [ -z "${DATABASE_URL:-}" ]; then
   fi
 fi
 
+# Migration fixes (from canonical deploy script)
+echo ""
+echo "==> Running migration pre-checks..."
+if [ -f "./scripts/seed-drizzle-migrations.cjs" ]; then
+  echo "  → Seeding migrations table (if empty)..."
+  export DRIZZLE_FORCE_MIGRATIONS="0015_structured_company_address_invoice_format"
+  node ./scripts/seed-drizzle-migrations.cjs || echo "  ⚠ Seed script failed, continuing..."
+fi
+
+if [ -f "./scripts/fix-migration-0009.cjs" ]; then
+  echo "  → Checking for migration 0009 fix..."
+  node ./scripts/fix-migration-0009.cjs || echo "  ⚠ Migration 0009 fix failed, continuing..."
+fi
+
 # Skip schema generation if it fails (non-blocking)
 # This step is idempotent and only needed when schema changes
 echo ""
@@ -163,6 +186,12 @@ if check_migrations_needed; then
   # Run migrations with error output visible for debugging
   if npx pnpm run db:migrate 2>&1; then
     echo "  ✓ Migrations applied"
+    
+    # Post-migrate sanity check
+    if [ -f "./scripts/check-migration-columns.cjs" ]; then
+      echo "  → Running post-migration column check..."
+      node ./scripts/check-migration-columns.cjs || echo "  ⚠ Column check failed, continuing..."
+    fi
   else
     echo "  ⚠ Migration skipped (drizzle-kit config issue, but deployment continues)"
     echo "  → Migrations can be applied manually later if needed"
