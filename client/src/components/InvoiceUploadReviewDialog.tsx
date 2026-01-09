@@ -26,8 +26,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, CurrencyEuro, X, RotateCcw, Info as HelpCircle } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, CurrencyEuro, X, RotateCcw, Info as HelpCircle, Sparkles } from "@/components/ui/Icon";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
@@ -276,6 +277,21 @@ export function InvoiceUploadReviewDialog({
 
   // Track if we've hydrated from parsedData for this invoiceId to prevent overwriting saved values
   const hydratedFromParsedDataRef = useRef<Set<number>>(new Set());
+  
+  // Track which fields were autofilled from parsedData
+  const [autofilledFields, setAutofilledFields] = useState<Set<string>>(new Set());
+  // Track which fields were manually edited (removes autofill indicator)
+  const [fieldEdited, setFieldEdited] = useState<Set<string>>(new Set());
+  
+  // Check if field is autofilled and not manually edited
+  const isAutofilled = (fieldName: string): boolean => {
+    return autofilledFields.has(fieldName) && !fieldEdited.has(fieldName);
+  };
+  
+  // Track when a field is manually edited
+  const handleFieldEdit = (fieldName: string) => {
+    setFieldEdited((prev) => new Set(prev).add(fieldName));
+  };
 
   // Initialize form when parsed data or invoice changes
   // CRITICAL: Prefer invoice (saved DB values) over parsedData to prevent overwriting edits
@@ -302,18 +318,34 @@ export function InvoiceUploadReviewDialog({
           ? new Date(invoice.paidAt).toISOString().split("T")[0]
           : ""
       );
+      // Reset autofilled fields when loading from database (these are saved values, not autofilled)
+      setAutofilledFields(new Set());
+      setFieldEdited(new Set());
     } 
     // Only use parsedData ONCE per invoiceId (first time, before any save)
     else if (parsedData && !hydratedFromParsedDataRef.current.has(invoiceId)) {
-      setInvoiceNumber(parsedData.invoiceNumber || "");
-      setIssueDate(
-        parsedData.invoiceDate
-          ? new Date(parsedData.invoiceDate).toISOString().split("T")[0]
-          : ""
-      );
-      setTotalAmount(parsedData.totalAmount || "");
+      const newAutofilledFields = new Set<string>();
+      
+      if (parsedData.invoiceNumber) {
+        setInvoiceNumber(parsedData.invoiceNumber);
+        newAutofilledFields.add("invoiceNumber");
+      }
+      
+      if (parsedData.invoiceDate) {
+        setIssueDate(new Date(parsedData.invoiceDate).toISOString().split("T")[0]);
+        newAutofilledFields.add("issueDate");
+      }
+      
+      if (parsedData.totalAmount) {
+        setTotalAmount(parsedData.totalAmount);
+        newAutofilledFields.add("totalAmount");
+      }
+      
       setClientId("none");
       setDueDate(""); // parsedData doesn't have dueDate, start empty
+      
+      setAutofilledFields(newAutofilledFields);
+      setFieldEdited(new Set()); // Reset edited fields when initializing
       hydratedFromParsedDataRef.current.add(invoiceId);
     }
   }, [invoice, parsedData, invoiceId]);
@@ -326,6 +358,8 @@ export function InvoiceUploadReviewDialog({
       );
       if (matched) {
         setClientId(matched.id.toString());
+        // Mark clientId as autofilled if it was matched from parsedData
+        setAutofilledFields((prev) => new Set(prev).add("clientId"));
       }
     }
   }, [parsedData?.clientName, contacts, clientId]);

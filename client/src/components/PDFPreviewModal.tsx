@@ -100,9 +100,11 @@ export function PDFPreviewModal({
     let isPinching = false;
 
     const handleTouchStart = (e: TouchEvent) => {
+      // Only handle pinch zoom (2 touches), allow single touch for scrolling
       if (e.touches.length === 2) {
         isPinching = true;
         e.preventDefault();
+        e.stopPropagation();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         initialDistance = Math.hypot(
@@ -110,12 +112,16 @@ export function PDFPreviewModal({
           touch2.clientY - touch1.clientY
         );
         initialScale = userScale;
+      } else {
+        isPinching = false;
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      // Only prevent default for pinch zoom (2 touches), allow single touch for scrolling
       if (e.touches.length === 2 && isPinching && initialDistance > 0) {
         e.preventDefault();
+        e.stopPropagation();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         const currentDistance = Math.hypot(
@@ -124,7 +130,7 @@ export function PDFPreviewModal({
         );
         const scale = currentDistance / initialDistance;
         const nextScale = initialScale * scale;
-        setUserScale(Math.max(1, Math.min(3, nextScale)));
+        setUserScale(Math.max(0.5, Math.min(3, nextScale)));
       }
     };
 
@@ -241,7 +247,15 @@ export function PDFPreviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={contentClassName} showCloseButton={false}>
+      <DialogContent 
+        className={contentClassName} 
+        showCloseButton={false}
+        style={fullScreen ? {
+          height: 'calc(100vh - var(--bottom-safe-area, 0px) - 2rem)',
+          maxHeight: 'calc(100vh - var(--bottom-safe-area, 0px) - 2rem)',
+          marginBottom: 'calc(var(--bottom-safe-area, 0px) + 1rem)',
+        } : undefined}
+      >
         <DialogHeader className={fullScreen ? "px-4 py-3 border-b border-border" : ""}>
           <div className="flex items-center justify-between gap-3">
             <DialogTitle className="truncate">{fileName}</DialogTitle>
@@ -262,12 +276,12 @@ export function PDFPreviewModal({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           {/* PDF Viewer */}
           <div
             ref={containerRef}
-            className="flex-1 overflow-auto bg-black flex items-center justify-center"
-            style={{ touchAction: "pan-x pan-y" }}
+            className="flex-1 overflow-auto bg-black flex items-center justify-center min-h-0"
+            style={{ touchAction: fullScreen ? "pan-x pan-y pinch-zoom" : "pan-x pan-y" }}
           >
             {isLoading && (
               <div className="text-gray-400">Loading PDF...</div>
