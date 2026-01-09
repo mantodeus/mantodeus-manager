@@ -1240,8 +1240,21 @@ export const invoiceRouter = router({
           }
 
           // Create staging invoice with extracted data
-          const issueDate = normalized.issueDate || new Date();
-          const invoiceYear = issueDate.getFullYear();
+          // IMPORTANT: Do NOT default to today's date - use extracted date or null
+          // If extraction failed, leave it null so user can set it manually
+          const issueDate = normalized.issueDate || null;
+          const invoiceYear = issueDate ? issueDate.getFullYear() : new Date().getFullYear();
+          
+          // Log extraction results for debugging
+          console.log("[Invoice Bulk Upload] Extracted data for", file.filename, ":", {
+            invoiceNumber: normalized.invoiceNumber,
+            issueDate: normalized.issueDate,
+            dueDate: normalized.dueDate,
+            clientName: normalized.clientName,
+            totalCents: normalized.totalCents,
+            itemsCount: normalized.items.length,
+            confidence: normalized.confidence.overall,
+          });
 
           // Generate invoice number if not extracted
           let invoiceNumber = normalized.invoiceNumber;
@@ -1249,9 +1262,11 @@ export const invoiceRouter = router({
           if (!invoiceNumber) {
             const settings = await db.getCompanySettingsByUserId(userId);
             if (settings) {
+              // Use extracted date if available, otherwise use current date for invoice number generation
+              const dateForInvoiceNumber = issueDate || new Date();
               const generated = await db.generateInvoiceNumber(
                 userId,
-                issueDate,
+                dateForInvoiceNumber,
                 settings.invoiceNumberFormat ?? null,
                 settings.invoicePrefix ?? "RE"
               );

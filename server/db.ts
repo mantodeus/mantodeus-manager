@@ -1735,7 +1735,21 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
   if (!db) throw new Error("Database not available");
   await ensureInvoiceSchema(db);
 
-  const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
+  // Use extracted date if provided, otherwise use database default (current timestamp)
+  // For uploaded invoices, we prefer null to let user set it manually if extraction failed
+  // But database requires NOT NULL, so we'll use current timestamp as last resort
+  let issueDate: Date;
+  if (data.issueDate) {
+    issueDate = new Date(data.issueDate);
+  } else if (isUploaded) {
+    // For uploaded invoices, if no date was extracted, log a warning
+    // but still use current timestamp (database requirement)
+    console.warn(`[DB] Invoice ${data.invoiceName || 'unnamed'} has no extracted date - using current timestamp`);
+    issueDate = new Date(); // Database requires NOT NULL
+  } else {
+    // For manually created invoices, current date is fine
+    issueDate = new Date();
+  }
   const invoiceType = data.type ?? "standard";
   const cancelledInvoiceId = data.cancelledInvoiceId ?? null;
   const normalizedInvoiceNumber = typeof data.invoiceNumber === "string" ? data.invoiceNumber.trim() : null;
