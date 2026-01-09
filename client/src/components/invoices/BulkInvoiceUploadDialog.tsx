@@ -159,7 +159,7 @@ export function BulkInvoiceUploadDialog({
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 min-w-0 flex-1">
               <div className="flex-1 min-w-0 flex flex-col">
-                <h1 className="text-3xl font-regular flex items-center gap-2">
+                <h1 className="text-2xl md:text-3xl font-regular flex items-center gap-2 whitespace-nowrap">
                   <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
                   Upload Invoices
                 </h1>

@@ -166,6 +166,65 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     };
   }, [previewUrl, lastValidPreviewUrl]);
 
+  // Reset zoom when preview changes
+  useEffect(() => {
+    if (!previewUrl) {
+      setPreviewZoom(1);
+    }
+  }, [previewUrl]);
+
+  // Add mouse wheel and trackpad zoom support for preview iframe
+  useEffect(() => {
+    const container = previewContainerRef.current;
+    if (!container || !previewUrl) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Trackpad pinch zoom: Ctrl/Cmd + wheel (macOS/Windows trackpad gesture)
+      // macOS trackpad pinch sends wheel events with ctrlKey=true
+      // Windows trackpad pinch may also send ctrlKey=true
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Use deltaY for zoom direction (negative = zoom in, positive = zoom out)
+        // Trackpad pinch typically has larger deltaY values, so scale accordingly
+        // Use a more sensitive multiplier for smoother zoom
+        const zoomSensitivity = 0.005; // Fine-tuned for trackpad
+        const delta = e.deltaY > 0 ? -zoomSensitivity * Math.abs(e.deltaY) : zoomSensitivity * Math.abs(e.deltaY);
+        setPreviewZoom((prev) => {
+          const newZoom = prev + delta;
+          return Math.max(0.5, Math.min(3, newZoom));
+        });
+        return;
+      }
+    };
+
+    // Listen on both container and iframe wrapper to catch all events
+    const iframeWrapper = container.querySelector('[data-iframe-wrapper]') as HTMLElement;
+    
+    // Use capture phase to catch events before they reach the iframe
+    container.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    if (iframeWrapper) {
+      iframeWrapper.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    }
+    
+    // Also listen on the iframe itself (though it may not receive events)
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+    if (iframe) {
+      iframe.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    }
+    
+    return () => {
+      container.removeEventListener('wheel', handleWheel, { capture: true });
+      if (iframeWrapper) {
+        iframeWrapper.removeEventListener('wheel', handleWheel, { capture: true });
+      }
+      if (iframe) {
+        iframe.removeEventListener('wheel', handleWheel, { capture: true });
+      }
+    };
+  }, [previewUrl]);
+
   return (
     <>
       {/* Backdrop overlay - matches edit invoice dialog */}
@@ -173,7 +232,14 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
         <div 
           className="fixed z-[100] bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           onClick={onClose}
-          onWheel={(e) => e.preventDefault()}
+          onWheel={(e) => {
+            // Allow zoom on preview container
+            const target = e.target as HTMLElement;
+            if (target?.closest('[data-preview-container]')) {
+              return; // Don't prevent if inside preview container
+            }
+            e.preventDefault();
+          }}
           onTouchMove={(e) => e.preventDefault()}
           onScroll={(e) => e.preventDefault()}
           style={{ 
@@ -223,6 +289,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
           >
             {previewUrl ? (
               <div
+                data-iframe-wrapper
                 style={{
                   transform: `scale(${previewZoom})`,
                   transformOrigin: 'top left',

@@ -804,21 +804,51 @@ export function InvoiceUploadReviewDialog({
     if (!container || !previewOpen) return;
 
     const handleWheel = (e: WheelEvent) => {
-      // Support both Ctrl/Cmd+wheel (trackpad pinch) and regular wheel zoom
-      if (e.ctrlKey || e.metaKey || e.deltaY !== 0) {
+      // Trackpad pinch zoom: Ctrl/Cmd + wheel (macOS/Windows trackpad gesture)
+      // macOS trackpad pinch sends wheel events with ctrlKey=true
+      // Windows trackpad pinch may also send ctrlKey=true
+      if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         e.stopPropagation();
         
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        setPreviewZoom((prev) => Math.max(0.5, Math.min(3, prev + delta)));
+        // Use deltaY for zoom direction (negative = zoom in, positive = zoom out)
+        // Trackpad pinch typically has larger deltaY values, so scale accordingly
+        // Use a more sensitive multiplier for smoother zoom
+        const zoomSensitivity = 0.005; // Fine-tuned for trackpad
+        const delta = e.deltaY > 0 ? -zoomSensitivity * Math.abs(e.deltaY) : zoomSensitivity * Math.abs(e.deltaY);
+        setPreviewZoom((prev) => {
+          const newZoom = prev + delta;
+          return Math.max(0.5, Math.min(3, newZoom));
+        });
+        return;
       }
     };
 
-    container.addEventListener('wheel', handleWheel, { passive: false });
+    // Listen on both container and iframe wrapper to catch all events
+    const iframeWrapper = container.querySelector('[data-iframe-wrapper]') as HTMLElement;
+    
+    // Use capture phase to catch events before they reach the iframe
+    container.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    if (iframeWrapper) {
+      iframeWrapper.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    }
+    
+    // Also listen on the iframe itself (though it may not receive events)
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+    if (iframe) {
+      iframe.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    }
+    
     return () => {
-      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('wheel', handleWheel, { capture: true });
+      if (iframeWrapper) {
+        iframeWrapper.removeEventListener('wheel', handleWheel, { capture: true });
+      }
+      if (iframe) {
+        iframe.removeEventListener('wheel', handleWheel, { capture: true });
+      }
     };
-  }, [previewOpen]);
+  }, [previewOpen, previewUrl]);
 
   return (
     <>
@@ -846,10 +876,12 @@ export function InvoiceUploadReviewDialog({
             {/* Preview Content - full page, no borders - zoomable */}
             <div 
               ref={previewContainerRef}
+              data-preview-container
               className="flex-1 overflow-auto bg-background relative"
               style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
             >
               <div
+                data-iframe-wrapper
                 style={{
                   transform: `scale(${previewZoom})`,
                   transformOrigin: 'top left',
