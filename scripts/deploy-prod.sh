@@ -129,11 +129,22 @@ else
   echo "  ✓ Dependencies unchanged, skipping install"
 fi
 
+# Load DATABASE_URL from .env for drizzle-kit commands
+if [ -z "${DATABASE_URL:-}" ]; then
+  if [ -f ".env" ]; then
+    # Use a safer method to export DATABASE_URL
+    export DATABASE_URL=$(grep -v "^#" .env | grep "^DATABASE_URL=" | cut -d '=' -f2- | tr -d '"' | tr -d "'" | xargs)
+    if [ -n "$DATABASE_URL" ]; then
+      echo "  ✓ Loaded DATABASE_URL from .env"
+    fi
+  fi
+fi
+
 # Skip schema generation if it fails (non-blocking)
 # This step is idempotent and only needed when schema changes
 echo ""
 echo "==> Generate database schema (optional, non-blocking)"
-if npx pnpm run db:generate 2>/dev/null; then
+if npx pnpm run db:generate 2>&1; then
   echo "  ✓ Schema generated"
 else
   echo "  ⚠ Schema generation skipped (may indicate config issue, but deployment continues)"
@@ -147,19 +158,13 @@ MIGRATION_COUNT=$(find drizzle -maxdepth 1 -name "*.sql" -type f 2>/dev/null | w
 if check_migrations_needed; then
   echo "  → New migration files detected, applying..."
   
-  # Load DATABASE_URL for migration scripts
-  if [ -z "${DATABASE_URL:-}" ]; then
-    if [ -f ".env" ]; then
-      export $(grep -v "^#" .env | grep DATABASE_URL | xargs)
-    fi
-  fi
-  
-  # Make migration non-blocking due to drizzle-kit config issue
-  if npx pnpm run db:migrate 2>/dev/null; then
+  # Run migrations with error output visible for debugging
+  if npx pnpm run db:migrate 2>&1; then
     echo "  ✓ Migrations applied"
   else
     echo "  ⚠ Migration skipped (drizzle-kit config issue, but deployment continues)"
     echo "  → Migrations can be applied manually later if needed"
+    echo "  → To debug, run: DATABASE_URL=\$(grep DATABASE_URL .env | cut -d'=' -f2) npx pnpm run db:migrate"
   fi
 else
   echo "  ✓ No new migration files, skipping (drizzle-kit migrate is idempotent)"
