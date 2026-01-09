@@ -272,7 +272,7 @@ export function AssistantPanel({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="flex flex-col p-0 max-h-[calc(100vh-2rem)] h-[calc(100vh-2rem)]">
-          <DialogHeader className="sr-only">
+          <DialogHeader>
             <DialogTitle>Help Assistant</DialogTitle>
           </DialogHeader>
           {content}

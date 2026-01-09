@@ -23,10 +23,16 @@ export function FloatingHelpButton() {
   const invoiceMatch = location.match(/^\/invoices\/(\d+)(?:\?|#|$)/);
   const invoiceId = invoiceMatch ? parseInt(invoiceMatch[1], 10) : null;
 
+  // Debug: Log to help diagnose
+  console.log("[FloatingHelpButton] location:", location, "match:", invoiceMatch, "invoiceId:", invoiceId);
+
   // Only show on invoice detail pages
   if (!invoiceMatch || !invoiceId || isNaN(invoiceId)) {
+    console.log("[FloatingHelpButton] Not showing - no match or invalid invoiceId");
     return null;
   }
+
+  console.log("[FloatingHelpButton] Rendering button for invoice:", invoiceId);
 
   return (
     <>
@@ -44,7 +50,7 @@ export function FloatingHelpButton() {
             : "bottom-6 right-6" // Standard position on desktop
         )}
         style={{
-          zIndex: 10000, // Above bottom tab bar (9999) and everything else
+          zIndex: 10001, // Above bottom tab bar (9999) and dialogs (typically 50-100)
           ...(isMobile && {
             bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)", // Above tab bar + safe area
           }),
