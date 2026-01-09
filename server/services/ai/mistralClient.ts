@@ -49,6 +49,8 @@ export async function callMistralChat(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+  console.log("[Mistral] Calling API with model:", options.model, "messages:", options.messages.length);
+
   try {
     const response = await fetch(MISTRAL_API_URL, {
       method: "POST",
@@ -69,10 +71,20 @@ export async function callMistralChat(
 
     if (!response.ok) {
       const errorBody = await response.text();
+      console.error("[Mistral] API error response:", response.status, response.statusText);
+      console.error("[Mistral] Error body:", errorBody);
+      console.error("[Mistral] Request was:", {
+        model: options.model,
+        messageCount: options.messages.length,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+      });
+      
       let errorMessage = `Mistral API error: ${response.status} ${response.statusText}`;
       try {
         const parsed = JSON.parse(errorBody);
-        errorMessage = parsed.error?.message || errorMessage;
+        errorMessage = parsed.error?.message || parsed.message || errorMessage;
+        console.error("[Mistral] Parsed error:", parsed);
       } catch {
         // Use default error message
       }
