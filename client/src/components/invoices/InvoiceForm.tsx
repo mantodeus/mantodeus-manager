@@ -16,6 +16,7 @@ import { AddPaymentDialog } from "./AddPaymentDialog";
 import { ShareInvoiceDialog } from "./ShareInvoiceDialog";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
+import { InvoiceCategorySelect } from "./InvoiceCategorySelect";
 
 export type InvoiceLineItem = {
   name: string;
@@ -43,7 +44,7 @@ type InvoiceFormState = {
 const defaultLineItem: InvoiceLineItem = {
   name: "",
   description: "",
-  category: "",
+  category: "services",
   quantity: 1,
   unitPrice: 0,
   currency: "EUR",
@@ -129,6 +130,8 @@ export function InvoiceForm({
     { id: invoiceId! },
     { enabled: !isCreate && !!invoiceId }
   );
+  const preferencesQuery = trpc.settings.preferences.get.useQuery();
+  const language = (preferencesQuery.data?.language || "en") as "en" | "de";
 
   useEffect(() => {
     if (isCreate && nextNumberQuery.data?.invoiceNumber) {
@@ -173,6 +176,7 @@ export function InvoiceForm({
         quantity: Number(item.quantity),
         unitPrice: Number(item.unitPrice),
         currency: item.currency || "EUR",
+        category: item.category || "services",
       }));
       setItems(normalizedItems.length ? normalizedItems : [defaultLineItem]);
     }
@@ -619,23 +623,23 @@ export function InvoiceForm({
           )}
         </div>
         <div className="space-y-2">
-          <div className="hidden lg:grid lg:grid-cols-12 lg:gap-4 lg:px-2 text-xs font-medium text-muted-foreground">
-            <div className="lg:col-span-5">Item</div>
+          <div className="hidden lg:grid lg:grid-cols-12 lg:gap-3 lg:px-2 text-xs font-medium text-muted-foreground">
+            <div className="lg:col-span-4">Item</div>
             <div className="lg:col-span-2">Category</div>
             <div className="lg:col-span-1 text-right">Qty</div>
             <div className="lg:col-span-2 text-right">Unit Price</div>
-            <div className="lg:col-span-1 text-right">Total</div>
+            <div className="lg:col-span-2 text-right">Total</div>
             <div className="lg:col-span-1 text-right">Actions</div>
           </div>
           {items.map((item, index) => (
             <div
               key={index}
-              className="rounded-lg border bg-background p-3 lg:grid lg:grid-cols-12 lg:items-center lg:gap-4 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:border-b lg:px-2 lg:py-3"
+              className="rounded-lg border bg-background p-3 lg:grid lg:grid-cols-12 lg:items-center lg:gap-3 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:border-b lg:px-2 lg:py-3"
             >
-              <div className="lg:col-span-5 min-w-0 space-y-1">
-                <p className="font-medium break-words">{item.name || "Untitled"}</p>
+              <div className="lg:col-span-4 min-w-0 space-y-1">
+                <p className="font-medium break-words text-sm">{item.name || "Untitled"}</p>
                 {item.description && (
-                  <p className="text-sm text-muted-foreground break-words">{item.description}</p>
+                  <p className="text-xs text-muted-foreground break-words line-clamp-1">{item.description}</p>
                 )}
                 <p className="text-xs text-muted-foreground lg:hidden">
                   {item.quantity} x {formatCurrency(item.unitPrice)}
@@ -643,18 +647,18 @@ export function InvoiceForm({
               </div>
               <div className="lg:col-span-2 mt-2 lg:mt-0">
                 {item.category ? (
-                  <Badge variant="outline">{item.category}</Badge>
+                  <Badge variant="outline" className="text-xs">{item.category}</Badge>
                 ) : (
                   <span className="text-xs text-muted-foreground">-</span>
                 )}
               </div>
-              <div className="lg:col-span-1 mt-2 text-right text-sm lg:mt-0 lg:text-base">
+              <div className="lg:col-span-1 mt-2 text-right text-sm lg:mt-0">
                 {item.quantity}
               </div>
-              <div className="lg:col-span-2 mt-1 text-right text-sm text-muted-foreground lg:mt-0 lg:text-base">
+              <div className="lg:col-span-2 mt-1 text-right text-sm text-muted-foreground lg:mt-0">
                 {formatCurrency(item.unitPrice)}
               </div>
-              <div className="lg:col-span-1 mt-1 text-right font-medium lg:mt-0">
+              <div className="lg:col-span-2 mt-1 text-right font-medium text-sm lg:mt-0">
                 {formatCurrency(item.quantity * item.unitPrice)}
               </div>
               <div className="lg:col-span-1 mt-2 flex justify-end gap-1 lg:mt-0">
@@ -837,6 +841,7 @@ export function InvoiceForm({
         onOpenChange={(open) => (open ? openItemEditor(itemEditor.index) : closeItemEditor())}
         item={editingItem}
         onSave={handleSaveItem}
+        language={language}
       />
     </div>
   );
@@ -847,11 +852,13 @@ function LineItemModal({
   onOpenChange,
   item,
   onSave,
+  language,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: InvoiceLineItem;
   onSave: (item: InvoiceLineItem) => void;
+  language: "en" | "de";
 }) {
   const [draft, setDraft] = useState<InvoiceLineItem>(item);
 
@@ -931,10 +938,10 @@ function LineItemModal({
           </div>
           <div className="space-y-2">
             <Label>Category</Label>
-            <Input
-              value={draft.category ?? ""}
-              onChange={(e) => setDraft((prev) => ({ ...prev, category: e.target.value }))}
-              placeholder="Consulting, Materials, ..."
+            <InvoiceCategorySelect
+              value={draft.category || "services"}
+              onValueChange={(value) => setDraft((prev) => ({ ...prev, category: value }))}
+              language={language}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
