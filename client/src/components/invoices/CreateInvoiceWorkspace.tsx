@@ -497,25 +497,27 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
               onSuccess={handleSuccess}
               getFormDataRef={getFormDataRef}
               renderBeforeFooter={
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleUpdatePreview}
-                  disabled={isGeneratingPreview}
-                  className="w-full"
-                >
-                  {isGeneratingPreview ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Update Preview
-                    </>
-                  )}
-                </Button>
+                isMobile ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleUpdatePreview}
+                    disabled={isGeneratingPreview}
+                    className="w-full"
+                  >
+                    {isGeneratingPreview ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Update Preview
+                      </>
+                    )}
+                  </Button>
+                ) : null
               }
             />
           </div>

@@ -552,7 +552,7 @@ export function InvoiceForm({
             </div>
           </div>
           <div className="space-y-4">
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-1 sm:gap-2 items-end">
               <div className="space-y-2">
                 <Label>Issue Date</Label>
                 <Input
@@ -563,7 +563,7 @@ export function InvoiceForm({
                   className="w-full"
                 />
               </div>
-              <div className="w-4"></div>
+              <div className="w-2 sm:w-4"></div>
               <div className="space-y-2">
                 <Label>Due Date</Label>
                 <Input
@@ -577,7 +577,7 @@ export function InvoiceForm({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-1 sm:gap-2 items-center">
               <div className="space-y-2">
                 <Label>Service Period</Label>
                 <Input
@@ -590,7 +590,7 @@ export function InvoiceForm({
                   className="w-full"
                 />
               </div>
-              <div className="flex items-center justify-center w-4">
+              <div className="flex items-center justify-center h-full">
                 <span className="text-muted-foreground text-sm shrink-0">→</span>
               </div>
               <div className="space-y-2">

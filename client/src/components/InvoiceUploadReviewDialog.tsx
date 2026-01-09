@@ -918,52 +918,57 @@ export function InvoiceUploadReviewDialog({
       )}
 
       {/* Mobile Preview Dialog - matches invoice dialog size */}
-      {isMobile && (
-        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+      {isMobile && previewOpen && previewUrl && (
+        <Dialog open={true} onOpenChange={setPreviewOpen}>
           <DialogContent
             className={cn(
               "flex flex-col p-0",
               // Match invoice dialog size on mobile
-              "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+              "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]",
+              // Ensure dialog has minimum height and appears above overlay
+              "min-h-[400px]",
+              // Ensure content is visible and above overlay
+              "bg-background z-[71]"
             )}
             style={{
               // Match invoice dialog positioning on mobile
               maxHeight: 'calc(100vh - var(--bottom-safe-area, 0px) - 2rem)',
               marginBottom: 'calc(var(--bottom-safe-area, 0px) + 1rem)',
+              height: 'calc(100vh - var(--bottom-safe-area, 0px) - 2rem)',
             } as React.CSSProperties}
             showCloseButton={true}
-            zIndex={60}
+            zIndex={70}
           >
-            <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex flex-col h-full overflow-hidden min-h-0">
               {/* Preview Header */}
-              <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+              <div className="flex items-center justify-between p-4 border-b flex-shrink-0 bg-background">
                 <h2 className="text-lg font-semibold">Preview</h2>
               </div>
               {/* Preview Content - zoomable */}
               <div 
                 ref={previewContainerRef}
                 data-preview-container
-                className="flex-1 overflow-auto bg-background relative"
+                className="flex-1 overflow-auto bg-background relative min-h-0"
                 style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
               >
                 {previewUrl ? (
                   <div
-                  data-iframe-wrapper
-                  style={{
-                    transform: `scale(${previewZoom})`,
-                    transformOrigin: 'top left',
-                    width: `${100 / previewZoom}%`,
-                    height: `${100 / previewZoom}%`,
-                    transition: 'transform 0.1s ease-out',
-                  }}
-                >
-                  <iframe
-                    src={previewUrl}
-                    className="w-full h-full border-0"
-                    title={previewFileName}
-                    style={{ pointerEvents: 'auto' }}
-                  />
-                </div>
+                    data-iframe-wrapper
+                    style={{
+                      transform: `scale(${previewZoom})`,
+                      transformOrigin: 'top left',
+                      width: `${100 / previewZoom}%`,
+                      height: `${100 / previewZoom}%`,
+                      transition: 'transform 0.1s ease-out',
+                    }}
+                  >
+                    <iframe
+                      src={previewUrl}
+                      className="w-full h-full border-0"
+                      title={previewFileName}
+                      style={{ pointerEvents: 'auto' }}
+                    />
+                  </div>
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     <p>Loading preview...</p>
@@ -1048,19 +1053,6 @@ export function InvoiceUploadReviewDialog({
           
           {/* Action buttons below header */}
           <div className="flex items-center justify-end gap-2 pt-2">
-            {/* Preview button - only on mobile (desktop auto-opens preview) */}
-            {isMobile && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handlePreviewPDF}
-                disabled={isLoading}
-                className="gap-2"
-              >
-                <Eye className="h-4 w-4" />
-                Preview
-              </Button>
-            )}
             {/* Status button - right click or long-press for status actions */}
             {invoice && (
               statusActions.length === 0 ? (
@@ -1246,6 +1238,19 @@ export function InvoiceUploadReviewDialog({
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Send
+                </Button>
+              )}
+
+              {/* Preview button - only on mobile, above Delete button */}
+              {isMobile && (
+                <Button 
+                  variant="outline" 
+                  onClick={handlePreviewPDF}
+                  disabled={isLoading}
+                  className="w-full gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  Preview
                 </Button>
               )}
 
