@@ -4,6 +4,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { parseInvoicePdf } from "./_core/pdfParser";
 import { storagePut, generateFileKey, deleteFromStorage } from "./storage";
+import { logger } from "./_core/logger";
 
 const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required"),
@@ -1171,17 +1172,26 @@ export const invoiceRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      // Use both console.log (for PM2) and logger (for structured logging)
+      logger.info({ fileCount: input.files.length }, "[Invoice Bulk Upload] ===== BULK UPLOAD CALLED =====");
+      console.log("[Invoice Bulk Upload] ===== BULK UPLOAD CALLED =====");
+      console.log("[Invoice Bulk Upload] Files count:", input.files.length);
+      
       const userId = ctx.user.id;
+      console.log("[Invoice Bulk Upload] User ID:", userId);
+      
       const createdInvoiceIds: number[] = [];
       const errors: Array<{ filename: string; error: string }> = [];
       const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
       // Process each file independently
       for (const file of input.files) {
+        console.log("[Invoice Bulk Upload] Processing file:", file.filename);
         let invoiceId: number | null = null;
         try {
           // Validate file size
           if (file.fileSize > MAX_FILE_SIZE) {
+            console.error("[Invoice Bulk Upload] File too large:", file.filename, file.fileSize);
             throw new Error(
               `File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`
             );
@@ -1189,17 +1199,23 @@ export const invoiceRouter = router({
 
           // Validate MIME type (must be PDF)
           const mimeType = file.mimeType || "application/pdf";
+          console.log("[Invoice Bulk Upload] MIME type:", mimeType);
           if (!mimeType.includes("pdf")) {
+            console.error("[Invoice Bulk Upload] Invalid MIME type:", mimeType);
             throw new Error("File must be a PDF");
           }
 
           // Convert base64 to buffer
+          console.log("[Invoice Bulk Upload] Converting base64 to buffer...");
           const fileBuffer = Buffer.from(file.base64Data, "base64");
           if (fileBuffer.length === 0) {
+            console.error("[Invoice Bulk Upload] Empty buffer after conversion");
             throw new Error("Invalid base64 data");
           }
+          console.log("[Invoice Bulk Upload] Buffer created, size:", fileBuffer.length);
 
           // Process document with AI OCR (same as documents.process)
+          console.log("[Invoice Bulk Upload] Importing OCR modules...");
           const { processDocumentOcr } = await import("./services/ai/document/documentOcrClient");
           const { normalizeExtractedData } = await import("./services/ai/document/normalizeExtractedData");
           const { matchClient } = await import("./services/ai/document/clientMatching");
@@ -1210,17 +1226,32 @@ export const invoiceRouter = router({
             return (cents / 100).toFixed(2);
           };
           
+          console.log("[Invoice Bulk Upload] About to call processDocumentOcr...");
           let normalized;
           try {
+            console.log("[Invoice Bulk Upload] Calling processDocumentOcr with:", {
+              filename: file.filename,
+              mimeType,
+              fileBufferSize: fileBuffer.length,
+            });
+            
             const raw = await processDocumentOcr({
               fileBuffer,
               mimeType,
               filename: file.filename,
               languageHint: undefined,
             });
+            
+            console.log("[Invoice Bulk Upload] processDocumentOcr returned successfully");
             normalized = normalizeExtractedData(raw);
+            console.log("[Invoice Bulk Upload] Data normalized successfully");
           } catch (error) {
             console.error("[Invoice Bulk Upload] OCR processing failed:", error);
+            console.error("[Invoice Bulk Upload] Error details:", {
+              name: error instanceof Error ? error.name : "Unknown",
+              message: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+            });
             throw new Error(
               error instanceof Error 
                 ? `Document processing failed: ${error.message}`

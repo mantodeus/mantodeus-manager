@@ -331,6 +331,9 @@ function MobileDashboardLayoutContent({
       <ScrollerOverlay />
       <ModuleScroller />
       <BottomTabBar />
+
+      {/* Floating Help Button - context-aware, shows on invoice detail pages */}
+      <FloatingHelpButton />
     </div>
   );
 }

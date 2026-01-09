@@ -1,6 +1,8 @@
 cd /srv/customer/sites/manager.mantodeus.com
 bash scripts/deploy-prod.sh
 
+npx pm2 logs mantodeus-manager --lines 0 | grep -i "\[Mistral OCR\]"
+
 npx pm2 start infra/webhook/ecosystem.config.cjs
 npx pm2 save
 

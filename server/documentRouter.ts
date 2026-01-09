@@ -16,6 +16,7 @@ import { normalizeExtractedData } from "./services/ai/document/normalizeExtracte
 import { computeConfidenceMetadata } from "./services/ai/document/confidenceScoring";
 import { matchClient } from "./services/ai/document/clientMatching";
 import type { NormalizedExtractionResult } from "./services/ai/document/types";
+import { logger } from "./_core/logger";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -46,7 +47,20 @@ export const documentRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      // Use both console.log (for PM2) and logger (for structured logging)
+      logger.info({ filename: input.filename, mimeType: input.mimeType, fileSize: input.fileSize }, "[Document Router] ===== PROCESS CALLED =====");
+      console.log("[Document Router] ===== PROCESS CALLED =====");
+      console.log("[Document Router] Input received:", {
+        filename: input.filename,
+        mimeType: input.mimeType,
+        fileSize: input.fileSize,
+        hasBase64Data: !!input.base64Data,
+        base64Length: input.base64Data?.length || 0,
+        languageHint: input.languageHint,
+      });
+
       const userId = ctx.user.id;
+      console.log("[Document Router] User ID:", userId);
 
       // Validate file type
       const allowedMimeTypes = [
@@ -57,17 +71,21 @@ export const documentRouter = router({
         "image/webp",
       ];
       if (!allowedMimeTypes.includes(input.mimeType)) {
+        console.error("[Document Router] Invalid file type:", input.mimeType);
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Invalid file type. Only PDF and images are supported.",
         });
       }
+      console.log("[Document Router] File type validated:", input.mimeType);
 
       // Convert base64 to buffer
       let fileBuffer: Buffer;
       try {
         fileBuffer = Buffer.from(input.base64Data, "base64");
+        console.log("[Document Router] Base64 converted to buffer, size:", fileBuffer.length);
       } catch (error) {
+        console.error("[Document Router] Base64 conversion failed:", error);
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Invalid file data",
@@ -76,16 +94,25 @@ export const documentRouter = router({
 
       // Validate file size
       if (fileBuffer.length > MAX_FILE_SIZE) {
+        console.error("[Document Router] File too large:", fileBuffer.length, "max:", MAX_FILE_SIZE);
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: `File size exceeds maximum of ${MAX_FILE_SIZE / (1024 * 1024)}MB`,
         });
       }
+      console.log("[Document Router] File size validated:", fileBuffer.length);
 
       // Process document with OCR
+      console.log("[Document Router] About to call processDocumentOcr...");
       let normalized: NormalizedExtractionResult;
       let confidenceMeta;
       try {
+        console.log("[Document Router] Calling processDocumentOcr with:", {
+          filename: input.filename,
+          mimeType: input.mimeType,
+          fileBufferSize: fileBuffer.length,
+        });
+        
         const raw = await processDocumentOcr({
           fileBuffer,
           mimeType: input.mimeType,
@@ -93,6 +120,7 @@ export const documentRouter = router({
           languageHint: input.languageHint,
         });
 
+        console.log("[Document Router] processDocumentOcr returned successfully");
         // Log raw extraction for debugging
         console.log("[Document Router] Raw OCR output:", JSON.stringify(raw, null, 2));
 
@@ -111,6 +139,11 @@ export const documentRouter = router({
         });
       } catch (error) {
         console.error("[Document Router] OCR processing failed:", error);
+        console.error("[Document Router] Error details:", {
+          name: error instanceof Error ? error.name : "Unknown",
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error 
