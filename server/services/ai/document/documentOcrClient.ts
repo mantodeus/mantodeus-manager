@@ -69,23 +69,15 @@ export async function processDocumentOcr(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    // Build FormData for multipart/form-data request
-    // OCR endpoint uses FormData, NOT JSON with messages
-    const { default: FormData } = await import("form-data");
-    const form = new FormData();
-    
-    // Append file
-    form.append("file", input.fileBuffer, {
-      filename: input.filename,
-      contentType: input.mimeType,
-    });
-    
-    // Append model
-    form.append("model", model);
-    
-    // Note: Mistral OCR API does not support 'prompt' parameter
-    // The API extracts text and structure automatically
-    // If structured extraction is needed, it should be done in post-processing
+    // New Mistral OCR API expects JSON body, not multipart form
+    const payload = {
+      model,
+      document: {
+        name: input.filename,
+        mime_type: input.mimeType,
+        data: input.fileBuffer.toString("base64"),
+      },
+    };
 
     console.log("[Mistral OCR] Making API request to:", MISTRAL_OCR_API_URL);
     console.log("[Mistral OCR] Request details:", {
@@ -93,20 +85,19 @@ export async function processDocumentOcr(
       filename: input.filename,
       mimeType: input.mimeType,
       fileSize: input.fileBuffer.length,
+      contentType: "application/json",
+      payloadKeys: Object.keys(payload),
     });
 
     const requestStartTime = Date.now();
     
-    // Get headers from form-data (includes Content-Type with boundary)
-    const formHeaders = form.getHeaders();
-    
     const response = await fetch(MISTRAL_OCR_API_URL, {
       method: "POST",
       headers: {
-        ...formHeaders, // This sets Content-Type: multipart/form-data with boundary
+        "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: form as any, // form-data package returns a stream that fetch accepts
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
 

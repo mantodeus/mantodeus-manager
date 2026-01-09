@@ -1,7 +1,8 @@
 /**
  * Assistant Panel Component
  * 
- * Read-only Help assistant for explaining invoice state and blockers.
+ * AI Assistant powered by Mistral for help with the app.
+ * Supports both context-specific (invoice) and general questions.
  * Mobile: Full-screen dialog
  * Desktop: Full-width workspace panel
  */
@@ -11,17 +12,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
-import { Loader2, X, Send, Info as HelpCircle } from "@/components/ui/Icon";
+import { Loader2, X, Send, Sparkles } from "@/components/ui/Icon";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
 import { toast } from "sonner";
 
+export type AssistantScope = "invoice_detail" | "general";
+
 interface AssistantPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  scope: "invoice_detail";
-  scopeId: number;
+  scope: AssistantScope;
+  scopeId?: number;
+  pageName?: string;
   onAction?: (action: "OPEN_SHARE" | "OPEN_ADD_PAYMENT" | "OPEN_EDIT_DUE_DATE" | "OPEN_REVERT_STATUS") => void;
 }
 
@@ -42,10 +46,16 @@ interface AssistantResponse {
   }>;
 }
 
-const DEFAULT_PROMPTS = [
+const INVOICE_PROMPTS = [
   "Why is this invoice in this state?",
   "What's missing before I can send it?",
   "Why is this action blocked?",
+];
+
+const GENERAL_PROMPTS = [
+  "How do I create a new invoice?",
+  "How do I track my expenses?",
+  "What features does this app have?",
 ];
 
 export function AssistantPanel({
@@ -53,8 +63,10 @@ export function AssistantPanel({
   onOpenChange,
   scope,
   scopeId,
+  pageName = "Mantodeus",
   onAction,
 }: AssistantPanelProps) {
+  const defaultPrompts = scope === "invoice_detail" ? INVOICE_PROMPTS : GENERAL_PROMPTS;
   const isMobile = useIsMobile();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -111,7 +123,7 @@ export function AssistantPanel({
     try {
       await askMutation.mutateAsync({
         scope,
-        scopeId,
+        scopeId: scopeId ?? undefined,
         message: trimmed,
       });
     } catch (error) {
@@ -142,8 +154,8 @@ export function AssistantPanel({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
         <div className="flex items-center gap-2">
-          <HelpCircle className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">Help Assistant</h2>
+          <Sparkles className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">AI Assistant</h2>
         </div>
         <Button
           variant="ghost"
@@ -160,10 +172,12 @@ export function AssistantPanel({
         {messages.length === 0 && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Ask me about this invoice's state, blockers, or next steps.
+              {scope === "invoice_detail" 
+                ? "Ask me about this invoice's state, blockers, or next steps."
+                : `Hi! I'm your AI assistant. Ask me anything about ${pageName} or how to use the app.`}
             </p>
             <div className="space-y-2">
-              {DEFAULT_PROMPTS.map((prompt, idx) => (
+              {defaultPrompts.map((prompt, idx) => (
                 <Button
                   key={idx}
                   variant="outline"
@@ -273,7 +287,7 @@ export function AssistantPanel({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="flex flex-col p-0 max-h-[calc(100vh-2rem)] h-[calc(100vh-2rem)]">
           <DialogHeader>
-            <DialogTitle>Help Assistant</DialogTitle>
+            <DialogTitle>AI Assistant</DialogTitle>
           </DialogHeader>
           {content}
         </DialogContent>

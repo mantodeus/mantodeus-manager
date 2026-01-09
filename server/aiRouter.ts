@@ -1,7 +1,8 @@
 /**
  * AI Assistant Router
  * 
- * Read-only Help assistant for explaining invoice state and blockers.
+ * AI-powered assistant using Mistral API.
+ * Supports invoice-specific and general questions.
  */
 
 import { TRPCError } from "@trpc/server";
@@ -10,7 +11,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import * as db from "./db";
 import { callMistralChat, MistralClientError } from "./services/ai/mistralClient";
-import { ASSISTANT_V1_SYSTEM_PROMPT } from "./services/ai/prompts/assistant_v1";
+import { ASSISTANT_V1_SYSTEM_PROMPT, GENERAL_ASSISTANT_SYSTEM_PROMPT } from "./services/ai/prompts/assistant_v1";
 import { buildInvoiceContext } from "./services/ai/buildInvoiceContext";
 
 // Simple in-memory rate limiting (per user, per minute)
@@ -148,8 +149,8 @@ export const aiRouter = router({
   ask: protectedProcedure
     .input(
       z.object({
-        scope: z.literal("invoice_detail"),
-        scopeId: z.number(),
+        scope: z.enum(["invoice_detail", "general"]),
+        scopeId: z.number().optional(),
         message: z.string().min(1).max(1000),
       })
     )
@@ -165,8 +166,15 @@ export const aiRouter = router({
       // Check rate limit
       checkRateLimit(ctx.user.id);
       
-      // Verify scope and tenant ownership
+      // Handle invoice_detail scope
       if (input.scope === "invoice_detail") {
+        if (!input.scopeId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "scopeId is required for invoice_detail scope",
+          });
+        }
+        
         const invoice = await db.getInvoiceById(input.scopeId);
         if (!invoice) {
           throw new TRPCError({
@@ -211,7 +219,35 @@ Please explain the invoice state, any blockers, and suggest valid next steps bas
           return parsed;
         } catch (error) {
           if (error instanceof MistralClientError) {
-            // Log but don't expose raw provider errors
+            console.error("[AI] Mistral client error:", error.message);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "AI service temporarily unavailable. Please try again later.",
+            });
+          }
+          throw error;
+        }
+      }
+      
+      // Handle general scope
+      if (input.scope === "general") {
+        try {
+          const response = await callMistralChat({
+            model: ENV.aiAssistantModel,
+            messages: [
+              { role: "system", content: GENERAL_ASSISTANT_SYSTEM_PROMPT },
+              { role: "user", content: input.message },
+            ],
+            temperature: 0.7,
+            maxTokens: 2000,
+          });
+          
+          // Parse and validate response
+          const parsed = parseAssistantResponse(response);
+          
+          return parsed;
+        } catch (error) {
+          if (error instanceof MistralClientError) {
             console.error("[AI] Mistral client error:", error.message);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
