@@ -236,7 +236,7 @@ export function PDFPreviewModal({
   };
 
   const contentClassName = fullScreen
-    ? "w-[100vw] h-[100vh] max-w-none max-h-none rounded-none p-0 flex flex-col"
+    ? "flex flex-col p-0 max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
     : "max-w-4xl max-h-[90vh] flex flex-col";
 
   return (
