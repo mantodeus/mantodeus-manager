@@ -25,8 +25,7 @@ export function BottomTabBar() {
   } = useMobileNav();
 
   const gesture = useGestureRecognition();
-  const [, setLocation] = useLocation();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [bugOpen, setBugOpen] = useState(false);
 
   // Detect page context for Bug assistant

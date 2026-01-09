@@ -208,8 +208,8 @@ export function AssistantPanel({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[200px] text-xs">
-                <p>This assistant is powered by Mistral, a European AI company.</p>
-                <p className="mt-1 text-muted-foreground">Your data is not used to train AI models.</p>
+                <p>Powered by Mistral, a European AI company.</p>
+                <p className="mt-1 text-muted-foreground">Your data stays yours - we don't train models on it.</p>
               </TooltipContent>
             </Tooltip>
             <Button
