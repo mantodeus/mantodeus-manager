@@ -579,7 +579,7 @@ export function InvoiceForm({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-x-1 gap-y-2 sm:gap-x-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] gap-x-1 gap-y-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-x-2">
               <Label>Service Period</Label>
               <div></div>
               <div></div>
@@ -592,7 +592,7 @@ export function InvoiceForm({
                 disabled={isReadOnly || isCancelled}
                 className="w-full"
               />
-              <div className="flex items-center justify-center">
+              <div className="flex items-center justify-center justify-self-center">
                 <span className="text-muted-foreground text-sm shrink-0">→</span>
               </div>
               <Input

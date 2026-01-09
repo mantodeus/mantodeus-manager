@@ -44,6 +44,12 @@ export function CreateInvoiceDialog({
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const previewGenerationRef = useRef<AbortController | null>(null);
   const getFormDataRef = useRef<(() => InvoicePreviewData | null) | null>(null);
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && previewDialogOpen) {
+      return;
+    }
+    onOpenChange(nextOpen);
+  };
 
   const handleSuccess = async () => {
     toast.success("Invoice created");
@@ -304,7 +310,7 @@ export function CreateInvoiceDialog({
           onSuccess={onSuccess}
         />
       ) : (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent 
         className={cn(
           "flex flex-col p-0",

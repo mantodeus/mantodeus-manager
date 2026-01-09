@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, X, Share2 } from "@/components/ui/Icon";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -33,6 +33,9 @@ export function PDFPreviewModal({
   const [numPages, setNumPages] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const [userScale, setUserScale] = useState(1);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Build the URL - prefer fileKey with file proxy, fallback to direct URL
   const pdfUrl = fileKey 
@@ -46,7 +49,83 @@ export function PDFPreviewModal({
   useEffect(() => {
     setNumPages(0);
     setPdfError(null);
+    setUserScale(1);
   }, [pdfUrl]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateWidth = () => {
+      const nextWidth = Math.floor(container.clientWidth);
+      setContainerWidth(nextWidth > 0 ? nextWidth : null);
+    };
+
+    updateWidth();
+
+    const resizeObserver = new ResizeObserver(() => updateWidth());
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let initialDistance = 0;
+    let initialScale = userScale;
+    let isPinching = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        isPinching = true;
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        initialDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        initialScale = userScale;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && isPinching && initialDistance > 0) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        const scale = currentDistance / initialDistance;
+        const nextScale = initialScale * scale;
+        setUserScale(Math.max(0.5, Math.min(3, nextScale)));
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        isPinching = false;
+        initialDistance = 0;
+      }
+    };
+
+    const options = { passive: false };
+    container.addEventListener("touchstart", handleTouchStart, options);
+    container.addEventListener("touchmove", handleTouchMove, options);
+    container.addEventListener("touchend", handleTouchEnd, options);
+    container.addEventListener("touchcancel", handleTouchEnd, options);
+
+    return () => {
+      container.removeEventListener("touchstart", handleTouchStart, options);
+      container.removeEventListener("touchmove", handleTouchMove, options);
+      container.removeEventListener("touchend", handleTouchEnd, options);
+      container.removeEventListener("touchcancel", handleTouchEnd, options);
+    };
+  }, [userScale]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -158,8 +237,9 @@ export function PDFPreviewModal({
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* PDF Viewer */}
           <div
+            ref={containerRef}
             className="flex-1 overflow-auto bg-black flex items-center justify-center"
-            style={{ touchAction: "pan-x pan-y" }}
+            style={{ touchAction: "pan-x pan-y pinch-zoom" }}
           >
             {isLoading && (
               <div className="text-gray-400">Loading PDF...</div>
@@ -188,6 +268,8 @@ export function PDFPreviewModal({
                     pageNumber={index + 1}
                     renderTextLayer
                     renderAnnotationLayer
+                    width={containerWidth ? Math.max(1, containerWidth - 24) : undefined}
+                    scale={userScale}
                   />
                 ))}
               </Document>

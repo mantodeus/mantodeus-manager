@@ -94,6 +94,12 @@ export function InvoiceUploadReviewDialog({
   const statusButtonRef = useRef<HTMLDivElement>(null);
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isMobile && previewOpen) {
+      return;
+    }
+    onOpenChange(nextOpen);
+  };
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
@@ -1078,7 +1084,7 @@ export function InvoiceUploadReviewDialog({
         </Dialog>
       )}
 
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
         <DialogContent 
           className={cn(
             "flex flex-col p-0",
