@@ -91,7 +91,7 @@ function getAllowedActions(invoice: Awaited<ReturnType<typeof db.getInvoiceById>
 }
 
 /**
- * Parse and validate assistant response JSON
+ * Parse assistant response - tries JSON first, falls back to plain text
  */
 function parseAssistantResponse(text: string): {
   answerMarkdown: string;
@@ -102,47 +102,51 @@ function parseAssistantResponse(text: string): {
     action: "OPEN_SHARE" | "OPEN_ADD_PAYMENT" | "OPEN_EDIT_DUE_DATE" | "OPEN_REVERT_STATUS";
   }>;
 } {
-  try {
-    // Try to extract JSON from text (in case there's extra text)
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const jsonText = jsonMatch ? jsonMatch[0] : text;
-    const parsed = JSON.parse(jsonText);
-    
-    // Validate structure
-    if (typeof parsed.answerMarkdown !== "string") {
-      throw new Error("Missing or invalid answerMarkdown");
-    }
-    if (!["low", "medium", "high"].includes(parsed.confidence)) {
-      throw new Error("Invalid confidence value");
-    }
-    if (!Array.isArray(parsed.suggestedNextActions)) {
-      throw new Error("Missing or invalid suggestedNextActions");
-    }
-    
-    // Validate actions
-    const validActions = ["OPEN_SHARE", "OPEN_ADD_PAYMENT", "OPEN_EDIT_DUE_DATE", "OPEN_REVERT_STATUS"];
-    for (const action of parsed.suggestedNextActions) {
-      if (typeof action.id !== "string" || typeof action.label !== "string") {
-        throw new Error("Invalid action structure");
-      }
-      if (!validActions.includes(action.action)) {
-        throw new Error(`Invalid action: ${action.action}`);
-      }
-    }
-    
+  console.log("[AI] Parsing response, length:", text?.length, "preview:", text?.substring(0, 200));
+  
+  // If empty response, return fallback
+  if (!text || text.trim().length === 0) {
+    console.error("[AI] Empty response from Mistral");
     return {
-      answerMarkdown: parsed.answerMarkdown,
-      confidence: parsed.confidence,
-      suggestedNextActions: parsed.suggestedNextActions,
-    };
-  } catch (error) {
-    // Return safe fallback
-    return {
-      answerMarkdown: "I apologize, but I encountered an error processing your question. Please try rephrasing it or contact support if the issue persists.",
+      answerMarkdown: "I received an empty response. Please try again.",
       confidence: "low",
       suggestedNextActions: [],
     };
   }
+  
+  try {
+    // Try to extract JSON from text (in case there's extra text around it)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const jsonText = jsonMatch[0];
+      const parsed = JSON.parse(jsonText);
+      
+      // Check if it has the expected structure
+      if (typeof parsed.answerMarkdown === "string") {
+        console.log("[AI] Successfully parsed JSON response");
+        return {
+          answerMarkdown: parsed.answerMarkdown,
+          confidence: ["low", "medium", "high"].includes(parsed.confidence) ? parsed.confidence : "medium",
+          suggestedNextActions: Array.isArray(parsed.suggestedNextActions) 
+            ? parsed.suggestedNextActions.filter((a: unknown) => 
+                a && typeof a === "object" && "action" in a && "label" in a
+              )
+            : [],
+        };
+      }
+    }
+  } catch (error) {
+    console.log("[AI] JSON parse failed, using plain text fallback");
+  }
+  
+  // Fallback: treat the entire response as plain markdown text
+  // This handles cases where the model doesn't return JSON
+  console.log("[AI] Using plain text response");
+  return {
+    answerMarkdown: text.trim(),
+    confidence: "medium",
+    suggestedNextActions: [],
+  };
 }
 
 export const aiRouter = router({
