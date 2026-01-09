@@ -212,7 +212,7 @@ export function AssistantPanel({
             "rounded-2xl",
             "max-h-[70vh]",
           ] : [
-            "bottom-24 right-6",
+            "bottom-6 right-6",
             "w-[380px] max-h-[520px]",
             "rounded-2xl",
           ]
