@@ -159,6 +159,14 @@ export function CreateInvoiceDialog({
     }
   }, [previewUrl]);
 
+  // Reset zoom to fit viewport on mobile when preview opens
+  useEffect(() => {
+    if (isMobile && previewDialogOpen && previewUrl) {
+      // Reset to 1 (full size) on mobile - let user zoom in if needed
+      setPreviewZoom(1);
+    }
+  }, [isMobile, previewDialogOpen, previewUrl]);
+
   // Add touch zoom support for preview iframe
   useEffect(() => {
     const container = previewContainerRef.current;
@@ -170,8 +178,10 @@ export function CreateInvoiceDialog({
 
     // Touch pinch-to-zoom handler
     const handleTouchStart = (e: TouchEvent) => {
+      // Only handle pinch zoom (2 touches), allow single touch for scrolling
       if (e.touches.length === 2) {
         e.preventDefault();
+        e.stopPropagation();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         initialDistance = Math.hypot(
@@ -180,11 +190,14 @@ export function CreateInvoiceDialog({
         );
         initialZoom = previewZoom;
       }
+      // Single touch - allow normal scrolling, don't prevent default
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      // Only prevent default for pinch zoom (2 touches)
       if (e.touches.length === 2) {
         e.preventDefault();
+        e.stopPropagation();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         const currentDistance = Math.hypot(
@@ -198,6 +211,7 @@ export function CreateInvoiceDialog({
           setPreviewZoom(Math.max(0.5, Math.min(3, newZoom)));
         }
       }
+      // Single touch - allow normal scrolling, don't prevent default
     };
 
     const handleTouchEnd = () => {
@@ -276,8 +290,8 @@ export function CreateInvoiceDialog({
         <div className="separator-fade" />
 
         <div className={cn(
-          "px-6 pt-4 overflow-y-auto flex-1 min-h-0",
-          "pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+          "px-6 pt-4 flex-1 min-h-0 flex flex-col",
+          "pb-0"
         )}>
           <InvoiceForm
             mode="create"
@@ -301,7 +315,7 @@ export function CreateInvoiceDialog({
                 ) : (
                   <>
                     <Eye className="mr-2 h-4 w-4" />
-                    Update Preview
+                    Preview
                   </>
                 )}
               </Button>
@@ -344,7 +358,11 @@ export function CreateInvoiceDialog({
                 ref={previewContainerRef}
                 data-preview-container
                 className="flex-1 overflow-auto bg-background relative min-h-0"
-                style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
+                style={{ 
+                  touchAction: 'pan-x pan-y pinch-zoom',
+                  WebkitOverflowScrolling: 'touch',
+                  overscrollBehavior: 'contain'
+                }}
               >
                 {previewUrl ? (
                   <div
@@ -354,14 +372,18 @@ export function CreateInvoiceDialog({
                       transformOrigin: 'top left',
                       width: `${100 / previewZoom}%`,
                       height: `${100 / previewZoom}%`,
-                      transition: 'transform 0.1s ease-out',
+                      transition: previewZoom === 1 ? 'none' : 'transform 0.1s ease-out',
+                      minHeight: '100%',
                     }}
                   >
                     <iframe
                       src={previewUrl}
                       className="w-full h-full border-0"
                       title={previewFileName}
-                      style={{ pointerEvents: 'auto' }}
+                      style={{ 
+                        pointerEvents: 'auto',
+                        display: 'block',
+                      }}
                     />
                   </div>
                 ) : (

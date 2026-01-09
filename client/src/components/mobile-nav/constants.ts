@@ -88,11 +88,11 @@ export const PERF_BUDGET = {
 
 /**
  * Tab definitions (Â§ 2.1: Bottom Tab Bar)
- * Exactly three tabs: Office, Field, Tools
+ * Exactly three tabs: Office, Site, Tools
  */
 export const TABS = [
   { id: 'office' as const, icon: PencilSquareIcon, label: 'Office' },
-  { id: 'field' as const, icon: HomeModern, label: 'Field' },
+  { id: 'site' as const, icon: HomeModern, label: 'Site' },
   { id: 'tools' as const, icon: WrenchScrewdriver, label: 'Tools' },
 ] as const;
 
@@ -127,7 +127,7 @@ export const MODULE_REGISTRY = {
     },
     { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
   ],
-  field: [
+  site: [
     {
       id: 'projects',
       label: 'Projects',

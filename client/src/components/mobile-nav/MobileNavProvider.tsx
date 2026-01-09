@@ -2,7 +2,7 @@
  * Mobile Navigation Provider
  *
  * Context provider for mobile navigation state.
- * § 2.2: Default State - App opens into Field tab
+ * § 2.2: Default State - App opens into Site tab
  * § 14: Component Structure
  */
 
@@ -30,26 +30,33 @@ function loadPersistedState(): {
     const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
     const savedModules = localStorage.getItem(LAST_USED_MODULE_KEY);
     
-    const activeTab = (savedTab === 'office' || savedTab === 'field' || savedTab === 'tools')
+    const activeTab = (savedTab === 'office' || savedTab === 'site' || savedTab === 'tools')
       ? savedTab
-      : 'field'; // Default to field
+      : 'site'; // Default to site
     
-    const lastUsedModuleByTab: Record<TabId, string | null> = savedModules
+    const parsedModules = savedModules
       ? JSON.parse(savedModules)
       : {
           office: null,
-          field: null,
+          site: null,
           tools: null,
         };
+    
+    // Migrate 'field' key to 'site' if it exists (for backward compatibility)
+    const lastUsedModuleByTab: Record<TabId, string | null> = {
+      office: parsedModules.office ?? null,
+      site: parsedModules.site ?? parsedModules.field ?? null,
+      tools: parsedModules.tools ?? null,
+    };
     
     return { activeTab, lastUsedModuleByTab };
   } catch (error) {
     console.warn('[MobileNav] Failed to load persisted state:', error);
     return {
-      activeTab: 'field',
+      activeTab: 'site',
       lastUsedModuleByTab: {
         office: null,
-        field: null,
+        site: null,
         tools: null,
       },
     };
@@ -59,7 +66,7 @@ function loadPersistedState(): {
 export function MobileNavProvider({ children }: { children: ReactNode }) {
   const persistedState = loadPersistedState();
   
-  // § 2.2: Field is the default tab (not configurable), but restore from localStorage
+  // § 2.2: Site is the default tab (not configurable), but restore from localStorage
   const [activeTab, setActiveTab] = useState<TabId>(persistedState.activeTab);
 
   // Use string literal to avoid potential enum initialization issues

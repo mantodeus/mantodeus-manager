@@ -760,6 +760,14 @@ export function InvoiceUploadReviewDialog({
     }
   }, [previewOpen, previewUrl]);
 
+  // Reset zoom to fit viewport on mobile when preview opens
+  useEffect(() => {
+    if (isMobile && previewOpen && previewUrl) {
+      // Reset to 1 (full size) on mobile - let user zoom in if needed
+      setPreviewZoom(1);
+    }
+  }, [isMobile, previewOpen, previewUrl]);
+
   // Add mouse wheel, trackpad, and touch zoom support for preview iframe
   useEffect(() => {
     const container = previewContainerRef.current;
@@ -792,8 +800,10 @@ export function InvoiceUploadReviewDialog({
 
     // Touch pinch-to-zoom handler
     const handleTouchStart = (e: TouchEvent) => {
+      // Only handle pinch zoom (2 touches), allow single touch for scrolling
       if (e.touches.length === 2) {
         e.preventDefault();
+        e.stopPropagation();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         initialDistance = Math.hypot(
@@ -802,11 +812,14 @@ export function InvoiceUploadReviewDialog({
         );
         initialZoom = previewZoom;
       }
+      // Single touch - allow normal scrolling, don't prevent default
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      // Only prevent default for pinch zoom (2 touches)
       if (e.touches.length === 2) {
         e.preventDefault();
+        e.stopPropagation();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         const currentDistance = Math.hypot(
@@ -820,6 +833,7 @@ export function InvoiceUploadReviewDialog({
           setPreviewZoom(Math.max(0.5, Math.min(3, newZoom)));
         }
       }
+      // Single touch - allow normal scrolling, don't prevent default
     };
 
     const handleTouchEnd = () => {
@@ -949,7 +963,11 @@ export function InvoiceUploadReviewDialog({
                 ref={previewContainerRef}
                 data-preview-container
                 className="flex-1 overflow-auto bg-background relative min-h-0"
-                style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
+                style={{ 
+                  touchAction: 'pan-x pan-y pinch-zoom',
+                  WebkitOverflowScrolling: 'touch',
+                  overscrollBehavior: 'contain'
+                }}
               >
                 {previewUrl ? (
                   <div
@@ -959,14 +977,18 @@ export function InvoiceUploadReviewDialog({
                       transformOrigin: 'top left',
                       width: `${100 / previewZoom}%`,
                       height: `${100 / previewZoom}%`,
-                      transition: 'transform 0.1s ease-out',
+                      transition: previewZoom === 1 ? 'none' : 'transform 0.1s ease-out',
+                      minHeight: '100%',
                     }}
                   >
                     <iframe
                       src={previewUrl}
                       className="w-full h-full border-0"
                       title={previewFileName}
-                      style={{ pointerEvents: 'auto' }}
+                      style={{ 
+                        pointerEvents: 'auto',
+                        display: 'block',
+                      }}
                     />
                   </div>
                 ) : (
@@ -1220,12 +1242,14 @@ export function InvoiceUploadReviewDialog({
             </div>
           )}
 
-          {/* Action buttons: Footer layout for REVIEW and DRAFT states for uploaded invoices */}
-          {(isReview || isDraft) && invoice?.source === "uploaded" && (
-            <div className={cn(
-              "pt-4 border-t",
-              isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
-            )}>
+        </div>
+
+        {/* Footer with action buttons - always at bottom */}
+        {(isReview || isDraft) && invoice?.source === "uploaded" && (
+          <div className={cn(
+            "flex-shrink-0 px-6 pt-4 border-t bg-background",
+            isMobile ? "pb-[calc(var(--bottom-safe-area,0px)+1rem)] flex flex-col gap-2 w-full" : "pb-6 flex flex-col gap-2"
+          )}>
               {/* Send button - only for non-cancelled draft invoices */}
               {!isReview && isDraft && !isCancelled && (
                 <Button
@@ -1321,9 +1345,25 @@ export function InvoiceUploadReviewDialog({
             </div>
           )}
 
-          {/* After review and draft states (sent/paid) - standard layout for uploaded invoices */}
-          {!isReview && !isDraft && invoice?.source === "uploaded" && (
-            <div className="pt-4 border-t flex flex-col gap-2">
+        {/* Footer with action buttons for sent/paid states - always at bottom */}
+        {!isReview && !isDraft && invoice?.source === "uploaded" && (
+          <div className={cn(
+            "flex-shrink-0 px-6 pt-4 border-t bg-background",
+            isMobile ? "pb-[calc(var(--bottom-safe-area,0px)+1rem)] flex flex-col gap-2 w-full" : "pb-6 flex flex-col gap-2"
+          )}>
+              {/* Preview button - only on mobile, above Delete button */}
+              {isMobile && (
+                <Button 
+                  variant="outline" 
+                  onClick={handlePreviewPDF}
+                  disabled={isLoading}
+                  className="w-full gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  Preview
+                </Button>
+              )}
+
               {/* Revert to Draft - shown for sent invoices, above Delete */}
               {isSent && !isPaid && derivedValues.outstanding === 0 && (
                 <Button
@@ -1374,9 +1414,8 @@ export function InvoiceUploadReviewDialog({
                   Mark as Not Paid
                 </Button>
               )}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </DialogContent>
 
       {/* Share Invoice Dialog */}

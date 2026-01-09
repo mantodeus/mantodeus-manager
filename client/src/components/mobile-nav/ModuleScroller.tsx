@@ -96,7 +96,7 @@ function ModuleItem({
 
   const scale = isActive ? VISUAL_HIERARCHY.ACTIVE.scale : 1.0;
 
-  // Smaller gap for center tab (field)
+  // Smaller gap for center tab (site)
   const iconTextGap = scrollerSide === 'center' ? 'gap-1.5' : 'gap-2.5';
 
   return (
@@ -178,8 +178,8 @@ export function ModuleScroller() {
     const itemHeight = firstItem.getBoundingClientRect().height;
     const virtualTop = Math.max(0, window.innerHeight - listRect.height);
     const relativeY = pointerPosition.y - virtualTop;
-    // Tab-specific sensitivity: faster for field (center), slower for office/tools (sides)
-    const sensitivityMultiplier = currentTab === 'field' ? 2.0 : 1.2;
+    // Tab-specific sensitivity: faster for site (center), slower for office/tools (sides)
+    const sensitivityMultiplier = currentTab === 'site' ? 2.0 : 1.2;
     const rawIndex = Math.floor((relativeY * sensitivityMultiplier) / itemHeight);
     const clampedIndex = Math.max(0, Math.min(modules.length - 1, rawIndex));
 

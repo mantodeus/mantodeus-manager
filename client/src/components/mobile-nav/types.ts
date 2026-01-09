@@ -9,7 +9,7 @@ import type { IconComponent } from '@/components/ui/Icon';
 /**
  * Tab ID type (Constitution: Bottom Tab Bar)
  */
-export type TabId = 'office' | 'field' | 'tools';
+export type TabId = 'office' | 'site' | 'tools';
 
 /**
  * Gesture state machine

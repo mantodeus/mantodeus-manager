@@ -275,15 +275,34 @@ export const settingsRouter = router({
       const s3Key = generateFileKey("uploads/logos", ctx.user.id, `logo.png`);
       await storagePut(s3Key, processed, "image/png");
 
+      // 4.5. Small delay to ensure file is fully available (S3 is eventually consistent)
+      // This is a defensive measure - most S3 services are immediately consistent
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       // 5. Store s3Key + URL in company_settings
+      // Use 7 days expiry (max for most S3 services) - logo URLs will need to be refreshed
+      // For long-term display, consider implementing a refresh mechanism or using public bucket
       let logoUrl: string;
       try {
-        logoUrl = await getReadUrl(s3Key, 365 * 24 * 60 * 60); // 1 year expiry
+        // Use 7 days expiry (604800 seconds) - standard S3 presigned URL limit
+        logoUrl = await getReadUrl(s3Key, 7 * 24 * 60 * 60);
       } catch (error) {
         console.error("[Settings] Failed to generate logo read URL:", error);
+        
+        // Enhanced error logging
+        if (error instanceof Error) {
+          console.error("[Settings] Error details:", {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+            s3Key,
+            userId: ctx.user.id,
+          });
+        }
+        
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create logo read URL. Check S3 bucket permissions and region settings.",
+          message: `Failed to create logo read URL: ${error instanceof Error ? error.message : String(error)}. Check S3 bucket permissions and region settings.`,
         });
       }
 

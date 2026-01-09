@@ -127,6 +127,8 @@ export function getPublicUrl(key: string): string {
 /**
  * Get a read URL for an S3 object based on bucket visibility.
  * Public bucket -> direct URL, Private bucket -> presigned URL.
+ * 
+ * If presigned URL generation fails, will retry with shorter expiry times.
  */
 export async function getReadUrl(
   relKey: string,
@@ -136,7 +138,38 @@ export async function getReadUrl(
   if (config.publicBucket) {
     return getPublicUrl(relKey);
   }
-  return createPresignedReadUrl(relKey, expiresInSeconds);
+  
+  // Try with requested expiry first
+  try {
+    return await createPresignedReadUrl(relKey, expiresInSeconds);
+  } catch (error) {
+    console.warn("[S3] Failed to create presigned URL with requested expiry, trying shorter expiry:", {
+      requestedExpiry: expiresInSeconds,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    
+    // Retry with progressively shorter expiries
+    const fallbackExpiries = [
+      24 * 60 * 60,  // 1 day
+      60 * 60,       // 1 hour
+      15 * 60,       // 15 minutes
+    ];
+    
+    for (const fallbackExpiry of fallbackExpiries) {
+      if (fallbackExpiry >= expiresInSeconds) continue; // Skip if not shorter
+      
+      try {
+        console.log(`[S3] Retrying with ${fallbackExpiry}s expiry`);
+        return await createPresignedReadUrl(relKey, fallbackExpiry);
+      } catch (retryError) {
+        console.warn(`[S3] Retry with ${fallbackExpiry}s also failed:`, retryError);
+        // Continue to next fallback
+      }
+    }
+    
+    // If all retries failed, throw the original error
+    throw error;
+  }
 }
 
 /**
@@ -280,6 +313,9 @@ export async function storageGet(
 /**
  * Create a presigned URL for reading a file from S3
  * Use this for viewing images, PDFs, etc. in the browser
+ * 
+ * Note: Most S3-compatible services have a maximum expiry of 7 days (604800 seconds)
+ * for presigned URLs. Longer expiries will be capped to 7 days.
  */
 export async function createPresignedReadUrl(
   relKey: string,
@@ -289,11 +325,18 @@ export async function createPresignedReadUrl(
   const client = getS3Client();
   const config = getS3Config();
 
-  // Temporary debug logging for production verification
-  console.log('[S3 LOGO READ]', {
+  // Cap expiry at 7 days (604800 seconds) - standard S3 limit
+  // Some services like Infomaniak may have even stricter limits
+  const MAX_EXPIRY = 7 * 24 * 60 * 60; // 7 days
+  const actualExpiry = Math.min(expiresInSeconds, MAX_EXPIRY);
+
+  // Debug logging
+  console.log('[S3] Creating presigned read URL', {
     bucket: config.bucket,
     key,
     endpoint: config.endpoint,
+    requestedExpiry: expiresInSeconds,
+    actualExpiry,
     region: 'us-east-1',
   });
 
@@ -304,12 +347,31 @@ export async function createPresignedReadUrl(
     });
 
     const url = await getSignedUrl(client, command, {
-      expiresIn: expiresInSeconds,
+      expiresIn: actualExpiry,
+    });
+
+    console.log('[S3] Successfully created presigned read URL', {
+      key,
+      urlLength: url.length,
+      expiresIn: actualExpiry,
     });
 
     return url;
   } catch (error) {
     console.error("[S3] Failed to create presigned read URL:", error);
+    
+    // Enhanced error logging
+    if (error instanceof Error) {
+      console.error("[S3] Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        bucket: config.bucket,
+        key,
+        endpoint: config.endpoint,
+      });
+    }
+    
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to create read URL: ${message}`);
   }

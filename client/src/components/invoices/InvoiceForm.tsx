@@ -413,9 +413,11 @@ export function InvoiceForm({
   // Lifecycle action handlers removed - all actions now handled via InvoiceStatusActionsDropdown
 
   return (
-    <div className="space-y-6 w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="flex flex-col h-full w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Header buttons removed - now handled by parent page (InvoiceDetail) */}
 
+      {/* Scrollable content area */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-6">
       {/* Warning banners */}
       {invoice && (
         <>
@@ -744,9 +746,10 @@ export function InvoiceForm({
       </div>
 
       </form>
+      </div>
 
-      {/* Footer buttons */}
-      <div className="flex flex-col gap-2 pt-4 border-t">
+      {/* Footer buttons - always at bottom */}
+      <div className="flex-shrink-0 flex flex-col gap-2 pt-4 border-t bg-background">
         {/* Custom content before footer buttons (e.g., Update Preview button) */}
         {renderBeforeFooter}
         
