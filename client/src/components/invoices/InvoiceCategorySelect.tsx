@@ -59,10 +59,10 @@ export function InvoiceCategorySelect({
       onValueChange={onValueChange}
       disabled={disabled}
     >
-      <SelectTrigger>
+      <SelectTrigger className="w-full">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="z-[150]">
         {Object.entries(labels).map(([key, label]) => (
           <SelectItem key={key} value={key}>
             {label}

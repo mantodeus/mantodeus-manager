@@ -624,19 +624,19 @@ export function InvoiceForm({
         </div>
         <div className="space-y-2">
           <div className="hidden lg:grid lg:grid-cols-12 lg:gap-3 lg:px-2 text-xs font-medium text-muted-foreground">
-            <div className="lg:col-span-4">Item</div>
+            <div className="lg:col-span-3">Item</div>
             <div className="lg:col-span-2">Category</div>
             <div className="lg:col-span-1 text-right">Qty</div>
             <div className="lg:col-span-2 text-right">Unit Price</div>
             <div className="lg:col-span-2 text-right">Total</div>
-            <div className="lg:col-span-1 text-right">Actions</div>
+            <div className="lg:col-span-2 text-center">Delete</div>
           </div>
           {items.map((item, index) => (
             <div
               key={index}
               className="rounded-lg border bg-background p-3 lg:grid lg:grid-cols-12 lg:items-center lg:gap-3 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:border-b lg:px-2 lg:py-3"
             >
-              <div className="lg:col-span-4 min-w-0 space-y-1">
+              <div className="lg:col-span-3 min-w-0 space-y-1">
                 <p className="font-medium break-words text-sm">{item.name || "Untitled"}</p>
                 {item.description && (
                   <p className="text-xs text-muted-foreground break-words line-clamp-1">{item.description}</p>
@@ -661,7 +661,7 @@ export function InvoiceForm({
               <div className="lg:col-span-2 mt-1 text-right font-medium text-sm lg:mt-0">
                 {formatCurrency(item.quantity * item.unitPrice)}
               </div>
-              <div className="lg:col-span-1 mt-2 flex justify-end gap-1 lg:mt-0">
+              <div className="lg:col-span-2 mt-2 flex justify-center gap-1 lg:mt-0">
                 {!isReadOnly && (
                   <>
                     <Button variant="ghost" size="icon" onClick={() => openItemEditor(index)}>

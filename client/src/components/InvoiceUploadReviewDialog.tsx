@@ -942,7 +942,7 @@ export function InvoiceUploadReviewDialog({
           </div>
           
           {/* Action buttons below header */}
-          <div className="flex items-center justify-start md:justify-end gap-2 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-2">
             {/* Preview button - only on mobile (desktop auto-opens preview) */}
             {isMobile && (
               <Button 
