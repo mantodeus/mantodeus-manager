@@ -185,11 +185,48 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     }
   }, [previewUrl]);
 
-  // Reset zoom to fit viewport on mobile when preview opens
+  // Calculate initial zoom to fit PDF in viewport on mobile when preview opens
   useEffect(() => {
-    if (isMobile && previewDialogOpen && previewUrl) {
-      // Reset to 1 (full size) on mobile - let user zoom in if needed
-      setPreviewZoom(1);
+    if (isMobile && previewDialogOpen && previewUrl && previewContainerRef.current) {
+      // Wait for iframe to load, then calculate fit-to-viewport zoom
+      const container = previewContainerRef.current;
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+      
+      if (iframe) {
+        const calculateFitZoom = () => {
+          try {
+            // Get container dimensions
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            // Standard A4 PDF dimensions at 96 DPI
+            const pdfWidth = 794;
+            const pdfHeight = 1123;
+            
+            // Calculate zoom to fit width and height, use the smaller one to ensure it fits
+            const widthZoom = containerWidth / pdfWidth;
+            const heightZoom = containerHeight / pdfHeight;
+            const fitZoom = Math.min(widthZoom, heightZoom, 1); // Don't zoom in beyond 1x
+            
+            // Set initial zoom to fit, but allow user to zoom in
+            setPreviewZoom(Math.max(0.3, fitZoom)); // Minimum 0.3x zoom
+          } catch (error) {
+            // Fallback to 0.5x if calculation fails
+            setPreviewZoom(0.5);
+          }
+        };
+        
+        // Try to calculate after iframe loads
+        iframe.onload = () => {
+          setTimeout(calculateFitZoom, 100);
+        };
+        
+        // Also try immediately (in case iframe already loaded)
+        setTimeout(calculateFitZoom, 200);
+      } else {
+        // Fallback: set a reasonable initial zoom
+        setPreviewZoom(0.5);
+      }
     }
   }, [isMobile, previewDialogOpen, previewUrl]);
 
@@ -224,9 +261,11 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     };
 
     // Touch pinch-to-zoom handler
+    let isPinching = false;
     const handleTouchStart = (e: TouchEvent) => {
       // Only handle pinch zoom (2 touches), allow single touch for scrolling
       if (e.touches.length === 2) {
+        isPinching = true;
         e.preventDefault();
         e.stopPropagation();
         const touch1 = e.touches[0];
@@ -236,13 +275,15 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
           touch2.clientY - touch1.clientY
         );
         initialZoom = previewZoom;
+      } else {
+        isPinching = false;
       }
       // Single touch - allow normal scrolling, don't prevent default
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       // Only prevent default for pinch zoom (2 touches)
-      if (e.touches.length === 2) {
+      if (e.touches.length === 2 && isPinching) {
         e.preventDefault();
         e.stopPropagation();
         const touch1 = e.touches[0];
@@ -255,14 +296,19 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
         if (initialDistance > 0) {
           const scale = currentDistance / initialDistance;
           const newZoom = initialZoom * scale;
-          setPreviewZoom(Math.max(0.5, Math.min(3, newZoom)));
+          // Allow zoom from 0.3x to 3x
+          setPreviewZoom(Math.max(0.3, Math.min(3, newZoom)));
         }
       }
       // Single touch - allow normal scrolling, don't prevent default
     };
 
-    const handleTouchEnd = () => {
-      initialDistance = 0;
+    const handleTouchEnd = (e: TouchEvent) => {
+      // Only reset if we're no longer pinching
+      if (e.touches.length < 2) {
+        initialDistance = 0;
+        isPinching = false;
+      }
     };
 
     // Listen on both container and iframe wrapper to catch all events
@@ -273,12 +319,14 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     container.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
     container.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
     container.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
+    container.addEventListener('touchcancel', handleTouchEnd, { passive: false, capture: true });
     
     if (iframeWrapper) {
       iframeWrapper.addEventListener('wheel', handleWheel, { passive: false, capture: true });
       iframeWrapper.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
       iframeWrapper.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
       iframeWrapper.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
+      iframeWrapper.addEventListener('touchcancel', handleTouchEnd, { passive: false, capture: true });
     }
     
     // Also listen on the iframe itself (though it may not receive events)
@@ -292,11 +340,13 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       container.removeEventListener('touchstart', handleTouchStart, { capture: true });
       container.removeEventListener('touchmove', handleTouchMove, { capture: true });
       container.removeEventListener('touchend', handleTouchEnd, { capture: true });
+      container.removeEventListener('touchcancel', handleTouchEnd, { capture: true });
       if (iframeWrapper) {
         iframeWrapper.removeEventListener('wheel', handleWheel, { capture: true });
         iframeWrapper.removeEventListener('touchstart', handleTouchStart, { capture: true });
         iframeWrapper.removeEventListener('touchmove', handleTouchMove, { capture: true });
         iframeWrapper.removeEventListener('touchend', handleTouchEnd, { capture: true });
+        iframeWrapper.removeEventListener('touchcancel', handleTouchEnd, { capture: true });
       }
       if (iframe) {
         iframe.removeEventListener('wheel', handleWheel, { capture: true });
@@ -397,7 +447,15 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
 
       {/* Mobile Preview Dialog - matches invoice dialog size */}
       {isMobile && (
-        <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <Dialog 
+          open={previewDialogOpen} 
+          onOpenChange={(open) => {
+            // Only close preview dialog
+            if (!open) {
+              setPreviewDialogOpen(false);
+            }
+          }}
+        >
           <DialogContent
             className={cn(
               "flex flex-col p-0",
@@ -411,6 +469,19 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
             } as React.CSSProperties}
             showCloseButton={true}
             zIndex={60}
+            onInteractOutside={(e) => {
+              // Prevent closing workspace when clicking outside preview
+              e.preventDefault();
+            }}
+            onPointerDownOutside={(e) => {
+              // Prevent closing workspace when clicking outside preview
+              e.preventDefault();
+            }}
+            onEscapeKeyDown={(e) => {
+              // Only close preview dialog
+              setPreviewDialogOpen(false);
+              e.preventDefault();
+            }}
           >
             <div className="flex flex-col h-full overflow-hidden">
               {/* Preview Header */}

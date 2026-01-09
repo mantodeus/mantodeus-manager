@@ -746,10 +746,9 @@ export function InvoiceForm({
       </div>
 
       </form>
-      </div>
 
-      {/* Footer buttons - always at bottom */}
-      <div className="flex-shrink-0 flex flex-col gap-2 pt-4 border-t bg-background">
+      {/* Footer buttons - part of scrollable content */}
+      <div className="flex flex-col gap-2 pt-4 border-t">
         {/* Custom content before footer buttons (e.g., Update Preview button) */}
         {renderBeforeFooter}
         
@@ -812,6 +811,7 @@ export function InvoiceForm({
             Mark as Not Cancelled
           </Button>
         )}
+      </div>
       </div>
 
       {/* Dialogs */}

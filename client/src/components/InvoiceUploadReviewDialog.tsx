@@ -760,11 +760,48 @@ export function InvoiceUploadReviewDialog({
     }
   }, [previewOpen, previewUrl]);
 
-  // Reset zoom to fit viewport on mobile when preview opens
+  // Calculate initial zoom to fit PDF in viewport on mobile when preview opens
   useEffect(() => {
-    if (isMobile && previewOpen && previewUrl) {
-      // Reset to 1 (full size) on mobile - let user zoom in if needed
-      setPreviewZoom(1);
+    if (isMobile && previewOpen && previewUrl && previewContainerRef.current) {
+      // Wait for iframe to load, then calculate fit-to-viewport zoom
+      const container = previewContainerRef.current;
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+      
+      if (iframe) {
+        const calculateFitZoom = () => {
+          try {
+            // Get container dimensions
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            // Standard A4 PDF dimensions at 96 DPI
+            const pdfWidth = 794;
+            const pdfHeight = 1123;
+            
+            // Calculate zoom to fit width and height, use the smaller one to ensure it fits
+            const widthZoom = containerWidth / pdfWidth;
+            const heightZoom = containerHeight / pdfHeight;
+            const fitZoom = Math.min(widthZoom, heightZoom, 1); // Don't zoom in beyond 1x
+            
+            // Set initial zoom to fit, but allow user to zoom in
+            setPreviewZoom(Math.max(0.3, fitZoom)); // Minimum 0.3x zoom
+          } catch (error) {
+            // Fallback to 0.5x if calculation fails
+            setPreviewZoom(0.5);
+          }
+        };
+        
+        // Try to calculate after iframe loads
+        iframe.onload = () => {
+          setTimeout(calculateFitZoom, 100);
+        };
+        
+        // Also try immediately (in case iframe already loaded)
+        setTimeout(calculateFitZoom, 200);
+      } else {
+        // Fallback: set a reasonable initial zoom
+        setPreviewZoom(0.5);
+      }
     }
   }, [isMobile, previewOpen, previewUrl]);
 
@@ -799,9 +836,11 @@ export function InvoiceUploadReviewDialog({
     };
 
     // Touch pinch-to-zoom handler
+    let isPinching = false;
     const handleTouchStart = (e: TouchEvent) => {
       // Only handle pinch zoom (2 touches), allow single touch for scrolling
       if (e.touches.length === 2) {
+        isPinching = true;
         e.preventDefault();
         e.stopPropagation();
         const touch1 = e.touches[0];
@@ -811,13 +850,15 @@ export function InvoiceUploadReviewDialog({
           touch2.clientY - touch1.clientY
         );
         initialZoom = previewZoom;
+      } else {
+        isPinching = false;
       }
       // Single touch - allow normal scrolling, don't prevent default
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       // Only prevent default for pinch zoom (2 touches)
-      if (e.touches.length === 2) {
+      if (e.touches.length === 2 && isPinching) {
         e.preventDefault();
         e.stopPropagation();
         const touch1 = e.touches[0];
@@ -830,14 +871,19 @@ export function InvoiceUploadReviewDialog({
         if (initialDistance > 0) {
           const scale = currentDistance / initialDistance;
           const newZoom = initialZoom * scale;
-          setPreviewZoom(Math.max(0.5, Math.min(3, newZoom)));
+          // Allow zoom from 0.3x to 3x
+          setPreviewZoom(Math.max(0.3, Math.min(3, newZoom)));
         }
       }
       // Single touch - allow normal scrolling, don't prevent default
     };
 
-    const handleTouchEnd = () => {
-      initialDistance = 0;
+    const handleTouchEnd = (e: TouchEvent) => {
+      // Only reset if we're no longer pinching
+      if (e.touches.length < 2) {
+        initialDistance = 0;
+        isPinching = false;
+      }
     };
 
     // Listen on both container and iframe wrapper to catch all events
@@ -848,12 +894,14 @@ export function InvoiceUploadReviewDialog({
     container.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
     container.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
     container.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
+    container.addEventListener('touchcancel', handleTouchEnd, { passive: false, capture: true });
     
     if (iframeWrapper) {
       iframeWrapper.addEventListener('wheel', handleWheel, { passive: false, capture: true });
       iframeWrapper.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
       iframeWrapper.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
       iframeWrapper.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
+      iframeWrapper.addEventListener('touchcancel', handleTouchEnd, { passive: false, capture: true });
     }
     
     // Also listen on the iframe itself (though it may not receive events)
@@ -867,11 +915,13 @@ export function InvoiceUploadReviewDialog({
       container.removeEventListener('touchstart', handleTouchStart, { capture: true });
       container.removeEventListener('touchmove', handleTouchMove, { capture: true });
       container.removeEventListener('touchend', handleTouchEnd, { capture: true });
+      container.removeEventListener('touchcancel', handleTouchEnd, { capture: true });
       if (iframeWrapper) {
         iframeWrapper.removeEventListener('wheel', handleWheel, { capture: true });
         iframeWrapper.removeEventListener('touchstart', handleTouchStart, { capture: true });
         iframeWrapper.removeEventListener('touchmove', handleTouchMove, { capture: true });
         iframeWrapper.removeEventListener('touchend', handleTouchEnd, { capture: true });
+        iframeWrapper.removeEventListener('touchcancel', handleTouchEnd, { capture: true });
       }
       if (iframe) {
         iframe.removeEventListener('wheel', handleWheel, { capture: true });
@@ -933,7 +983,15 @@ export function InvoiceUploadReviewDialog({
 
       {/* Mobile Preview Dialog - matches invoice dialog size */}
       {isMobile && previewOpen && previewUrl && (
-        <Dialog open={true} onOpenChange={setPreviewOpen}>
+        <Dialog 
+          open={true} 
+          onOpenChange={(open) => {
+            // Only close preview dialog, don't affect parent dialog
+            if (!open) {
+              setPreviewOpen(false);
+            }
+          }}
+        >
           <DialogContent
             className={cn(
               "flex flex-col p-0",
@@ -952,6 +1010,19 @@ export function InvoiceUploadReviewDialog({
             } as React.CSSProperties}
             showCloseButton={true}
             zIndex={70}
+            onInteractOutside={(e) => {
+              // Prevent closing parent dialog when clicking outside preview
+              e.preventDefault();
+            }}
+            onPointerDownOutside={(e) => {
+              // Prevent closing parent dialog when clicking outside preview
+              e.preventDefault();
+            }}
+            onEscapeKeyDown={(e) => {
+              // Only close preview dialog, not parent
+              setPreviewOpen(false);
+              e.preventDefault();
+            }}
           >
             <div className="flex flex-col h-full overflow-hidden min-h-0">
               {/* Preview Header */}
@@ -1127,7 +1198,7 @@ export function InvoiceUploadReviewDialog({
         <div className="separator-fade" />
 
         <div className={cn(
-          "space-y-4 px-6 pt-4 overflow-y-auto flex-1",
+          "space-y-4 px-6 pt-4 overflow-y-auto flex-1 min-h-0",
           isMobile ? "pb-[calc(var(--bottom-safe-area,0px)+1rem)]" : "pb-6"
         )}>
           {/* Warning banners */}
@@ -1242,180 +1313,179 @@ export function InvoiceUploadReviewDialog({
             </div>
           )}
 
-        </div>
+          {/* Footer with action buttons - part of scrollable content */}
+          {(isReview || isDraft) && invoice?.source === "uploaded" && (
+            <div className={cn(
+              "pt-4 border-t",
+              isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
+            )}>
+                {/* Send button - only for non-cancelled draft invoices */}
+                {!isReview && isDraft && !isCancelled && (
+                  <Button
+                    onClick={handleSend}
+                    disabled={isLoading || (!dueDate && !invoice?.dueDate) || Number(totalAmount || 0) <= 0}
+                    className={cn(
+                      isMobile ? "w-full" : "",
+                      "bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
+                    )}
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Send
+                  </Button>
+                )}
 
-        {/* Footer with action buttons - always at bottom */}
-        {(isReview || isDraft) && invoice?.source === "uploaded" && (
-          <div className={cn(
-            "flex-shrink-0 px-6 pt-4 border-t bg-background",
-            isMobile ? "pb-[calc(var(--bottom-safe-area,0px)+1rem)] flex flex-col gap-2 w-full" : "pb-6 flex flex-col gap-2"
-          )}>
-              {/* Send button - only for non-cancelled draft invoices */}
-              {!isReview && isDraft && !isCancelled && (
-                <Button
-                  onClick={handleSend}
-                  disabled={isLoading || (!dueDate && !invoice?.dueDate) || Number(totalAmount || 0) <= 0}
-                  className={cn(
-                    isMobile ? "w-full" : "",
-                    "bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
-                  )}
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Send
-                </Button>
-              )}
-
-              {/* Preview button - only on mobile, above Delete button */}
-              {isMobile && (
-                <Button 
-                  variant="outline" 
-                  onClick={handlePreviewPDF}
-                  disabled={isLoading}
-                  className="w-full gap-2"
-                >
-                  <Eye className="h-4 w-4" />
-                  Preview
-                </Button>
-              )}
-
-              {/* Delete and Save buttons on same line - Delete left, Save right */}
-              <div className="flex gap-2">
-                <Button
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={isLoading || (isReview ? cancelMutation.isPending : moveToTrashMutation.isPending)}
-                  className="flex-1"
-                >
-                  {(isReview ? cancelMutation.isPending : moveToTrashMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Delete
-                </Button>
-                {!isReadOnly && !isCancelled && (
+                {/* Preview button - only on mobile, above Delete button */}
+                {isMobile && (
                   <Button 
-                    onClick={handleSave} 
-                    disabled={isLoading || !isFormValid}
+                    variant="outline" 
+                    onClick={handlePreviewPDF}
+                    disabled={isLoading}
+                    className="w-full gap-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Preview
+                  </Button>
+                )}
+
+                {/* Delete and Save buttons on same line - Delete left, Save right */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={isLoading || (isReview ? cancelMutation.isPending : moveToTrashMutation.isPending)}
                     className="flex-1"
                   >
-                    {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save
+                    {(isReview ? cancelMutation.isPending : moveToTrashMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Delete
+                  </Button>
+                  {!isReadOnly && !isCancelled && (
+                    <Button 
+                      onClick={handleSave} 
+                      disabled={isLoading || !isFormValid}
+                      className="flex-1"
+                    >
+                      {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Revert buttons - only shown when sent/paid (after review) */}
+                {!isReview && isSent && !isPaid && derivedValues.outstanding === 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={handleRevertToDraft}
+                    disabled={isLoading}
+                    className={isMobile ? "w-full" : ""}
+                  >
+                    Revert to Draft
+                  </Button>
+                )}
+                {!isReview && isPaid && (
+                  <Button
+                    variant="outline"
+                    onClick={handleRevertToSent}
+                    disabled={isLoading}
+                    className={cn(
+                      isMobile ? "w-full" : "",
+                      "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
+                    )}
+                  >
+                    Mark as Not Paid
+                  </Button>
+                )}
+
+                {/* Cancel/Uncancel buttons - only for draft/review invoices */}
+                {/* Mark as Not Cancelled - only for cancelled invoices in review state */}
+                {isReview && isCancelled && (
+                  <Button
+                    variant="outline"
+                    onClick={() => markAsNotCancelledMutation.mutate({ id: invoiceId! })}
+                    disabled={isLoading || markAsNotCancelledMutation.isPending}
+                    className={cn(
+                      isMobile ? "w-full" : "",
+                      "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
+                    )}
+                  >
+                    {markAsNotCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Mark as Not Cancelled
                   </Button>
                 )}
               </div>
-              
-              {/* Revert buttons - only shown when sent/paid (after review) */}
-              {!isReview && isSent && !isPaid && derivedValues.outstanding === 0 && (
-                <Button
-                  variant="outline"
-                  onClick={handleRevertToDraft}
-                  disabled={isLoading}
-                  className={isMobile ? "w-full" : ""}
-                >
-                  Revert to Draft
-                </Button>
-              )}
-              {!isReview && isPaid && (
-                <Button
-                  variant="outline"
-                  onClick={handleRevertToSent}
-                  disabled={isLoading}
-                  className={cn(
-                    isMobile ? "w-full" : "",
-                    "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
-                  )}
-                >
-                  Mark as Not Paid
-                </Button>
-              )}
+            )}
 
-              {/* Cancel/Uncancel buttons - only for draft/review invoices */}
-              {/* Mark as Not Cancelled - only for cancelled invoices in review state */}
-              {isReview && isCancelled && (
-                <Button
-                  variant="outline"
-                  onClick={() => markAsNotCancelledMutation.mutate({ id: invoiceId! })}
-                  disabled={isLoading || markAsNotCancelledMutation.isPending}
-                  className={cn(
-                    isMobile ? "w-full" : "",
-                    "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
+          {/* Footer with action buttons for sent/paid states - part of scrollable content */}
+          {!isReview && !isDraft && invoice?.source === "uploaded" && (
+            <div className={cn(
+              "pt-4 border-t",
+              isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
+            )}>
+                {/* Preview button - only on mobile, above Delete button */}
+                {isMobile && (
+                  <Button 
+                    variant="outline" 
+                    onClick={handlePreviewPDF}
+                    disabled={isLoading}
+                    className="w-full gap-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Preview
+                  </Button>
+                )}
+
+                {/* Revert to Draft - shown for sent invoices, above Delete */}
+                {isSent && !isPaid && derivedValues.outstanding === 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={handleRevertToDraft}
+                    disabled={isLoading}
+                    className={cn(
+                      "w-full",
+                      "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
+                    )}
+                  >
+                    Revert to Draft
+                  </Button>
+                )}
+                <div className="flex gap-2">
+                  {/* Delete (replaces Cancel) */}
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleDelete} 
+                    disabled={isLoading || moveToTrashMutation.isPending}
+                    className="flex-1"
+                  >
+                    {moveToTrashMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Delete
+                  </Button>
+                  {!isReadOnly && !isCancelled && (
+                    <Button 
+                      onClick={handleSave} 
+                      disabled={isLoading || !isFormValid}
+                      className="flex-1"
+                    >
+                      {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save
+                    </Button>
                   )}
-                >
-                  {markAsNotCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Mark as Not Cancelled
-                </Button>
-              )}
+                </div>
+                {/* Mark as Not Paid - only shown when paid, on separate line */}
+                {isPaid && (
+                  <Button
+                    variant="outline"
+                    onClick={handleRevertToSent}
+                    disabled={isLoading}
+                    className={cn(
+                      "w-full",
+                      "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
+                    )}
+                  >
+                    Mark as Not Paid
+                  </Button>
+                )}
             </div>
           )}
-
-        {/* Footer with action buttons for sent/paid states - always at bottom */}
-        {!isReview && !isDraft && invoice?.source === "uploaded" && (
-          <div className={cn(
-            "flex-shrink-0 px-6 pt-4 border-t bg-background",
-            isMobile ? "pb-[calc(var(--bottom-safe-area,0px)+1rem)] flex flex-col gap-2 w-full" : "pb-6 flex flex-col gap-2"
-          )}>
-              {/* Preview button - only on mobile, above Delete button */}
-              {isMobile && (
-                <Button 
-                  variant="outline" 
-                  onClick={handlePreviewPDF}
-                  disabled={isLoading}
-                  className="w-full gap-2"
-                >
-                  <Eye className="h-4 w-4" />
-                  Preview
-                </Button>
-              )}
-
-              {/* Revert to Draft - shown for sent invoices, above Delete */}
-              {isSent && !isPaid && derivedValues.outstanding === 0 && (
-                <Button
-                  variant="outline"
-                  onClick={handleRevertToDraft}
-                  disabled={isLoading}
-                  className={cn(
-                    "w-full",
-                    "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
-                  )}
-                >
-                  Revert to Draft
-                </Button>
-              )}
-              <div className="flex gap-2">
-                {/* Delete (replaces Cancel) */}
-                <Button 
-                  variant="destructive" 
-                  onClick={handleDelete} 
-                  disabled={isLoading || moveToTrashMutation.isPending}
-                  className="flex-1"
-                >
-                  {moveToTrashMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Delete
-                </Button>
-                {!isReadOnly && !isCancelled && (
-                  <Button 
-                    onClick={handleSave} 
-                    disabled={isLoading || !isFormValid}
-                    className="flex-1"
-                  >
-                    {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save
-                  </Button>
-                )}
-              </div>
-              {/* Mark as Not Paid - only shown when paid, on separate line */}
-              {isPaid && (
-                <Button
-                  variant="outline"
-                  onClick={handleRevertToSent}
-                  disabled={isLoading}
-                  className={cn(
-                    "w-full",
-                    "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
-                  )}
-                >
-                  Mark as Not Paid
-                </Button>
-              )}
-          </div>
-        )}
+        </div>
       </DialogContent>
 
       {/* Share Invoice Dialog */}
