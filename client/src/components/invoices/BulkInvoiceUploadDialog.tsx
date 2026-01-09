@@ -11,14 +11,13 @@ import { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Upload, X, FileText, Loader2 } from "@/components/ui/Icon";
+import { AlertCircle, Upload, X, FileText, Loader2, DocumentCurrencyEuro } from "@/components/ui/Icon";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/useMobile";
 import { InvoiceUploadZone } from "./InvoiceUploadZone";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -40,6 +39,7 @@ export function BulkInvoiceUploadDialog({
   onUpload,
   isUploading = false,
 }: BulkInvoiceUploadDialogProps) {
+  const isMobile = useIsMobile();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -147,15 +147,50 @@ export function BulkInvoiceUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Upload Invoices</DialogTitle>
-          <DialogDescription>
-            Upload multiple invoice PDF files at once. Maximum {MAX_FILES} files, {MAX_FILE_SIZE / 1024 / 1024}MB per file.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent 
+        className={cn(
+          "flex flex-col p-0",
+          "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+        )}
+        showCloseButton={false}
+      >
+        {/* PageHeader-like structure */}
+        <div className="flex-shrink-0 p-6 pb-2 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4 min-w-0 flex-1">
+              <div className="flex-1 min-w-0 flex flex-col">
+                <h1 className="text-3xl font-regular flex items-center gap-2">
+                  <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
+                  Upload Invoices
+                </h1>
+                <p className="text-muted-foreground text-sm mt-3">
+                  Upload multiple invoice PDF files at once. Maximum {MAX_FILES} files, {MAX_FILE_SIZE / 1024 / 1024}MB per file.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-3 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClose}
+                className="h-10 w-10"
+                aria-label="Close"
+                disabled={isUploading}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+          </div>
+        </div>
 
-        <div className="space-y-4 py-4">
+        {/* Fade-out separator */}
+        <div className="separator-fade" />
+
+        <div className={cn(
+          "px-6 pt-4 overflow-y-auto flex-1 min-h-0",
+          "pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+        )}>
+          <div className="space-y-4">
           <InvoiceUploadZone
             onUpload={handleFilesSelected}
             isUploading={isUploading}
@@ -227,37 +262,42 @@ export function BulkInvoiceUploadDialog({
               </div>
             </div>
           )}
+          </div>
         </div>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            disabled={isUploading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleUpload}
-            disabled={
-              isUploading ||
-              selectedFiles.length === 0 ||
-              errors.length > 0
-            }
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""}
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+        <div className="flex flex-col gap-2 pt-4 border-t px-6 pb-6">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={isUploading}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpload}
+              disabled={
+                isUploading ||
+                selectedFiles.length === 0 ||
+                errors.length > 0
+              }
+              className="flex-1"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""}
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

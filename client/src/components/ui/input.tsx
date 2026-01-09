@@ -9,6 +9,7 @@ function Input({
   onKeyDown,
   onCompositionStart,
   onCompositionEnd,
+  onFocus,
   ...props
 }: React.ComponentProps<"input">) {
   // Get dialog composition context if available (will be no-op if not inside Dialog)
@@ -49,6 +50,14 @@ function Input({
     },
   });
 
+  // Auto-select all text on focus for number inputs
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (type === "number") {
+      e.target.select();
+    }
+    onFocus?.(e);
+  };
+
   return (
     <input
       type={type}
@@ -62,6 +71,7 @@ function Input({
       onCompositionStart={handleCompositionStart}
       onCompositionEnd={handleCompositionEnd}
       onKeyDown={handleKeyDown}
+      onFocus={handleFocus}
       {...props}
     />
   );
