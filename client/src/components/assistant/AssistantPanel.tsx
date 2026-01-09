@@ -2,14 +2,14 @@
  * Assistant Panel Component
  * 
  * Modern, sleek AI chat widget powered by Mistral.
- * Appears as a compact floating panel above the trigger button.
+ * Supports step-by-step guided tours with element highlighting.
  */
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { Loader2, X, Send, BugAnt, HelpCircle, Eye } from "@/components/ui/Icon";
+import { Loader2, X, Send, BugAnt, HelpCircle, ChevronLeft, ChevronRight, CheckCircle2 } from "@/components/ui/Icon";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
@@ -19,7 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useGuidance } from "@/contexts/GuidanceContext";
+import { useGuidance, type TourStep, type GuidanceWarning } from "@/contexts/GuidanceContext";
 
 export type AssistantScope = "invoice_detail" | "general";
 
@@ -39,28 +39,10 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-interface GuidanceInstruction {
-  elementId: string;
-  action: "highlight" | "pulse" | "spotlight";
-  tooltip?: string;
-  priority: number;
-}
-
-interface GuidanceStep {
-  order: number;
-  description: string;
-}
-
-interface GuidanceWarning {
-  elementId?: string;
-  message: string;
-}
-
 interface AssistantResponse {
   answerMarkdown: string;
   confidence: "low" | "medium" | "high";
-  guidance?: GuidanceInstruction[];
-  steps?: GuidanceStep[];
+  steps?: TourStep[];
   warnings?: GuidanceWarning[];
 }
 
@@ -88,12 +70,26 @@ export function AssistantPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [lastResponse, setLastResponse] = useState<AssistantResponse | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const defaultPrompts = scope === "invoice_detail" ? INVOICE_PROMPTS : GENERAL_PROMPTS;
   
-  const { applyGuidance, clearGuidance, getVisibleElements, isGuiding } = useGuidance();
+  const { 
+    startTour,
+    cancelTour,
+    nextStep,
+    previousStep,
+    getVisibleElements,
+    tourStatus,
+    currentStep,
+    currentStepIndex,
+    totalSteps,
+    activeWarnings,
+  } = useGuidance();
+
+  const isTourActive = tourStatus === "active";
+  const isTourPaused = tourStatus === "paused";
+  const isTourComplete = tourStatus === "complete";
 
   const askMutation = trpc.ai.ask.useMutation({
     onSuccess: (response: AssistantResponse) => {
@@ -104,13 +100,11 @@ export function AssistantPanel({
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
-      setLastResponse(response);
       setIsLoading(false);
       
-      // Apply guidance if present
-      if (response.guidance && response.guidance.length > 0) {
-        applyGuidance({
-          guidance: response.guidance,
+      // Start tour if steps are present
+      if (response.steps && response.steps.length > 0) {
+        startTour({
           steps: response.steps,
           warnings: response.warnings,
         });
@@ -122,12 +116,12 @@ export function AssistantPanel({
     },
   });
   
-  // Clear guidance when panel closes
+  // Clear tour when panel closes
   useEffect(() => {
     if (!open) {
-      clearGuidance();
+      cancelTour();
     }
-  }, [open, clearGuidance]);
+  }, [open, cancelTour]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -143,6 +137,9 @@ export function AssistantPanel({
   const handleSend = async () => {
     const trimmed = inputValue.trim();
     if (!trimmed || isLoading) return;
+
+    // Cancel any active tour before new question
+    cancelTour();
 
     const userMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -170,6 +167,9 @@ export function AssistantPanel({
   const handleQuickPrompt = (prompt: string) => {
     setInputValue(prompt);
     setTimeout(() => {
+      // Cancel any active tour
+      cancelTour();
+      
       const userMessage: ChatMessage = {
         id: `msg-${Date.now()}`,
         role: "user",
@@ -188,27 +188,22 @@ export function AssistantPanel({
     }, 50);
   };
 
-  const handleActionClick = (action: "OPEN_SHARE" | "OPEN_ADD_PAYMENT" | "OPEN_EDIT_DUE_DATE" | "OPEN_REVERT_STATUS") => {
-    if (onAction) {
-      onAction(action);
-      onOpenChange(false);
-    }
+  const handleCancelTour = () => {
+    cancelTour();
   };
-
-  const actions = lastResponse?.suggestedNextActions || [];
 
   if (!open) return null;
 
   return (
     <>
-      {/* Chat Panel - No backdrop blur so users can see the page */}
+      {/* Chat Panel */}
       <div
         className={cn(
           "fixed z-[10002] flex flex-col",
           "bg-background border border-border shadow-2xl",
           "animate-in slide-in-from-bottom-4 fade-in duration-300",
           isMobile ? [
-            "inset-x-3 bottom-16 top-auto", // Above the tab bar
+            "inset-x-3 bottom-16 top-auto",
             "rounded-2xl",
             "max-h-[70vh]",
           ] : [
@@ -230,10 +225,20 @@ export function AssistantPanel({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold">Bug</h2>
-                {isGuiding && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-[10px] text-primary">
-                    <Eye className="h-2.5 w-2.5" />
-                    Showing
+                {isTourActive && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-[10px] text-primary font-medium">
+                    Step {currentStepIndex + 1}/{totalSteps}
+                  </span>
+                )}
+                {isTourPaused && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 text-[10px] text-amber-600 font-medium">
+                    Paused
+                  </span>
+                )}
+                {isTourComplete && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-500/10 text-[10px] text-green-600 font-medium">
+                    <CheckCircle2 className="h-2.5 w-2.5" />
+                    Done
                   </span>
                 )}
               </div>
@@ -267,9 +272,92 @@ export function AssistantPanel({
           </div>
         </div>
 
+        {/* Tour Step UI - shows when tour is active */}
+        {(isTourActive || isTourPaused) && currentStep && (
+          <div className="px-4 py-3 border-b border-border/50 bg-primary/5">
+            {/* Step description */}
+            <p className="text-sm font-medium mb-3">{currentStep.description}</p>
+            
+            {/* Navigation buttons */}
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={previousStep}
+                disabled={currentStepIndex === 0}
+                className="h-8 text-xs gap-1"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                Back
+              </Button>
+              
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: totalSteps }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full transition-colors",
+                      i === currentStepIndex ? "bg-primary" : "bg-muted-foreground/30"
+                    )}
+                  />
+                ))}
+              </div>
+              
+              <Button
+                variant="default"
+                size="sm"
+                onClick={nextStep}
+                className="h-8 text-xs gap-1"
+              >
+                {currentStepIndex === totalSteps - 1 ? "Finish" : "Next"}
+                {currentStepIndex < totalSteps - 1 && <ChevronRight className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+            
+            {/* Cancel link */}
+            <div className="mt-2 text-center">
+              <button
+                onClick={handleCancelTour}
+                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel guide
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tour Complete Message */}
+        {isTourComplete && (
+          <div className="px-4 py-4 border-b border-border/50 bg-green-500/5 text-center">
+            <CheckCircle2 className="h-8 w-8 text-green-600 mx-auto mb-2" />
+            <p className="text-sm font-medium text-green-600">All done!</p>
+            <p className="text-xs text-muted-foreground mt-1">Ask another question or close</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancelTour}
+              className="mt-3 h-7 text-xs"
+            >
+              Clear & Ask New Question
+            </Button>
+          </div>
+        )}
+
+        {/* Warnings */}
+        {activeWarnings && activeWarnings.length > 0 && (isTourActive || isTourPaused) && (
+          <div className="px-4 py-2 border-b border-border/50 bg-amber-500/5">
+            {activeWarnings.map((warning, i) => (
+              <p key={i} className="text-xs text-amber-600 flex items-start gap-1.5">
+                <span className="shrink-0">⚠️</span>
+                <span>{warning.message}</span>
+              </p>
+            ))}
+          </div>
+        )}
+
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
-          {messages.length === 0 && (
+          {messages.length === 0 && !isTourActive && !isTourComplete && (
             <div className="space-y-3 py-2">
               <div className="flex items-start gap-2.5">
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
@@ -350,57 +438,42 @@ export function AssistantPanel({
             </div>
           )}
 
-          {/* Suggested Actions */}
-          {actions.length > 0 && !isLoading && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {actions.map((action) => (
-                <Button
-                  key={action.id}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleActionClick(action.action)}
-                  className="h-7 text-xs rounded-lg"
-                >
-                  {action.label}
-                </Button>
-              ))}
-            </div>
-          )}
-
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="px-3 py-3 border-t border-border/50">
-          <div className="flex gap-2">
-            <Input
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="Ask anything..."
-              disabled={isLoading}
-              className="flex-1 h-9 text-sm rounded-xl bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/50"
-            />
-            <Button
-              onClick={handleSend}
-              disabled={!inputValue.trim() || isLoading}
-              size="icon"
-              className="h-9 w-9 rounded-xl shrink-0"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
+        {/* Input - hidden during active tour */}
+        {!isTourActive && !isTourPaused && (
+          <div className="px-3 py-3 border-t border-border/50">
+            <div className="flex gap-2">
+              <Input
+                ref={inputRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder="Ask anything..."
+                disabled={isLoading}
+                className="flex-1 h-9 text-sm rounded-xl bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/50"
+              />
+              <Button
+                onClick={handleSend}
+                disabled={!inputValue.trim() || isLoading}
+                size="icon"
+                className="h-9 w-9 rounded-xl shrink-0"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );

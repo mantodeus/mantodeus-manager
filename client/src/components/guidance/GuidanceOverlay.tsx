@@ -1,13 +1,13 @@
 /**
  * Guidance Overlay Component
  * 
- * Renders highlight overlays and tooltips for AI guidance.
- * Uses CSS positioning - never steals pointer events (except spotlight).
+ * Renders highlight for the current tour step only (one at a time).
+ * Click on highlighted element OR use Next button to advance.
  */
 
 import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useGuidance, type GuidanceInstruction } from "@/contexts/GuidanceContext";
+import { useGuidance, type TourStep, type GuidanceAction } from "@/contexts/GuidanceContext";
 import { cn } from "@/lib/utils";
 
 interface HighlightPosition {
@@ -17,161 +17,179 @@ interface HighlightPosition {
   height: number;
 }
 
-interface HighlightState {
-  instruction: GuidanceInstruction;
-  position: HighlightPosition;
-  element: HTMLElement;
-}
-
 export function GuidanceOverlay() {
-  const { activeGuidance, getElement, clearGuidance } = useGuidance();
-  const [highlights, setHighlights] = useState<HighlightState[]>([]);
+  const { 
+    currentStep, 
+    tourStatus, 
+    getElement, 
+    nextStep,
+    cancelTour,
+  } = useGuidance();
+  
+  const [position, setPosition] = useState<HighlightPosition | null>(null);
+  const [element, setElement] = useState<HTMLElement | null>(null);
 
-  // Calculate positions for all guided elements
-  const updatePositions = useCallback(() => {
-    if (!activeGuidance || activeGuidance.length === 0) {
-      setHighlights([]);
+  // Calculate position for current step's element
+  const updatePosition = useCallback(() => {
+    if (!currentStep?.elementId || tourStatus !== "active") {
+      setPosition(null);
+      setElement(null);
       return;
     }
 
-    const newHighlights: HighlightState[] = [];
-
-    for (const instruction of activeGuidance) {
-      const element = getElement(instruction.elementId);
-      if (!element) continue;
-
-      const rect = element.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) continue;
-
-      newHighlights.push({
-        instruction,
-        element,
-        position: {
-          top: rect.top + window.scrollY,
-          left: rect.left + window.scrollX,
-          width: rect.width,
-          height: rect.height,
-        },
-      });
+    const el = getElement(currentStep.elementId);
+    if (!el) {
+      setPosition(null);
+      setElement(null);
+      return;
     }
 
-    setHighlights(newHighlights);
-  }, [activeGuidance, getElement]);
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      setPosition(null);
+      setElement(null);
+      return;
+    }
 
-  // Update positions on scroll/resize
+    setElement(el);
+    setPosition({
+      top: rect.top + window.scrollY,
+      left: rect.left + window.scrollX,
+      width: rect.width,
+      height: rect.height,
+    });
+  }, [currentStep, tourStatus, getElement]);
+
+  // Update positions on scroll/resize and step change
   useEffect(() => {
-    updatePositions();
+    updatePosition();
 
-    const handleUpdate = () => updatePositions();
+    const handleUpdate = () => updatePosition();
     window.addEventListener("scroll", handleUpdate, true);
     window.addEventListener("resize", handleUpdate);
+
+    // Recheck after DOM settles
+    const timeoutId = setTimeout(updatePosition, 100);
 
     return () => {
       window.removeEventListener("scroll", handleUpdate, true);
       window.removeEventListener("resize", handleUpdate);
+      clearTimeout(timeoutId);
     };
-  }, [updatePositions]);
+  }, [updatePosition, currentStep]);
 
-  // Clear guidance on escape key
+  // Handle element click to advance
+  useEffect(() => {
+    if (!element || tourStatus !== "active") return;
+
+    const handleClick = (e: Event) => {
+      // Advance to next step when user clicks the highlighted element
+      e.stopPropagation();
+      nextStep();
+    };
+
+    // Add click listener to the actual element
+    element.addEventListener("click", handleClick, { capture: true });
+    
+    return () => {
+      element.removeEventListener("click", handleClick, { capture: true });
+    };
+  }, [element, tourStatus, nextStep]);
+
+  // Cancel tour on escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        clearGuidance();
+        cancelTour();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [clearGuidance]);
+  }, [cancelTour]);
 
-  if (highlights.length === 0) return null;
+  // If no element to highlight for this step, don't render overlay
+  // (the step instruction will still show in AssistantPanel)
+  if (!position || !currentStep?.elementId || tourStatus !== "active") {
+    return null;
+  }
 
-  const hasSpotlight = highlights.some((h) => h.instruction.action === "spotlight");
+  const action: GuidanceAction = currentStep.action || "pulse";
+  const tooltip = currentStep.tooltip;
+  const isSpotlight = action === "spotlight";
+  const padding = 6;
 
   return createPortal(
     <div className="guidance-overlay fixed inset-0 z-[9998] pointer-events-none">
-      {/* Spotlight backdrop - only if spotlight action is present */}
-      {hasSpotlight && (
+      {/* Spotlight backdrop */}
+      {isSpotlight && (
         <div
-          className="fixed inset-0 bg-black/50 animate-in fade-in duration-300"
+          className="fixed inset-0 bg-black/60 animate-in fade-in duration-300"
           style={{ pointerEvents: "auto" }}
-          onClick={() => clearGuidance()}
+          onClick={() => cancelTour()}
         />
       )}
 
-      {/* Render each highlight */}
-      {highlights.map((highlight, index) => (
-        <HighlightBox
-          key={`${highlight.instruction.elementId}-${index}`}
-          highlight={highlight}
-          hasSpotlight={hasSpotlight}
-        />
-      ))}
-    </div>,
-    document.body
-  );
-}
-
-interface HighlightBoxProps {
-  highlight: HighlightState;
-  hasSpotlight: boolean;
-}
-
-function HighlightBox({ highlight, hasSpotlight }: HighlightBoxProps) {
-  const { instruction, position } = highlight;
-  const { action, tooltip } = instruction;
-
-  const padding = 4; // Padding around element
-
-  return (
-    <>
-      {/* Highlight ring */}
+      {/* Highlight ring - clickable to advance */}
       <div
         className={cn(
-          "absolute rounded-lg transition-all duration-300",
+          "absolute rounded-xl transition-all duration-300",
           action === "highlight" && "ring-2 ring-primary ring-offset-2 ring-offset-background",
-          action === "pulse" && "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse",
-          action === "spotlight" && "ring-4 ring-primary bg-background shadow-2xl z-[9999]"
+          action === "pulse" && "ring-3 ring-primary ring-offset-2 ring-offset-background",
+          isSpotlight && "ring-4 ring-primary bg-background shadow-2xl z-[9999]"
         )}
         style={{
           top: position.top - padding,
           left: position.left - padding,
           width: position.width + padding * 2,
           height: position.height + padding * 2,
-          pointerEvents: action === "spotlight" ? "auto" : "none",
+          pointerEvents: "none", // Let clicks through to the actual element
+          // Pulsing animation for pulse action
+          animation: action === "pulse" ? "guidance-pulse 2s ease-in-out infinite" : undefined,
         }}
       />
 
-      {/* Tooltip */}
+      {/* Tooltip below element */}
       {tooltip && (
         <div
           className={cn(
             "absolute z-[10000] px-3 py-2 rounded-lg shadow-lg",
-            "bg-popover text-popover-foreground border border-border",
-            "text-sm max-w-[250px]",
-            "animate-in fade-in slide-in-from-bottom-2 duration-300"
+            "bg-primary text-primary-foreground",
+            "text-sm max-w-[280px] text-center",
+            "animate-in fade-in slide-in-from-top-2 duration-300"
           )}
           style={{
-            top: position.top + position.height + padding + 8,
+            top: position.top + position.height + padding + 10,
             left: position.left + position.width / 2,
             transform: "translateX(-50%)",
             pointerEvents: "none",
           }}
         >
-          <div className="relative">
-            {/* Arrow */}
-            <div
-              className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0"
-              style={{
-                borderLeft: "6px solid transparent",
-                borderRight: "6px solid transparent",
-                borderBottom: "6px solid hsl(var(--border))",
-              }}
-            />
-            {tooltip}
-          </div>
+          {/* Arrow pointing up */}
+          <div
+            className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0"
+            style={{
+              borderLeft: "8px solid transparent",
+              borderRight: "8px solid transparent",
+              borderBottom: "8px solid hsl(var(--primary))",
+            }}
+          />
+          <span className="font-medium">{tooltip}</span>
         </div>
       )}
-    </>
+
+      {/* Pulse animation keyframes */}
+      <style>{`
+        @keyframes guidance-pulse {
+          0%, 100% {
+            box-shadow: 0 0 0 0 hsl(var(--primary) / 0.7);
+          }
+          50% {
+            box-shadow: 0 0 0 12px hsl(var(--primary) / 0);
+          }
+        }
+      `}</style>
+    </div>,
+    document.body
   );
 }

@@ -3,7 +3,7 @@
  * 
  * AI-powered assistant using Mistral API.
  * Supports invoice-specific and general questions.
- * Returns UI guidance instructions for highlighting elements.
+ * Returns step-by-step tour instructions with UI element highlighting.
  */
 
 import { TRPCError } from "@trpc/server";
@@ -80,35 +80,31 @@ function getAllowedActions(invoice: Awaited<ReturnType<typeof db.getInvoiceById>
   return actions;
 }
 
-// Guidance instruction schema
-const guidanceInstructionSchema = z.object({
-  elementId: z.string(),
-  action: z.enum(["highlight", "pulse", "spotlight"]),
-  tooltip: z.string().optional(),
-  priority: z.number(),
-});
+// Tour step with optional element binding
+interface TourStep {
+  order: number;
+  description: string;
+  elementId?: string;
+  action?: "highlight" | "pulse" | "spotlight";
+  tooltip?: string;
+}
 
-const stepSchema = z.object({
-  order: z.number(),
-  description: z.string(),
-});
-
-const warningSchema = z.object({
-  elementId: z.string().optional(),
-  message: z.string(),
-});
+// Warning
+interface GuidanceWarning {
+  elementId?: string;
+  message: string;
+}
 
 // Response type
 interface AIResponse {
   answerMarkdown: string;
   confidence: "low" | "medium" | "high";
-  guidance?: z.infer<typeof guidanceInstructionSchema>[];
-  steps?: z.infer<typeof stepSchema>[];
-  warnings?: z.infer<typeof warningSchema>[];
+  steps?: TourStep[];
+  warnings?: GuidanceWarning[];
 }
 
 /**
- * Parse assistant response with guidance support
+ * Parse assistant response with step-by-step tour support
  */
 function parseAssistantResponse(text: string): AIResponse {
   console.log("[AI] Parsing response, length:", text?.length, "preview:", text?.substring(0, 200));
@@ -136,25 +132,7 @@ function parseAssistantResponse(text: string): AIResponse {
           confidence: ["low", "medium", "high"].includes(parsed.confidence) ? parsed.confidence : "medium",
         };
         
-        // Parse guidance if present
-        if (Array.isArray(parsed.guidance) && parsed.guidance.length > 0) {
-          response.guidance = parsed.guidance
-            .filter((g: unknown) => {
-              if (!g || typeof g !== "object") return false;
-              const obj = g as Record<string, unknown>;
-              return typeof obj.elementId === "string" && 
-                     typeof obj.action === "string" &&
-                     ["highlight", "pulse", "spotlight"].includes(obj.action as string);
-            })
-            .map((g: Record<string, unknown>) => ({
-              elementId: g.elementId as string,
-              action: g.action as "highlight" | "pulse" | "spotlight",
-              tooltip: typeof g.tooltip === "string" ? g.tooltip : undefined,
-              priority: typeof g.priority === "number" ? g.priority : 1,
-            }));
-        }
-        
-        // Parse steps if present
+        // Parse steps with element binding
         if (Array.isArray(parsed.steps) && parsed.steps.length > 0) {
           response.steps = parsed.steps
             .filter((s: unknown) => {
@@ -162,13 +140,31 @@ function parseAssistantResponse(text: string): AIResponse {
               const obj = s as Record<string, unknown>;
               return typeof obj.order === "number" && typeof obj.description === "string";
             })
-            .map((s: Record<string, unknown>) => ({
-              order: s.order as number,
-              description: s.description as string,
-            }));
+            .map((s: Record<string, unknown>) => {
+              const step: TourStep = {
+                order: s.order as number,
+                description: s.description as string,
+              };
+              
+              // Optional element binding
+              if (typeof s.elementId === "string" && s.elementId.length > 0) {
+                step.elementId = s.elementId;
+                step.action = ["highlight", "pulse", "spotlight"].includes(s.action as string)
+                  ? (s.action as "highlight" | "pulse" | "spotlight")
+                  : "pulse"; // Default to pulse for buttons
+                if (typeof s.tooltip === "string") {
+                  step.tooltip = s.tooltip;
+                }
+              }
+              
+              return step;
+            })
+            .sort((a, b) => a.order - b.order);
+          
+          console.log("[AI] Parsed", response.steps.length, "steps");
         }
         
-        // Parse warnings if present
+        // Parse warnings
         if (Array.isArray(parsed.warnings) && parsed.warnings.length > 0) {
           response.warnings = parsed.warnings
             .filter((w: unknown) => {
@@ -261,7 +257,7 @@ ${JSON.stringify(context, null, 2)}
 
 User Question: ${input.message}
 
-Respond with JSON format as specified in your instructions.`;
+Respond with JSON format as specified in your instructions. Include steps with elementId if pointing to UI elements.`;
 
         try {
           console.log("[AI] Calling Mistral for invoice_detail, model:", ENV.aiAssistantModel);
@@ -298,7 +294,7 @@ Respond with JSON format as specified in your instructions.`;
           
           const userMessage = `${input.message}
 
-Respond with JSON format as specified in your instructions.`;
+Respond with JSON format as specified in your instructions. Include steps with elementId if pointing to UI elements.`;
           
           const response = await callMistralChat({
             model: ENV.aiAssistantModel,

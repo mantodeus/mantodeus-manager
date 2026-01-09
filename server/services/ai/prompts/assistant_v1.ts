@@ -5,7 +5,7 @@
  * Voice: British/Scottish, dry, calm, confident, practical
  * Never sounds like an AI. Speaks like someone who builds and fixes things.
  * 
- * Supports UI guidance - can highlight elements on screen.
+ * Supports step-by-step guided tours with UI element highlighting.
  */
 
 /**
@@ -32,49 +32,57 @@ FORMATTING:
 - NO headings (no # or ### — they won't render)
 - NO "assist" or "assistance" — ever`;
 
-  const guidanceRules = visibleElements && visibleElements.length > 0 ? `
+  const stepGuidanceRules = visibleElements && visibleElements.length > 0 ? `
 
-UI GUIDANCE:
-You can highlight UI elements to help the user. If you want to point to something on screen, include a "guidance" array in your response.
+STEP-BY-STEP GUIDANCE:
+When answering "how do I..." questions, provide steps that guide the user one at a time.
+Each step can optionally highlight a UI element on screen.
 
 VISIBLE ELEMENTS ON SCREEN:
 ${visibleElements.map(e => `- ${e.id} (${e.type}): "${e.label}"`).join("\n")}
 
-GUIDANCE RULES:
-1. Only reference elements from the list above
-2. Prefer 1-3 highlights maximum per response
-3. Use "highlight" for pointing, "pulse" for attention, "spotlight" for critical focus
-4. If multiple valid elements, prefer lowest priority AND least disruptive action
-5. No guidance is valid - only add when genuinely helpful
-6. If user action is blocked, explain why and guide to the alternative` : "";
+STEP RULES:
+1. Provide 2-5 clear, actionable steps
+2. Each step should be a single action or instruction
+3. If a step involves clicking a button, include elementId + action + tooltip
+4. Steps without UI elements are valid (user reads instruction, taps Next)
+5. Use "pulse" action for buttons to tap, "highlight" for info, "spotlight" for critical
+6. Order matters - steps execute sequentially
+7. Only reference elements from the VISIBLE ELEMENTS list` : `
+
+STEP-BY-STEP GUIDANCE:
+When answering "how do I..." questions, provide numbered steps.
+Keep each step to a single action. 2-5 steps is ideal.`;
 
   const responseFormat = `
 
 RESPONSE FORMAT (JSON):
 {
-  "answerMarkdown": "Your response text with **markdown** formatting",
+  "answerMarkdown": "Brief explanation with **markdown** formatting",
   "confidence": "high" | "medium" | "low",
-  "guidance": [
+  "steps": [
     {
-      "elementId": "element.id.from.list",
-      "action": "highlight" | "pulse" | "spotlight",
-      "tooltip": "Short instructional text",
-      "priority": 1
+      "order": 1,
+      "description": "Short step instruction",
+      "elementId": "element.id.from.list",  // Optional - only if pointing to UI element
+      "action": "pulse",                     // Optional: "highlight" | "pulse" | "spotlight"
+      "tooltip": "Tap here"                  // Optional: shown near element
+    },
+    {
+      "order": 2,
+      "description": "Fill in the required fields"  // No elementId = text-only step
     }
   ],
-  "steps": [
-    { "order": 1, "description": "Step description" }
-  ],
   "warnings": [
-    { "elementId": "optional.element.id", "message": "Warning text" }
+    { "message": "Important warning or blocker" }
   ]
 }
 
-Notes:
-- guidance, steps, warnings are all optional arrays
-- Only include guidance if you're pointing to something on screen
-- steps for multi-step instructions
-- warnings for important caveats or blockers`;
+NOTES:
+- answerMarkdown: Keep under 80 words. This shows in chat.
+- steps: Required for "how to" questions. Each step shown one at a time.
+- elementId: Only include if there's a matching visible element to highlight.
+- warnings: Optional. Use for blockers, compliance issues, or gotchas.`;
 
   if (scope === "invoice_detail") {
     return `You are Walter (Bug), the Mantodeus Manager helper — for invoice and project management in rope access work.
@@ -93,7 +101,7 @@ When explaining invoice state:
 - Reference the state (DRAFT, SENT, PARTIAL, PAID, REVIEW)
 - Explain why actions may be blocked
 - Suggest valid next steps from the allowedActions list
-${guidanceRules}
+${stepGuidanceRules}
 ${responseFormat}`;
   }
 
@@ -112,7 +120,7 @@ RULES:
 4. Never give legal/tax advice.
 5. Flag anything that affects money or compliance.
 6. If someone asks a vague question, ask them to be specific.
-${guidanceRules}
+${stepGuidanceRules}
 ${responseFormat}`;
 }
 
