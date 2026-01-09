@@ -108,7 +108,22 @@ export async function processDocumentOcr(
       model,
       messageCount: messages.length,
       requestBodySize: JSON.stringify(requestBody).length,
+      hasImage: messages.some(m => Array.isArray(m.content) && m.content.some(c => c.type === "image_url")),
     });
+    
+    // Log request body structure (without the huge base64 data)
+    const requestBodyForLog = {
+      model,
+      messages: messages.map(m => ({
+        role: m.role,
+        content: Array.isArray(m.content) 
+          ? m.content.map(c => c.type === "image_url" ? { type: "image_url", image_url: { url: "[BASE64_DATA...]" } } : c)
+          : m.content?.substring(0, 200) + "...",
+      })),
+      temperature: requestBody.temperature,
+      max_tokens: requestBody.max_tokens,
+    };
+    console.log("[Mistral OCR] Request body structure:", JSON.stringify(requestBodyForLog, null, 2));
 
     const requestStartTime = Date.now();
     const response = await fetch(MISTRAL_API_URL, {
@@ -136,15 +151,27 @@ export async function processDocumentOcr(
       console.error("[Mistral OCR] API error response:", {
         status: response.status,
         statusText: response.statusText,
-        errorBody: errorBody.substring(0, 500), // First 500 chars
+        errorBody: errorBody, // Full error body
       });
       let errorMessage = `Mistral Document AI error: ${response.status} ${response.statusText}`;
+      let parsedError: any = null;
       try {
-        const parsed = JSON.parse(errorBody);
-        errorMessage = parsed.error?.message || errorMessage;
-        console.error("[Mistral OCR] Parsed error:", parsed);
+        parsedError = JSON.parse(errorBody);
+        errorMessage = parsedError.error?.message || parsedError.message || errorMessage;
+        console.error("[Mistral OCR] Parsed error:", JSON.stringify(parsedError, null, 2));
+        
+        // Log specific error details if available
+        if (parsedError.error) {
+          console.error("[Mistral OCR] Error details:", {
+            type: parsedError.error.type,
+            code: parsedError.error.code,
+            message: parsedError.error.message,
+            param: parsedError.error.param,
+          });
+        }
       } catch {
         // Use default error message
+        console.error("[Mistral OCR] Could not parse error body as JSON");
       }
       throw new DocumentOcrError(
         errorMessage,
