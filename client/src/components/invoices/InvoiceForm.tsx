@@ -593,7 +593,7 @@ export function InvoiceForm({
                 />
               </div>
               <div className="flex items-center justify-center w-2 sm:w-4 self-center">
-                <span className="text-muted-foreground text-sm shrink-0">&rarr;</span>
+                <span className="text-muted-foreground text-sm shrink-0 -translate-x-1 sm:translate-x-0">&rarr;</span>
               </div>
               <div className="space-y-2">
                 <div className="h-[14px]"></div>

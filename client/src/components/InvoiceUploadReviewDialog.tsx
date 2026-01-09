@@ -41,6 +41,7 @@ import { MarkAsPaidDialog } from "./invoices/MarkAsPaidDialog";
 import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useLongPress } from "@/hooks/useLongPress";
+import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -95,13 +96,11 @@ export function InvoiceUploadReviewDialog({
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
-  const previewFrameUrl = previewUrl
-    ? previewUrl.includes("#")
-      ? previewUrl
-      : `${previewUrl}#page=1&zoom=page-fit`
-    : null;
+  const blockParentCloseUntilRef = useRef(0);
+  const shouldBlockParentClose = () =>
+    previewOpen || Date.now() < blockParentCloseUntilRef.current;
   const handleDialogOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && isMobile && previewOpen) {
+    if (!nextOpen && isMobile && shouldBlockParentClose()) {
       return;
     }
     onOpenChange(nextOpen);
@@ -155,6 +154,11 @@ export function InvoiceUploadReviewDialog({
       console.error('Preview error:', error);
       toast.error('Failed to open preview');
     }
+  };
+
+  const handlePreviewClose = () => {
+    blockParentCloseUntilRef.current = Date.now() + 300;
+    setPreviewOpen(false);
   };
 
   const utils = trpc.useUtils();
@@ -994,82 +998,13 @@ export function InvoiceUploadReviewDialog({
 
       {/* Mobile Preview Dialog - matches invoice dialog size */}
       {isMobile && previewOpen && previewUrl && (
-        <Dialog 
-          open={true} 
-          onOpenChange={(open) => {
-            // Only close preview dialog, don't affect parent dialog
-            if (!open) {
-              setPreviewOpen(false);
-            }
-          }}
-        >
-          <DialogContent
-            className={cn(
-              "flex flex-col p-0",
-              // Match invoice dialog size on mobile
-              "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]",
-              // Ensure dialog has minimum height and appears above overlay
-              "min-h-[400px]",
-              // Ensure content is visible and above overlay
-              "bg-background z-[71]"
-            )}
-            style={{
-              // Match invoice dialog positioning on mobile
-              maxHeight: 'calc(100vh - var(--bottom-safe-area, 0px) - 2rem)',
-              marginBottom: 'calc(var(--bottom-safe-area, 0px) + 1rem)',
-              height: 'calc(100vh - var(--bottom-safe-area, 0px) - 2rem)',
-            } as React.CSSProperties}
-            showCloseButton={true}
-            zIndex={70}
-            onInteractOutside={(e) => {
-              // Prevent closing parent dialog when clicking outside preview
-              e.preventDefault();
-            }}
-            onPointerDownOutside={(e) => {
-              // Prevent closing parent dialog when clicking outside preview
-              e.preventDefault();
-            }}
-            onEscapeKeyDown={(e) => {
-              // Only close preview dialog, not parent
-              setPreviewOpen(false);
-              e.preventDefault();
-            }}
-          >
-            <div className="flex flex-col h-full overflow-hidden min-h-0">
-              {/* Preview Header */}
-              <div className="flex items-center justify-between p-4 border-b flex-shrink-0 bg-background">
-                <h2 className="text-lg font-semibold">Preview</h2>
-              </div>
-              {/* Preview Content - zoomable */}
-              <div 
-                ref={previewContainerRef}
-                data-preview-container
-                className="flex-1 bg-background relative min-h-0 overflow-hidden"
-                style={{ 
-                  touchAction: 'auto',
-                }}
-              >
-                {previewFrameUrl ? (
-                  <iframe
-                    src={previewFrameUrl}
-                    className="w-full h-full border-0"
-                    title={previewFileName}
-                    style={{ 
-                      pointerEvents: 'auto',
-                      display: 'block',
-                      width: '100%',
-                      height: '100%',
-                    }}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <p>Loading preview...</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <PDFPreviewModal
+          isOpen={previewOpen}
+          onClose={handlePreviewClose}
+          fileUrl={previewUrl ?? undefined}
+          fileName={previewFileName}
+          fullScreen
+        />
       )}
 
       <Dialog open={open} onOpenChange={handleDialogOpenChange}>
@@ -1094,7 +1029,7 @@ export function InvoiceUploadReviewDialog({
           } as React.CSSProperties}
           showCloseButton={false}
           onInteractOutside={(e) => {
-            if (isMobile && previewOpen) {
+            if (isMobile && shouldBlockParentClose()) {
               e.preventDefault();
               return;
             }
@@ -1106,7 +1041,7 @@ export function InvoiceUploadReviewDialog({
             }
           }}
           onPointerDownOutside={(e) => {
-            if (isMobile && previewOpen) {
+            if (isMobile && shouldBlockParentClose()) {
               e.preventDefault();
               return;
             }

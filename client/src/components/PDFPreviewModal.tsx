@@ -33,7 +33,9 @@ export function PDFPreviewModal({
   const [numPages, setNumPages] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
-  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+  const [pageSize, setPageSize] = useState<{ width: number; height: number } | null>(null);
+  const [baseScale, setBaseScale] = useState(1);
   const [userScale, setUserScale] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +51,8 @@ export function PDFPreviewModal({
   useEffect(() => {
     setNumPages(0);
     setPdfError(null);
+    setPageSize(null);
+    setBaseScale(1);
     setUserScale(1);
   }, [pdfUrl]);
 
@@ -56,18 +60,31 @@ export function PDFPreviewModal({
     const container = containerRef.current;
     if (!container) return;
 
-    const updateWidth = () => {
+    const updateSize = () => {
       const nextWidth = Math.floor(container.clientWidth);
-      setContainerWidth(nextWidth > 0 ? nextWidth : null);
+      const nextHeight = Math.floor(container.clientHeight);
+      if (nextWidth > 0 && nextHeight > 0) {
+        setContainerSize({ width: nextWidth, height: nextHeight });
+      }
     };
 
-    updateWidth();
+    updateSize();
 
-    const resizeObserver = new ResizeObserver(() => updateWidth());
+    const resizeObserver = new ResizeObserver(() => updateSize());
     resizeObserver.observe(container);
 
     return () => resizeObserver.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!containerSize || !pageSize) return;
+
+    const padding = 24;
+    const widthScale = (containerSize.width - padding) / pageSize.width;
+    const heightScale = (containerSize.height - padding) / pageSize.height;
+    const fitScale = Math.min(widthScale, heightScale, 1);
+    setBaseScale(Math.max(0.1, fitScale));
+  }, [containerSize, pageSize]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -102,7 +119,7 @@ export function PDFPreviewModal({
         );
         const scale = currentDistance / initialDistance;
         const nextScale = initialScale * scale;
-        setUserScale(Math.max(0.5, Math.min(3, nextScale)));
+        setUserScale(Math.max(1, Math.min(3, nextScale)));
       }
     };
 
@@ -131,6 +148,12 @@ export function PDFPreviewModal({
     setNumPages(numPages);
     setIsLoading(false);
     setPdfError(null);
+  };
+
+  const handlePageLoadSuccess = (page: { getViewport: (options: { scale: number }) => { width: number; height: number } }) => {
+    if (pageSize) return;
+    const viewport = page.getViewport({ scale: 1 });
+    setPageSize({ width: viewport.width, height: viewport.height });
   };
 
   const handleDownload = async () => {
@@ -239,7 +262,7 @@ export function PDFPreviewModal({
           <div
             ref={containerRef}
             className="flex-1 overflow-auto bg-black flex items-center justify-center"
-            style={{ touchAction: "pan-x pan-y pinch-zoom" }}
+            style={{ touchAction: "pan-x pan-y" }}
           >
             {isLoading && (
               <div className="text-gray-400">Loading PDF...</div>
@@ -268,8 +291,8 @@ export function PDFPreviewModal({
                     pageNumber={index + 1}
                     renderTextLayer
                     renderAnnotationLayer
-                    width={containerWidth ? Math.max(1, containerWidth - 24) : undefined}
-                    scale={userScale}
+                    scale={baseScale * userScale}
+                    onLoadSuccess={index === 0 ? handlePageLoadSuccess : undefined}
                   />
                 ))}
               </Document>
