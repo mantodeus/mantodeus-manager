@@ -667,6 +667,7 @@ export default function Invoices() {
     return [...active, ...archived, ...trashed];
   }, [invoices, archivedInvoices, trashedInvoices]);
   const { data: companySettings } = trpc.settings.get.useQuery();
+  const utils = trpc.useUtils();
   const issueMutation = trpc.invoices.issue.useMutation({
     onSuccess: () => {
       toast.success("Invoice sent");
@@ -734,6 +735,8 @@ export default function Invoices() {
       toast.success("Invoice archived");
       refetch();
       refetchNeedsReview();
+      utils.invoices.listArchived.invalidate();
+      utils.invoices.listTrashed.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -742,6 +745,8 @@ export default function Invoices() {
       toast.success("Invoice deleted");
       refetch();
       refetchNeedsReview();
+      utils.invoices.listTrashed.invalidate();
+      utils.invoices.listArchived.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -1568,11 +1573,11 @@ export default function Invoices() {
       return (
         <Badge 
           variant="default" 
-          className="text-xs border-[#F2F1EE]/50 dark:border-[#0A0F14]/50" 
+          className="text-xs border" 
           style={{
             backgroundColor: isDarkMode ? '#0A0F14' : '#F2F1EE',
-            color: isDarkMode ? '#FFFFFF' : undefined,
-            borderColor: isDarkMode ? 'rgba(10, 15, 20, 0.5)' : 'rgba(242, 241, 238, 0.5)',
+            color: isDarkMode ? '#FFFFFF' : '#000000',
+            borderColor: isDarkMode ? 'rgba(10, 15, 20, 0.5)' : 'rgba(0, 0, 0, 0.2)',
           }}
         >
           CANCELLED

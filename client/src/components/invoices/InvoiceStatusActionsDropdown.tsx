@@ -335,11 +335,11 @@ export function InvoiceStatusActionsDropdown({
           asChild={false}
           variant="default"
           size="default"
-          className="text-sm font-semibold border-[#F2F1EE]/50 dark:border-[#0A0F14]/50 cursor-pointer"
+          className="text-sm font-semibold border cursor-pointer"
           style={{
             backgroundColor: isDarkMode ? "#0A0F14" : "#F2F1EE",
-            color: isDarkMode ? "#FFFFFF" : undefined,
-            borderColor: isDarkMode ? "rgba(10, 15, 20, 0.5)" : "rgba(242, 241, 238, 0.5)",
+            color: isDarkMode ? "#FFFFFF" : "#000000",
+            borderColor: isDarkMode ? "rgba(10, 15, 20, 0.5)" : "rgba(0, 0, 0, 0.2)",
           }}
         >
           CANCELLED
