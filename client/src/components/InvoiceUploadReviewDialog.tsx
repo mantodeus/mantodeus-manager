@@ -42,7 +42,6 @@ import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useLongPress } from "@/hooks/useLongPress";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
-import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -98,7 +97,6 @@ export function InvoiceUploadReviewDialog({
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
   const blockParentCloseUntilRef = useRef(0);
-  const [assistantOpen, setAssistantOpen] = useState(false);
   const shouldBlockParentClose = () =>
     previewOpen || Date.now() < blockParentCloseUntilRef.current;
   const handleDialogOpenChange = (nextOpen: boolean) => {
@@ -1090,19 +1088,6 @@ export function InvoiceUploadReviewDialog({
           
           {/* Action buttons below header */}
           <div className="flex items-center justify-end gap-2 pt-2">
-            {/* Help button */}
-            {invoiceId && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setAssistantOpen(true)}
-                className="gap-2"
-              >
-                <HelpCircle className="h-4 w-4" />
-                Help
-              </Button>
-            )}
             {/* Status button - right click or long-press for status actions */}
             {invoice && (
               statusActions.length === 0 ? (
@@ -1182,8 +1167,29 @@ export function InvoiceUploadReviewDialog({
 
 
           <div className="space-y-2">
-            <Label htmlFor="client">Client</Label>
-            <Select value={clientId} onValueChange={setClientId} disabled={isReadOnly || isCancelled}>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="client">Client</Label>
+              {isAutofilled("clientId") && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Autofilled from uploaded invoice</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            <Select 
+              value={clientId} 
+              onValueChange={(value) => {
+                handleFieldEdit("clientId");
+                setClientId(value);
+              }} 
+              disabled={isReadOnly || isCancelled}
+            >
               <SelectTrigger id="client">
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
@@ -1201,25 +1207,59 @@ export function InvoiceUploadReviewDialog({
           {/* Row 1: Invoice Number and Total Amount side by side on desktop */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="invoiceNumber">Invoice Number</Label>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="invoiceNumber">Invoice Number</Label>
+                {isAutofilled("invoiceNumber") && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Autofilled from uploaded invoice</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
               <Input
                 id="invoiceNumber"
                 value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
+                onChange={(e) => {
+                  handleFieldEdit("invoiceNumber");
+                  setInvoiceNumber(e.target.value);
+                }}
                 placeholder="Auto-generated if empty"
                 disabled={isReadOnly || isCancelled}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="totalAmount">Total Amount (€) *</Label>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="totalAmount">Total Amount (€) *</Label>
+                {isAutofilled("totalAmount") && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Autofilled from uploaded invoice</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
               <Input
                 id="totalAmount"
                 type="number"
                 step="0.01"
                 min="0"
                 value={totalAmount}
-                onChange={(e) => setTotalAmount(e.target.value)}
+                onChange={(e) => {
+                  handleFieldEdit("totalAmount");
+                  setTotalAmount(e.target.value);
+                }}
                 placeholder="0.00"
                 required
                 disabled={isReadOnly || isCancelled}
@@ -1230,12 +1270,29 @@ export function InvoiceUploadReviewDialog({
           {/* Row 2: Invoice Date and Due Date side by side on all screen sizes */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="issueDate">Invoice Date *</Label>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="issueDate">Invoice Date *</Label>
+                {isAutofilled("issueDate") && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Autofilled from uploaded invoice</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
               <Input
                 id="issueDate"
                 type="date"
                 value={issueDate}
-                onChange={(e) => setIssueDate(e.target.value)}
+                onChange={(e) => {
+                  handleFieldEdit("issueDate");
+                  setIssueDate(e.target.value);
+                }}
                 required
                 disabled={isReadOnly || isCancelled}
               />
@@ -1243,12 +1300,29 @@ export function InvoiceUploadReviewDialog({
 
             {/* Due Date - shown for both review and draft states, required for sending */}
             <div className="space-y-2">
-              <Label htmlFor="dueDate">Due Date *</Label>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="dueDate">Due Date *</Label>
+                {isAutofilled("dueDate") && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Autofilled from uploaded invoice</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
               <Input
                 id="dueDate"
                 type="date"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                onChange={(e) => {
+                  handleFieldEdit("dueDate");
+                  setDueDate(e.target.value);
+                }}
                 required
                 disabled={isReadOnly || isCancelled}
               />
@@ -1479,22 +1553,6 @@ export function InvoiceUploadReviewDialog({
         onConfirm={handleConfirmMarkAsSentAndPaid}
         isProcessing={markAsPaidMutation.isPending}
       />
-
-      {/* Assistant Panel */}
-      {invoiceId && (
-        <AssistantPanel
-          open={assistantOpen}
-          onOpenChange={setAssistantOpen}
-          scope="invoice_detail"
-          scopeId={invoiceId}
-          onAction={(action) => {
-            if (action === "OPEN_SHARE") {
-              setShareDialogOpen(true);
-            }
-            // Other actions can be handled here
-          }}
-        />
-      )}
 
       {/* Mark as Not Paid Dialog */}
       {invoice && (

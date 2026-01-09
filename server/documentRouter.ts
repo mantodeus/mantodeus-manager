@@ -14,6 +14,7 @@ import { invoiceItems } from "../drizzle/schema";
 import { processDocumentOcr } from "./services/ai/document/documentOcrClient";
 import { normalizeExtractedData } from "./services/ai/document/normalizeExtractedData";
 import { computeConfidenceMetadata } from "./services/ai/document/confidenceScoring";
+import { matchClient } from "./services/ai/document/clientMatching";
 import type { NormalizedExtractionResult } from "./services/ai/document/types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -93,7 +94,7 @@ export const documentRouter = router({
         });
 
         normalized = normalizeExtractedData(raw);
-        confidenceMeta = computeConfidenceMetadata(raw);
+        confidenceMeta = computeConfidenceMetadata(normalized);
       } catch (error) {
         console.error("[Document Router] OCR processing failed:", error);
         throw new TRPCError({
@@ -147,9 +148,14 @@ export const documentRouter = router({
       // Derive invoice name from filename
       const invoiceName = input.filename.replace(/\.[^/.]+$/, "");
 
+      // Match client (non-destructive - only preselect if confidence is high)
+      const clientMatch = await matchClient(normalized.clientName, userId, 0.85);
+      const matchedClientId = clientMatch.matchedClientId; // May be null if confidence too low
+
       // Create invoice with needsReview=true
       const created = await db.createInvoice({
         userId,
+        clientId: matchedClientId, // Preselected if match confidence >= 0.85
         invoiceNumber,
         invoiceName,
         invoiceCounter,
@@ -212,6 +218,11 @@ export const documentRouter = router({
         },
         confidence: confidenceMeta,
         requiresReview: confidenceMeta.requiresReview,
+        matchedClient: clientMatch.matchedClientId ? {
+          clientId: clientMatch.matchedClientId,
+          confidence: clientMatch.matchConfidence,
+          name: clientMatch.matchedName,
+        } : null,
       };
     }),
 });

@@ -8,37 +8,99 @@
 import type { RawExtractionOutput, NormalizedExtractionResult } from "./types";
 
 /**
- * Parse date string to Date object
+ * Parse date string to Date object with locale-aware parsing
+ * Supports German (DD.MM.YYYY) and English (YYYY-MM-DD, MM/DD/YYYY) formats
  * Returns null if invalid or missing
  */
 function parseDate(dateStr: string | null | undefined): Date | null {
   if (!dateStr || typeof dateStr !== "string") return null;
   
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return null;
-    return date;
-  } catch {
-    return null;
+  const trimmed = dateStr.trim();
+  if (trimmed.length === 0) return null;
+  
+  // Try ISO format first (YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const date = new Date(trimmed);
+    if (!isNaN(date.getTime())) return date;
   }
+  
+  // Try German format (DD.MM.YYYY)
+  const germanMatch = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (germanMatch) {
+    const [, day, month, year] = germanMatch;
+    const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+    if (!isNaN(date.getTime())) return date;
+  }
+  
+  // Try US format (MM/DD/YYYY)
+  const usMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (usMatch) {
+    const [, month, day, year] = usMatch;
+    const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+    if (!isNaN(date.getTime())) return date;
+  }
+  
+  // Fallback to Date constructor
+  try {
+    const date = new Date(trimmed);
+    if (!isNaN(date.getTime())) return date;
+  } catch {
+    // Ignore
+  }
+  
+  return null;
 }
 
 /**
- * Parse decimal string to cents (integer)
+ * Parse amount to cents (integer)
+ * Handles both string and number inputs
  * Returns null if invalid or missing
  */
-function parseAmountToCents(amountStr: string | null | undefined): number | null {
-  if (!amountStr || typeof amountStr !== "string") return null;
+function parseAmountToCents(amount: string | number | null | undefined): number | null {
+  if (amount === null || amount === undefined) return null;
+  
+  // If already a number, convert directly
+  if (typeof amount === "number") {
+    if (isNaN(amount) || amount < 0) return null;
+    return Math.round(amount * 100);
+  }
+  
+  // If string, parse it
+  if (typeof amount !== "string") return null;
   
   try {
-    // Remove currency symbols and whitespace
-    const cleaned = amountStr.replace(/[€$£,\s]/g, "").trim();
-    const amount = parseFloat(cleaned);
+    // Remove currency symbols, whitespace, and thousand separators
+    // Handle both . and , as decimal separators
+    let cleaned = amount.replace(/[€$£\s]/g, "").trim();
     
-    if (isNaN(amount) || amount < 0) return null;
+    // German format: 1.234,56 -> 1234.56
+    // English format: 1,234.56 -> 1234.56
+    if (cleaned.includes(",") && cleaned.includes(".")) {
+      // Has both - determine which is decimal separator
+      const lastComma = cleaned.lastIndexOf(",");
+      const lastDot = cleaned.lastIndexOf(".");
+      if (lastComma > lastDot) {
+        // Comma is decimal separator
+        cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+      } else {
+        // Dot is decimal separator
+        cleaned = cleaned.replace(/,/g, "");
+      }
+    } else if (cleaned.includes(",")) {
+      // Only comma - could be German decimal or thousand separator
+      // If followed by 2 digits, it's likely decimal
+      const commaMatch = cleaned.match(/,(\d{1,2})$/);
+      if (commaMatch && commaMatch[1].length <= 2) {
+        cleaned = cleaned.replace(",", ".");
+      } else {
+        cleaned = cleaned.replace(/,/g, "");
+      }
+    }
     
-    // Convert to cents (multiply by 100 and round)
-    return Math.round(amount * 100);
+    const parsed = parseFloat(cleaned);
+    if (isNaN(parsed) || parsed < 0) return null;
+    
+    return Math.round(parsed * 100);
   } catch {
     return null;
   }
@@ -65,53 +127,94 @@ function parseVatRate(rateStr: string | null | undefined): number | null {
 
 /**
  * Normalize raw extraction output to internal structure
+ * Handles both new format (with per-field confidence) and legacy format
  */
 export function normalizeExtractedData(
   raw: RawExtractionOutput
 ): NormalizedExtractionResult {
-  const fields = raw.fields;
+  // Handle new format (with client, invoiceNumber, etc. as objects)
+  const isNewFormat = "client" in raw && typeof raw.client === "object";
   
-  // Normalize dates
-  const issueDate = parseDate(fields.issueDate);
-  const dueDate = parseDate(fields.dueDate);
-  const servicePeriodStart = parseDate(fields.servicePeriodStart);
-  const servicePeriodEnd = parseDate(fields.servicePeriodEnd);
+  let clientName: string | null = null;
+  let invoiceNumber: string | null = null;
+  let issueDate: Date | null = null;
+  let dueDate: Date | null = null;
+  let servicePeriodStart: Date | null = null;
+  let servicePeriodEnd: Date | null = null;
+  let totalCents: number | null = null;
+  let currency: string = "EUR";
   
-  // Normalize financial amounts (to cents)
-  const subtotalCents = parseAmountToCents(fields.subtotal);
-  const vatAmountCents = parseAmountToCents(fields.vatAmount);
-  const totalCents = parseAmountToCents(fields.total);
-  const currency = fields.currency?.toUpperCase() || "EUR";
+  // Build confidence map
+  const fieldConfidence: Record<string, number> = {};
   
-  // Normalize VAT
-  const vatRate = parseVatRate(fields.vatRate);
-  const isKleinunternehmer = fields.isKleinunternehmer ?? null;
-  const vatExempt = fields.vatExempt ?? null;
-  
-  // Normalize line items
-  const items = (fields.items || []).map((item) => {
-    const quantity = item.quantity ? parseFloat(item.quantity) : 0;
-    const unitPriceCents = parseAmountToCents(item.unitPrice);
-    const lineTotalCents = parseAmountToCents(item.lineTotal) ?? 
-      (unitPriceCents !== null && quantity > 0 
-        ? Math.round(unitPriceCents * quantity) 
-        : null);
+  if (isNewFormat) {
+    // New format
+    clientName = raw.client?.name?.trim() || null;
+    invoiceNumber = raw.invoiceNumber?.value?.trim() || null;
+    issueDate = parseDate(raw.invoiceDate?.value);
+    dueDate = parseDate(raw.dueDate?.value);
+    servicePeriodStart = parseDate(raw.servicePeriod?.from);
+    servicePeriodEnd = parseDate(raw.servicePeriod?.to);
+    totalCents = parseAmountToCents(raw.total?.amount);
+    currency = raw.total?.currency?.toUpperCase() || "EUR";
     
-    return {
-      name: item.name?.trim() || "Unnamed item",
-      description: item.description?.trim() || null,
-      quantity: isNaN(quantity) || quantity <= 0 ? 1 : quantity,
-      unitPriceCents: unitPriceCents ?? 0,
-      lineTotalCents: lineTotalCents ?? 0,
-    };
-  });
+    // Extract confidence scores
+    if (raw.client) fieldConfidence.clientName = raw.client.confidence;
+    if (raw.invoiceNumber) fieldConfidence.invoiceNumber = raw.invoiceNumber.confidence;
+    if (raw.invoiceDate) fieldConfidence.issueDate = raw.invoiceDate.confidence;
+    if (raw.dueDate) fieldConfidence.dueDate = raw.dueDate.confidence;
+    if (raw.total) fieldConfidence.total = raw.total.confidence;
+  } else {
+    // Legacy format (backward compatibility)
+    const fields = raw.fields || {};
+    clientName = fields.clientName?.trim() || null;
+    invoiceNumber = fields.invoiceNumber?.trim() || null;
+    issueDate = parseDate(fields.issueDate);
+    dueDate = parseDate(fields.dueDate);
+    servicePeriodStart = parseDate(fields.servicePeriodStart);
+    servicePeriodEnd = parseDate(fields.servicePeriodEnd);
+    totalCents = parseAmountToCents(fields.total);
+    currency = fields.currency?.toUpperCase() || "EUR";
+    
+    // Use legacy confidence if available
+    if (raw.confidence?.fields) {
+      Object.assign(fieldConfidence, raw.confidence.fields);
+    }
+  }
+  
+  // Calculate overall confidence
+  const confidenceValues = Object.values(fieldConfidence);
+  const overallConfidence = confidenceValues.length > 0
+    ? confidenceValues.reduce((sum, val) => sum + val, 0) / confidenceValues.length
+    : 0.5;
+  
+  // Build flags array
+  const flags: string[] = [];
+  if (raw.flags && Array.isArray(raw.flags)) {
+    flags.push(...raw.flags);
+  } else if (raw.flags && typeof raw.flags === "object") {
+    // Legacy flags object
+    if (raw.flags.missingFields?.length > 0) {
+      flags.push(...raw.flags.missingFields.map((f: string) => `missing_${f}`));
+    }
+    if (raw.flags.suspiciousFields?.length > 0) {
+      flags.push(...raw.flags.suspiciousFields.map((f: string) => `suspicious_${f}`));
+    }
+  }
+  
+  // Check for low confidence fields
+  for (const [field, conf] of Object.entries(fieldConfidence)) {
+    if (conf < 0.6) {
+      flags.push(`low_confidence_${field}`);
+    }
+  }
   
   return {
     documentType: raw.documentType,
     
     // Invoice identification
-    invoiceNumber: fields.invoiceNumber?.trim() || null,
-    referenceNumber: fields.referenceNumber?.trim() || null,
+    invoiceNumber,
+    referenceNumber: null, // Not in new format yet
     
     // Dates
     issueDate,
@@ -120,35 +223,42 @@ export function normalizeExtractedData(
     servicePeriodEnd,
     
     // Parties
-    clientName: fields.clientName?.trim() || null,
-    clientAddress: fields.clientAddress?.trim() || null,
-    clientVatNumber: fields.clientVatNumber?.trim() || null,
-    supplierName: fields.supplierName?.trim() || null,
-    supplierAddress: fields.supplierAddress?.trim() || null,
-    supplierVatNumber: fields.supplierVatNumber?.trim() || null,
+    clientName,
+    clientAddress: null, // Not in new format yet
+    clientVatNumber: null, // Not in new format yet
+    supplierName: null, // Not in new format yet
+    supplierAddress: null, // Not in new format yet
+    supplierVatNumber: null, // Not in new format yet
     
     // Financial
-    subtotalCents,
-    vatAmountCents,
+    subtotalCents: null, // Not in new format yet
+    vatAmountCents: null, // Not in new format yet
     totalCents,
     currency,
     
     // VAT/Tax
-    vatRate,
-    isKleinunternehmer,
-    vatExempt,
+    vatRate: null, // Not in new format yet
+    isKleinunternehmer: null, // Not in new format yet
+    vatExempt: null, // Not in new format yet
     
     // Line items
-    items,
+    items: [], // Not in new format yet
     
     // Notes
-    notes: fields.notes?.trim() || null,
-    terms: fields.terms?.trim() || null,
+    notes: null, // Not in new format yet
+    terms: null, // Not in new format yet
     
-    // Confidence (pass through)
-    confidence: raw.confidence,
+    // Confidence
+    confidence: {
+      overall: overallConfidence,
+      fields: fieldConfidence,
+    },
     
-    // Flags (pass through)
-    flags: raw.flags,
+    // Flags
+    flags: {
+      missingFields: flags.filter(f => f.startsWith("missing_")).map(f => f.replace("missing_", "")),
+      suspiciousFields: flags.filter(f => f.startsWith("suspicious_")).map(f => f.replace("suspicious_", "")),
+      requiresReview: overallConfidence < 0.7 || flags.length > 0,
+    },
   };
 }

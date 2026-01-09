@@ -26,60 +26,52 @@ export interface OcrInput {
 
 /**
  * Raw extraction output from Mistral Document AI
+ * Matches the new prompt format with per-field confidence
  */
 export interface RawExtractionOutput {
   documentType: DocumentType;
-  fields: {
-    // Invoice identification
+  client: {
+    name: string | null;
+    confidence: number;
+  };
+  invoiceNumber: {
+    value: string | null;
+    confidence: number;
+  };
+  invoiceDate: {
+    value: string | null; // ISO date string (YYYY-MM-DD)
+    confidence: number;
+  };
+  dueDate: {
+    value: string | null; // ISO date string (YYYY-MM-DD)
+    confidence: number;
+  };
+  servicePeriod: {
+    from: string | null; // ISO date string (YYYY-MM-DD)
+    to: string | null; // ISO date string (YYYY-MM-DD)
+  };
+  total: {
+    amount: number | null; // Decimal number (e.g., 1234.56)
+    currency: string | null; // ISO currency code (e.g., "EUR")
+    confidence: number;
+  };
+  flags: string[]; // Array of flag strings (e.g., ["missing_client", "low_confidence"])
+  
+  // Legacy fields for backward compatibility (may be present in old format)
+  fields?: {
     invoiceNumber?: string | null;
-    referenceNumber?: string | null;
-    
-    // Dates
-    issueDate?: string | null; // ISO date string
-    dueDate?: string | null; // ISO date string
-    servicePeriodStart?: string | null; // ISO date string
-    servicePeriodEnd?: string | null; // ISO date string
-    
-    // Parties
+    issueDate?: string | null;
+    dueDate?: string | null;
+    servicePeriodStart?: string | null;
+    servicePeriodEnd?: string | null;
     clientName?: string | null;
-    clientAddress?: string | null;
-    clientVatNumber?: string | null;
-    supplierName?: string | null;
-    supplierAddress?: string | null;
-    supplierVatNumber?: string | null;
-    
-    // Financial
-    subtotal?: string | null; // Decimal string (e.g., "1234.56")
-    vatAmount?: string | null; // Decimal string
-    total?: string | null; // Decimal string
-    currency?: string | null; // ISO currency code (e.g., "EUR")
-    
-    // VAT/Tax indicators
-    vatRate?: string | null; // Percentage string (e.g., "19")
-    isKleinunternehmer?: boolean | null; // §19 UStG indicator
-    vatExempt?: boolean | null;
-    
-    // Line items
-    items?: Array<{
-      name?: string | null;
-      description?: string | null;
-      quantity?: string | null;
-      unitPrice?: string | null;
-      lineTotal?: string | null;
-    }> | null;
-    
-    // Notes
-    notes?: string | null;
-    terms?: string | null;
+    total?: string | null;
+    currency?: string | null;
+    [key: string]: any;
   };
-  confidence: {
-    overall: number; // 0-1
-    fields: Record<string, number>; // Field-level confidence scores
-  };
-  flags: {
-    missingFields: string[]; // List of expected fields that are missing
-    suspiciousFields: string[]; // Fields that may be incorrect
-    requiresReview: boolean;
+  confidence?: {
+    overall: number;
+    fields: Record<string, number>;
   };
 }
 

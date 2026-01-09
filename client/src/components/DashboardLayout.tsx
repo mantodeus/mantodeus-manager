@@ -24,6 +24,7 @@ import { Logo } from "@/components/Logo";
 import { useIsMobile } from "@/hooks/useMobile";
 import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, File, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, Receipt, ClipboardCheck, DocumentCurrencyEuro } from "@/components/ui/Icon";
 import { DataExportImportDialog } from "./DataExportImportDialog";
+import { FloatingHelpButton } from "./assistant/FloatingHelpButton";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { AppLoadingScreen } from './AppLoadingScreen';
@@ -297,6 +298,9 @@ function DashboardLayoutContent({
         open={dataDialogOpen}
         onOpenChange={setDataDialogOpen}
       />
+
+      {/* Floating Help Button - context-aware, shows on invoice detail pages */}
+      <FloatingHelpButton />
     </>
   );
 }
