@@ -46,6 +46,11 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
+  const previewFrameUrl = previewUrl
+    ? previewUrl.includes("#")
+      ? previewUrl
+      : `${previewUrl}#page=1&zoom=page-fit`
+    : null;
   const formPanelRef = useRef<HTMLDivElement>(null);
   const previewPanelRef = useRef<HTMLDivElement>(null);
 
@@ -186,9 +191,9 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     }
   }, [previewUrl]);
 
-  // Calculate initial zoom to fit PDF in viewport on mobile when preview opens
+  // Calculate initial zoom to fit PDF in viewport on desktop preview panel
   useEffect(() => {
-    if (!isMobile || !previewDialogOpen || !previewUrl) {
+    if (isMobile || !previewDialogOpen || !previewUrl) {
       autoFitDoneRef.current = false;
       return;
     }
@@ -227,7 +232,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   // Add mouse wheel, trackpad, and touch zoom support for preview iframe
   useEffect(() => {
     const container = previewContainerRef.current;
-    if (!container || !previewUrl) return;
+    if (!container || !previewUrl || isMobile) return;
 
     // Track initial touch distance for pinch zoom
     let initialDistance = 0;
@@ -499,38 +504,23 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
               <div 
                 ref={previewContainerRef}
                 data-preview-container
-                className="flex-1 overflow-auto bg-background relative min-h-0"
+                className="flex-1 bg-background relative min-h-0 overflow-hidden"
                 style={{ 
-                  touchAction: 'pan-x pan-y pinch-zoom',
-                  WebkitOverflowScrolling: 'touch',
-                  overscrollBehavior: 'contain',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  touchAction: 'auto',
                 }}
               >
-                {previewUrl ? (
-                  <div
-                    data-iframe-wrapper
-                    style={{
-                      width: `${794 * previewZoom}px`,
-                      height: `${1123 * previewZoom}px`,
-                      transition: 'width 0.1s ease-out, height 0.1s ease-out',
-                      flexShrink: 0,
+                {previewFrameUrl ? (
+                  <iframe
+                    src={previewFrameUrl}
+                    className="w-full h-full border-0"
+                    title={previewFileName}
+                    style={{ 
+                      pointerEvents: 'auto',
+                      display: 'block',
+                      width: '100%',
+                      height: '100%',
                     }}
-                  >
-                    <iframe
-                      src={previewUrl}
-                      className="w-full h-full border-0"
-                      title={previewFileName}
-                      style={{ 
-                        pointerEvents: 'none',
-                        display: 'block',
-                        width: '100%',
-                        height: '100%',
-                      }}
-                    />
-                  </div>
+                  />
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     <p>Preview will appear here when you update it</p>
