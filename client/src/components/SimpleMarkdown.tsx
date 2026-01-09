@@ -24,8 +24,13 @@ interface SimpleMarkdownProps {
 export function SimpleMarkdown({ children, className }: SimpleMarkdownProps) {
   if (!children) return null;
 
+  // Pre-process: strip heading markers (we don't render them, so remove the syntax)
+  const cleanedText = children
+    .replace(/^#{1,6}\s+/gm, "") // Remove # ## ### etc. at start of lines
+    .replace(/---+/g, ""); // Remove horizontal rules
+  
   // Split into lines for processing
-  const lines = children.split("\n");
+  const lines = cleanedText.split("\n");
   const elements: React.ReactNode[] = [];
   let inList = false;
   let listType: "bullet" | "numbered" | "checkbox" | null = null;

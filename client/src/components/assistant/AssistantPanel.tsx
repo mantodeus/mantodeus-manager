@@ -9,11 +9,16 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { Loader2, X, Send, Sparkles, HelpCircle } from "@/components/ui/Icon";
+import { Loader2, X, Send, BugAnt, HelpCircle } from "@/components/ui/Icon";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export type AssistantScope = "invoice_detail" | "general";
 
@@ -44,15 +49,15 @@ interface AssistantResponse {
 }
 
 const INVOICE_PROMPTS = [
-  "Why is this invoice in this state?",
-  "What's missing before I can send?",
-  "Help me understand the blockers",
+  "Why can't I send this?",
+  "What's blocking this invoice?",
+  "How do I mark it paid?",
 ];
 
 const GENERAL_PROMPTS = [
-  "How do I create a new invoice?",
-  "How do I track expenses?",
-  "What can you help me with?",
+  "How do I create an invoice?",
+  "How do I add a new project?",
+  "How do I scan a receipt?",
 ];
 
 export function AssistantPanel({
@@ -160,25 +165,16 @@ export function AssistantPanel({
 
   return (
     <>
-      {/* Backdrop for mobile */}
-      {isMobile && (
-        <div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[10000] animate-in fade-in duration-200"
-          onClick={() => onOpenChange(false)}
-        />
-      )}
-      
-      {/* Chat Panel */}
+      {/* Chat Panel - No backdrop blur so users can see the page */}
       <div
         className={cn(
           "fixed z-[10002] flex flex-col",
-          "bg-background/95 backdrop-blur-xl",
-          "border border-border/50 shadow-2xl",
+          "bg-background border border-border shadow-2xl",
           "animate-in slide-in-from-bottom-4 fade-in duration-300",
           isMobile ? [
-            "inset-x-3 bottom-3 top-auto",
+            "inset-x-3 bottom-16 top-auto", // Above the tab bar
             "rounded-2xl",
-            "max-h-[75vh]",
+            "max-h-[70vh]",
           ] : [
             "bottom-24 right-6",
             "w-[380px] max-h-[520px]",
@@ -186,28 +182,45 @@ export function AssistantPanel({
           ]
         )}
         style={{
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05)",
         }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
-              <Sparkles className="h-4 w-4 text-primary" />
+              <BugAnt className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold">AI Assistant</h2>
-              <p className="text-[10px] text-muted-foreground">Powered by Mistral</p>
+              <h2 className="text-sm font-semibold">Bug</h2>
+              <p className="text-[10px] text-muted-foreground italic">Yer wee pal</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onOpenChange(false)}
-            className="h-7 w-7 rounded-lg hover:bg-muted"
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-lg hover:bg-muted"
+                >
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[200px] text-xs">
+                <p>This assistant is powered by Mistral, a European AI company.</p>
+                <p className="mt-1 text-muted-foreground">Your data is not used to train AI models.</p>
+              </TooltipContent>
+            </Tooltip>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenChange(false)}
+              className="h-7 w-7 rounded-lg hover:bg-muted"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -216,13 +229,13 @@ export function AssistantPanel({
             <div className="space-y-3 py-2">
               <div className="flex items-start gap-2.5">
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
-                  <HelpCircle className="h-3.5 w-3.5 text-primary" />
+                  <BugAnt className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <div className="space-y-2 pt-0.5">
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {scope === "invoice_detail" 
-                      ? "Ask me about this invoice's state or how to proceed."
-                      : `Hi! How can I help you with ${pageName}?`}
+                      ? "Ask about this invoice."
+                      : "Ask a question."}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {defaultPrompts.map((prompt, idx) => (
@@ -256,7 +269,7 @@ export function AssistantPanel({
             >
               {message.role === "assistant" && (
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  <BugAnt className="h-3.5 w-3.5 text-primary" />
                 </div>
               )}
               <div
@@ -281,7 +294,7 @@ export function AssistantPanel({
           {isLoading && (
             <div className="flex gap-2.5 justify-start">
               <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <BugAnt className="h-3.5 w-3.5 text-primary" />
               </div>
               <div className="bg-muted/60 rounded-xl px-4 py-3">
                 <div className="flex items-center gap-1">

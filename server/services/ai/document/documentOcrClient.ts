@@ -4,15 +4,18 @@
  * Calls Mistral Document AI & OCR API for document processing.
  * STRICTLY SEPARATE from AI Helper system.
  * 
- * Uses Mistral's OCR endpoint (/v1/ocr), NOT chat completions.
- * This is a different API with different request/response format.
+ * Two-step process:
+ * 1. OCR endpoint (/v1/ocr) extracts markdown text from document
+ * 2. Chat completions API extracts structured data from markdown
  */
 
 import { ENV } from "../../../_core/env";
 import type { OcrInput, RawExtractionOutput } from "./types";
+import { DOCUMENT_PROMPT_V1 } from "./documentPrompt_v1";
 
 const MISTRAL_OCR_API_URL = "https://api.mistral.ai/v1/ocr";
-const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds for document processing
+const MISTRAL_CHAT_API_URL = "https://api.mistral.ai/v1/chat/completions";
+const DEFAULT_TIMEOUT_MS = 60000; // 60 seconds for two-step processing
 
 export class DocumentOcrError extends Error {
   constructor(
@@ -26,21 +29,186 @@ export class DocumentOcrError extends Error {
 }
 
 /**
- * Convert file buffer to Blob for FormData (Node.js 18+)
- * Falls back to Buffer if Blob is not available
+ * Step 1: Extract markdown text from document using Mistral OCR
  */
-function bufferToBlob(buffer: Buffer, mimeType: string): Blob | Buffer {
-  if (typeof Blob !== "undefined") {
-    return new Blob([buffer], { type: mimeType });
+async function extractMarkdownFromDocument(
+  input: OcrInput,
+  apiKey: string
+): Promise<string> {
+  const model = "mistral-ocr-latest";
+  const base64Data = input.fileBuffer.toString("base64");
+  const dataUrl = `data:${input.mimeType};base64,${base64Data}`;
+  
+  const payload = {
+    model,
+    document: {
+      type: "document_url",
+      document_url: dataUrl,
+    },
+  };
+
+  console.log("[Mistral OCR] Step 1: Extracting markdown from document");
+  console.log("[Mistral OCR] Request details:", {
+    model,
+    filename: input.filename,
+    mimeType: input.mimeType,
+    fileSize: input.fileBuffer.length,
+  });
+
+  const response = await fetch(MISTRAL_OCR_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("[Mistral OCR] OCR API error:", {
+      status: response.status,
+      errorBody: errorBody.substring(0, 500),
+    });
+    throw new DocumentOcrError(
+      `Mistral OCR API error: ${response.status} ${response.statusText}`,
+      response.status,
+      errorBody
+    );
   }
-  // Fallback for older Node.js versions
-  return buffer;
+
+  const data = await response.json();
+  
+  // Extract markdown from pages array
+  if (data.pages && Array.isArray(data.pages)) {
+    const markdownParts: string[] = [];
+    for (const page of data.pages) {
+      if (page.markdown) {
+        markdownParts.push(page.markdown);
+      }
+    }
+    const fullMarkdown = markdownParts.join("\n\n---\n\n");
+    console.log("[Mistral OCR] Extracted markdown length:", fullMarkdown.length);
+    console.log("[Mistral OCR] Markdown preview:", fullMarkdown.substring(0, 300) + "...");
+    return fullMarkdown;
+  }
+
+  throw new DocumentOcrError(
+    "OCR response did not contain pages with markdown",
+    response.status,
+    data
+  );
+}
+
+/**
+ * Step 2: Extract structured data from markdown using Mistral Chat
+ */
+async function extractStructuredDataFromMarkdown(
+  markdown: string,
+  apiKey: string
+): Promise<RawExtractionOutput> {
+  // Use a capable model for structured extraction
+  const model = ENV.aiAssistantModel || "mistral-large-latest";
+
+  console.log("[Mistral OCR] Step 2: Extracting structured data from markdown");
+  console.log("[Mistral OCR] Using model:", model);
+
+  const response = await fetch(MISTRAL_CHAT_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: DOCUMENT_PROMPT_V1 },
+        { role: "user", content: `Extract structured invoice data from this document:\n\n${markdown}` },
+      ],
+      temperature: 0.1, // Low temperature for deterministic extraction
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("[Mistral OCR] Chat API error:", {
+      status: response.status,
+      errorBody: errorBody.substring(0, 500),
+    });
+    throw new DocumentOcrError(
+      `Mistral Chat API error: ${response.status} ${response.statusText}`,
+      response.status,
+      errorBody
+    );
+  }
+
+  const data = await response.json();
+  const assistantMessage = data.choices?.[0]?.message?.content;
+
+  if (!assistantMessage || typeof assistantMessage !== "string") {
+    console.error("[Mistral OCR] Invalid chat response:", data);
+    throw new DocumentOcrError(
+      "Invalid response format from Mistral Chat API",
+      response.status,
+      data
+    );
+  }
+
+  console.log("[Mistral OCR] Chat response received, length:", assistantMessage.length);
+
+  // Parse JSON from response
+  let jsonStr = assistantMessage.trim();
+  
+  // Remove markdown code blocks if present
+  if (jsonStr.startsWith("```json")) {
+    jsonStr = jsonStr.slice(7);
+  }
+  if (jsonStr.startsWith("```")) {
+    jsonStr = jsonStr.slice(3);
+  }
+  if (jsonStr.endsWith("```")) {
+    jsonStr = jsonStr.slice(0, -3);
+  }
+  jsonStr = jsonStr.trim();
+
+  try {
+    const parsed = JSON.parse(jsonStr) as RawExtractionOutput;
+    console.log("[Mistral OCR] Structured data extracted:", {
+      documentType: parsed.documentType,
+      hasClient: !!parsed.client,
+      hasInvoiceNumber: !!parsed.invoiceNumber,
+      hasTotal: !!parsed.total,
+    });
+    
+    // Add confidence if not present (for compatibility)
+    if (!parsed.confidence) {
+      parsed.confidence = {
+        overall: 0.8,
+        fields: {},
+      };
+    }
+    
+    return parsed;
+  } catch (parseError) {
+    console.error("[Mistral OCR] JSON parse error:", {
+      error: parseError instanceof Error ? parseError.message : "Unknown",
+      jsonPreview: jsonStr.substring(0, 500),
+    });
+    throw new DocumentOcrError(
+      `Failed to parse structured data: ${parseError instanceof Error ? parseError.message : "Unknown error"}`,
+      200,
+      assistantMessage
+    );
+  }
 }
 
 /**
  * Process document using Mistral Document AI
  * 
- * Uses Mistral's vision models to extract structured data from PDFs/images.
+ * Two-step process:
+ * 1. OCR API extracts markdown text
+ * 2. Chat API extracts structured invoice data
  */
 export async function processDocumentOcr(
   input: OcrInput
@@ -51,257 +219,39 @@ export async function processDocumentOcr(
     throw new DocumentOcrError("MISTRAL_API_KEY not configured");
   }
 
-  // Use Mistral OCR model for document processing
-  // Official model name from Mistral pricing page: mistral-ocr-latest
-  const model = "mistral-ocr-latest";
-
   console.log("[Mistral OCR] Starting document processing:", {
     filename: input.filename,
     mimeType: input.mimeType,
     fileSize: input.fileBuffer.length,
     apiKeyPresent: apiKey ? `${apiKey.substring(0, 8)}...` : "missing",
-    model,
-    endpoint: MISTRAL_OCR_API_URL,
   });
 
-  const timeoutMs = DEFAULT_TIMEOUT_MS;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const startTime = Date.now();
 
   try {
-    // Mistral OCR API expects JSON with document object
-    // For inline documents, use data URL format with document_url type
-    // Reference: https://docs.mistral.ai/capabilities/document_ai/basic_ocr
-    const base64Data = input.fileBuffer.toString("base64");
-    
-    // Format: data:[mime_type];base64,[data]
-    const dataUrl = `data:${input.mimeType};base64,${base64Data}`;
-    
-    const payload = {
-      model,
-      document: {
-        type: "document_url",
-        document_url: dataUrl,
-      },
-    };
+    // Step 1: Extract markdown from document
+    const markdown = await extractMarkdownFromDocument(input, apiKey);
 
-    console.log("[Mistral OCR] Making API request to:", MISTRAL_OCR_API_URL);
-    console.log("[Mistral OCR] Request details:", {
-      model,
-      filename: input.filename,
-      mimeType: input.mimeType,
-      fileSize: input.fileBuffer.length,
-      contentType: "application/json",
-      documentType: "document_url",
-      dataUrlPrefix: dataUrl.substring(0, 50) + "...",
+    // Step 2: Extract structured data from markdown
+    const structuredData = await extractStructuredDataFromMarkdown(markdown, apiKey);
+
+    const duration = Date.now() - startTime;
+    console.log("[Mistral OCR] Document processing complete:", {
+      durationMs: duration,
+      documentType: structuredData.documentType,
     });
 
-    const requestStartTime = Date.now();
-    
-    const response = await fetch(MISTRAL_OCR_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-
-    const requestDuration = Date.now() - requestStartTime;
-    console.log("[Mistral OCR] API response received:", {
-      status: response.status,
-      statusText: response.statusText,
-      durationMs: requestDuration,
-      headers: Object.fromEntries(response.headers.entries()),
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("[Mistral OCR] API error response:", {
-        status: response.status,
-        statusText: response.statusText,
-        errorBody: errorBody, // Full error body
-        contentType: response.headers.get("content-type"),
-      });
-      let errorMessage = `Mistral Document AI error: ${response.status} ${response.statusText}`;
-      let parsedError: any = null;
-      try {
-        parsedError = JSON.parse(errorBody);
-        errorMessage = parsedError.error?.message || parsedError.message || errorMessage;
-        console.error("[Mistral OCR] Parsed error:", JSON.stringify(parsedError, null, 2));
-        
-        // Log specific error details if available
-        if (parsedError.error) {
-          console.error("[Mistral OCR] Error details:", {
-            type: parsedError.error.type,
-            code: parsedError.error.code,
-            message: parsedError.error.message,
-            param: parsedError.error.param,
-          });
-          
-          // For 422 errors, provide more context
-          if (response.status === 422) {
-            console.error("[Mistral OCR] 422 Unprocessable Entity - likely unsupported parameter or invalid format");
-            console.error("[Mistral OCR] Request was sent with:", {
-              hasFile: true,
-              hasModel: true,
-              modelName: model,
-              filename: input.filename,
-              mimeType: input.mimeType,
-            });
-          }
-        }
-      } catch {
-        // Use default error message
-        console.error("[Mistral OCR] Could not parse error body as JSON");
-        console.error("[Mistral OCR] Raw error body:", errorBody.substring(0, 500));
-      }
-      
-      throw new DocumentOcrError(
-        errorMessage,
-        response.status,
-        parsedError || errorBody
-      );
-    }
-
-    // OCR endpoint returns JSON directly (not chat completions format)
-    const data = await response.json();
-    console.log("[Mistral OCR] Response data structure:", {
-      dataKeys: Object.keys(data),
-      hasText: !!data.text,
-      hasStructured: !!data.structured,
-      hasJson: !!data.json,
-    });
-
-    // The OCR endpoint may return data in different formats
-    // Try to extract structured JSON from various possible response formats
-    let parsed: RawExtractionOutput;
-    
-    // Format 1: Direct JSON in response
-    if (data.json && typeof data.json === "object") {
-      parsed = data.json as RawExtractionOutput;
-      console.log("[Mistral OCR] Using direct JSON from response");
-    }
-    // Format 2: Structured field
-    else if (data.structured && typeof data.structured === "object") {
-      parsed = data.structured as RawExtractionOutput;
-      console.log("[Mistral OCR] Using structured field from response");
-    }
-    // Format 3: Text field that needs parsing
-    else if (data.text && typeof data.text === "string") {
-      let jsonStr = data.text.trim();
-      const originalJsonStr = jsonStr;
-      
-      // Remove markdown code blocks if present
-      if (jsonStr.startsWith("```json")) {
-        jsonStr = jsonStr.slice(7);
-      }
-      if (jsonStr.startsWith("```")) {
-        jsonStr = jsonStr.slice(3);
-      }
-      if (jsonStr.endsWith("```")) {
-        jsonStr = jsonStr.slice(0, -3);
-      }
-      jsonStr = jsonStr.trim();
-
-      console.log("[Mistral OCR] Parsing JSON from text field, length:", jsonStr.length);
-      
-      try {
-        parsed = JSON.parse(jsonStr);
-        console.log("[Mistral OCR] JSON parsed successfully from text field");
-      } catch (parseError) {
-        console.error("[Mistral OCR] JSON parse error:", {
-          error: parseError instanceof Error ? parseError.message : "Unknown error",
-          jsonPreview: jsonStr.substring(0, 500),
-          originalPreview: originalJsonStr.substring(0, 500),
-        });
-        throw new DocumentOcrError(
-          `Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : "Unknown error"}`,
-          response.status,
-          data.text
-        );
-      }
-    }
-    // Format 4: Response is the JSON object itself
-    else if (data.documentType || data.fields || data.client) {
-      parsed = data as RawExtractionOutput;
-      console.log("[Mistral OCR] Using response as direct extraction output");
-    }
-    else {
-      console.error("[Mistral OCR] Unknown response format:", {
-        dataKeys: Object.keys(data),
-        dataPreview: JSON.stringify(data).substring(0, 500),
-      });
-      throw new DocumentOcrError(
-        "Unknown response format from Mistral OCR API",
-        response.status,
-        data
-      );
-    }
-
-    console.log("[Mistral OCR] Extraction parsed successfully:", {
-      documentType: parsed.documentType,
-      hasFields: !!parsed.fields,
-      hasClient: !!parsed.client,
-      hasInvoiceNumber: !!parsed.invoiceNumber,
-      hasInvoiceDate: !!parsed.invoiceDate,
-      hasTotal: !!parsed.total,
-      confidence: parsed.confidence,
-    });
-
-    // Validate structure
-    // Note: New format has client/invoiceNumber as objects, legacy has fields
-    const hasNewFormat = "client" in parsed && typeof parsed.client === "object";
-    const hasLegacyFormat = parsed.fields && typeof parsed.fields === "object";
-    
-    if (!parsed.documentType || (!hasNewFormat && !hasLegacyFormat) || !parsed.confidence) {
-      console.error("[Mistral OCR] Invalid extraction output structure:", {
-        documentType: parsed.documentType,
-        hasNewFormat,
-        hasLegacyFormat,
-        hasConfidence: !!parsed.confidence,
-        parsedKeys: Object.keys(parsed),
-      });
-      throw new DocumentOcrError(
-        "Invalid extraction output structure",
-        response.status,
-        parsed
-      );
-    }
-
-    console.log("[Mistral OCR] Extraction successful, returning parsed data");
-    return parsed;
+    return structuredData;
   } catch (error) {
-    clearTimeout(timeoutId);
-
+    const duration = Date.now() - startTime;
     console.error("[Mistral OCR] Error during processing:", {
+      durationMs: duration,
       errorName: error instanceof Error ? error.name : "Unknown",
       errorMessage: error instanceof Error ? error.message : String(error),
-      errorType: error instanceof Error ? error.constructor.name : typeof error,
     });
 
     if (error instanceof DocumentOcrError) {
       throw error;
-    }
-
-    if (error instanceof Error && error.name === "AbortError") {
-      console.error("[Mistral OCR] Request timeout after", timeoutMs, "ms");
-      throw new DocumentOcrError(
-        `Request timeout after ${timeoutMs}ms`,
-        408,
-        error
-      );
-    }
-
-    // Network errors, fetch errors, etc.
-    if (error instanceof Error) {
-      console.error("[Mistral OCR] Network/request error:", error.message);
-      if (error.message.includes("fetch")) {
-        console.error("[Mistral OCR] Possible network connectivity issue or API endpoint unreachable");
-      }
     }
 
     throw new DocumentOcrError(

@@ -299,7 +299,7 @@ function DashboardLayoutContent({
         onOpenChange={setDataDialogOpen}
       />
 
-      {/* Floating Help Button - context-aware, shows on invoice detail pages */}
+      {/* Bug Assistant - Desktop only (mobile uses tab bar) */}
       <FloatingHelpButton />
     </>
   );
@@ -327,13 +327,10 @@ function MobileDashboardLayoutContent({
         {children}
       </main>
 
-      {/* Î†Ï… 1.1: Mobile Navigation (Mobile only, Desktop unchanged) */}
+      {/* Mobile Navigation */}
       <ScrollerOverlay />
       <ModuleScroller />
       <BottomTabBar />
-
-      {/* Floating Help Button - context-aware, shows on invoice detail pages */}
-      <FloatingHelpButton />
     </div>
   );
 }

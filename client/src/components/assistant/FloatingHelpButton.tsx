@@ -1,20 +1,20 @@
 /**
- * Floating Help Button
+ * Floating Bug Button (Desktop Only)
  * 
- * Modern floating AI assistant button that appears on every page.
- * Opens a sleek chat widget powered by Mistral.
+ * On mobile, Bug is in the bottom tab bar.
+ * On desktop, this floating button provides access.
  */
 
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "@/components/ui/Icon";
+import { BugAnt } from "@/components/ui/Icon";
 import { AssistantPanel, type AssistantScope } from "./AssistantPanel";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 
 /**
- * Detects the current page context and returns the appropriate scope/ID
+ * Detects the current page context
  */
 function usePageContext(): { scope: AssistantScope; scopeId?: number; pageName: string } {
   const [location] = useLocation();
@@ -26,16 +26,6 @@ function usePageContext(): { scope: AssistantScope; scopeId?: number; pageName: 
       scope: "invoice_detail", 
       scopeId: parseInt(invoiceMatch[1], 10),
       pageName: "Invoice"
-    };
-  }
-  
-  // Project detail page: /projects/:id
-  const projectMatch = location.match(/^\/projects\/(\d+)(?:\?|#|$)/);
-  if (projectMatch) {
-    return { 
-      scope: "general", 
-      scopeId: parseInt(projectMatch[1], 10),
-      pageName: "Project"
     };
   }
   
@@ -59,48 +49,42 @@ function usePageContext(): { scope: AssistantScope; scopeId?: number; pageName: 
 }
 
 export function FloatingHelpButton() {
-  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [bugOpen, setBugOpen] = useState(false);
   const isMobile = useIsMobile();
   const { scope, scopeId, pageName } = usePageContext();
+
+  // On mobile, Bug is in the bottom tab bar - don't show floating button
+  if (isMobile) return null;
 
   return (
     <>
       <Button
-        onClick={() => setAssistantOpen(true)}
+        onClick={() => setBugOpen(true)}
         size="icon"
         className={cn(
-          "fixed rounded-full",
-          "h-12 w-12",
-          "bg-primary text-primary-foreground",
-          "hover:bg-primary/90 hover:scale-105",
-          "shadow-lg shadow-primary/25",
+          "fixed rounded-xl",
+          "h-11 w-11",
+          "bg-primary/10 hover:bg-primary/20",
+          "text-primary",
+          "border border-primary/20",
+          "shadow-lg",
           "transition-all duration-200 ease-out",
-          "group",
-          isMobile
-            ? "bottom-20 right-4"
-            : "bottom-6 right-6",
-          assistantOpen && "opacity-0 pointer-events-none scale-90"
+          "hover:scale-105",
+          "bottom-6 right-6",
+          bugOpen && "opacity-0 pointer-events-none scale-90"
         )}
-        style={{
-          zIndex: 10001,
-          ...(isMobile && {
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)",
-          }),
-        }}
-        aria-label="Open AI Assistant"
+        style={{ zIndex: 10001 }}
+        aria-label="Open Bug assistant"
       >
-        <Sparkles className="h-5 w-5 group-hover:rotate-12 transition-transform duration-200" />
+        <BugAnt className="h-5 w-5" />
       </Button>
 
       <AssistantPanel
-        open={assistantOpen}
-        onOpenChange={setAssistantOpen}
+        open={bugOpen}
+        onOpenChange={setBugOpen}
         scope={scope}
         scopeId={scopeId}
         pageName={pageName}
-        onAction={(action) => {
-          // Actions are handled by the panel itself
-        }}
       />
     </>
   );

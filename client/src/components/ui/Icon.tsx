@@ -158,6 +158,9 @@ export {
   // Sun/Moon
   SunIcon as Sun,
   MoonIcon as Moon,
+  
+  // Bug/Ant
+  BugAntIcon as BugAnt,
 } from '@heroicons/react/24/outline';
 
 // Calendar alias
