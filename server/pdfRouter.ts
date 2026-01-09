@@ -366,14 +366,6 @@ export const pdfRouter = router({
           logoUrl: companySettings.logoUrl || "",
           servicePeriodStart: invoice.servicePeriodStart || undefined,
           servicePeriodEnd: invoice.servicePeriodEnd || undefined,
-          subtotal: Number(invoice.subtotal ?? 0),
-          vatAmount: Number(invoice.vatAmount ?? 0),
-          total: Number(invoice.total ?? 0),
-          notes: invoice.notes || undefined,
-          terms: invoice.terms || undefined,
-          logoUrl: companySettings.logoUrl || "",
-          servicePeriodStart: invoice.servicePeriodStart || undefined,
-          servicePeriodEnd: invoice.servicePeriodEnd || undefined,
         });
 
         const pdfBuffer = await renderPDF(html);
