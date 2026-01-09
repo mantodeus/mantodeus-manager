@@ -45,6 +45,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   const getFormDataRef = useRef<(() => InvoicePreviewData | null) | null>(null);
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const autoFitDoneRef = useRef(false);
   const formPanelRef = useRef<HTMLDivElement>(null);
   const previewPanelRef = useRef<HTMLDivElement>(null);
 
@@ -187,43 +188,40 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
 
   // Calculate initial zoom to fit PDF in viewport on mobile when preview opens
   useEffect(() => {
-    if (isMobile && previewDialogOpen && previewUrl && previewContainerRef.current) {
-      const calculateFitZoom = () => {
-        const container = previewContainerRef.current;
-        if (!container) return;
-        
-        try {
-          // Get container dimensions (accounting for header)
-          const containerWidth = container.clientWidth;
-          const containerHeight = container.clientHeight;
-          
-          // Standard A4 PDF dimensions at 96 DPI
-          const pdfWidth = 794;
-          const pdfHeight = 1123;
-          
-          // Calculate zoom to fit width and height, use the smaller one to ensure it fits
-          const widthZoom = (containerWidth - 20) / pdfWidth; // 20px padding
-          const heightZoom = (containerHeight - 20) / pdfHeight; // 20px padding
-          const fitZoom = Math.min(widthZoom, heightZoom, 1); // Don't zoom in beyond 1x
-          
-          // Set initial zoom to fit, but allow user to zoom in
-          const calculatedZoom = Math.max(0.3, fitZoom); // Minimum 0.3x zoom
-          setPreviewZoom(calculatedZoom);
-        } catch (error) {
-          // Fallback to 0.5x if calculation fails
-          setPreviewZoom(0.5);
-        }
-      };
-      
-      // Wait a bit for the container to be properly sized
-      const timeoutId = setTimeout(() => {
-        calculateFitZoom();
-        // Also recalculate after a short delay to ensure dimensions are stable
-        setTimeout(calculateFitZoom, 100);
-      }, 100);
-      
-      return () => clearTimeout(timeoutId);
+    if (!isMobile || !previewDialogOpen || !previewUrl) {
+      autoFitDoneRef.current = false;
+      return;
     }
+
+    autoFitDoneRef.current = false;
+    const container = previewContainerRef.current;
+    if (!container) return;
+
+    const calculateFitZoom = () => {
+      if (autoFitDoneRef.current) return;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      if (!containerWidth || !containerHeight) return;
+
+      const pdfWidth = 794;
+      const pdfHeight = 1123;
+      const widthZoom = (containerWidth - 20) / pdfWidth;
+      const heightZoom = (containerHeight - 20) / pdfHeight;
+      const fitZoom = Math.min(widthZoom, heightZoom, 1);
+      const calculatedZoom = Math.max(0.3, fitZoom);
+
+      setPreviewZoom(calculatedZoom);
+      autoFitDoneRef.current = true;
+    };
+
+    const rafId = requestAnimationFrame(calculateFitZoom);
+    const resizeObserver = new ResizeObserver(() => calculateFitZoom());
+    resizeObserver.observe(container);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
   }, [isMobile, previewDialogOpen, previewUrl]);
 
   // Add mouse wheel, trackpad, and touch zoom support for preview iframe
@@ -515,11 +513,9 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
                   <div
                     data-iframe-wrapper
                     style={{
-                      transform: `scale(${previewZoom})`,
-                      transformOrigin: 'center center',
-                      width: '794px', // A4 width at 96 DPI
-                      height: '1123px', // A4 height at 96 DPI
-                      transition: 'transform 0.1s ease-out',
+                      width: `${794 * previewZoom}px`,
+                      height: `${1123 * previewZoom}px`,
+                      transition: 'width 0.1s ease-out, height 0.1s ease-out',
                       flexShrink: 0,
                     }}
                   >

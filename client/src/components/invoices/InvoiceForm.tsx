@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+﻿import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -579,31 +579,34 @@ export function InvoiceForm({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] gap-x-1 gap-y-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-x-2">
-              <Label>Service Period</Label>
-              <div></div>
-              <div></div>
-              <Input
-                type="date"
-                value={formState.servicePeriodStart ?? ""}
-                onChange={(e) =>
-                  setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
-                }
-                disabled={isReadOnly || isCancelled}
-                className="w-full"
-              />
-              <div className="flex items-center justify-center justify-self-center">
-                <span className="text-muted-foreground text-sm shrink-0">→</span>
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-1 sm:gap-2 items-end">
+              <div className="space-y-2">
+                <Label>Service Period</Label>
+                <Input
+                  type="date"
+                  value={formState.servicePeriodStart ?? ""}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
+                  }
+                  disabled={isReadOnly || isCancelled}
+                  className="w-full"
+                />
               </div>
-              <Input
-                type="date"
-                value={formState.servicePeriodEnd ?? ""}
-                onChange={(e) =>
-                  setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
-                }
-                disabled={isReadOnly || isCancelled}
-                className="w-full"
-              />
+              <div className="flex items-center justify-center w-2 sm:w-4 self-center">
+                <span className="text-muted-foreground text-sm shrink-0">&rarr;</span>
+              </div>
+              <div className="space-y-2">
+                <div className="h-[14px]"></div>
+                <Input
+                  type="date"
+                  value={formState.servicePeriodEnd ?? ""}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
+                  }
+                  disabled={isReadOnly || isCancelled}
+                  className="w-full"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -988,3 +991,5 @@ function LineItemModal({
     </Dialog>
   );
 }
+
+
