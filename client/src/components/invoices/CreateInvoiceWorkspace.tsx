@@ -13,6 +13,9 @@ import { DocumentCurrencyEuro, X, Eye, Loader2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { InvoiceForm, InvoicePreviewData } from "./InvoiceForm";
 import { supabase } from "@/lib/supabase";
+import { useIsMobile } from "@/hooks/useMobile";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 interface CreateInvoiceWorkspaceProps {
   open: boolean;
@@ -25,8 +28,10 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   if (!open) return null;
 
   console.log("CreateInvoiceWorkspace mounted");
+  const isMobile = useIsMobile();
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   
   // Note: We don't prevent body scrolling - the background page should remain scrollable
   // The workspace dialog handles its own internal scrolling
@@ -147,6 +152,13 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     await generatePreview(formData);
   }, [generatePreview]);
 
+  // Open preview dialog on mobile when preview is generated
+  useEffect(() => {
+    if (isMobile && previewUrl && !previewDialogOpen) {
+      setPreviewDialogOpen(true);
+    }
+  }, [isMobile, previewUrl, previewDialogOpen]);
+
   // Clean up blob URLs on unmount
   useEffect(() => {
     return () => {
@@ -173,10 +185,14 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     }
   }, [previewUrl]);
 
-  // Add mouse wheel and trackpad zoom support for preview iframe
+  // Add mouse wheel, trackpad, and touch zoom support for preview iframe
   useEffect(() => {
     const container = previewContainerRef.current;
     if (!container || !previewUrl) return;
+
+    // Track initial touch distance for pinch zoom
+    let initialDistance = 0;
+    let initialZoom = 1;
 
     const handleWheel = (e: WheelEvent) => {
       // Trackpad pinch zoom: Ctrl/Cmd + wheel (macOS/Windows trackpad gesture)
@@ -199,13 +215,56 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       }
     };
 
+    // Touch pinch-to-zoom handler
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        initialDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        initialZoom = previewZoom;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        
+        if (initialDistance > 0) {
+          const scale = currentDistance / initialDistance;
+          const newZoom = initialZoom * scale;
+          setPreviewZoom(Math.max(0.5, Math.min(3, newZoom)));
+        }
+      }
+    };
+
+    const handleTouchEnd = () => {
+      initialDistance = 0;
+    };
+
     // Listen on both container and iframe wrapper to catch all events
     const iframeWrapper = container.querySelector('[data-iframe-wrapper]') as HTMLElement;
     
     // Use capture phase to catch events before they reach the iframe
     container.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    container.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
+    
     if (iframeWrapper) {
       iframeWrapper.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+      iframeWrapper.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+      iframeWrapper.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+      iframeWrapper.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
     }
     
     // Also listen on the iframe itself (though it may not receive events)
@@ -216,14 +275,20 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     
     return () => {
       container.removeEventListener('wheel', handleWheel, { capture: true });
+      container.removeEventListener('touchstart', handleTouchStart, { capture: true });
+      container.removeEventListener('touchmove', handleTouchMove, { capture: true });
+      container.removeEventListener('touchend', handleTouchEnd, { capture: true });
       if (iframeWrapper) {
         iframeWrapper.removeEventListener('wheel', handleWheel, { capture: true });
+        iframeWrapper.removeEventListener('touchstart', handleTouchStart, { capture: true });
+        iframeWrapper.removeEventListener('touchmove', handleTouchMove, { capture: true });
+        iframeWrapper.removeEventListener('touchend', handleTouchEnd, { capture: true });
       }
       if (iframe) {
         iframe.removeEventListener('wheel', handleWheel, { capture: true });
       }
     };
-  }, [previewUrl]);
+  }, [previewUrl, previewZoom]);
 
   return (
     <>
@@ -259,60 +324,123 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
         document.body
       )}
       
-      {/* Preview Panel - Left side - matches edit invoice dialog */}
-      <div
-        ref={previewPanelRef}
-        className="fixed z-[110] bg-background border-r shadow-lg rounded-lg"
-        style={{
-          top: '1.5rem',
-          left: '1.5rem',
-          width: 'calc(40vw - 2rem)',
-          height: 'calc(100vh - 3rem)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-      >
-        <div className="flex flex-col h-full overflow-hidden rounded-lg">
-          <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-            <h2 className="text-lg font-semibold">Preview</h2>
-            {isGeneratingPreview && (
-              <div className="text-sm text-muted-foreground">Generating...</div>
-            )}
-          </div>
-          <div 
-            ref={previewContainerRef}
-            data-preview-container
-            className="flex-1 overflow-auto rounded-b-lg"
-            style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
-          >
-            {previewUrl ? (
-              <div
-                data-iframe-wrapper
-                style={{
-                  transform: `scale(${previewZoom})`,
-                  transformOrigin: 'top left',
-                  width: `${100 / previewZoom}%`,
-                  height: `${100 / previewZoom}%`,
-                  transition: 'transform 0.1s ease-out',
-                }}
-              >
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-full border-0"
-                  title={previewFileName}
-                  style={{ pointerEvents: 'auto' }}
-                />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <p>Preview will appear here when you update it</p>
-              </div>
-            )}
+      {/* Preview Panel - Left side on desktop - matches edit invoice dialog */}
+      {!isMobile && (
+        <div
+          ref={previewPanelRef}
+          className="fixed z-[110] bg-background border-r shadow-lg rounded-lg"
+          style={{
+            top: '1.5rem',
+            left: '1.5rem',
+            width: 'calc(40vw - 2rem)',
+            height: 'calc(100vh - 3rem)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col h-full overflow-hidden rounded-lg">
+            <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+              <h2 className="text-lg font-semibold">Preview</h2>
+              {isGeneratingPreview && (
+                <div className="text-sm text-muted-foreground">Generating...</div>
+              )}
+            </div>
+            <div 
+              ref={previewContainerRef}
+              data-preview-container
+              className="flex-1 overflow-auto rounded-b-lg"
+              style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
+            >
+              {previewUrl ? (
+                <div
+                  data-iframe-wrapper
+                  style={{
+                    transform: `scale(${previewZoom})`,
+                    transformOrigin: 'top left',
+                    width: `${100 / previewZoom}%`,
+                    height: `${100 / previewZoom}%`,
+                    transition: 'transform 0.1s ease-out',
+                  }}
+                >
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-full border-0"
+                    title={previewFileName}
+                    style={{ pointerEvents: 'auto' }}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <p>Preview will appear here when you update it</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Mobile Preview Dialog - matches invoice dialog size */}
+      {isMobile && (
+        <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+          <DialogContent
+            className={cn(
+              "flex flex-col p-0",
+              // Match invoice dialog size on mobile
+              "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+            )}
+            style={{
+              // Match invoice dialog positioning on mobile
+              maxHeight: 'calc(100vh - var(--bottom-safe-area, 0px) - 2rem)',
+              marginBottom: 'calc(var(--bottom-safe-area, 0px) + 1rem)',
+            } as React.CSSProperties}
+            showCloseButton={true}
+            zIndex={60}
+          >
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Preview Header */}
+              <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+                <h2 className="text-lg font-semibold">Preview</h2>
+                {isGeneratingPreview && (
+                  <div className="text-sm text-muted-foreground">Generating...</div>
+                )}
+              </div>
+              {/* Preview Content - zoomable */}
+              <div 
+                ref={previewContainerRef}
+                data-preview-container
+                className="flex-1 overflow-auto bg-background relative"
+                style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
+              >
+                {previewUrl ? (
+                  <div
+                    data-iframe-wrapper
+                    style={{
+                      transform: `scale(${previewZoom})`,
+                      transformOrigin: 'top left',
+                      width: `${100 / previewZoom}%`,
+                      height: `${100 / previewZoom}%`,
+                      transition: 'transform 0.1s ease-out',
+                    }}
+                  >
+                    <iframe
+                      src={previewUrl}
+                      className="w-full h-full border-0"
+                      title={previewFileName}
+                      style={{ pointerEvents: 'auto' }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <p>Preview will appear here when you update it</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Form Panel - Right side - matches edit invoice dialog */}
       <div
