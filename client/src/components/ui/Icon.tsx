@@ -76,6 +76,7 @@ export {
   ExclamationTriangleIcon as AlertTriangle,
   ClockIcon as Clock,
   SparklesIcon as Sparkles,
+  QuestionMarkCircleIcon as HelpCircle,
   
   // People & Communication
   UserIcon as User,
