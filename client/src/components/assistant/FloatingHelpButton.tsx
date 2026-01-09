@@ -1,8 +1,8 @@
 /**
  * Floating Help Button
  * 
- * Context-aware floating help button that appears on every page.
- * Opens the AI Assistant Panel (powered by Mistral).
+ * Modern floating AI assistant button that appears on every page.
+ * Opens a sleek chat widget powered by Mistral.
  */
 
 import { useState } from "react";
@@ -69,24 +69,27 @@ export function FloatingHelpButton() {
         onClick={() => setAssistantOpen(true)}
         size="icon"
         className={cn(
-          "fixed rounded-full shadow-lg",
-          "h-14 w-14", // Large touch target
+          "fixed rounded-full",
+          "h-12 w-12",
           "bg-primary text-primary-foreground",
-          "hover:bg-primary/90",
-          "transition-all duration-200",
+          "hover:bg-primary/90 hover:scale-105",
+          "shadow-lg shadow-primary/25",
+          "transition-all duration-200 ease-out",
+          "group",
           isMobile
-            ? "bottom-20 right-4" // Above bottom tab bar on mobile
-            : "bottom-6 right-6" // Standard position on desktop
+            ? "bottom-20 right-4"
+            : "bottom-6 right-6",
+          assistantOpen && "opacity-0 pointer-events-none scale-90"
         )}
         style={{
-          zIndex: 10001, // Above bottom tab bar (9999) and dialogs (typically 50-100)
+          zIndex: 10001,
           ...(isMobile && {
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)", // Above tab bar + safe area
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)",
           }),
         }}
         aria-label="Open AI Assistant"
       >
-        <Sparkles className="h-6 w-6" />
+        <Sparkles className="h-5 w-5 group-hover:rotate-12 transition-transform duration-200" />
       </Button>
 
       <AssistantPanel
