@@ -43,6 +43,7 @@ import InspectionUnitDetail from "./pages/InspectionUnitDetail";
 import Expenses from "./pages/Expenses";
 import ExpenseDetail from "./pages/ExpenseDetail";
 import ScanReceipt from "./pages/ScanReceipt";
+import DocumentUpload from "./pages/DocumentUpload";
 import { useEffect, useState } from "react";
 import { initializeTheme } from "@/lib/theme";
 
@@ -256,6 +257,11 @@ function Router() {
       <Route path="/contacts/rubbish">
         <DashboardLayout>
           <ContactsRubbish />
+        </DashboardLayout>
+      </Route>
+      <Route path="/invoices/upload">
+        <DashboardLayout>
+          <DocumentUpload />
         </DashboardLayout>
       </Route>
       <Route path="/invoices/new">

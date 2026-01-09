@@ -4,7 +4,7 @@ import { InvoiceStatusActionsDropdown } from "@/components/invoices/InvoiceStatu
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, X, DocumentCurrencyEuro, Eye, HelpCircle } from "@/components/ui/Icon";
+import { ArrowLeft, Loader2, X, DocumentCurrencyEuro, Eye, Info as HelpCircle } from "@/components/ui/Icon";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";

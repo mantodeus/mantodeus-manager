@@ -55,7 +55,7 @@ export const ENV = {
   // AI Assistant (OPTIONAL)
   mistralApiKey: process.env.MISTRAL_API_KEY || "",
   aiAssistantEnabled: process.env.AI_ASSISTANT_ENABLED === "true",
-  aiAssistantModel: process.env.AI_ASSISTANT_MODEL || "mistral-medium-3",
+  aiAssistantModel: process.env.AI_ASSISTANT_MODEL || "mistral-medium-latest",
   aiAssistantTimeoutMs: Number(process.env.AI_ASSISTANT_TIMEOUT_MS) || 15000,
 };
 

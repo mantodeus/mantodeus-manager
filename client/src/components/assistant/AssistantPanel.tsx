@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
-import { Loader2, X, Send, HelpCircle } from "@/components/ui/Icon";
+import { Loader2, X, Send, Info as HelpCircle } from "@/components/ui/Icon";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";

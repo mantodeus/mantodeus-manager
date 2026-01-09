@@ -23,6 +23,7 @@ import { invoiceRouter } from "./invoiceRouter";
 import { inspectionRouter } from "./inspectionRouter";
 import { expenseRouter } from "./expenseRouter";
 import { aiRouter } from "./aiRouter";
+import { documentRouter } from "./documentRouter";
 import { geocodeAddress } from "./_core/geocoding";
 import { shouldProcessImage } from "./_core/imageProcessing";
 import { 
@@ -94,6 +95,9 @@ export const appRouter = router({
   
   // AI Assistant
   ai: aiRouter,
+  
+  // Document Processing (OCR)
+  documents: documentRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
