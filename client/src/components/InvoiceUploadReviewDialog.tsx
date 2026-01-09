@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, CurrencyEuro, X, RotateCcw } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, CurrencyEuro, X, RotateCcw, HelpCircle } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useTheme } from "@/hooks/useTheme";
@@ -42,6 +42,7 @@ import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useLongPress } from "@/hooks/useLongPress";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
+import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -97,6 +98,7 @@ export function InvoiceUploadReviewDialog({
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
   const blockParentCloseUntilRef = useRef(0);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const shouldBlockParentClose = () =>
     previewOpen || Date.now() < blockParentCloseUntilRef.current;
   const handleDialogOpenChange = (nextOpen: boolean) => {
@@ -1088,6 +1090,19 @@ export function InvoiceUploadReviewDialog({
           
           {/* Action buttons below header */}
           <div className="flex items-center justify-end gap-2 pt-2">
+            {/* Help button */}
+            {invoiceId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAssistantOpen(true)}
+                className="gap-2"
+              >
+                <HelpCircle className="h-4 w-4" />
+                Help
+              </Button>
+            )}
             {/* Status button - right click or long-press for status actions */}
             {invoice && (
               statusActions.length === 0 ? (
@@ -1464,6 +1479,22 @@ export function InvoiceUploadReviewDialog({
         onConfirm={handleConfirmMarkAsSentAndPaid}
         isProcessing={markAsPaidMutation.isPending}
       />
+
+      {/* Assistant Panel */}
+      {invoiceId && (
+        <AssistantPanel
+          open={assistantOpen}
+          onOpenChange={setAssistantOpen}
+          scope="invoice_detail"
+          scopeId={invoiceId}
+          onAction={(action) => {
+            if (action === "OPEN_SHARE") {
+              setShareDialogOpen(true);
+            }
+            // Other actions can be handled here
+          }}
+        />
+      )}
 
       {/* Mark as Not Paid Dialog */}
       {invoice && (

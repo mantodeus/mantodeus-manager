@@ -4,7 +4,7 @@ import { InvoiceStatusActionsDropdown } from "@/components/invoices/InvoiceStatu
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, X, DocumentCurrencyEuro, Eye } from "@/components/ui/Icon";
+import { ArrowLeft, Loader2, X, DocumentCurrencyEuro, Eye, HelpCircle } from "@/components/ui/Icon";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getInvoiceState } from "@/lib/invoiceState";
+import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 
 export default function InvoiceDetail() {
   const [, params] = useRoute("/invoices/:id");
@@ -23,6 +24,7 @@ export default function InvoiceDetail() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -179,9 +181,19 @@ export default function InvoiceDetail() {
           </div>
         </div>
         
-        {/* Action buttons below header - Preview and Status Badge Dropdown */}
+        {/* Action buttons below header - Preview, Help, and Status Badge Dropdown */}
         {invoice && invoice.source === "created" && (
           <div className="flex items-center justify-end gap-2 pb-2 border-b">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setAssistantOpen(true)}
+              className="gap-2"
+            >
+              <HelpCircle className="h-4 w-4" />
+              Help
+            </Button>
             <Button
               type="button"
               variant="outline"

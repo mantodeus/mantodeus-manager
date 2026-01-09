@@ -47,6 +47,11 @@ export function PDFPreviewModal({
   const downloadUrl = fileKey 
     ? `/api/file-proxy?key=${encodeURIComponent(fileKey)}&filename=${encodeURIComponent(fileName)}&download=true`
     : fileUrl || "";
+  const pdfOptions = {
+    disableRange: true,
+    disableStream: true,
+    disableAutoFetch: true,
+  };
 
   useEffect(() => {
     setNumPages(0);
@@ -270,18 +275,20 @@ export function PDFPreviewModal({
             {!pdfUrl && !isLoading && (
               <div className="text-gray-400">Preparing preview...</div>
             )}
-            {pdfError && (
+            {pdfError && !pdfUrl && (
               <div className="text-red-500">{pdfError}</div>
             )}
-            {pdfUrl && (
+            {pdfUrl && !pdfError && (
               <Document
                 file={pdfUrl}
                 onLoadSuccess={onDocumentLoadSuccess}
                 onLoadStart={() => setIsLoading(true)}
-                onLoadError={() => {
+                onLoadError={(error) => {
                   setIsLoading(false);
                   setPdfError("Failed to load PDF");
+                  console.error("PDF load error:", error);
                 }}
+                options={pdfOptions}
                 loading={<div className="text-gray-400">Loading...</div>}
                 error={<div className="text-red-500">Failed to load PDF</div>}
               >
@@ -296,6 +303,14 @@ export function PDFPreviewModal({
                   />
                 ))}
               </Document>
+            )}
+            {pdfError && pdfUrl && (
+              <iframe
+                src={pdfUrl}
+                className="w-full h-full border-0"
+                title={fileName}
+                style={{ width: "100%", height: "100%" }}
+              />
             )}
           </div>
         </div>

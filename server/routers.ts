@@ -22,6 +22,7 @@ import { settingsRouter } from "./settingsRouter";
 import { invoiceRouter } from "./invoiceRouter";
 import { inspectionRouter } from "./inspectionRouter";
 import { expenseRouter } from "./expenseRouter";
+import { aiRouter } from "./aiRouter";
 import { geocodeAddress } from "./_core/geocoding";
 import { shouldProcessImage } from "./_core/imageProcessing";
 import { 
@@ -90,6 +91,9 @@ export const appRouter = router({
   
   // Expenses module
   expenses: expenseRouter,
+  
+  // AI Assistant
+  ai: aiRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
