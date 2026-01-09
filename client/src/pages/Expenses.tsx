@@ -465,7 +465,13 @@ export default function Expenses() {
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-10 whitespace-nowrap">
+                <Button 
+                  variant="outline" 
+                  className="h-10 whitespace-nowrap"
+                  data-guide-id="expenses.upload"
+                  data-guide-type="menu"
+                  data-guide-label="Upload Receipts"
+                >
                   <Upload className="w-4 h-4 mr-2" />
                   Upload
                 </Button>
@@ -487,7 +493,13 @@ export default function Expenses() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button asChild className="h-10 whitespace-nowrap">
+            <Button 
+              asChild 
+              className="h-10 whitespace-nowrap"
+              data-guide-id="expenses.new"
+              data-guide-type="button"
+              data-guide-label="Create New Expense"
+            >
               <Link href="/expenses/new">
                 <Plus className="w-4 h-4 mr-1" />
                 New

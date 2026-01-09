@@ -188,6 +188,9 @@ export default function InvoiceDetail() {
               size="sm"
               onClick={handlePreviewPDF}
               className="gap-2"
+              data-guide-id="invoices.preview"
+              data-guide-type="button"
+              data-guide-label="Preview Invoice PDF"
             >
               <Eye className="h-4 w-4" />
               Preview

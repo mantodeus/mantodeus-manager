@@ -1968,6 +1968,9 @@ export default function Invoices() {
               onClick={() => setBulkUploadOpen(true)}
               disabled={bulkUploadMutation.isPending}
               className="h-10 whitespace-nowrap"
+              data-guide-id="invoices.upload"
+              data-guide-type="button"
+              data-guide-label="Upload Invoice PDFs"
             >
               {bulkUploadMutation.isPending ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1979,6 +1982,9 @@ export default function Invoices() {
             <Button 
               onClick={() => setCreateDialogOpen(true)}
               className="h-10 whitespace-nowrap"
+              data-guide-id="invoices.create"
+              data-guide-type="button"
+              data-guide-label="Create New Invoice"
             >
               <Plus className="w-4 h-4 mr-1" />
               Create

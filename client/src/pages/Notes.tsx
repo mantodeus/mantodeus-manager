@@ -722,7 +722,13 @@ export default function Notes() {
         subtitle="Create and manage your notes"
         actionsPlacement="right"
         actions={
-          <Button onClick={() => navigate("/notes/new")} className="h-10 whitespace-nowrap">
+          <Button 
+            onClick={() => navigate("/notes/new")} 
+            className="h-10 whitespace-nowrap"
+            data-guide-id="notes.new"
+            data-guide-type="button"
+            data-guide-label="Create New Note"
+          >
             <Plus className="w-4 h-4 mr-1" />
             New
           </Button>

@@ -739,7 +739,13 @@ export default function Contacts() {
                 Cancel
               </Button>
             )}
-            <Button onClick={handleNewContact} className="h-10 whitespace-nowrap">
+            <Button 
+              onClick={handleNewContact} 
+              className="h-10 whitespace-nowrap"
+              data-guide-id="contacts.new"
+              data-guide-type="button"
+              data-guide-label="Create New Contact"
+            >
               <Plus className="w-4 h-4 mr-1" />
               New
             </Button>

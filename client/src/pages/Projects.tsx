@@ -597,7 +597,13 @@ export default function Projects() {
         subtitle="Manage your client projects and work"
         actionsPlacement="right"
         actions={
-          <Button asChild className="h-10 whitespace-nowrap">
+          <Button 
+            asChild 
+            className="h-10 whitespace-nowrap"
+            data-guide-id="projects.new"
+            data-guide-type="button"
+            data-guide-label="Create New Project"
+          >
             <Link href="/projects/new">
               <Plus className="w-4 h-4 mr-1" />
               New

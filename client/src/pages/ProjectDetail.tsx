@@ -186,11 +186,23 @@ export default function ProjectDetail() {
           </Button>
         </Link>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setReportDialogOpen(true)}>
+          <Button 
+            variant="outline" 
+            onClick={() => setReportDialogOpen(true)}
+            data-guide-id="projects.report"
+            data-guide-type="button"
+            data-guide-label="Generate Project Report"
+          >
             <FileText className="h-4 w-4 mr-2" />
             Report
           </Button>
-          <Button variant="outline" onClick={() => setEditProjectDialogOpen(true)}>
+          <Button 
+            variant="outline" 
+            onClick={() => setEditProjectDialogOpen(true)}
+            data-guide-id="projects.edit"
+            data-guide-type="button"
+            data-guide-label="Edit Project Details"
+          >
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>

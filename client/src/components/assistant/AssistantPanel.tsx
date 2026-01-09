@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { Loader2, X, Send, BugAnt, HelpCircle } from "@/components/ui/Icon";
+import { Loader2, X, Send, BugAnt, HelpCircle, Eye } from "@/components/ui/Icon";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
@@ -19,6 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useGuidance } from "@/contexts/GuidanceContext";
 
 export type AssistantScope = "invoice_detail" | "general";
 
@@ -38,14 +39,29 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+interface GuidanceInstruction {
+  elementId: string;
+  action: "highlight" | "pulse" | "spotlight";
+  tooltip?: string;
+  priority: number;
+}
+
+interface GuidanceStep {
+  order: number;
+  description: string;
+}
+
+interface GuidanceWarning {
+  elementId?: string;
+  message: string;
+}
+
 interface AssistantResponse {
   answerMarkdown: string;
   confidence: "low" | "medium" | "high";
-  suggestedNextActions: Array<{
-    id: string;
-    label: string;
-    action: "OPEN_SHARE" | "OPEN_ADD_PAYMENT" | "OPEN_EDIT_DUE_DATE" | "OPEN_REVERT_STATUS";
-  }>;
+  guidance?: GuidanceInstruction[];
+  steps?: GuidanceStep[];
+  warnings?: GuidanceWarning[];
 }
 
 const INVOICE_PROMPTS = [
@@ -76,6 +92,8 @@ export function AssistantPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const defaultPrompts = scope === "invoice_detail" ? INVOICE_PROMPTS : GENERAL_PROMPTS;
+  
+  const { applyGuidance, clearGuidance, getVisibleElements, isGuiding } = useGuidance();
 
   const askMutation = trpc.ai.ask.useMutation({
     onSuccess: (response: AssistantResponse) => {
@@ -88,12 +106,28 @@ export function AssistantPanel({
       setMessages((prev) => [...prev, assistantMessage]);
       setLastResponse(response);
       setIsLoading(false);
+      
+      // Apply guidance if present
+      if (response.guidance && response.guidance.length > 0) {
+        applyGuidance({
+          guidance: response.guidance,
+          steps: response.steps,
+          warnings: response.warnings,
+        });
+      }
     },
     onError: (error) => {
       toast.error(error.message || "Failed to get response");
       setIsLoading(false);
     },
   });
+  
+  // Clear guidance when panel closes
+  useEffect(() => {
+    if (!open) {
+      clearGuidance();
+    }
+  }, [open, clearGuidance]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -126,6 +160,7 @@ export function AssistantPanel({
         scope,
         scopeId: scopeId ?? undefined,
         message: trimmed,
+        visibleElements: getVisibleElements(),
       });
     } catch {
       // Error handled in onError
@@ -148,6 +183,7 @@ export function AssistantPanel({
         scope,
         scopeId: scopeId ?? undefined,
         message: prompt,
+        visibleElements: getVisibleElements(),
       });
     }, 50);
   };
@@ -192,7 +228,15 @@ export function AssistantPanel({
               <BugAnt className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold">Bug</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold">Bug</h2>
+                {isGuiding && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-[10px] text-primary">
+                    <Eye className="h-2.5 w-2.5" />
+                    Showing
+                  </span>
+                )}
+              </div>
               <p className="text-[10px] text-muted-foreground italic">Yer wee pal</p>
             </div>
           </div>

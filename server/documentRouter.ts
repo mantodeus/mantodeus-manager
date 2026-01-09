@@ -153,7 +153,7 @@ export const documentRouter = router({
       }
 
       // Upload original file to S3
-      const s3Key = generateFileKey("invoices", input.filename);
+      const s3Key = generateFileKey("invoices", userId, input.filename);
       let uploadedS3Key: string;
       try {
         const uploadResult = await storagePut(s3Key, fileBuffer, input.mimeType);

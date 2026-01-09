@@ -1260,7 +1260,7 @@ export const invoiceRouter = router({
           }
 
           // Upload original file to S3
-          const s3Key = generateFileKey("invoices", file.filename);
+          const s3Key = generateFileKey("invoices", userId, file.filename);
           let uploadedS3Key: string;
           try {
             const uploadResult = await storagePut(s3Key, fileBuffer, mimeType);

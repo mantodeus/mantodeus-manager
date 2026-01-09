@@ -527,6 +527,9 @@ export function InvoiceStatusActionsDropdown({
         <div
           ref={badgeRef}
           className="inline-block"
+          data-guide-id="invoices.status.badge"
+          data-guide-type="badge"
+          data-guide-label="Invoice Status"
           {...longPressHandlers}
           onContextMenu={(e) => {
             e.preventDefault();

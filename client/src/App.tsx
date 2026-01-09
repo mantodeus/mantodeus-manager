@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { GuidanceProvider } from "./contexts/GuidanceContext";
 import DashboardLayout from "./components/DashboardLayout";
 import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -372,10 +373,12 @@ function App() {
         defaultTheme="dark"
         // switchable
       >
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <GuidanceProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </GuidanceProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
