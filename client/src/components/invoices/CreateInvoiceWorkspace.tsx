@@ -360,7 +360,13 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       {createPortal(
         <div 
           className="fixed z-[100] bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-          onClick={onClose}
+          onClick={(e) => {
+            if (previewDialogOpen) {
+              e.preventDefault();
+              return;
+            }
+            onClose();
+          }}
           onWheel={(e) => {
             // Allow zoom on preview container
             const target = e.target as HTMLElement;
@@ -522,7 +528,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
                       className="w-full h-full border-0"
                       title={previewFileName}
                       style={{ 
-                        pointerEvents: 'auto',
+                        pointerEvents: 'none',
                         display: 'block',
                         width: '100%',
                         height: '100%',

@@ -311,6 +311,16 @@ export function CreateInvoiceDialog({
           "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
         )}
         showCloseButton={false}
+        onInteractOutside={(e) => {
+          if (previewDialogOpen) {
+            e.preventDefault();
+          }
+        }}
+        onPointerDownOutside={(e) => {
+          if (previewDialogOpen) {
+            e.preventDefault();
+          }
+        }}
       >
         {/* PageHeader-like structure */}
         <div className="flex-shrink-0 p-6 pb-2 space-y-4">
@@ -459,7 +469,7 @@ export function CreateInvoiceDialog({
                       className="w-full h-full border-0"
                       title={previewFileName}
                       style={{ 
-                        pointerEvents: 'auto',
+                        pointerEvents: 'none',
                         display: 'block',
                         width: '100%',
                         height: '100%',

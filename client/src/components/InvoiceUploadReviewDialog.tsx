@@ -1060,7 +1060,7 @@ export function InvoiceUploadReviewDialog({
                       className="w-full h-full border-0"
                       title={previewFileName}
                       style={{ 
-                        pointerEvents: 'auto',
+                        pointerEvents: 'none',
                         display: 'block',
                         width: '100%',
                         height: '100%',
@@ -1100,6 +1100,10 @@ export function InvoiceUploadReviewDialog({
           } as React.CSSProperties}
           showCloseButton={false}
           onInteractOutside={(e) => {
+            if (isMobile && previewOpen) {
+              e.preventDefault();
+              return;
+            }
             // Prevent closing when clicking on preview panel
             const target = e.target as HTMLElement;
             const previewPanel = document.querySelector('[data-preview-panel]');
@@ -1108,6 +1112,10 @@ export function InvoiceUploadReviewDialog({
             }
           }}
           onPointerDownOutside={(e) => {
+            if (isMobile && previewOpen) {
+              e.preventDefault();
+              return;
+            }
             // Prevent closing when clicking on preview panel
             const target = e.target as HTMLElement;
             const previewPanel = document.querySelector('[data-preview-panel]');

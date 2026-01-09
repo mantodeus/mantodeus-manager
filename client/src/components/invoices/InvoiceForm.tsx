@@ -553,7 +553,7 @@ export function InvoiceForm({
               </Select>
             </div>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="grid grid-cols-[1fr_auto_1fr] gap-1 sm:gap-2 items-end">
               <div className="space-y-2">
                 <Label>Issue Date</Label>
@@ -579,34 +579,31 @@ export function InvoiceForm({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-1 sm:gap-2 items-end">
-              <div className="space-y-2">
-                <Label>Service Period</Label>
-                <Input
-                  type="date"
-                  value={formState.servicePeriodStart ?? ""}
-                  onChange={(e) =>
-                    setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
-                  }
-                  disabled={isReadOnly || isCancelled}
-                  className="w-full"
-                />
-              </div>
-              <div className="flex items-center justify-center self-end" style={{ marginBottom: '18px' }}>
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-x-1 gap-y-2 sm:gap-x-2">
+              <Label>Service Period</Label>
+              <div></div>
+              <div></div>
+              <Input
+                type="date"
+                value={formState.servicePeriodStart ?? ""}
+                onChange={(e) =>
+                  setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))
+                }
+                disabled={isReadOnly || isCancelled}
+                className="w-full"
+              />
+              <div className="flex items-center justify-center">
                 <span className="text-muted-foreground text-sm shrink-0">→</span>
               </div>
-              <div className="space-y-2">
-                <div className="h-[14px]"></div>
-                <Input
-                  type="date"
-                  value={formState.servicePeriodEnd ?? ""}
-                  onChange={(e) =>
-                    setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
-                  }
-                  disabled={isReadOnly || isCancelled}
-                  className="w-full"
-                />
-              </div>
+              <Input
+                type="date"
+                value={formState.servicePeriodEnd ?? ""}
+                onChange={(e) =>
+                  setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))
+                }
+                disabled={isReadOnly || isCancelled}
+                className="w-full"
+              />
             </div>
           </div>
         </div>
@@ -636,9 +633,9 @@ export function InvoiceForm({
           {items.map((item, index) => (
             <div
               key={index}
-              className="rounded-lg border bg-background p-3 lg:grid lg:grid-cols-12 lg:items-center lg:gap-3 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:border-b lg:px-2 lg:py-3"
+              className="rounded-lg border bg-background p-2 lg:grid lg:grid-cols-12 lg:items-center lg:gap-3 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:border-b lg:px-2 lg:py-3 lg:p-3"
             >
-              <div className="lg:col-span-3 min-w-0 space-y-1">
+              <div className="lg:col-span-3 min-w-0 space-y-0.5">
                 <p className="font-medium break-words text-sm">{item.name || "Untitled"}</p>
                 {item.description && (
                   <p className="text-xs text-muted-foreground break-words line-clamp-1">{item.description}</p>
@@ -647,23 +644,23 @@ export function InvoiceForm({
                   {item.quantity} x {formatCurrency(item.unitPrice)}
                 </p>
               </div>
-              <div className="lg:col-span-2 mt-2 lg:mt-0">
+              <div className="lg:col-span-2 mt-1.5 lg:mt-0">
                 {item.category ? (
                   <Badge variant="outline" className="text-xs">{item.category}</Badge>
                 ) : (
                   <span className="text-xs text-muted-foreground">-</span>
                 )}
               </div>
-              <div className="lg:col-span-1 mt-2 text-right text-sm lg:mt-0">
+              <div className="lg:col-span-1 mt-1.5 text-right text-sm lg:mt-0">
                 {item.quantity}
               </div>
-              <div className="lg:col-span-2 mt-1 text-right text-sm text-muted-foreground lg:mt-0">
+              <div className="lg:col-span-2 mt-0.5 text-right text-sm text-muted-foreground lg:mt-0">
                 {formatCurrency(item.unitPrice)}
               </div>
-              <div className="lg:col-span-2 mt-1 text-right font-medium text-sm lg:mt-0">
+              <div className="lg:col-span-2 mt-0.5 text-right font-medium text-sm lg:mt-0">
                 {formatCurrency(item.quantity * item.unitPrice)}
               </div>
-              <div className="lg:col-span-2 mt-2 flex justify-center gap-1 lg:mt-0">
+              <div className="lg:col-span-2 mt-1.5 flex justify-center gap-1 lg:mt-0">
                 {!isReadOnly && (
                   <>
                     <Button variant="ghost" size="icon" onClick={() => openItemEditor(index)}>

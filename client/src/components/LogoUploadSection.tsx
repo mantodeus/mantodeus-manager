@@ -156,13 +156,22 @@ export function LogoUploadSection() {
   };
 
   const currentLogoUrl = previewUrl || settings?.logoUrl;
+  
+  // Check if logo is PNG or SVG (transparent-capable formats)
+  // Server always outputs PNG, so we show checkered pattern for all logos
+  // (PNGs can have transparency, and if they don't, the pattern will be hidden by the opaque image)
+  const isTransparentFormat = !!currentLogoUrl;
 
   return (
     <div className="space-y-4">
       {/* Preview */}
       <div className="flex items-center justify-center w-full">
         <div
-          className="relative w-full max-w-md h-48 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/20"
+          className={`relative w-full max-w-md h-48 border-2 border-dashed rounded-lg flex items-center justify-center ${
+            isTransparentFormat 
+              ? 'bg-transparent'
+              : 'bg-muted/20'
+          }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
