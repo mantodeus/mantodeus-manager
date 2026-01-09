@@ -69,13 +69,19 @@ export async function processDocumentOcr(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    // New Mistral OCR API expects JSON body, not multipart form
+    // Mistral OCR API expects JSON with document object
+    // For inline documents, use data URL format with document_url type
+    // Reference: https://docs.mistral.ai/capabilities/document_ai/basic_ocr
+    const base64Data = input.fileBuffer.toString("base64");
+    
+    // Format: data:[mime_type];base64,[data]
+    const dataUrl = `data:${input.mimeType};base64,${base64Data}`;
+    
     const payload = {
       model,
       document: {
-        name: input.filename,
-        mime_type: input.mimeType,
-        data: input.fileBuffer.toString("base64"),
+        type: "document_url",
+        document_url: dataUrl,
       },
     };
 
@@ -86,7 +92,8 @@ export async function processDocumentOcr(
       mimeType: input.mimeType,
       fileSize: input.fileBuffer.length,
       contentType: "application/json",
-      payloadKeys: Object.keys(payload),
+      documentType: "document_url",
+      dataUrlPrefix: dataUrl.substring(0, 50) + "...",
     });
 
     const requestStartTime = Date.now();

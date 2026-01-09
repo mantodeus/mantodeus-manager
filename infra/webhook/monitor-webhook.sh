@@ -1,12 +1,22 @@
 #!/bin/bash
-# Monitor webhook listener and restart if it goes down
-# Can be run as a cron job: */5 * * * * /srv/customer/sites/manager.mantodeus.com/infra/webhook/monitor-webhook.sh
+# Monitor webhook listener and restart if it goes down (cron job friendly)
+# Example cron: */5 * * * * /srv/customer/sites/manager.mantodeus.com/infra/webhook/monitor-webhook.sh
+
+set -euo pipefail
 
 APP_PATH="/srv/customer/sites/manager.mantodeus.com"
+HEALTH_URL="${WEBHOOK_HEALTH_URL:-http://localhost:9000/health}"
 LOG_FILE="$APP_PATH/logs/webhook-monitor.log"
+LOCK_FILE="$APP_PATH/.webhook-monitor.lock"
 
 # Create log directory if needed
 mkdir -p "$(dirname "$LOG_FILE")"
+# Prepare a simple lock so overlapping cron runs don’t fight
+exec 9> "$LOCK_FILE"
+if ! flock -n 9; then
+    echo "[$(date -u)] Another webhook monitor run is active, exiting" | tee -a "$LOG_FILE"
+    exit 0
+fi
 
 # Function to log with timestamp
 log_message() {
@@ -28,7 +38,7 @@ fi
 # Check if process exists
 if ! $PM2_CMD list 2>/dev/null | grep -q "webhook-listener"; then
     log_message "WARNING: webhook-listener is not running, attempting to start..."
-    
+
     # Try to start it
     if $PM2_CMD start infra/webhook/ecosystem.config.cjs 2>&1 | tee -a "$LOG_FILE"; then
         log_message "SUCCESS: webhook-listener started"
@@ -39,13 +49,13 @@ if ! $PM2_CMD list 2>/dev/null | grep -q "webhook-listener"; then
     fi
 else
     # Check if it's actually responding
-    if ! curl -sf http://localhost:9000/health > /dev/null 2>&1; then
+    if ! curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
         log_message "WARNING: webhook-listener process exists but health check failed, restarting..."
         $PM2_CMD restart webhook-listener 2>&1 | tee -a "$LOG_FILE"
         sleep 2
-        
+
         # Check again
-        if curl -sf http://localhost:9000/health > /dev/null 2>&1; then
+        if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
             log_message "SUCCESS: webhook-listener restarted and responding"
         else
             log_message "ERROR: webhook-listener still not responding after restart"

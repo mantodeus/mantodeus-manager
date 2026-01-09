@@ -173,6 +173,19 @@ else
   # Note: drizzle-kit migrate is already idempotent, but we skip the call if nothing changed
 fi
 
+# Prevent overlapping deploys
+LOCK_FILE="$APP_DIR/.deploy.lock"
+if [ -f "$LOCK_FILE" ]; then
+  echo "ERROR: Another deploy is running (lock file exists)"
+  exit 1
+fi
+touch "$LOCK_FILE"
+trap "rm -f $LOCK_FILE" EXIT
+
+echo ""
+echo "==> Backup previous build"
+[ -d "dist" ] && rm -rf dist.backup && cp -r dist dist.backup
+
 # Always build (code may have changed even if deps/migrations didn't)
 echo ""
 echo "==> Build"
@@ -193,6 +206,15 @@ echo "==> Restart service"
 if ! npx pm2 restart mantodeus-manager; then
   echo "WARN: Restart failed, attempting fresh start"
   npx pm2 start dist/index.js --name mantodeus-manager
+fi
+
+echo ""
+echo "==> Health check"
+sleep 3
+if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
+  echo "  ✓ App is healthy"
+else
+  echo "  ⚠ Health check failed - check logs via: pm2 logs mantodeus-manager"
 fi
 
 echo ""

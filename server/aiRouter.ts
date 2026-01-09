@@ -202,6 +202,8 @@ User Question: ${input.message}
 Please explain the invoice state, any blockers, and suggest valid next steps based on the allowedActions list.`;
 
         try {
+          console.log("[AI] Calling Mistral for invoice_detail, model:", ENV.aiAssistantModel);
+          
           // Call Mistral
           const response = await callMistralChat({
             model: ENV.aiAssistantModel,
@@ -213,18 +215,21 @@ Please explain the invoice state, any blockers, and suggest valid next steps bas
             maxTokens: 2000,
           });
           
+          console.log("[AI] Mistral response received, parsing...");
+          
           // Parse and validate response
           const parsed = parseAssistantResponse(response);
           
           return parsed;
         } catch (error) {
           if (error instanceof MistralClientError) {
-            console.error("[AI] Mistral client error:", error.message);
+            console.error("[AI] Mistral client error:", error.message, "statusCode:", error.statusCode, "details:", error.providerError);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "AI service temporarily unavailable. Please try again later.",
             });
           }
+          console.error("[AI] Unexpected error:", error);
           throw error;
         }
       }
@@ -232,6 +237,9 @@ Please explain the invoice state, any blockers, and suggest valid next steps bas
       // Handle general scope
       if (input.scope === "general") {
         try {
+          console.log("[AI] Calling Mistral for general scope, model:", ENV.aiAssistantModel);
+          console.log("[AI] API key configured:", !!ENV.mistralApiKey, "length:", ENV.mistralApiKey?.length || 0);
+          
           const response = await callMistralChat({
             model: ENV.aiAssistantModel,
             messages: [
@@ -242,18 +250,21 @@ Please explain the invoice state, any blockers, and suggest valid next steps bas
             maxTokens: 2000,
           });
           
+          console.log("[AI] Mistral response received for general scope, parsing...");
+          
           // Parse and validate response
           const parsed = parseAssistantResponse(response);
           
           return parsed;
         } catch (error) {
           if (error instanceof MistralClientError) {
-            console.error("[AI] Mistral client error:", error.message);
+            console.error("[AI] Mistral client error:", error.message, "statusCode:", error.statusCode, "details:", error.providerError);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "AI service temporarily unavailable. Please try again later.",
             });
           }
+          console.error("[AI] Unexpected error:", error);
           throw error;
         }
       }
