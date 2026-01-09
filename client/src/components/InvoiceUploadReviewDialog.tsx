@@ -298,7 +298,7 @@ export function InvoiceUploadReviewDialog({
   useEffect(() => {
     if (!invoiceId) return;
 
-    // If invoice exists (has been saved), always use invoice values
+    // If invoice exists (has been saved), use invoice values
     if (invoice) {
       setInvoiceNumber(invoice.invoiceNumber || "");
       setIssueDate(
@@ -318,9 +318,48 @@ export function InvoiceUploadReviewDialog({
           ? new Date(invoice.paidAt).toISOString().split("T")[0]
           : ""
       );
-      // Reset autofilled fields when loading from database (these are saved values, not autofilled)
-      setAutofilledFields(new Set());
-      setFieldEdited(new Set());
+      
+      // If invoice is in review state (needsReview=true) and parsedData is null,
+      // reconstruct parsedData from invoice to show autofill indicators
+      // This happens when viewing an uploaded invoice from the detail page
+      if (invoice.needsReview && invoice.source === "uploaded" && !parsedData && !hydratedFromParsedDataRef.current.has(invoiceId)) {
+        const newAutofilledFields = new Set<string>();
+        
+        // Mark fields as autofilled if they have values (they were extracted from OCR)
+        if (invoice.invoiceNumber) {
+          newAutofilledFields.add("invoiceNumber");
+        }
+        
+        if (invoice.issueDate) {
+          newAutofilledFields.add("issueDate");
+        }
+        
+        if (invoice.total && Number(invoice.total) > 0) {
+          newAutofilledFields.add("totalAmount");
+        }
+        
+        // Only mark clientId as autofilled if it exists (it was matched during OCR)
+        // Note: We don't have the original clientName from OCR, but if clientId exists
+        // and invoice is in review, it was likely matched during extraction
+        if (invoice.clientId) {
+          newAutofilledFields.add("clientId");
+        }
+        
+        // Due date is typically not extracted, but if it exists and invoice is in review,
+        // it might have been extracted or calculated
+        if (invoice.dueDate) {
+          newAutofilledFields.add("dueDate");
+        }
+        
+        setAutofilledFields(newAutofilledFields);
+        setFieldEdited(new Set());
+        hydratedFromParsedDataRef.current.add(invoiceId);
+      } else {
+        // Invoice has been confirmed (needsReview=false) or is not from upload
+        // These are saved values, not autofilled
+        setAutofilledFields(new Set());
+        setFieldEdited(new Set());
+      }
     } 
     // Only use parsedData ONCE per invoiceId (first time, before any save)
     else if (parsedData && !hydratedFromParsedDataRef.current.has(invoiceId)) {

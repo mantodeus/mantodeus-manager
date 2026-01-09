@@ -782,14 +782,21 @@ export default function Invoices() {
     },
     onError: (err) => toast.error(err.message),
   });
-  const uploadInvoiceMutation = trpc.invoices.uploadInvoice.useMutation({
+  // Use AI OCR (documents.process) instead of simple PDF parser
+  const processDocumentMutation = trpc.documents.process.useMutation({
     onSuccess: (data) => {
-      setUploadedInvoiceId(data.invoice.id);
-      setUploadedParsedData(data.parsedData);
+      setUploadedInvoiceId(data.invoiceId);
+      // Convert extractedData to parsedData format for the review dialog
+      setUploadedParsedData({
+        clientName: data.extractedData.clientName,
+        invoiceDate: data.extractedData.issueDate ? new Date(data.extractedData.issueDate) : null,
+        totalAmount: data.extractedData.total,
+        invoiceNumber: data.extractedData.invoiceNumber,
+      });
       setUploadReviewDialogOpen(true);
     },
     onError: (err) => {
-      toast.error("Failed to upload invoice: " + err.message);
+      toast.error("Failed to process invoice: " + err.message);
     },
   });
   const bulkUploadMutation = trpc.invoices.uploadInvoicesBulk.useMutation({

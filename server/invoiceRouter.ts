@@ -1111,12 +1111,19 @@ export const invoiceRouter = router({
 
       // Create invoice with needsReview flag
       const uploadedAt = new Date();
+      
+      // Use extracted invoice number if available, otherwise it will be auto-generated
+      // Note: We don't generate a number here - if extracted number is invalid/missing,
+      // the user can set it in the review dialog
+      const invoiceNumber = parsedData.invoiceNumber?.trim() || null;
+      
       const created = await db.createInvoice({
         userId,
         clientId: null, // Can be updated later if needed
         status: "draft",
         issueDate,
-        dueDate: null,
+        dueDate: parsedData.dueDate || null, // Use extracted due date if available
+        invoiceNumber, // Save extracted invoice number
         subtotal: parsedData.totalAmount || "0.00",
         vatAmount: "0.00",
         total: parsedData.totalAmount || "0.00",
@@ -1186,31 +1193,90 @@ export const invoiceRouter = router({
             throw new Error("File must be a PDF");
           }
 
-          // Validate base64 data
-          const pdfBuffer = Buffer.from(file.base64Data, "base64");
-          if (pdfBuffer.length === 0) {
+          // Convert base64 to buffer
+          const fileBuffer = Buffer.from(file.base64Data, "base64");
+          if (fileBuffer.length === 0) {
             throw new Error("Invalid base64 data");
           }
 
-          // Parse PDF to extract invoice data
-          const parsedData = await parseInvoicePdf(pdfBuffer);
-
-          // Generate S3 key
-          const fileKey = generateFileKey("invoices", userId, file.filename);
-
-          // Upload PDF to S3
-          await storagePut(fileKey, pdfBuffer, mimeType);
-
-          // Use parsed date or current date
-          const issueDate = parsedData.invoiceDate || new Date();
-
-          const originalFileName = file.filename;
-          const invoiceName = deriveInvoiceNameFromFilename(originalFileName);
-          if (!invoiceName) {
-            throw new Error("Invoice name cannot be empty");
+          // Process document with AI OCR (same as documents.process)
+          const { processDocumentOcr } = await import("./services/ai/document/documentOcrClient");
+          const { normalizeExtractedData } = await import("./services/ai/document/normalizeExtractedData");
+          const { matchClient } = await import("./services/ai/document/clientMatching");
+          
+          // Helper to convert cents to decimal string
+          const centsToDecimal = (cents: number | null): string => {
+            if (cents === null) return "0.00";
+            return (cents / 100).toFixed(2);
+          };
+          
+          let normalized;
+          try {
+            const raw = await processDocumentOcr({
+              fileBuffer,
+              mimeType,
+              filename: file.filename,
+              languageHint: undefined,
+            });
+            normalized = normalizeExtractedData(raw);
+          } catch (error) {
+            console.error("[Invoice Bulk Upload] OCR processing failed:", error);
+            throw new Error(
+              error instanceof Error 
+                ? `Document processing failed: ${error.message}`
+                : "Document processing failed. Please try again."
+            );
           }
 
-          // Check for unique invoice name (skip if duplicate, but don't fail the whole batch)
+          // Upload original file to S3
+          const s3Key = generateFileKey("invoices", file.filename);
+          let uploadedS3Key: string;
+          try {
+            const uploadResult = await storagePut(s3Key, fileBuffer, mimeType);
+            uploadedS3Key = uploadResult.key;
+          } catch (error) {
+            console.error("[Invoice Bulk Upload] S3 upload failed:", error);
+            throw new Error("Failed to store document. Please try again.");
+          }
+
+          // Create staging invoice with extracted data
+          const issueDate = normalized.issueDate || new Date();
+          const invoiceYear = issueDate.getFullYear();
+
+          // Generate invoice number if not extracted
+          let invoiceNumber = normalized.invoiceNumber;
+          let invoiceCounter = 0;
+          if (!invoiceNumber) {
+            const settings = await db.getCompanySettingsByUserId(userId);
+            if (settings) {
+              const generated = await db.generateInvoiceNumber(
+                userId,
+                issueDate,
+                settings.invoiceNumberFormat ?? null,
+                settings.invoicePrefix ?? "RE"
+              );
+              invoiceNumber = generated.invoiceNumber;
+              invoiceCounter = generated.invoiceCounter;
+            } else {
+              // Fallback: generate a simple number
+              invoiceNumber = `INV-${invoiceYear}-${Date.now()}`;
+            }
+          } else {
+            // Extract counter from invoice number if possible
+            const match = invoiceNumber.match(/(\d+)$/);
+            if (match) {
+              invoiceCounter = parseInt(match[1], 10) || 0;
+            }
+          }
+
+          // Derive invoice name from filename
+          const invoiceName = file.filename.replace(/\.[^/.]+$/, "");
+
+          // Match client (non-destructive - only preselect if confidence is high)
+          const clientMatch = await matchClient(normalized.clientName, userId, 0.85);
+          const matchedClientId = clientMatch.matchedClientId; // May be null if confidence too low
+
+          // Check for unique invoice name
           try {
             await db.ensureUniqueInvoiceName(userId, invoiceName);
           } catch (error) {
@@ -1218,31 +1284,40 @@ export const invoiceRouter = router({
             throw new Error(message);
           }
 
-          // Create invoice with needsReview flag
+          // Create invoice with needsReview=true
           const uploadedAt = new Date();
           const created = await db.createInvoice({
             userId,
-            clientId: null,
-            status: "draft",
-            issueDate,
-            dueDate: null,
-            subtotal: parsedData.totalAmount || "0.00",
-            vatAmount: "0.00",
-            total: parsedData.totalAmount || "0.00",
-            source: "uploaded",
-            needsReview: parsedData.needsReview,
-            originalPdfS3Key: fileKey,
-            originalFileName,
+            clientId: matchedClientId, // Preselected if match confidence >= 0.85
+            invoiceNumber,
             invoiceName,
+            invoiceCounter,
+            invoiceYear,
+            status: "draft", // Always draft on creation
+            issueDate,
+            dueDate: normalized.dueDate,
+            notes: normalized.notes,
+            servicePeriodStart: normalized.servicePeriodStart,
+            servicePeriodEnd: normalized.servicePeriodEnd,
+            referenceNumber: normalized.referenceNumber,
+            subtotal: centsToDecimal(normalized.subtotalCents),
+            vatAmount: centsToDecimal(normalized.vatAmountCents),
+            total: centsToDecimal(normalized.totalCents),
+            source: "uploaded",
+            needsReview: true, // Always needs review after OCR
+            originalPdfS3Key: uploadedS3Key,
+            originalFileName: file.filename,
             uploadedAt,
-            pdfFileKey: fileKey,
-            filename: file.filename,
-            fileKey: fileKey,
-            fileSize: pdfBuffer.length,
-            mimeType,
-            uploadDate: uploadedAt,
             uploadedBy: userId,
-            items: [], // Empty items - user can add in review
+            mimeType,
+            fileSize: fileBuffer.length,
+            items: normalized.items.map((item) => ({
+              name: item.name,
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: centsToDecimal(item.unitPriceCents),
+              currency: normalized.currency,
+            })),
           });
 
           invoiceId = created.id;
