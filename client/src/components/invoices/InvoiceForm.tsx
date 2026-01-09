@@ -536,7 +536,7 @@ export function InvoiceForm({
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a client" />
                 </SelectTrigger>
-                <SelectContent align="start">
+                <SelectContent align="start" className="z-[120]">
                   <SelectItem value="none">None</SelectItem>
                   {contacts.map((contact) => (
                     <SelectItem key={contact.id} value={String(contact.id)}>
@@ -880,15 +880,14 @@ function LineItemModal({
           "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
         )}
         showCloseButton={false}
-        zIndex={60}
+        zIndex={120}
       >
         {/* PageHeader-like structure */}
         <div className="flex-shrink-0 p-6 pb-2 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 min-w-0 flex-1">
               <div className="flex-1 min-w-0 flex flex-col">
-                <h1 className="text-3xl font-regular flex items-center gap-2">
-                  <Plus className="h-6 w-6 text-primary" />
+                <h1 className="text-3xl font-regular">
                   Add Line Item
                 </h1>
                 <p className="text-muted-foreground text-sm mt-3">
