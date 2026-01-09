@@ -369,6 +369,7 @@ export async function createPresignedReadUrl(
         bucket: config.bucket,
         key,
         endpoint: config.endpoint,
+        region: 'us-east-1',
       });
     }
     

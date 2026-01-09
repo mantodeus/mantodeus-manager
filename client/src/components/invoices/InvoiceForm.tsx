@@ -579,7 +579,7 @@ export function InvoiceForm({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-1 sm:gap-2 items-center">
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-1 sm:gap-2 items-end">
               <div className="space-y-2">
                 <Label>Service Period</Label>
                 <Input
@@ -592,7 +592,7 @@ export function InvoiceForm({
                   className="w-full"
                 />
               </div>
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center self-end" style={{ marginBottom: '18px' }}>
                 <span className="text-muted-foreground text-sm shrink-0">→</span>
               </div>
               <div className="space-y-2">

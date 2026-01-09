@@ -273,21 +273,44 @@ export const settingsRouter = router({
 
       // 4. Upload to S3: uploads/logos/{userId}/{timestamp}.png
       const s3Key = generateFileKey("uploads/logos", ctx.user.id, `logo.png`);
-      await storagePut(s3Key, processed, "image/png");
+      
+      let uploadResult;
+      try {
+        uploadResult = await storagePut(s3Key, processed, "image/png");
+        console.log("[Settings] Logo uploaded successfully", {
+          s3Key: uploadResult.key,
+          size: uploadResult.size,
+        });
+      } catch (error) {
+        console.error("[Settings] Failed to upload logo to S3:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to upload logo: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
 
-      // 4.5. Small delay to ensure file is fully available (S3 is eventually consistent)
-      // This is a defensive measure - most S3 services are immediately consistent
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // 4.5. Verify file exists and wait a bit for eventual consistency
+      const { storageExists } = await import("./storage");
+      let exists = false;
+      for (let i = 0; i < 5; i++) {
+        exists = await storageExists(s3Key);
+        if (exists) break;
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      if (!exists) {
+        console.warn("[Settings] Logo file not found in S3 after upload, but continuing anyway", { s3Key });
+      }
 
       // 5. Store s3Key + URL in company_settings
-      // Use 7 days expiry (max for most S3 services) - logo URLs will need to be refreshed
-      // For long-term display, consider implementing a refresh mechanism or using public bucket
+      // Try presigned URL first, fallback to file proxy if presigned URLs don't work
       let logoUrl: string;
       try {
         // Use 7 days expiry (604800 seconds) - standard S3 presigned URL limit
         logoUrl = await getReadUrl(s3Key, 7 * 24 * 60 * 60);
+        console.log("[Settings] Successfully generated presigned URL for logo", { s3Key });
       } catch (error) {
-        console.error("[Settings] Failed to generate logo read URL:", error);
+        console.error("[Settings] Failed to generate presigned logo read URL, using file proxy fallback:", error);
         
         // Enhanced error logging
         if (error instanceof Error) {
@@ -300,10 +323,12 @@ export const settingsRouter = router({
           });
         }
         
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `Failed to create logo read URL: ${error instanceof Error ? error.message : String(error)}. Check S3 bucket permissions and region settings.`,
-        });
+        // Fallback to file proxy endpoint if presigned URLs fail
+        // This is a workaround for S3 services that don't support presigned URLs properly
+        const { ENV } = await import("./_core/env");
+        const appUrl = ENV.appUrl || "https://manager.mantodeus.com";
+        logoUrl = `${appUrl}/api/file-proxy?key=${encodeURIComponent(s3Key)}&filename=logo.png`;
+        console.log("[Settings] Using file proxy URL as fallback", { logoUrl });
       }
 
       const settings = await db.getCompanySettingsByUserId(ctx.user.id);
