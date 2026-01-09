@@ -122,7 +122,9 @@ echo "==> Checking dependencies..."
 if check_dependencies_changed; then
   DEPS_HASH=$(cat /tmp/.deploy-deps-hash)
   echo "  → Dependencies changed, installing..."
-  npx pnpm install --frozen-lockfile
+  # Use --no-frozen-lockfile when dependencies change since lockfile is in .gitignore
+  # This allows the server to regenerate pnpm-lock.yaml when package.json changes
+  npx pnpm install --no-frozen-lockfile
   echo "  ✓ Dependencies installed"
 else
   DEPS_HASH=$(get_json_value "$DEPLOY_STATE_FILE" "dependencies_hash" || echo "")
