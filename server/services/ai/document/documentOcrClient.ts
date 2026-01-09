@@ -10,7 +10,6 @@
 
 import { ENV } from "../../../_core/env";
 import type { OcrInput, RawExtractionOutput } from "./types";
-import { DOCUMENT_PROMPT_V1 } from "./documentPrompt_v1";
 
 const MISTRAL_OCR_API_URL = "https://api.mistral.ai/v1/ocr";
 const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds for document processing
@@ -84,9 +83,9 @@ export async function processDocumentOcr(
     // Append model
     form.append("model", model);
     
-    // Append structured extraction prompt (optional but recommended)
-    // This tells the OCR API what structure to extract
-    form.append("prompt", DOCUMENT_PROMPT_V1);
+    // Note: Mistral OCR API does not support 'prompt' parameter
+    // The API extracts text and structure automatically
+    // If structured extraction is needed, it should be done in post-processing
 
     console.log("[Mistral OCR] Making API request to:", MISTRAL_OCR_API_URL);
     console.log("[Mistral OCR] Request details:", {
@@ -94,7 +93,6 @@ export async function processDocumentOcr(
       filename: input.filename,
       mimeType: input.mimeType,
       fileSize: input.fileBuffer.length,
-      hasPrompt: !!DOCUMENT_PROMPT_V1,
     });
 
     const requestStartTime = Date.now();
@@ -128,6 +126,7 @@ export async function processDocumentOcr(
         status: response.status,
         statusText: response.statusText,
         errorBody: errorBody, // Full error body
+        contentType: response.headers.get("content-type"),
       });
       let errorMessage = `Mistral Document AI error: ${response.status} ${response.statusText}`;
       let parsedError: any = null;
@@ -144,16 +143,29 @@ export async function processDocumentOcr(
             message: parsedError.error.message,
             param: parsedError.error.param,
           });
+          
+          // For 422 errors, provide more context
+          if (response.status === 422) {
+            console.error("[Mistral OCR] 422 Unprocessable Entity - likely unsupported parameter or invalid format");
+            console.error("[Mistral OCR] Request was sent with:", {
+              hasFile: true,
+              hasModel: true,
+              modelName: model,
+              filename: input.filename,
+              mimeType: input.mimeType,
+            });
+          }
         }
       } catch {
         // Use default error message
         console.error("[Mistral OCR] Could not parse error body as JSON");
+        console.error("[Mistral OCR] Raw error body:", errorBody.substring(0, 500));
       }
       
       throw new DocumentOcrError(
         errorMessage,
         response.status,
-        errorBody
+        parsedError || errorBody
       );
     }
 
