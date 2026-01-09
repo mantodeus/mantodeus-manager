@@ -417,7 +417,7 @@ export function InvoiceForm({
       {/* Header buttons removed - now handled by parent page (InvoiceDetail) */}
 
       {/* Scrollable content area */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-6">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pb-4">
       {/* Warning banners */}
       {invoice && (
         <>
