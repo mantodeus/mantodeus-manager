@@ -187,84 +187,10 @@ export function AssistantPanel({
   }, [snapState, snapHeights, isMobile, isDragging]);
 
   // Lock page scroll when chat is open (PWA-compatible)
-  // Gate touchmove only when interacting with the assistant sheet to prevent scroll chaining,
-  // while allowing normal page scroll elsewhere.
-  useEffect(() => {
-    // #region agent log
-    fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:scrollLockEffect',message:'Scroll lock effect entry',data:{isMobile,isOpen},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3'})}).catch(()=>{});
-    // #endregion
-    if (!isMobile || !isOpen) return;
+  // We rely on sheet-level handlers + CSS overscroll-behavior instead of document-level blocking
+  // This allows page scroll when chat is closed and messages scroll when chat is open
 
-    // #region agent log
-    fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:scrollLockEffect',message:'Attaching touch handlers',data:{isMobile,isOpen},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3'})}).catch(()=>{});
-    // #endregion
-
-    let lastY = 0;
-    let touchMoveCount = 0;
-
-    const onTouchStart = (e: TouchEvent) => {
-      lastY = e.touches[0]?.clientY ?? 0;
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      touchMoveCount++;
-      const targetNode = e.target as Node | null;
-      const sheetEl = sheetRef.current;
-
-      // Only gate touches that start inside the assistant sheet; allow page scroll elsewhere.
-      const isInsideSheet = !!sheetEl && !!targetNode && sheetEl.contains(targetNode);
-
-      // #region agent log
-      if (touchMoveCount <= 3) { fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:onTouchMove',message:'Touch move fired',data:{isInsideSheet,hasSheetEl:!!sheetEl,targetTag:(targetNode as Element)?.tagName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{}); }
-      // #endregion
-
-      if (!isInsideSheet) return;
-
-      const scrollEl = messagesContainerRef.current;
-
-      // If messages scroller isn't mounted (collapsed), block all touch scrolling inside the sheet.
-      if (!scrollEl) {
-        e.preventDefault();
-        return;
-      }
-
-      const isInsideMessages = !!targetNode && scrollEl.contains(targetNode);
-
-      // Inside sheet but not inside messages: block (prevents scroll-behind via header/input areas)
-      if (!isInsideMessages) {
-        e.preventDefault();
-        return;
-      }
-
-      // Inside messages: prevent rubber-band at edges (stops scroll chaining to the page)
-      const y = e.touches[0]?.clientY ?? lastY;
-      const dy = y - lastY; // dy > 0 means finger moving down
-      lastY = y;
-
-      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
-      // If the messages area can't scroll, prevent the page behind from scrolling.
-      if (scrollHeight <= clientHeight + 1) {
-        e.preventDefault();
-        return;
-      }
-      const atTop = scrollTop <= 0;
-      const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
-
-      if ((atTop && dy > 0) || (atBottom && dy < 0)) {
-        e.preventDefault();
-      }
-    };
-
-    document.addEventListener('touchstart', onTouchStart, { passive: true });
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-
-    return () => {
-      document.removeEventListener('touchstart', onTouchStart);
-      document.removeEventListener('touchmove', onTouchMove);
-    };
-  }, [isMobile, isOpen]);
-
-  // Direct event listener on the sheet element (more reliable than document-level contains check)
+  // Direct event listener on the sheet element (blocks scroll on non-messages areas)
   useEffect(() => {
     if (!isMobile || !isOpen) return;
     
@@ -276,9 +202,8 @@ export function AssistantPanel({
       const scrollEl = messagesContainerRef.current;
       
       // If messages container exists and contains the target, let it scroll freely
-      // CSS overscroll-behavior: contain on the container prevents scroll chaining
       if (scrollEl && scrollEl.contains(target)) {
-        // Allow normal scrolling - CSS handles containment
+        // Allow normal scrolling - CSS overscroll-behavior: contain handles scroll chaining
         return;
       }
       
@@ -290,6 +215,50 @@ export function AssistantPanel({
 
     return () => {
       sheetEl.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [isMobile, isOpen]);
+
+  // Native event listener on messages container to prevent scroll chaining
+  useEffect(() => {
+    if (!isMobile || !isOpen) return;
+    
+    const messagesEl = messagesContainerRef.current;
+    if (!messagesEl) return;
+
+    let lastY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      lastY = e.touches[0]?.clientY ?? 0;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const { scrollTop, scrollHeight, clientHeight } = messagesEl;
+      
+      // If can't scroll, prevent page scroll
+      if (scrollHeight <= clientHeight + 1) {
+        e.preventDefault();
+        return;
+      }
+      
+      // Prevent rubber-band at edges (stops scroll chaining)
+      const y = e.touches[0]?.clientY ?? lastY;
+      const dy = y - lastY;
+      lastY = y;
+      
+      const atTop = scrollTop <= 0;
+      const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
+      
+      if ((atTop && dy > 0) || (atBottom && dy < 0)) {
+        e.preventDefault();
+      }
+    };
+
+    messagesEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+    messagesEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      messagesEl.removeEventListener('touchstart', handleTouchStart);
+      messagesEl.removeEventListener('touchmove', handleTouchMove);
     };
   }, [isMobile, isOpen]);
 
@@ -470,23 +439,14 @@ export function AssistantPanel({
 
   return (
     <>
-      {/* Overlay - blocks scroll on background but allows tap to close */}
-      {/* Desktop: visible backdrop; Mobile: invisible touch blocker */}
+      {/* Overlay - allows tap to close, but scroll blocking handled by document-level handler */}
+      {/* Desktop: visible backdrop; Mobile: invisible */}
       <div
         className={cn(
           "fixed inset-0 z-[499]", // Just below the panel (z-500)
           isMobile ? "bg-transparent" : "bg-black/20 backdrop-blur-sm animate-in fade-in duration-300"
         )}
         onClick={closeManto}
-        onTouchEnd={(e) => {
-          // Allow tap-to-close: if this was a tap (not a scroll), close the chat
-          closeManto();
-        }}
-        onTouchMove={(e) => {
-          // Block scroll gestures on the overlay
-          e.preventDefault();
-        }}
-        style={{ touchAction: 'none' }}
         aria-hidden="true"
       />
 
