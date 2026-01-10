@@ -142,6 +142,9 @@ export function AssistantPanel({
 
   // Recompute snap heights on viewport changes
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:snapHeightsEffect',message:'isMobile check at mount',data:{isMobile,isOpen,userAgent:navigator.userAgent,standalone:(navigator as any).standalone,displayMode:window.matchMedia?.('(display-mode: standalone)')?.matches},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
     if (!isMobile) return;
     
     const updateHeights = () => {
@@ -174,20 +177,34 @@ export function AssistantPanel({
   // Gate touchmove only when interacting with the assistant sheet to prevent scroll chaining,
   // while allowing normal page scroll elsewhere.
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:scrollLockEffect',message:'Scroll lock effect entry',data:{isMobile,isOpen},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3'})}).catch(()=>{});
+    // #endregion
     if (!isMobile || !isOpen) return;
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:scrollLockEffect',message:'Attaching touch handlers',data:{isMobile,isOpen},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3'})}).catch(()=>{});
+    // #endregion
+
     let lastY = 0;
+    let touchMoveCount = 0;
 
     const onTouchStart = (e: TouchEvent) => {
       lastY = e.touches[0]?.clientY ?? 0;
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      touchMoveCount++;
       const targetNode = e.target as Node | null;
       const sheetEl = sheetRef.current;
 
       // Only gate touches that start inside the assistant sheet; allow page scroll elsewhere.
       const isInsideSheet = !!sheetEl && !!targetNode && sheetEl.contains(targetNode);
+
+      // #region agent log
+      if (touchMoveCount <= 3) { fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:onTouchMove',message:'Touch move fired',data:{isInsideSheet,hasSheetEl:!!sheetEl,targetTag:(targetNode as Element)?.tagName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{}); }
+      // #endregion
+
       if (!isInsideSheet) return;
 
       const scrollEl = messagesContainerRef.current;

@@ -19,6 +19,10 @@ export function BottomTabBar() {
   useEffect(() => {
     const vv = window.visualViewport;
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BottomTabBar.tsx:useEffect',message:'Keyboard effect init',data:{hasVisualViewport:!!vv,innerHeight:window.innerHeight,vvHeight:vv?.height},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
+
     const isKeyboardOpen = () => {
       if (!vv) return false;
       // iOS keyboard typically reduces visualViewport height by a large amount.
@@ -45,7 +49,12 @@ export function BottomTabBar() {
     };
 
     const update = () => {
-      const shouldHide = isKeyboardOpen() && activeElementWantsHide();
+      const kbOpen = isKeyboardOpen();
+      const wantsHide = activeElementWantsHide();
+      const shouldHide = kbOpen && wantsHide;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BottomTabBar.tsx:update',message:'Keyboard update',data:{kbOpen,wantsHide,shouldHide,delta:vv?(window.innerHeight-vv.height):null,activeTag:document.activeElement?.tagName,hasDataAttr:document.activeElement?.getAttribute?.('data-hide-tabbar-when-keyboard')},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2,H4'})}).catch(()=>{});
+      // #endregion
       setHideBecauseKeyboard(shouldHide);
       document.body.classList.toggle('tabbar-hidden', shouldHide);
     };
