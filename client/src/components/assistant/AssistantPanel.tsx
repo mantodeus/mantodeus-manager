@@ -218,72 +218,86 @@ export function AssistantPanel({
     };
   }, [isMobile, isOpen]);
 
-  // Native event listener on messages container to prevent scroll chaining ONLY at edges
+  // Native event listener on messages container to prevent scroll chaining ONLY at edges.
+  // Must attach after the messages container exists (when showFullMessages is true).
   useEffect(() => {
-    if (!isMobile || !isOpen) return;
+    if (!isMobile || !isOpen || !showFullMessages) return;
     
-    const messagesEl = messagesContainerRef.current;
-    if (!messagesEl) return;
+    const attach = () => {
+      const messagesEl = messagesContainerRef.current;
+      if (!messagesEl) return false;
 
-    let lastY = 0;
-    let lastScrollTop = 0;
-    let logCount = 0;
+      let lastY = 0;
+      let lastScrollTop = 0;
+      let logCount = 0;
 
-    const handleTouchStart = (e: TouchEvent) => {
-      lastY = e.touches[0]?.clientY ?? 0;
-      lastScrollTop = messagesEl.scrollTop;
+      const handleTouchStart = (e: TouchEvent) => {
+        lastY = e.touches[0]?.clientY ?? 0;
+        lastScrollTop = messagesEl.scrollTop;
+        // #region agent log
+        if (logCount < 4) {
+          fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchStart',message:'touchstart messages',data:{scrollTop:messagesEl.scrollTop,scrollHeight:messagesEl.scrollHeight,clientHeight:messagesEl.clientHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
+        }
+        // #endregion
+      };
+
+      const handleTouchMove = (e: TouchEvent) => {
+        const { scrollTop, scrollHeight, clientHeight } = messagesEl;
+        
+        // If can't scroll, prevent page scroll
+        if (scrollHeight <= clientHeight + 1) {
+          e.preventDefault();
+          return;
+        }
+        
+        const y = e.touches[0]?.clientY ?? lastY;
+        const dy = y - lastY; // dy > 0 = finger moving down (scroll content up)
+        const scrollDelta = scrollTop - lastScrollTop;
+        
+        // Only prevent if we're at an edge AND trying to scroll beyond it (rubber-band)
+        const atTop = scrollTop <= 0;
+        const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
+        
+        // At top: prevent if trying to scroll up (dy > 0 means finger down = scroll up = beyond top)
+        // At bottom: prevent if trying to scroll down (dy < 0 means finger up = scroll down = beyond bottom)
+        // BUT: only if scrollTop didn't actually change (means we're stuck at edge)
+        if (atTop && dy > 0 && scrollDelta === 0) {
+          e.preventDefault();
+        } else if (atBottom && dy < 0 && scrollDelta === 0) {
+          e.preventDefault();
+        }
+        
+        lastY = y;
+        lastScrollTop = scrollTop;
+
+        // #region agent log
+        if (logCount < 12) {
+          logCount++;
+          fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchMove',message:'touchmove messages',data:{scrollTop,scrollHeight,clientHeight,dy,scrollDelta,atTop,atBottom},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
+        }
+        // #endregion
+      };
+
+      messagesEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+      messagesEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+
       // #region agent log
-      if (logCount < 4) {
-        fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchStart',message:'touchstart messages',data:{scrollTop:messagesEl.scrollTop,scrollHeight:messagesEl.scrollHeight,clientHeight:messagesEl.clientHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
-      }
+      fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesListener',message:'attached',data:{hasEl:!!messagesEl,scrollHeight:messagesEl.scrollHeight,clientHeight:messagesEl.clientHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
       // #endregion
+
+      return () => {
+        messagesEl.removeEventListener('touchstart', handleTouchStart);
+        messagesEl.removeEventListener('touchmove', handleTouchMove);
+      };
     };
 
-    const handleTouchMove = (e: TouchEvent) => {
-      const { scrollTop, scrollHeight, clientHeight } = messagesEl;
-      
-      // If can't scroll, prevent page scroll
-      if (scrollHeight <= clientHeight + 1) {
-        e.preventDefault();
-        return;
-      }
-      
-      const y = e.touches[0]?.clientY ?? lastY;
-      const dy = y - lastY; // dy > 0 = finger moving down (scroll content up)
-      const scrollDelta = scrollTop - lastScrollTop;
-      
-      // Only prevent if we're at an edge AND trying to scroll beyond it (rubber-band)
-      const atTop = scrollTop <= 0;
-      const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
-      
-      // At top: prevent if trying to scroll up (dy > 0 means finger down = scroll up = beyond top)
-      // At bottom: prevent if trying to scroll down (dy < 0 means finger up = scroll down = beyond bottom)
-      // BUT: only if scrollTop didn't actually change (means we're stuck at edge)
-      if (atTop && dy > 0 && scrollDelta === 0) {
-        e.preventDefault();
-      } else if (atBottom && dy < 0 && scrollDelta === 0) {
-        e.preventDefault();
-      }
-      
-      lastY = y;
-      lastScrollTop = scrollTop;
+    const cleanup = attach();
+    if (cleanup) return cleanup;
 
-      // #region agent log
-      if (logCount < 12) {
-        logCount++;
-        fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchMove',message:'touchmove messages',data:{scrollTop,scrollHeight,clientHeight,dy,scrollDelta,atTop,atBottom},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
-      }
-      // #endregion
-    };
-
-    messagesEl.addEventListener('touchstart', handleTouchStart, { passive: true });
-    messagesEl.addEventListener('touchmove', handleTouchMove, { passive: false });
-
-    return () => {
-      messagesEl.removeEventListener('touchstart', handleTouchStart);
-      messagesEl.removeEventListener('touchmove', handleTouchMove);
-    };
-  }, [isMobile, isOpen]);
+    // If not attached yet (element not ready), retry on next frame
+    let rafId = requestAnimationFrame(() => attach());
+    return () => cancelAnimationFrame(rafId);
+  }, [isMobile, isOpen, showFullMessages]);
 
   // Drag handling
   const handleDragStart = useCallback((e: React.TouchEvent | React.PointerEvent | React.MouseEvent) => {
