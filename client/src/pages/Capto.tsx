@@ -1,12 +1,6 @@
-import { useEffect } from "react";
-import { toast } from "sonner";
 import { Camera } from "@/components/ui/Icon";
 
 export default function Capto() {
-  useEffect(() => {
-    toast.info("Capto (camera + gallery) is coming soon.");
-  }, []);
-
   return (
     <div className="p-4 space-y-3">
       <div className="flex items-center gap-3">

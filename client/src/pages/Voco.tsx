@@ -1,12 +1,6 @@
-import { useEffect } from "react";
-import { toast } from "sonner";
 import { Microphone } from "@/components/ui/Icon";
 
 export default function Voco() {
-  useEffect(() => {
-    toast.info("Voco (voice recording + transcription) is coming soon.");
-  }, []);
-
   return (
     <div className="p-4 space-y-3">
       <div className="flex items-center gap-3">
