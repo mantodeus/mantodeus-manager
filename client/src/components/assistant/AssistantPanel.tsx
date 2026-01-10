@@ -218,7 +218,7 @@ export function AssistantPanel({
     };
   }, [isMobile, isOpen]);
 
-  // Native event listener on messages container to prevent scroll chaining
+  // Native event listener on messages container to prevent scroll chaining ONLY at edges
   useEffect(() => {
     if (!isMobile || !isOpen) return;
     
@@ -226,9 +226,11 @@ export function AssistantPanel({
     if (!messagesEl) return;
 
     let lastY = 0;
+    let lastScrollTop = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
       lastY = e.touches[0]?.clientY ?? 0;
+      lastScrollTop = messagesEl.scrollTop;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
@@ -240,17 +242,25 @@ export function AssistantPanel({
         return;
       }
       
-      // Prevent rubber-band at edges (stops scroll chaining)
       const y = e.touches[0]?.clientY ?? lastY;
-      const dy = y - lastY;
-      lastY = y;
+      const dy = y - lastY; // dy > 0 = finger moving down (scroll content up)
+      const scrollDelta = scrollTop - lastScrollTop;
       
+      // Only prevent if we're at an edge AND trying to scroll beyond it (rubber-band)
       const atTop = scrollTop <= 0;
       const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
       
-      if ((atTop && dy > 0) || (atBottom && dy < 0)) {
+      // At top: prevent if trying to scroll up (dy > 0 means finger down = scroll up = beyond top)
+      // At bottom: prevent if trying to scroll down (dy < 0 means finger up = scroll down = beyond bottom)
+      // BUT: only if scrollTop didn't actually change (means we're stuck at edge)
+      if (atTop && dy > 0 && scrollDelta === 0) {
+        e.preventDefault();
+      } else if (atBottom && dy < 0 && scrollDelta === 0) {
         e.preventDefault();
       }
+      
+      lastY = y;
+      lastScrollTop = scrollTop;
     };
 
     messagesEl.addEventListener('touchstart', handleTouchStart, { passive: true });
@@ -671,8 +681,6 @@ export function AssistantPanel({
               touchAction: 'pan-y',
             }}
             onTouchStart={(e) => {
-              // Stop propagation to prevent page scroll
-              e.stopPropagation();
               // iOS PWA edge-nudge: prevents scroll chaining by ensuring we're never exactly at 0 / max.
               const el = messagesContainerRef.current;
               if (el) {
@@ -681,10 +689,6 @@ export function AssistantPanel({
                 if (atTop) el.scrollTop = 1;
                 else if (atBottom) el.scrollTop = Math.max(0, el.scrollTop - 1);
               }
-            }}
-            onTouchMove={(e) => {
-              // Stop propagation to prevent page scroll
-              e.stopPropagation();
             }}
             onWheel={(e) => {
               // Stop wheel events from reaching page
