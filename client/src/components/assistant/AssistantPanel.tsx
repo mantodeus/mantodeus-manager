@@ -13,7 +13,7 @@
  * - ModuleScroller appears above it when gesture is active
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
@@ -32,6 +32,8 @@ import { useGuidance, type TourStep, type GuidanceWarning } from "@/contexts/Gui
 
 // Bottom tab bar height (h-14 = 56px) - must match BottomTabBar.tsx
 const BOTTOM_TAB_BAR_HEIGHT = 56;
+
+type SnapPoint = "collapsed" | "mid" | "full";
 
 export type AssistantScope = "invoice_detail" | "general";
 
@@ -74,6 +76,13 @@ export function AssistantPanel({
   const isMobile = useIsMobile();
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [snap, setSnap] = useState<SnapPoint>("mid");
+  const [currentHeight, setCurrentHeight] = useState<number | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const dragStartY = useRef<number | null>(null);
+  const dragStartHeight = useRef<number | null>(null);
+  const handleRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const defaultPrompts = scope === "invoice_detail" ? INVOICE_PROMPTS : GENERAL_PROMPTS;
@@ -97,6 +106,93 @@ export function AssistantPanel({
 
   // No body scroll lock - page above Manto should remain fully scrollable and functional
   // Scroll isolation is handled via overscroll-behavior on the chat container
+
+  // Compute snap heights based on viewport and measured header/handle
+  const snapHeights = useMemo(() => {
+    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+    const handleH = handleRef.current?.getBoundingClientRect().height ?? 20;
+    const headerH = headerRef.current?.getBoundingClientRect().height ?? 56;
+    const collapsed = handleH + headerH + 12; // small padding
+    const safeBottom = 0; // env() handled in CSS; JS fallback 0
+    const full = Math.max(collapsed + 40, vh - BOTTOM_TAB_BAR_HEIGHT - safeBottom - 8);
+    const mid = Math.max(collapsed + 80, vh * 0.5);
+    return { collapsed, mid, full };
+  }, [isMobile]);
+
+  // Update height when snap changes or measurements change
+  useEffect(() => {
+    if (!isMobile) return;
+    const target =
+      snap === "collapsed"
+        ? snapHeights.collapsed
+        : snap === "mid"
+          ? snapHeights.mid
+          : snapHeights.full;
+    setCurrentHeight(target);
+  }, [snap, snapHeights, isMobile]);
+
+  // Recompute on resize for responsive heights
+  useEffect(() => {
+    if (!isMobile) return;
+    const onResize = () => {
+      const vh = window.innerHeight;
+      const handleH = handleRef.current?.getBoundingClientRect().height ?? 20;
+      const headerH = headerRef.current?.getBoundingClientRect().height ?? 56;
+      const collapsed = handleH + headerH + 12;
+      const safeBottom = 0;
+      const full = Math.max(collapsed + 40, vh - BOTTOM_TAB_BAR_HEIGHT - safeBottom - 8);
+      const mid = Math.max(collapsed + 80, vh * 0.5);
+      const target =
+        snap === "collapsed"
+          ? collapsed
+          : snap === "mid"
+            ? mid
+            : full;
+      setCurrentHeight(target);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [snap, isMobile]);
+
+  const startDrag = (e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
+    if (!isMobile) return;
+    const clientY = "touches" in e ? e.touches[0].clientY : (e as React.PointerEvent).clientY;
+    dragStartY.current = clientY;
+    dragStartHeight.current = currentHeight ?? snapHeights.mid;
+    setDragging(true);
+    if ("setPointerCapture" in e.target && e.nativeEvent instanceof PointerEvent) {
+      (e.target as HTMLElement).setPointerCapture(e.nativeEvent.pointerId);
+    }
+  };
+
+  const onDragMove = (e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
+    if (!dragging || !isMobile) return;
+    const clientY = "touches" in e ? e.touches[0].clientY : (e as React.PointerEvent).clientY;
+    if (dragStartY.current == null || dragStartHeight.current == null) return;
+    const delta = dragStartY.current - clientY; // drag up -> positive delta increases height
+    const next = dragStartHeight.current + delta;
+    const clamped = Math.min(Math.max(next, snapHeights.collapsed), snapHeights.full);
+    setCurrentHeight(clamped);
+  };
+
+  const endDrag = () => {
+    if (!dragging || !isMobile) return;
+    setDragging(false);
+    const h = currentHeight ?? snapHeights.mid;
+    // Snap to nearest point
+    const distances: Array<[SnapPoint, number]> = [
+      ["collapsed", Math.abs(h - snapHeights.collapsed)],
+      ["mid", Math.abs(h - snapHeights.mid)],
+      ["full", Math.abs(h - snapHeights.full)],
+    ];
+    distances.sort((a, b) => a[1] - b[1]);
+    setSnap(distances[0][0]);
+  };
+
+  const toggleSnap = () => {
+    if (!isMobile) return;
+    setSnap((prev) => (prev === "mid" ? "full" : "mid"));
+  };
 
   const askMutation = trpc.ai.ask.useMutation({
     onSuccess: (response: AssistantResponse) => {
@@ -215,10 +311,10 @@ export function AssistantPanel({
           "bg-background",
           isMobile ? [
             "z-[500]", // Below ModuleScroller (1000) and tab bar (9999), but above page content
-            "animate-in slide-in-from-bottom-4 fade-in duration-200",
             "inset-x-0", // Full width on mobile
             "rounded-t-3xl", // Smooth rounded top corners
             "border-t border-x border-border/60", // Subtle border on top and sides
+            "transition-[height] duration-200 ease-out",
           ] : [
             "z-[100]", // Above overlay
             "shadow-xl border-r border-border",
@@ -229,17 +325,33 @@ export function AssistantPanel({
           ]
         )}
         style={isMobile ? {
-          // Bottom half of screen, positioned directly above the tab bar
-          // Using height instead of top/bottom for more reliable positioning
-          height: `calc(50vh - env(safe-area-inset-bottom, 0px))`,
           bottom: `calc(${BOTTOM_TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
-          // Elevated shadow for floating sheet effect
+          height: currentHeight ?? snapHeights.mid,
           boxShadow: "0 -8px 32px -4px rgba(0, 0, 0, 0.15), 0 -2px 8px -2px rgba(0, 0, 0, 0.1)",
+          touchAction: "none",
         } : undefined}
+        onPointerMove={onDragMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onMouseMove={onDragMove}
+        onMouseUp={endDrag}
+        onTouchMove={onDragMove}
+        onTouchEnd={endDrag}
+        onTouchCancel={endDrag}
       >
         {/* Mobile drag handle indicator */}
         {isMobile && (
-          <div className="flex justify-center pt-3 pb-2 shrink-0">
+          <div
+            ref={handleRef}
+            className="flex justify-center pt-3 pb-2 shrink-0 active:cursor-grabbing"
+            onPointerDown={startDrag}
+            onTouchStart={startDrag}
+            onMouseDown={startDrag}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSnap();
+            }}
+          >
             <div className="w-12 h-1.5 rounded-full bg-muted-foreground/40" />
           </div>
         )}
@@ -248,7 +360,7 @@ export function AssistantPanel({
         <div className={cn(
           "flex items-center justify-between px-4 border-b border-border/30 shrink-0",
           isMobile ? "py-2.5" : "py-3"
-        )}>
+        )} ref={headerRef}>
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
               <BugAnt className="h-4 w-4 text-primary" />
