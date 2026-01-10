@@ -737,8 +737,9 @@
     }
 
     /* When the keyboard is up for a search/chat input, hide the tab bar and reclaim space */
+    /* Use 0 because the visualViewport already accounts for keyboard - no extra offset needed */
     body.tabbar-hidden {
-      --bottom-safe-area: env(safe-area-inset-bottom);
+      --bottom-safe-area: 0px;
     }
 
     .app-content {

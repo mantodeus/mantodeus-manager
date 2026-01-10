@@ -86,13 +86,25 @@ const GENERAL_PROMPTS = [
 function computeSnapHeights(): SnapHeights {
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
   
+  // Get safe area inset top (for status bar in PWA)
+  // CSS env() isn't directly accessible in JS, so we read it from a temp element
+  let safeAreaTop = 0;
+  if (typeof document !== 'undefined') {
+    const testEl = document.createElement('div');
+    testEl.style.paddingTop = 'env(safe-area-inset-top)';
+    document.body.appendChild(testEl);
+    safeAreaTop = parseInt(getComputedStyle(testEl).paddingTop) || 0;
+    document.body.removeChild(testEl);
+  }
+  
   // Available height = full viewport minus tab bar
   const availableHeight = vh - TAB_BAR_HEIGHT;
   
   return {
     collapsed: COLLAPSED_HEIGHT,
     mid: Math.round(availableHeight * 0.5),
-    full: availableHeight - 20, // Small top margin
+    // Full height: leave room for status bar (safe area top) + small margin
+    full: availableHeight - safeAreaTop - 10,
   };
 }
 
@@ -428,14 +440,26 @@ export function AssistantPanel({
 
   return (
     <>
-      {/* Desktop overlay */}
-      {!isMobile && (
-        <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[99] animate-in fade-in duration-300"
-          onClick={closeManto}
-          aria-hidden="true"
-        />
-      )}
+      {/* Overlay - blocks touches on background */}
+      {/* Desktop: visible backdrop; Mobile: invisible touch blocker */}
+      <div
+        className={cn(
+          "fixed inset-0 z-[499]", // Just below the panel (z-500)
+          isMobile ? "bg-transparent" : "bg-black/20 backdrop-blur-sm animate-in fade-in duration-300"
+        )}
+        onClick={closeManto}
+        onTouchStart={(e) => {
+          // Block all touches on the overlay (prevents page scroll behind)
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        style={{ touchAction: 'none' }}
+        aria-hidden="true"
+      />
 
       {/* Chat Panel */}
       <div
