@@ -264,6 +264,59 @@ export function AssistantPanel({
     };
   }, [isMobile, isOpen]);
 
+  // Direct event listener on the sheet element (more reliable than document-level contains check)
+  useEffect(() => {
+    if (!isMobile || !isOpen) return;
+    
+    const sheetEl = sheetRef.current;
+    if (!sheetEl) return;
+
+    let lastY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      lastY = e.touches[0]?.clientY ?? 0;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const target = e.target as Node;
+      const scrollEl = messagesContainerRef.current;
+      
+      // If messages container exists and contains the target, allow scrolling
+      if (scrollEl && scrollEl.contains(target)) {
+        // Edge-case: if messages can't actually scroll, block
+        const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+        if (scrollHeight <= clientHeight + 1) {
+          e.preventDefault();
+          return;
+        }
+        
+        // Prevent rubber-band at edges
+        const y = e.touches[0]?.clientY ?? lastY;
+        const dy = y - lastY;
+        lastY = y;
+        
+        const atTop = scrollTop <= 0;
+        const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
+        
+        if ((atTop && dy > 0) || (atBottom && dy < 0)) {
+          e.preventDefault();
+        }
+        return;
+      }
+      
+      // For all other areas of the panel, block scroll
+      e.preventDefault();
+    };
+
+    sheetEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+    sheetEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      sheetEl.removeEventListener('touchstart', handleTouchStart);
+      sheetEl.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [isMobile, isOpen]);
+
   // Drag handling
   const handleDragStart = useCallback((e: React.TouchEvent | React.PointerEvent | React.MouseEvent) => {
     if (!isMobile) return;
@@ -486,31 +539,11 @@ export function AssistantPanel({
           bottom: 'var(--bottom-safe-area)',
           height: `${currentHeight}px`,
           boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.15)",
-          // Prevent touch gestures on the panel from scrolling the page behind
-          touchAction: 'none',
+          // Note: touchAction is set per-child, not on container, to allow messages scroll
           // Prevent scroll chaining to the page
           overscrollBehavior: 'contain',
         } : undefined}
-        // Block touch events on the panel from reaching the page
-        onTouchStart={(e) => {
-          // Allow touches to proceed but mark them as handled
-          e.stopPropagation();
-        }}
-        onTouchMove={(e) => {
-          // Check if this touch should scroll the messages container
-          const messagesEl = messagesContainerRef.current;
-          const target = e.target as Node;
-          
-          // If touching inside messages container, let the container handle scrolling
-          if (messagesEl && messagesEl.contains(target)) {
-            // Allow messages to scroll, but prevent page scroll via CSS overscroll-behavior
-            return;
-          }
-          
-          // For all other areas of the panel (header, input, drag handle), block scroll
-          e.preventDefault();
-          e.stopPropagation();
-        }}
+        // Touch events handled via native listeners in useEffect (passive: false required)
       >
         {/* Drag Handle - always visible on mobile */}
         {isMobile && (
