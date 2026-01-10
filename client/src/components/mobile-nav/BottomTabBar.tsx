@@ -129,7 +129,7 @@ export function BottomTabBar() {
           </div>
         )}
 
-        <div className="flex h-14 items-center justify-center px-4">
+        <div className="flex h-14 items-end justify-center px-4 pb-1">
           {/* Main Tabs */}
           <div className="flex items-center justify-around gap-10 flex-1">
             {TABS.map((tab) => {

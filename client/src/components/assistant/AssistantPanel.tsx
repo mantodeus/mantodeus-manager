@@ -171,21 +171,10 @@ export function AssistantPanel({
   }, [snapState, snapHeights, isMobile, isDragging]);
 
   // Lock page scroll when chat is open (PWA-compatible)
-  // Lock html/body/app-content overflow and gate touchmove to prevent scroll chaining
+  // Gate touchmove only when interacting with the assistant sheet to prevent scroll chaining,
+  // while allowing normal page scroll elsewhere.
   useEffect(() => {
     if (!isMobile || !isOpen) return;
-
-    const html = document.documentElement;
-    const body = document.body;
-    const appContent = document.querySelector('.app-content') as HTMLElement | null;
-
-    const prevHtmlOverflow = html.style.overflow;
-    const prevBodyOverflow = body.style.overflow;
-    const prevAppOverflowY = appContent?.style.overflowY;
-
-    html.style.overflow = 'hidden';
-    body.style.overflow = 'hidden';
-    if (appContent) appContent.style.overflowY = 'hidden';
 
     let lastY = 0;
 
@@ -194,24 +183,30 @@ export function AssistantPanel({
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      const targetNode = e.target as Node | null;
+      const sheetEl = sheetRef.current;
+
+      // Only gate touches that start inside the assistant sheet; allow page scroll elsewhere.
+      const isInsideSheet = !!sheetEl && !!targetNode && sheetEl.contains(targetNode);
+      if (!isInsideSheet) return;
+
       const scrollEl = messagesContainerRef.current;
 
-      // If messages scroller isn't mounted (collapsed), block all touch scrolling.
+      // If messages scroller isn't mounted (collapsed), block all touch scrolling inside the sheet.
       if (!scrollEl) {
         e.preventDefault();
         return;
       }
 
-      const targetNode = e.target as Node | null;
       const isInsideMessages = !!targetNode && scrollEl.contains(targetNode);
 
-      // Block background scroll always.
+      // Inside sheet but not inside messages: block (prevents scroll-behind via header/input areas)
       if (!isInsideMessages) {
         e.preventDefault();
         return;
       }
 
-      // Inside messages: allow scroll only if it can scroll in that direction.
+      // Inside messages: prevent rubber-band at edges (stops scroll chaining to the page)
       const y = e.touches[0]?.clientY ?? lastY;
       const dy = y - lastY; // dy > 0 means finger moving down
       lastY = y;
@@ -220,7 +215,6 @@ export function AssistantPanel({
       const atTop = scrollTop <= 0;
       const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
 
-      // Prevent rubber-band at edges (stops scroll chaining to the page)
       if ((atTop && dy > 0) || (atBottom && dy < 0)) {
         e.preventDefault();
       }
@@ -232,11 +226,6 @@ export function AssistantPanel({
     return () => {
       document.removeEventListener('touchstart', onTouchStart);
       document.removeEventListener('touchmove', onTouchMove);
-
-      html.style.overflow = prevHtmlOverflow;
-      body.style.overflow = prevBodyOverflow;
-      if (appContent && prevAppOverflowY !== undefined) appContent.style.overflowY = prevAppOverflowY;
-      if (appContent && prevAppOverflowY === undefined) appContent.style.removeProperty('overflow-y');
     };
   }, [isMobile, isOpen]);
 

@@ -159,7 +159,10 @@
     word-break: break-word;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
-    padding-bottom: env(safe-area-inset-bottom);
+    /* Prevent content under iOS status bar in PWA */
+    padding-top: env(safe-area-inset-top);
+    /* Avoid double-counting bottom safe area; tabs/panels handle bottom spacing */
+    padding-bottom: 0;
     /* Ensure body background matches theme for off-screen areas */
     background-color: var(--bg-page, var(--background));
   }
