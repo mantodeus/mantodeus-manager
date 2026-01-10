@@ -171,22 +171,72 @@ export function AssistantPanel({
   }, [snapState, snapHeights, isMobile, isDragging]);
 
   // Lock page scroll when chat is open (PWA-compatible)
-  // Lock html/body overflow (required for iOS PWA)
+  // Lock html/body/app-content overflow and gate touchmove to prevent scroll chaining
   useEffect(() => {
     if (!isMobile || !isOpen) return;
-    
+
     const html = document.documentElement;
     const body = document.body;
-    
+    const appContent = document.querySelector('.app-content') as HTMLElement | null;
+
     const prevHtmlOverflow = html.style.overflow;
     const prevBodyOverflow = body.style.overflow;
-    
+    const prevAppOverflowY = appContent?.style.overflowY;
+
     html.style.overflow = 'hidden';
     body.style.overflow = 'hidden';
-    
+    if (appContent) appContent.style.overflowY = 'hidden';
+
+    let lastY = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      lastY = e.touches[0]?.clientY ?? 0;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const scrollEl = messagesContainerRef.current;
+
+      // If messages scroller isn't mounted (collapsed), block all touch scrolling.
+      if (!scrollEl) {
+        e.preventDefault();
+        return;
+      }
+
+      const targetNode = e.target as Node | null;
+      const isInsideMessages = !!targetNode && scrollEl.contains(targetNode);
+
+      // Block background scroll always.
+      if (!isInsideMessages) {
+        e.preventDefault();
+        return;
+      }
+
+      // Inside messages: allow scroll only if it can scroll in that direction.
+      const y = e.touches[0]?.clientY ?? lastY;
+      const dy = y - lastY; // dy > 0 means finger moving down
+      lastY = y;
+
+      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+      const atTop = scrollTop <= 0;
+      const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
+
+      // Prevent rubber-band at edges (stops scroll chaining to the page)
+      if ((atTop && dy > 0) || (atBottom && dy < 0)) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+
     return () => {
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchmove', onTouchMove);
+
       html.style.overflow = prevHtmlOverflow;
       body.style.overflow = prevBodyOverflow;
+      if (appContent && prevAppOverflowY !== undefined) appContent.style.overflowY = prevAppOverflowY;
+      if (appContent && prevAppOverflowY === undefined) appContent.style.removeProperty('overflow-y');
     };
   }, [isMobile, isOpen]);
 
