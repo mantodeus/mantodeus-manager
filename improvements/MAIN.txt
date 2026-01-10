@@ -1,6 +1,5 @@
 cd /srv/customer/sites/manager.mantodeus.com
 bash scripts/deploy-prod.sh
-bash scripts/deploy.sh
 
 
 npx pm2 logs mantodeus-manager --lines 0 | grep -i "\[Mistral OCR\]"

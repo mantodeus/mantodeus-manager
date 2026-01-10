@@ -4,6 +4,16 @@ set -euo pipefail
 APP_DIR="/srv/customer/sites/manager.mantodeus.com"
 EXPECTED_GREP="${EXPECTED_GREP:-}"
 DEPLOY_STATE_FILE="$APP_DIR/.deploy-state.json"
+LOCK_FILE="$APP_DIR/.deploy.lock"
+
+# Prevent overlapping deploys - CHECK FIRST, before any operations
+if [ -f "$LOCK_FILE" ]; then
+  echo "ERROR: Another deploy is running (lock file exists)"
+  echo "  → If this is a stale lock, remove it with: rm $LOCK_FILE"
+  exit 1
+fi
+touch "$LOCK_FILE"
+trap "rm -f $LOCK_FILE" EXIT
 
 echo "==> Deploy start: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 cd "$APP_DIR"
@@ -165,6 +175,26 @@ if [ -f "./scripts/fix-migration-0009.cjs" ]; then
   node ./scripts/fix-migration-0009.cjs || echo "  ⚠ Migration 0009 fix failed, continuing..."
 fi
 
+# Verify drizzle-kit and required dependencies are installed
+echo ""
+echo "==> Verifying drizzle-kit installation..."
+DRIZZLE_VERSION=$(npx drizzle-kit --version 2>&1 || echo "")
+if [ -z "$DRIZZLE_VERSION" ] || echo "$DRIZZLE_VERSION" | grep -q "not found\|Cannot find"; then
+  echo "  ⚠ drizzle-kit not found, attempting to reinstall..."
+  npx pnpm add -D drizzle-kit@^0.31.8 || {
+    echo "  ⚠ Failed to reinstall drizzle-kit, trying with npm..."
+    npm install -D drizzle-kit@^0.31.8 || echo "  ⚠ Failed to install drizzle-kit"
+  }
+else
+  echo "  ✓ drizzle-kit version: $DRIZZLE_VERSION"
+fi
+
+# Verify tsx is available (needed for TypeScript config processing)
+if ! command -v tsx > /dev/null 2>&1 && ! npx tsx --version > /dev/null 2>&1; then
+  echo "  ⚠ tsx not found, installing..."
+  npx pnpm add -D tsx@^4.19.1 || echo "  ⚠ Failed to install tsx"
+fi
+
 # Skip schema generation if it fails (non-blocking)
 # This step is idempotent and only needed when schema changes
 echo ""
@@ -173,6 +203,7 @@ if npx pnpm run db:generate 2>&1; then
   echo "  ✓ Schema generated"
 else
   echo "  ⚠ Schema generation skipped (may indicate config issue, but deployment continues)"
+  echo "  → To debug: cd $APP_DIR && npx drizzle-kit --version && npx drizzle-kit generate"
 fi
 
 # Check if migrations needed
@@ -195,21 +226,13 @@ if check_migrations_needed; then
   else
     echo "  ⚠ Migration skipped (drizzle-kit config issue, but deployment continues)"
     echo "  → Migrations can be applied manually later if needed"
-    echo "  → To debug, run: DATABASE_URL=\$(grep DATABASE_URL .env | cut -d'=' -f2) npx pnpm run db:migrate"
+    echo "  → To debug, run: cd $APP_DIR && DATABASE_URL=\$(grep DATABASE_URL .env | cut -d'=' -f2) npx pnpm run db:migrate"
+    echo "  → Or check drizzle-kit: npx drizzle-kit --version"
   fi
 else
   echo "  ✓ No new migration files, skipping (drizzle-kit migrate is idempotent)"
   # Note: drizzle-kit migrate is already idempotent, but we skip the call if nothing changed
 fi
-
-# Prevent overlapping deploys
-LOCK_FILE="$APP_DIR/.deploy.lock"
-if [ -f "$LOCK_FILE" ]; then
-  echo "ERROR: Another deploy is running (lock file exists)"
-  exit 1
-fi
-touch "$LOCK_FILE"
-trap "rm -f $LOCK_FILE" EXIT
 
 echo ""
 echo "==> Backup previous build"
