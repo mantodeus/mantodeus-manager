@@ -103,8 +103,9 @@ function computeSnapHeights(): SnapHeights {
   return {
     collapsed: COLLAPSED_HEIGHT,
     mid: Math.round(availableHeight * 0.5),
-    // Full height: leave room for status bar (safe area top) + small margin
-    full: availableHeight - safeAreaTop - 10,
+    // Full height: leave room for status bar (safe area top) + generous margin
+    // to avoid conflict with iOS swipe-down gesture from top
+    full: availableHeight - safeAreaTop - 44,
   };
 }
 
@@ -485,7 +486,31 @@ export function AssistantPanel({
           bottom: 'var(--bottom-safe-area)',
           height: `${currentHeight}px`,
           boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.15)",
+          // Prevent touch gestures on the panel from scrolling the page behind
+          touchAction: 'none',
+          // Prevent scroll chaining to the page
+          overscrollBehavior: 'contain',
         } : undefined}
+        // Block touch events on the panel from reaching the page
+        onTouchStart={(e) => {
+          // Allow touches to proceed but mark them as handled
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          // Check if this touch should scroll the messages container
+          const messagesEl = messagesContainerRef.current;
+          const target = e.target as Node;
+          
+          // If touching inside messages container, let the container handle scrolling
+          if (messagesEl && messagesEl.contains(target)) {
+            // Allow messages to scroll, but prevent page scroll via CSS overscroll-behavior
+            return;
+          }
+          
+          // For all other areas of the panel (header, input, drag handle), block scroll
+          e.preventDefault();
+          e.stopPropagation();
+        }}
       >
         {/* Drag Handle - always visible on mobile */}
         {isMobile && (
