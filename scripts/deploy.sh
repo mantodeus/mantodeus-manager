@@ -6,6 +6,29 @@ EXPECTED_GREP="${EXPECTED_GREP:-}"
 DEPLOY_STATE_FILE="$APP_DIR/.deploy-state.json"
 LOCK_FILE="$APP_DIR/.deploy.lock"
 
+# Argument parsing
+FOREGROUND=0
+for arg in "$@"; do
+  case "$arg" in
+    --foreground)
+      FOREGROUND=1
+      ;;
+    *)
+      ;;
+  esac
+done
+
+# If running interactively and not already detached, re-exec under nohup to survive SSH disconnects
+if [ "$FOREGROUND" -eq 0 ] && [ -t 1 ] && [ -z "${DEPLOY_NOHUP:-}" ]; then
+  export DEPLOY_NOHUP=1
+  SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+  nohup bash "$SCRIPT_PATH" --foreground > "$APP_DIR/deploy.log" 2>&1 &
+  CHILD_PID=$!
+  echo "Deployment started in background (pid: $CHILD_PID)"
+  echo "Logs: tail -f $APP_DIR/deploy.log"
+  exit 0
+fi
+
 # Prevent overlapping deploys - CHECK FIRST, before any operations
 if [ -f "$LOCK_FILE" ]; then
   echo "ERROR: Another deploy is running (lock file exists)"
