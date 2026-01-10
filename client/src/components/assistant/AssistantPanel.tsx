@@ -172,42 +172,60 @@ export function AssistantPanel({
   }, [snapState, snapHeights, isMobile, isDragging]);
 
   // Dynamically measure tab bar position (PWA-safe)
+  // Measure the actual visual position of the tab bar (accounts for CSS transforms)
   useEffect(() => {
     if (!isMobile || !isOpen) return;
     
     const measureTabBar = () => {
       const tabBar = document.querySelector('.bottom-tab-bar') as HTMLElement;
       if (tabBar) {
+        // getBoundingClientRect() accounts for CSS transforms
+        // This gives us the actual visual position
         const rect = tabBar.getBoundingClientRect();
         // Distance from bottom of viewport to top of tab bar
-        const bottomOffset = window.innerHeight - rect.top;
-        setTabBarBottom(bottomOffset);
+        // This is where we want to position the chat
+        const distanceFromBottom = window.innerHeight - rect.top;
+        setTabBarBottom(Math.max(TAB_BAR_HEIGHT, distanceFromBottom));
       } else {
-        // Fallback to default
-        setTabBarBottom(TAB_BAR_HEIGHT);
+        // Fallback: calculate from CSS variables
+        const root = document.documentElement;
+        const computedStyle = getComputedStyle(root);
+        const safeAreaBottom = parseInt(
+          computedStyle.getPropertyValue('env(safe-area-inset-bottom)') || '0',
+          10
+        );
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        const extraOffset = isStandalone ? 12 : 0; // --bottom-tab-extra-offset
+        const extraPadding = isStandalone ? 20 : 0; // Home gesture area
+        setTabBarBottom(TAB_BAR_HEIGHT + safeAreaBottom + extraPadding - extraOffset);
       }
     };
     
-    // Measure immediately and on resize
+    // Measure immediately
     measureTabBar();
+    
+    // Re-measure on resize/orientation
     window.addEventListener('resize', measureTabBar);
     window.addEventListener('orientationchange', measureTabBar);
     
-    // Also measure after a short delay (PWA layout might settle)
-    const timeout = setTimeout(measureTabBar, 100);
+    // Also measure after layout settles (PWA-specific)
+    const timeout1 = setTimeout(measureTabBar, 100);
+    const timeout2 = setTimeout(measureTabBar, 300);
     
     return () => {
       window.removeEventListener('resize', measureTabBar);
       window.removeEventListener('orientationchange', measureTabBar);
-      clearTimeout(timeout);
+      clearTimeout(timeout1);
+      clearTimeout(timeout2);
     };
   }, [isMobile, isOpen]);
 
   // Lock page scroll when chat is open (PWA-compatible)
+  // Only lock overflow, don't change layout/position
   useEffect(() => {
     if (!isMobile || !isOpen) return;
     
-    // Lock .app-content scroll
+    // Lock .app-content scroll ONLY (don't touch body/html)
     const appContent = document.querySelector('.app-content') as HTMLElement;
     let originalAppContentOverflow = '';
     if (appContent) {
@@ -216,15 +234,21 @@ export function AssistantPanel({
     }
     
     // Prevent touch events from scrolling the page behind
+    // Only prevent if touch is NOT inside the chat messages container
     const preventPageScroll = (e: TouchEvent) => {
-      // Only prevent if touch is NOT inside the chat messages container
       const target = e.target as HTMLElement;
+      
+      // Allow scrolling within chat messages container
       if (messagesContainerRef.current?.contains(target)) {
-        // Allow scrolling within chat
         return;
       }
       
-      // Block all other touches
+      // Allow scrolling within the sheet itself (for drag handle)
+      if (sheetRef.current?.contains(target)) {
+        return;
+      }
+      
+      // Block all other touches to prevent page scroll
       e.preventDefault();
     };
     
