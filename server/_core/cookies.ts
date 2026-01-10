@@ -25,13 +25,15 @@ export function getSessionCookieOptions(
     hostname.startsWith("127.0.0.1") ||
     hostname.startsWith("::1");
 
-  // Production: always use secure cookies unless explicitly localhost
-  const isSecure = !isLocalhost && isSecureRequest(req);
+  // Production: force secure cookies even if proxy headers are missing (PWA/WKWebView can drop them)
+  // Localhost: allow non-secure for development.
+  const isSecure = !isLocalhost || isSecureRequest(req);
 
   return {
     httpOnly: true,
     path: "/",
-    sameSite: isSecure ? "none" : "lax",
+    // Use "lax" for PWA/WKWebView reliability; we are same-origin only.
+    sameSite: "lax",
     secure: isSecure,
     domain: undefined,
   };
