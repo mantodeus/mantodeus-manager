@@ -18,6 +18,12 @@ trap "rm -f $LOCK_FILE" EXIT
 echo "==> Deploy start: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 cd "$APP_DIR"
 
+# Ensure pnpm is available via npx (server has no global pnpm)
+if ! npx pnpm -v >/dev/null 2>&1; then
+  echo "ERROR: pnpm is not available (npx pnpm -v failed). Install pnpm before deploying."
+  exit 1
+fi
+
 echo "==> Fetching and resetting to main"
 git fetch origin
 
@@ -174,7 +180,7 @@ fi
 # This step is idempotent and only needed when schema changes
 echo ""
 echo "==> Generate database schema (optional, non-blocking)"
-if pnpm run db:generate 2>&1; then
+if npx pnpm run db:generate 2>&1; then
   echo "  ✓ Schema generated"
 else
   echo "  ⚠ Schema generation skipped (may indicate config issue, but deployment continues)"
@@ -183,7 +189,7 @@ fi
 
 echo ""
 echo "==> Running database migrations (blocking, always)"
-if ! pnpm run db:migrate 2>&1; then
+if ! npx pnpm run db:migrate 2>&1; then
   echo "ERROR: Database migrations failed. Deploy aborted."
   echo "→ To debug: cd $APP_DIR && export DATABASE_URL=\$(grep -v '^#' .env | grep '^DATABASE_URL=' | cut -d'=' -f2-) && npx drizzle-kit --version"
   exit 1
