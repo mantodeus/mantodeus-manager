@@ -4,6 +4,7 @@
  * Fixed 3-tab navigation bar for mobile.
  */
 
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useMobileNav } from './MobileNavProvider';
 import { useGestureRecognition } from './useGestureRecognition';
@@ -13,6 +14,60 @@ import type { TabId } from './types';
 import { useManto } from '@/contexts/MantoContext';
 
 export function BottomTabBar() {
+  const [hideBecauseKeyboard, setHideBecauseKeyboard] = useState(false);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+
+    const isKeyboardOpen = () => {
+      if (!vv) return false;
+      // iOS keyboard typically reduces visualViewport height by a large amount.
+      const delta = window.innerHeight - vv.height;
+      return delta > 120;
+    };
+
+    const activeElementWantsHide = () => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el) return false;
+
+      // Explicit opt-in via data attribute (used by chat input)
+      if (el.getAttribute('data-hide-tabbar-when-keyboard') === 'true') return true;
+
+      // Automatic for search inputs
+      if (el instanceof HTMLInputElement) {
+        if (el.type === 'search') return true;
+        if (el.getAttribute('role') === 'searchbox') return true;
+        const inputMode = (el as any).inputMode as string | undefined;
+        if (inputMode === 'search') return true;
+      }
+
+      return false;
+    };
+
+    const update = () => {
+      const shouldHide = isKeyboardOpen() && activeElementWantsHide();
+      setHideBecauseKeyboard(shouldHide);
+      document.body.classList.toggle('tabbar-hidden', shouldHide);
+    };
+
+    update();
+
+    vv?.addEventListener('resize', update);
+    vv?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    window.addEventListener('focusin', update);
+    window.addEventListener('focusout', update);
+
+    return () => {
+      vv?.removeEventListener('resize', update);
+      vv?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('focusin', update);
+      window.removeEventListener('focusout', update);
+      document.body.classList.remove('tabbar-hidden');
+    };
+  }, []);
+
   const {
     activeTab,
     gestureTab,
@@ -85,6 +140,8 @@ export function BottomTabBar() {
     }
     e.stopPropagation();
   };
+
+  if (hideBecauseKeyboard) return null;
 
   return (
     <div

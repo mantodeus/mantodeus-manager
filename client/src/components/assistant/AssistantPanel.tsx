@@ -212,6 +212,11 @@ export function AssistantPanel({
       lastY = y;
 
       const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+      // If the messages area can't scroll, prevent the page behind from scrolling.
+      if (scrollHeight <= clientHeight + 1) {
+        e.preventDefault();
+        return;
+      }
       const atTop = scrollTop <= 0;
       const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
 
@@ -634,6 +639,14 @@ export function AssistantPanel({
             onTouchStart={(e) => {
               // Stop propagation to prevent page scroll
               e.stopPropagation();
+              // iOS PWA edge-nudge: prevents scroll chaining by ensuring we're never exactly at 0 / max.
+              const el = messagesContainerRef.current;
+              if (el) {
+                const atTop = el.scrollTop <= 0;
+                const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight;
+                if (atTop) el.scrollTop = 1;
+                else if (atBottom) el.scrollTop = Math.max(0, el.scrollTop - 1);
+              }
             }}
             onTouchMove={(e) => {
               // Stop propagation to prevent page scroll
@@ -748,6 +761,7 @@ export function AssistantPanel({
                 }}
                 placeholder="Ask anything..."
                 disabled={isLoading}
+                data-hide-tabbar-when-keyboard="true"
                 inputMode="text"
                 autoComplete="off"
                 autoCorrect="off"

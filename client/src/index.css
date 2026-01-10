@@ -735,6 +735,12 @@
       /* Browser mode: minimal padding (just safe area) */
       --bottom-safe-area: calc(56px + env(safe-area-inset-bottom));
     }
+
+    /* When the keyboard is up for a search/chat input, hide the tab bar and reclaim space */
+    body.tabbar-hidden {
+      --bottom-safe-area: env(safe-area-inset-bottom);
+    }
+
     .app-content {
       padding-bottom: calc(var(--bottom-safe-area) + 1rem) !important;
     }
