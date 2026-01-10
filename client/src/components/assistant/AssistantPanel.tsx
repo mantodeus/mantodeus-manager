@@ -196,25 +196,39 @@ export function AssistantPanel({
 
   return (
     <>
+      {/* Desktop overlay - dims the main content when panel is open */}
+      {!isMobile && (
+        <div
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[99] animate-in fade-in duration-300"
+          onClick={() => onOpenChange(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Chat Panel */}
       <div
         className={cn(
-          "fixed z-[10002] flex flex-col",
-          "bg-background border border-border shadow-2xl",
-          "animate-in slide-in-from-bottom-4 fade-in duration-300",
+          "fixed flex flex-col",
+          "bg-background border border-border",
           isMobile ? [
+            "z-[10002]",
+            "shadow-2xl",
+            "animate-in slide-in-from-bottom-4 fade-in duration-300",
             "inset-x-3 bottom-16 top-auto",
             "rounded-2xl",
             "max-h-[70vh]",
           ] : [
-            "bottom-6 right-6",
-            "w-[380px] max-h-[520px]",
-            "rounded-2xl",
+            "z-[100]", // Above overlay
+            "shadow-xl border-r",
+            "animate-in slide-in-from-left fade-in duration-300",
+            "left-0 top-0 bottom-0",
+            "w-[420px]",
+            "rounded-none border-l-0 border-t-0 border-b-0",
           ]
         )}
-        style={{
+        style={isMobile ? {
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05)",
-        }}
+        } : undefined}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
@@ -256,7 +270,7 @@ export function AssistantPanel({
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[200px] text-xs">
+              <TooltipContent side="bottom" className="max-w-[200px] text-xs z-[10003]">
                 <p>Powered by Mistral, a European AI company.</p>
                 <p className="mt-1 text-muted-foreground">Your data stays yours - we don't train models on it.</p>
               </TooltipContent>

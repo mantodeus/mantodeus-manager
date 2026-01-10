@@ -1,18 +1,15 @@
 /**
  * Bottom Tab Bar Component
  *
- * Fixed 3-tab navigation bar for mobile + Bug assistant button.
+ * Fixed 3-tab navigation bar for mobile.
  */
 
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useMobileNav } from './MobileNavProvider';
 import { useGestureRecognition } from './useGestureRecognition';
 import { MODULE_REGISTRY, TABS } from './constants';
 import { useLocation } from 'wouter';
 import type { TabId } from './types';
-import { BugAnt } from '@/components/ui/Icon';
-import { AssistantPanel } from '@/components/assistant/AssistantPanel';
 
 export function BottomTabBar() {
   const {
@@ -26,23 +23,6 @@ export function BottomTabBar() {
 
   const gesture = useGestureRecognition();
   const [location, setLocation] = useLocation();
-  const [bugOpen, setBugOpen] = useState(false);
-
-  // Detect page context for Bug assistant
-  const getPageContext = () => {
-    const invoiceMatch = location.match(/^\/invoices\/(\d+)(?:\?|#|$)/);
-    if (invoiceMatch) {
-      return { scope: "invoice_detail" as const, scopeId: parseInt(invoiceMatch[1], 10), pageName: "Invoice" };
-    }
-    const pageNames: Record<string, string> = {
-      "/projects": "Projects", "/invoices": "Invoices", "/contacts": "Contacts",
-      "/notes": "Notes", "/calendar": "Calendar", "/gallery": "Gallery",
-      "/maps": "Maps", "/settings": "Settings", "/expenses": "Expenses", "/reports": "Reports",
-    };
-    const pageName = Object.entries(pageNames).find(([path]) => location.startsWith(path))?.[1] || "Mantodeus";
-    return { scope: "general" as const, pageName };
-  };
-  const pageContext = getPageContext();
 
   const handleTabClick = (tabId: TabId) => {
     // Always navigate when tab is clicked, even if it's already active
@@ -137,9 +117,9 @@ export function BottomTabBar() {
           </div>
         )}
 
-        <div className="flex h-14 items-center justify-between px-4">
+        <div className="flex h-14 items-center justify-center px-4">
           {/* Main Tabs */}
-          <div className="flex items-center justify-center gap-10 flex-1">
+          <div className="flex items-center justify-around gap-10 flex-1">
             {TABS.map((tab) => {
               const isActive = tab.id === activeTab;
               const Icon = tab.icon;
@@ -211,40 +191,7 @@ export function BottomTabBar() {
               );
             })}
           </div>
-
-          {/* Separator */}
-          <div className="h-8 w-px bg-border/60 mx-2" />
-
-          {/* Bug Assistant Button */}
-          <button
-            onClick={() => setBugOpen(true)}
-            className={cn(
-              'relative flex items-center justify-center',
-              'w-10 h-10 rounded-xl',
-              'bg-primary/10 hover:bg-primary/20',
-              'transition-all duration-150',
-              'active:scale-95',
-              'select-none'
-            )}
-            style={{
-              touchAction: 'none',
-              WebkitUserSelect: 'none',
-              userSelect: 'none',
-            }}
-            aria-label="Open Bug assistant"
-          >
-            <BugAnt className="h-5 w-5 text-primary" strokeWidth={1.5} />
-          </button>
         </div>
-
-        {/* Bug Assistant Panel */}
-        <AssistantPanel
-          open={bugOpen}
-          onOpenChange={setBugOpen}
-          scope={pageContext.scope}
-          scopeId={pageContext.scope === "invoice_detail" ? pageContext.scopeId : undefined}
-          pageName={pageContext.pageName}
-        />
       </div>
     </div>
   );

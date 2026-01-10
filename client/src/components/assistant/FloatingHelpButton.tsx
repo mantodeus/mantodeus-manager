@@ -1,8 +1,8 @@
 /**
- * Floating Bug Button (Desktop Only)
+ * Floating Bug Button
  * 
- * On mobile, Bug is in the bottom tab bar.
- * On desktop, this floating button provides access.
+ * - Mobile: Floating button bottom-right, above tab bar
+ * - Desktop: Floating button bottom-right (triggers left sidebar panel)
  */
 
 import { useState } from "react";
@@ -53,9 +53,6 @@ export function FloatingHelpButton() {
   const isMobile = useIsMobile();
   const { scope, scopeId, pageName } = usePageContext();
 
-  // On mobile, Bug is in the bottom tab bar - don't show floating button
-  if (isMobile) return null;
-
   return (
     <>
       <Button
@@ -70,7 +67,7 @@ export function FloatingHelpButton() {
           "shadow-lg",
           "transition-all duration-200 ease-out",
           "hover:scale-105",
-          "bottom-6 right-6",
+          isMobile ? "bottom-20 right-4" : "bottom-6 right-6", // Mobile: above tab bar
           bugOpen && "opacity-0 pointer-events-none scale-90"
         )}
         style={{ zIndex: 10001 }}

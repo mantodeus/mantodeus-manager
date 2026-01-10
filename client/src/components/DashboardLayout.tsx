@@ -299,7 +299,7 @@ function DashboardLayoutContent({
         onOpenChange={setDataDialogOpen}
       />
 
-      {/* Bug Assistant - Desktop only (mobile uses tab bar) */}
+      {/* Bug Assistant - Floating button for both mobile and desktop */}
       <FloatingHelpButton />
     </>
   );
