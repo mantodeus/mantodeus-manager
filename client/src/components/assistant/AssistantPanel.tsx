@@ -112,6 +112,7 @@ export function AssistantPanel({
   const [snapHeights, setSnapHeights] = useState<SnapHeights>(computeSnapHeights);
   const [currentHeight, setCurrentHeight] = useState<number>(() => computeSnapHeights().mid);
   const [isDragging, setIsDragging] = useState(false);
+  const [tabBarBottom, setTabBarBottom] = useState<number>(TAB_BAR_HEIGHT);
   
   // Refs
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -170,21 +171,72 @@ export function AssistantPanel({
     setCurrentHeight(snapHeights[snapState]);
   }, [snapState, snapHeights, isMobile, isDragging]);
 
-  // Simple scroll lock - just prevent .app-content from scrolling
-  // Don't use position:fixed on body as it breaks PWA layout
+  // Dynamically measure tab bar position (PWA-safe)
   useEffect(() => {
     if (!isMobile || !isOpen) return;
     
-    // Just lock .app-content scroll
+    const measureTabBar = () => {
+      const tabBar = document.querySelector('.bottom-tab-bar') as HTMLElement;
+      if (tabBar) {
+        const rect = tabBar.getBoundingClientRect();
+        // Distance from bottom of viewport to top of tab bar
+        const bottomOffset = window.innerHeight - rect.top;
+        setTabBarBottom(bottomOffset);
+      } else {
+        // Fallback to default
+        setTabBarBottom(TAB_BAR_HEIGHT);
+      }
+    };
+    
+    // Measure immediately and on resize
+    measureTabBar();
+    window.addEventListener('resize', measureTabBar);
+    window.addEventListener('orientationchange', measureTabBar);
+    
+    // Also measure after a short delay (PWA layout might settle)
+    const timeout = setTimeout(measureTabBar, 100);
+    
+    return () => {
+      window.removeEventListener('resize', measureTabBar);
+      window.removeEventListener('orientationchange', measureTabBar);
+      clearTimeout(timeout);
+    };
+  }, [isMobile, isOpen]);
+
+  // Lock page scroll when chat is open (PWA-compatible)
+  useEffect(() => {
+    if (!isMobile || !isOpen) return;
+    
+    // Lock .app-content scroll
     const appContent = document.querySelector('.app-content') as HTMLElement;
+    let originalAppContentOverflow = '';
     if (appContent) {
-      const originalOverflow = appContent.style.overflow;
+      originalAppContentOverflow = appContent.style.overflow;
       appContent.style.overflow = 'hidden';
-      
-      return () => {
-        appContent.style.overflow = originalOverflow;
-      };
     }
+    
+    // Prevent touch events from scrolling the page behind
+    const preventPageScroll = (e: TouchEvent) => {
+      // Only prevent if touch is NOT inside the chat messages container
+      const target = e.target as HTMLElement;
+      if (messagesContainerRef.current?.contains(target)) {
+        // Allow scrolling within chat
+        return;
+      }
+      
+      // Block all other touches
+      e.preventDefault();
+    };
+    
+    // Use capture phase to catch events early
+    document.addEventListener('touchmove', preventPageScroll, { passive: false, capture: true });
+    
+    return () => {
+      if (appContent) {
+        appContent.style.overflow = originalAppContentOverflow;
+      }
+      document.removeEventListener('touchmove', preventPageScroll, { capture: true });
+    };
   }, [isMobile, isOpen]);
 
   // Drag handling
@@ -393,8 +445,8 @@ export function AssistantPanel({
           ]
         )}
         style={isMobile ? {
-          // Position directly above tab bar (56px = h-14)
-          bottom: `${TAB_BAR_HEIGHT}px`,
+          // Position dynamically measured above tab bar (PWA-safe)
+          bottom: `${tabBarBottom}px`,
           height: `${currentHeight}px`,
           boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.15)",
         } : undefined}
@@ -588,6 +640,18 @@ export function AssistantPanel({
               WebkitOverflowScrolling: 'touch',
               // Allow vertical scroll only within this container
               touchAction: 'pan-y',
+            }}
+            onTouchStart={(e) => {
+              // Stop propagation to prevent page scroll
+              e.stopPropagation();
+            }}
+            onTouchMove={(e) => {
+              // Stop propagation to prevent page scroll
+              e.stopPropagation();
+            }}
+            onWheel={(e) => {
+              // Stop wheel events from reaching page
+              e.stopPropagation();
             }}
           >
             {messages.length === 0 && !isTourActive && !isTourComplete && (
