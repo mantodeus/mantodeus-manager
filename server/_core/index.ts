@@ -127,7 +127,7 @@ async function startServer() {
 
   // #region agent log - Debug logging endpoint for production PWA debugging
   const fs = await import("fs");
-  const debugLogPath = path.join(__dirname, "../../.cursor/debug-pwa.log");
+  const debugLogPath = path.join(process.cwd(), ".cursor/debug-pwa.log");
   app.post("/api/debug/log", (req, res) => {
     try {
       const logEntry = JSON.stringify({ ...req.body, serverTime: Date.now() }) + "\n";
