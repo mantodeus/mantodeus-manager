@@ -2,7 +2,7 @@
 import { config } from "dotenv";
 import { resolve } from "path";
 import { existsSync } from "fs";
-import { defineConfig } from "drizzle-kit";
+import * as drizzleKit from "drizzle-kit";
 
 // Try to load .env file explicitly
 const envPath = resolve(process.cwd(), ".env");
@@ -24,7 +24,7 @@ if (!connectionString) {
   );
 }
 
-export default defineConfig({
+export default drizzleKit.defineConfig({
   schema: "./drizzle/schema.ts",
   out: "./drizzle",
   dialect: "mysql",

@@ -855,6 +855,71 @@ export async function getContactsByUser(userId: number) {
   }
 }
 
+export async function getAllContacts(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  try {
+    const results = await db
+      .select()
+      .from(contacts)
+      .where(eq(contacts.createdBy, userId))
+      .orderBy(desc(contacts.updatedAt));
+    
+    // Ensure emails and phoneNumbers are properly typed, defaulting to null if not present
+    return results.map(contact => ({
+      ...contact,
+      emails: contact.emails ?? null,
+      phoneNumbers: contact.phoneNumbers ?? null,
+    }));
+  } catch (error) {
+    console.error("[Database] Error fetching all contacts:", error);
+    // If error is due to missing columns, try without the new columns
+    try {
+      const results = await db
+        .select({
+          id: contacts.id,
+          name: contacts.name,
+          clientName: contacts.clientName,
+          type: contacts.type,
+          contactPerson: contacts.contactPerson,
+          email: contacts.email,
+          phone: contacts.phone,
+          phoneNumber: contacts.phoneNumber,
+          address: contacts.address,
+          streetName: contacts.streetName,
+          streetNumber: contacts.streetNumber,
+          postalCode: contacts.postalCode,
+          city: contacts.city,
+          country: contacts.country,
+          vatStatus: contacts.vatStatus,
+          vatNumber: contacts.vatNumber,
+          taxNumber: contacts.taxNumber,
+          leitwegId: contacts.leitwegId,
+          latitude: contacts.latitude,
+          longitude: contacts.longitude,
+          notes: contacts.notes,
+          archivedAt: contacts.archivedAt,
+          trashedAt: contacts.trashedAt,
+          createdBy: contacts.createdBy,
+          createdAt: contacts.createdAt,
+          updatedAt: contacts.updatedAt,
+        })
+        .from(contacts)
+        .where(eq(contacts.createdBy, userId))
+        .orderBy(desc(contacts.updatedAt));
+      
+      return results.map(contact => ({
+        ...contact,
+        emails: null,
+        phoneNumbers: null,
+      }));
+    } catch (fallbackError) {
+      console.error("[Database] Fallback query also failed:", fallbackError);
+      throw error;
+    }
+  }
+}
+
 export async function getContactById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
@@ -1781,8 +1846,6 @@ export async function createInvoice(data: Omit<InsertInvoice, "id"> & { items?: 
     cancelledInvoiceId,
     issueDate,
     dueDate: data.dueDate ?? null,
-    sentAt: (data as any).sentAt ?? null,
-    paidAt: (data as any).paidAt ?? null,
     notes: data.notes ?? null,
     servicePeriodStart: data.servicePeriodStart ?? null,
     servicePeriodEnd: data.servicePeriodEnd ?? null,
