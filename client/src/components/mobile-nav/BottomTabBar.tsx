@@ -19,15 +19,21 @@ export function BottomTabBar() {
   useEffect(() => {
     const vv = window.visualViewport;
 
+    // Capture initial viewport height BEFORE keyboard opens.
+    // In iOS PWA, window.innerHeight shrinks WITH the viewport, so we can't use it as reference.
+    const initialVvHeight = vv?.height ?? window.innerHeight;
+
     // #region agent log
-    fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BottomTabBar.tsx:useEffect',message:'Keyboard effect init',data:{hasVisualViewport:!!vv,innerHeight:window.innerHeight,vvHeight:vv?.height},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
+    fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BottomTabBar.tsx:useEffect',message:'Keyboard effect init',data:{hasVisualViewport:!!vv,innerHeight:window.innerHeight,vvHeight:vv?.height,initialVvHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
     // #endregion
 
     const isKeyboardOpen = () => {
       if (!vv) return false;
-      // iOS keyboard typically reduces visualViewport height by a large amount.
-      const delta = window.innerHeight - vv.height;
-      return delta > 120;
+      // Compare current height to INITIAL height (not window.innerHeight).
+      // iOS PWA: both shrink together, but initial captures pre-keyboard state.
+      const currentHeight = vv.height;
+      const delta = initialVvHeight - currentHeight;
+      return delta > 100; // Keyboard typically > 250px, use 100 threshold
     };
 
     const activeElementWantsHide = () => {
@@ -53,7 +59,7 @@ export function BottomTabBar() {
       const wantsHide = activeElementWantsHide();
       const shouldHide = kbOpen && wantsHide;
       // #region agent log
-      fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BottomTabBar.tsx:update',message:'Keyboard update',data:{kbOpen,wantsHide,shouldHide,delta:vv?(window.innerHeight-vv.height):null,activeTag:document.activeElement?.tagName,hasDataAttr:document.activeElement?.getAttribute?.('data-hide-tabbar-when-keyboard')},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2,H4'})}).catch(()=>{});
+      fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BottomTabBar.tsx:update',message:'Keyboard update',data:{kbOpen,wantsHide,shouldHide,delta:vv?(initialVvHeight-vv.height):null,initialVvHeight,currentVvHeight:vv?.height,activeTag:document.activeElement?.tagName,hasDataAttr:document.activeElement?.getAttribute?.('data-hide-tabbar-when-keyboard')},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2,H4',runId:'post-fix'})}).catch(()=>{});
       // #endregion
       setHideBecauseKeyboard(shouldHide);
       document.body.classList.toggle('tabbar-hidden', shouldHide);
