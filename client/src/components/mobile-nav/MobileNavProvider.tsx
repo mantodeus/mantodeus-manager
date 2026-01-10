@@ -6,7 +6,7 @@
  * § 14: Component Structure
  */
 
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
 import type {
   MobileNavContextValue,
   TabId,
@@ -103,12 +103,15 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
     }
   }, [lastUsedModuleByTab]);
 
-  const setLastUsedModule = (tab: TabId, path: string) => {
-    setLastUsedModuleByTab(prev => ({
-      ...prev,
-      [tab]: path,
-    }));
-  };
+  const setLastUsedModule = useCallback((tab: TabId, path: string) => {
+    setLastUsedModuleByTab(prev => {
+      if (prev[tab] === path) return prev;
+      return {
+        ...prev,
+        [tab]: path,
+      };
+    });
+  }, []);
 
   // Use string literals to avoid potential enum initialization issues during module evaluation
   const scrollerVisible =
@@ -117,7 +120,7 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
     gestureState === 'momentum' ||
     gestureState === 'snapping';
 
-  const value: MobileNavContextValue = {
+  const value: MobileNavContextValue = useMemo(() => ({
     activeTab,
     setActiveTab,
     gestureState,
@@ -131,7 +134,16 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
     setLastUsedModule,
     gestureTab,
     setGestureTab,
-  };
+  }), [
+    activeTab,
+    gestureState,
+    scrollerVisible,
+    highlightedIndex,
+    pointerPosition,
+    lastUsedModuleByTab,
+    setLastUsedModule,
+    gestureTab,
+  ]);
 
   return (
     <MobileNavContext.Provider value={value}>

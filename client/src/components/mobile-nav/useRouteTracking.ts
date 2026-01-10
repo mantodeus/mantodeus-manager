@@ -34,7 +34,7 @@ function getTabForRoute(path: string): TabId | null {
  */
 export function useRouteTracking() {
   const [location] = useLocation();
-  const { setActiveTab, setLastUsedModule, activeTab } = useMobileNav();
+  const { setActiveTab, setLastUsedModule, activeTab, lastUsedModuleByTab } = useMobileNav();
 
   useEffect(() => {
     const tab = getTabForRoute(location);
@@ -52,11 +52,11 @@ export function useRouteTracking() {
         module => location === module.path || location.startsWith(module.path + '/')
       );
       
-      if (matchingModule) {
+      if (matchingModule && lastUsedModuleByTab[tab] !== location) {
         // Track the actual path visited (could be a detail page)
         setLastUsedModule(tab, location);
       }
     }
-  }, [location, setActiveTab, setLastUsedModule, activeTab]);
+  }, [location, setActiveTab, setLastUsedModule, activeTab, lastUsedModuleByTab]);
 }
 
