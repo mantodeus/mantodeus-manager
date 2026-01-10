@@ -5,11 +5,12 @@
  * Supports step-by-step guided tours with element highlighting.
  * 
  * Mobile behavior:
- * - Takes bottom 50% of screen (not fullscreen)
+ * - Takes bottom 50% of screen as a floating sheet
  * - Sits above the bottom tab bar (never behind it)
+ * - Page content above remains fully scrollable and interactive
+ * - Chat scroll is isolated (overscroll-behavior: contain)
  * - Persists across navigation (doesn't close when switching tabs)
- * - ModuleScroller appears above it
- * - Background doesn't scroll when open
+ * - ModuleScroller appears above it when gesture is active
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -94,34 +95,8 @@ export function AssistantPanel({
   const isTourPaused = tourStatus === "paused";
   const isTourComplete = tourStatus === "complete";
 
-  // Mobile: Prevent background scroll when Manto is open
-  useEffect(() => {
-    if (!isMobile) return;
-    
-    if (isOpen) {
-      // Lock body scroll
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-      document.body.style.top = `-${window.scrollY}px`;
-    } else {
-      // Restore body scroll
-      const scrollY = document.body.style.top;
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.top = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
-    }
-    
-    return () => {
-      // Cleanup on unmount
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.top = '';
-    };
-  }, [isOpen, isMobile]);
+  // No body scroll lock - page above Manto should remain fully scrollable and functional
+  // Scroll isolation is handled via overscroll-behavior on the chat container
 
   const askMutation = trpc.ai.ask.useMutation({
     onSuccess: (response: AssistantResponse) => {
@@ -237,17 +212,16 @@ export function AssistantPanel({
       <div
         className={cn(
           "fixed flex flex-col",
-          "bg-background border border-border",
+          "bg-background",
           isMobile ? [
             "z-[500]", // Below ModuleScroller (1000) and tab bar (9999), but above page content
-            "shadow-2xl",
             "animate-in slide-in-from-bottom-4 fade-in duration-200",
             "inset-x-0", // Full width on mobile
-            "rounded-t-2xl rounded-b-none", // Rounded top only
-            "border-b-0", // No bottom border (sits on tab bar)
+            "rounded-t-3xl", // Smooth rounded top corners
+            "border-t border-x border-border/60", // Subtle border on top and sides
           ] : [
             "z-[100]", // Above overlay
-            "shadow-xl border-r",
+            "shadow-xl border-r border-border",
             "animate-in slide-in-from-left fade-in duration-300",
             "left-0 top-0 bottom-0",
             "w-[420px]",
@@ -255,23 +229,25 @@ export function AssistantPanel({
           ]
         )}
         style={isMobile ? {
-          // Bottom half of screen, sitting directly above the tab bar
-          top: '50%',
-          bottom: `${BOTTOM_TAB_BAR_HEIGHT}px`,
-          boxShadow: "0 -10px 40px -10px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05)",
+          // Bottom half of screen, positioned directly above the tab bar
+          // Using height instead of top/bottom for more reliable positioning
+          height: `calc(50vh - env(safe-area-inset-bottom, 0px))`,
+          bottom: `calc(${BOTTOM_TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
+          // Elevated shadow for floating sheet effect
+          boxShadow: "0 -8px 32px -4px rgba(0, 0, 0, 0.15), 0 -2px 8px -2px rgba(0, 0, 0, 0.1)",
         } : undefined}
       >
         {/* Mobile drag handle indicator */}
         {isMobile && (
-          <div className="flex justify-center pt-2 pb-1">
-            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+          <div className="flex justify-center pt-3 pb-2 shrink-0">
+            <div className="w-12 h-1.5 rounded-full bg-muted-foreground/40" />
           </div>
         )}
 
         {/* Header */}
         <div className={cn(
-          "flex items-center justify-between px-4 border-b border-border/50",
-          isMobile ? "py-2" : "py-3"
+          "flex items-center justify-between px-4 border-b border-border/30 shrink-0",
+          isMobile ? "py-2.5" : "py-3"
         )}>
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
@@ -409,8 +385,16 @@ export function AssistantPanel({
           </div>
         )}
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
+        {/* Messages - with scroll isolation to prevent scroll chaining to page behind */}
+        <div 
+          className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0"
+          style={{
+            // Prevent scroll from chaining to the page behind
+            overscrollBehavior: 'contain',
+            // Ensure touch scrolling works smoothly on iOS
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
           {messages.length === 0 && !isTourActive && !isTourComplete && (
             <div className="space-y-3 py-2">
               <div className="flex items-start gap-2.5">
@@ -497,7 +481,12 @@ export function AssistantPanel({
 
         {/* Input - hidden during active tour */}
         {!isTourActive && !isTourPaused && (
-          <div className="px-3 py-3 border-t border-border/50">
+          <div 
+            className={cn(
+              "px-4 border-t border-border/30 shrink-0",
+              isMobile ? "py-3 pb-4" : "py-3"
+            )}
+          >
             <div className="flex gap-2">
               <Input
                 ref={inputRef}
@@ -511,13 +500,19 @@ export function AssistantPanel({
                 }}
                 placeholder="Ask anything..."
                 disabled={isLoading}
-                className="flex-1 h-9 text-sm rounded-xl bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/50"
+                className={cn(
+                  "flex-1 text-sm rounded-xl bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/50",
+                  isMobile ? "h-11" : "h-9" // Larger touch target on mobile
+                )}
               />
               <Button
                 onClick={handleSend}
                 disabled={!inputValue.trim() || isLoading}
                 size="icon"
-                className="h-9 w-9 rounded-xl shrink-0"
+                className={cn(
+                  "rounded-xl shrink-0",
+                  isMobile ? "h-11 w-11" : "h-9 w-9" // Larger touch target on mobile
+                )}
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

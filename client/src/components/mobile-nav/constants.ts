@@ -111,25 +111,13 @@ type _AssertThreeTabs = typeof TABS extends readonly [any, any, any]
  */
 export const MODULE_REGISTRY = {
   office: [
-    // Bottom to top: Projects, Inspections, Reports, Invoices, Expenses, Statements, Notes
+    // Array order reversed: Notes at top of array = bottom of screen when scrolling
+    { id: 'notes', label: 'Notes', path: '/notes', icon: File },
     {
-      id: 'projects',
-      label: 'Projects',
-      path: '/projects',
-      icon: FolderOpen,
-    },
-    {
-      id: 'inspections',
-      label: 'Inspections',
-      path: '/inspections',
-      icon: ClipboardCheck,
-    },
-    { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
-    {
-      id: 'invoices',
-      label: 'Invoices',
-      path: '/invoices',
-      icon: DocumentCurrencyEuro,
+      id: 'statements',
+      label: 'Statements',
+      path: '/statements',
+      icon: FileSpreadsheet,
     },
     {
       id: 'expenses',
@@ -138,21 +126,32 @@ export const MODULE_REGISTRY = {
       icon: Receipt,
     },
     {
-      id: 'statements',
-      label: 'Statements',
-      path: '/statements',
-      icon: FileSpreadsheet,
+      id: 'invoices',
+      label: 'Invoices',
+      path: '/invoices',
+      icon: DocumentCurrencyEuro,
     },
-    { id: 'notes', label: 'Notes', path: '/notes', icon: File },
+    { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
+    {
+      id: 'inspections',
+      label: 'Inspections',
+      path: '/inspections',
+      icon: ClipboardCheck,
+    },
+    {
+      id: 'projects',
+      label: 'Projects',
+      path: '/projects',
+      icon: FolderOpen,
+    },
   ],
   action: [
-    // Bottom to top: Manto, Capto, Voco
+    // Array order reversed: Voco at top = bottom of screen
     {
-      id: 'manto',
-      label: 'Manto',
-      path: '/action/manto',
-      icon: BugAnt,
-      isAction: true,
+      id: 'voco',
+      label: 'Voco',
+      path: '/action/voco',
+      icon: Microphone,
     },
     {
       id: 'capto',
@@ -161,34 +160,35 @@ export const MODULE_REGISTRY = {
       icon: Camera,
     },
     {
-      id: 'voco',
-      label: 'Voco',
-      path: '/action/voco',
-      icon: Microphone,
+      id: 'manto',
+      label: 'Manto',
+      path: '/action/manto',
+      icon: BugAnt,
+      isAction: true,
     },
   ],
   tools: [
-    // Bottom to top: Contacts, Calendar, Gallery, Map, Weather, Settings
+    // Array order reversed: Settings at top = bottom of screen
     {
-      id: 'contacts-tools',
-      label: 'Contacts',
-      path: '/contacts',
-      icon: Users,
+      id: 'settings',
+      label: 'Settings',
+      path: '/settings',
+      icon: SettingsIcon,
     },
-    { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarIcon },
-    { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image },
-    { id: 'map', label: 'Map', path: '/maps', icon: MapPin },
     {
       id: 'weather',
       label: 'Weather',
       path: '/weather',
       icon: CloudSun,
     },
+    { id: 'map', label: 'Map', path: '/maps', icon: MapPin },
+    { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image },
+    { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarIcon },
     {
-      id: 'settings',
-      label: 'Settings',
-      path: '/settings',
-      icon: SettingsIcon,
+      id: 'contacts-tools',
+      label: 'Contacts',
+      path: '/contacts',
+      icon: Users,
     },
   ],
 } as const;
