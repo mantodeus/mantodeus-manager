@@ -26,6 +26,10 @@ import {
   PencilSquareIcon,
   HomeModern,
   WrenchScrewdriver,
+  Bolt,
+  BugAnt,
+  Camera,
+  Microphone,
 } from '@/components/ui/Icon';
 
 /**
