@@ -112,7 +112,6 @@ export function AssistantPanel({
   const [snapHeights, setSnapHeights] = useState<SnapHeights>(computeSnapHeights);
   const [currentHeight, setCurrentHeight] = useState<number>(() => computeSnapHeights().mid);
   const [isDragging, setIsDragging] = useState(false);
-  const [tabBarBottom, setTabBarBottom] = useState<number>(TAB_BAR_HEIGHT);
   
   // Refs
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -171,95 +170,23 @@ export function AssistantPanel({
     setCurrentHeight(snapHeights[snapState]);
   }, [snapState, snapHeights, isMobile, isDragging]);
 
-  // Dynamically measure tab bar position (PWA-safe)
-  // Measure the actual visual position of the tab bar (accounts for CSS transforms)
-  useEffect(() => {
-    if (!isMobile || !isOpen) return;
-    
-    const measureTabBar = () => {
-      const tabBar = document.querySelector('.bottom-tab-bar') as HTMLElement;
-      if (tabBar) {
-        // getBoundingClientRect() accounts for CSS transforms
-        // This gives us the actual visual position
-        const rect = tabBar.getBoundingClientRect();
-        // Distance from bottom of viewport to top of tab bar
-        // This is where we want to position the chat
-        const distanceFromBottom = window.innerHeight - rect.top;
-        setTabBarBottom(Math.max(TAB_BAR_HEIGHT, distanceFromBottom));
-      } else {
-        // Fallback: calculate from CSS variables
-        const root = document.documentElement;
-        const computedStyle = getComputedStyle(root);
-        const safeAreaBottom = parseInt(
-          computedStyle.getPropertyValue('env(safe-area-inset-bottom)') || '0',
-          10
-        );
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-        const extraOffset = isStandalone ? 12 : 0; // --bottom-tab-extra-offset
-        const extraPadding = isStandalone ? 20 : 0; // Home gesture area
-        setTabBarBottom(TAB_BAR_HEIGHT + safeAreaBottom + extraPadding - extraOffset);
-      }
-    };
-    
-    // Measure immediately
-    measureTabBar();
-    
-    // Re-measure on resize/orientation
-    window.addEventListener('resize', measureTabBar);
-    window.addEventListener('orientationchange', measureTabBar);
-    
-    // Also measure after layout settles (PWA-specific)
-    const timeout1 = setTimeout(measureTabBar, 100);
-    const timeout2 = setTimeout(measureTabBar, 300);
-    
-    return () => {
-      window.removeEventListener('resize', measureTabBar);
-      window.removeEventListener('orientationchange', measureTabBar);
-      clearTimeout(timeout1);
-      clearTimeout(timeout2);
-    };
-  }, [isMobile, isOpen]);
-
   // Lock page scroll when chat is open (PWA-compatible)
-  // Only lock overflow, don't change layout/position
+  // Lock html/body overflow (required for iOS PWA)
   useEffect(() => {
     if (!isMobile || !isOpen) return;
     
-    // Lock .app-content scroll ONLY (don't touch body/html)
-    const appContent = document.querySelector('.app-content') as HTMLElement;
-    let originalAppContentOverflow = '';
-    if (appContent) {
-      originalAppContentOverflow = appContent.style.overflow;
-      appContent.style.overflow = 'hidden';
-    }
+    const html = document.documentElement;
+    const body = document.body;
     
-    // Prevent touch events from scrolling the page behind
-    // Only prevent if touch is NOT inside the chat messages container
-    const preventPageScroll = (e: TouchEvent) => {
-      const target = e.target as HTMLElement;
-      
-      // Allow scrolling within chat messages container
-      if (messagesContainerRef.current?.contains(target)) {
-        return;
-      }
-      
-      // Allow scrolling within the sheet itself (for drag handle)
-      if (sheetRef.current?.contains(target)) {
-        return;
-      }
-      
-      // Block all other touches to prevent page scroll
-      e.preventDefault();
-    };
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
     
-    // Use capture phase to catch events early
-    document.addEventListener('touchmove', preventPageScroll, { passive: false, capture: true });
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
     
     return () => {
-      if (appContent) {
-        appContent.style.overflow = originalAppContentOverflow;
-      }
-      document.removeEventListener('touchmove', preventPageScroll, { capture: true });
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
     };
   }, [isMobile, isOpen]);
 
@@ -469,8 +396,8 @@ export function AssistantPanel({
           ]
         )}
         style={isMobile ? {
-          // Position dynamically measured above tab bar (PWA-safe)
-          bottom: `${tabBarBottom}px`,
+          // Position using CSS variable (single source of truth)
+          bottom: 'var(--bottom-safe-area)',
           height: `${currentHeight}px`,
           boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.15)",
         } : undefined}
