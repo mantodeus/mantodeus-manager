@@ -164,7 +164,7 @@ export function ModuleScroller() {
   // Â§ 6.1: Scope - use gestureTab if set (the tab being gestured), otherwise activeTab
   // This allows gestures to work on any tab, not just the currently active one
   const currentTab = gestureTab ?? activeTab;
-  const modules = MODULE_REGISTRY[currentTab];
+  const modules = MODULE_REGISTRY[currentTab] || [];
   useEffect(() => {
     if (
       !scrollerVisible ||
@@ -241,7 +241,7 @@ export function ModuleScroller() {
 
   // Initialize highlighted index to first item when scroller appears
   useEffect(() => {
-    if (scrollerVisible && highlightedIndex === null) {
+    if (scrollerVisible && highlightedIndex === null && modules.length > 0) {
       setHighlightedIndex(modules.length - 1);
     }
   }, [scrollerVisible, highlightedIndex, modules.length, setHighlightedIndex]);

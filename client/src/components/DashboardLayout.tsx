@@ -25,6 +25,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, File, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, Receipt, ClipboardCheck, DocumentCurrencyEuro, BugAnt } from "@/components/ui/Icon";
 import { DataExportImportDialog } from "./DataExportImportDialog";
 import { FloatingHelpButton } from "./assistant/FloatingHelpButton";
+import { AssistantPanel } from "./assistant/AssistantPanel";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { AppLoadingScreen } from './AppLoadingScreen';
@@ -307,6 +308,9 @@ function DashboardLayoutContent({
         open={dataDialogOpen}
         onOpenChange={setDataDialogOpen}
       />
+
+      {/* Manto Assistant Panel - available on both desktop and mobile */}
+      <MantoAssistantWrapper />
     </>
   );
 }
@@ -337,7 +341,49 @@ function MobileDashboardLayoutContent({
       <ScrollerOverlay />
       <ModuleScroller />
       <BottomTabBar />
+      
+      {/* Manto Assistant Panel - available on mobile */}
+      <MantoAssistantWrapper />
     </div>
   );
 }
 
+// Helper component to provide page context to AssistantPanel
+function MantoAssistantWrapper() {
+  const [location] = useLocation();
+  
+  // Invoice detail page: /invoices/:id
+  const invoiceMatch = location.match(/^\/invoices\/(\d+)(?:\?|#|$)/);
+  if (invoiceMatch) {
+    return (
+      <AssistantPanel
+        scope="invoice_detail"
+        scopeId={parseInt(invoiceMatch[1], 10)}
+        pageName="Invoice"
+      />
+    );
+  }
+  
+  // Default: general scope
+  const pageNames: Record<string, string> = {
+    "/projects": "Projects",
+    "/invoices": "Invoices",
+    "/contacts": "Contacts",
+    "/notes": "Notes",
+    "/calendar": "Calendar",
+    "/gallery": "Gallery",
+    "/maps": "Maps",
+    "/settings": "Settings",
+    "/expenses": "Expenses",
+    "/reports": "Reports",
+  };
+  
+  const pageName = Object.entries(pageNames).find(([path]) => location.startsWith(path))?.[1] || "Mantodeus";
+  
+  return (
+    <AssistantPanel
+      scope="general"
+      pageName={pageName}
+    />
+  );
+}

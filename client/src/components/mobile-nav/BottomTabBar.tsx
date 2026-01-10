@@ -10,6 +10,7 @@ import { useGestureRecognition } from './useGestureRecognition';
 import { MODULE_REGISTRY, TABS } from './constants';
 import { useLocation } from 'wouter';
 import type { TabId } from './types';
+import { useManto } from '@/contexts/MantoContext';
 
 export function BottomTabBar() {
   const {
@@ -23,11 +24,22 @@ export function BottomTabBar() {
 
   const gesture = useGestureRecognition();
   const [location, setLocation] = useLocation();
+  const { openManto } = useManto();
 
   const handleTabClick = (tabId: TabId) => {
     // Always navigate when tab is clicked, even if it's already active
     // This allows users to return to the last page in that tab
     setActiveTab(tabId);
+    
+    // Special handling for action tab - don't navigate, just open Manto if it's the first module
+    if (tabId === 'action') {
+      const firstModule = MODULE_REGISTRY[tabId]?.[0];
+      if (firstModule?.isAction) {
+        openManto();
+        return;
+      }
+    }
+    
     const lastUsedPath = lastUsedModuleByTab[tabId];
     const fallbackPath = MODULE_REGISTRY[tabId]?.[0]?.path;
     const targetPath = lastUsedPath ?? fallbackPath;
