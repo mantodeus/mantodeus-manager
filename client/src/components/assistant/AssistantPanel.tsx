@@ -80,51 +80,19 @@ const GENERAL_PROMPTS = [
 ];
 
 /**
- * Detect if running as installed PWA (standalone mode)
- * PWA WebViews have different viewport behavior
- */
-function isPWA(): boolean {
-  if (typeof window === 'undefined') return false;
-  
-  // iOS Safari PWA
-  const isIOSPWA = (window.navigator as any).standalone === true;
-  
-  // Android/Desktop PWA
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-  
-  return isIOSPWA || isStandalone;
-}
-
-/**
- * Get the actual visible viewport height
- * PWA WebViews may report incorrect innerHeight
- * visualViewport API gives accurate measurements
- */
-function getVisualViewportHeight(): number {
-  if (typeof window === 'undefined') return 800;
-  
-  // Prefer visualViewport API (more accurate in PWA)
-  if (window.visualViewport) {
-    return window.visualViewport.height;
-  }
-  
-  // Fallback to innerHeight
-  return window.innerHeight;
-}
-
-/**
- * Compute snap heights based on actual visible viewport
+ * Compute snap heights based on viewport
+ * Using simple window.innerHeight - more reliable across browsers and PWA
  */
 function computeSnapHeights(): SnapHeights {
-  const viewportHeight = getVisualViewportHeight();
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
   
-  // Available height = viewport minus tab bar
-  const availableHeight = viewportHeight - TAB_BAR_HEIGHT;
+  // Available height = full viewport minus tab bar
+  const availableHeight = vh - TAB_BAR_HEIGHT;
   
   return {
     collapsed: COLLAPSED_HEIGHT,
     mid: Math.round(availableHeight * 0.5),
-    full: Math.max(availableHeight - 24, COLLAPSED_HEIGHT + 100), // 24px breathing room at top
+    full: availableHeight - 20, // Small top margin
   };
 }
 
@@ -144,9 +112,6 @@ export function AssistantPanel({
   const [snapHeights, setSnapHeights] = useState<SnapHeights>(computeSnapHeights);
   const [currentHeight, setCurrentHeight] = useState<number>(() => computeSnapHeights().mid);
   const [isDragging, setIsDragging] = useState(false);
-  
-  // Track if we're in PWA mode
-  const [inPWA] = useState(() => isPWA());
   
   // Refs
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -176,7 +141,6 @@ export function AssistantPanel({
   const isTourComplete = tourStatus === "complete";
 
   // Recompute snap heights on viewport changes
-  // Use visualViewport API for PWA accuracy
   useEffect(() => {
     if (!isMobile) return;
     
@@ -191,19 +155,10 @@ export function AssistantPanel({
     // Initial computation
     updateHeights();
     
-    // Listen to visualViewport changes (works in PWA)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateHeights);
-    }
-    
-    // Fallback listeners
     window.addEventListener('resize', updateHeights);
     window.addEventListener('orientationchange', updateHeights);
     
     return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', updateHeights);
-      }
       window.removeEventListener('resize', updateHeights);
       window.removeEventListener('orientationchange', updateHeights);
     };
@@ -215,101 +170,21 @@ export function AssistantPanel({
     setCurrentHeight(snapHeights[snapState]);
   }, [snapState, snapHeights, isMobile, isDragging]);
 
-  // CRITICAL: Hard-lock background scroll when chat is open (PWA-compatible)
+  // Simple scroll lock - just prevent .app-content from scrolling
+  // Don't use position:fixed on body as it breaks PWA layout
   useEffect(() => {
     if (!isMobile || !isOpen) return;
     
-    // Store scroll position before locking
-    const scrollY = window.scrollY;
-    
-    // Lock html and body scroll
-    const html = document.documentElement;
-    const body = document.body;
-    
-    // Store original styles
-    const originalHtmlOverflow = html.style.overflow;
-    const originalBodyOverflow = body.style.overflow;
-    const originalBodyPosition = body.style.position;
-    const originalBodyTop = body.style.top;
-    const originalBodyWidth = body.style.width;
-    const originalHtmlHeight = html.style.height;
-    const originalBodyHeight = body.style.height;
-    
-    // Apply hard scroll lock (required for PWA WebView)
-    html.style.overflow = 'hidden';
-    html.style.height = '100%';
-    body.style.overflow = 'hidden';
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.width = '100%';
-    body.style.height = '100%';
-    
-    // Also lock .app-content if it exists
+    // Just lock .app-content scroll
     const appContent = document.querySelector('.app-content') as HTMLElement;
-    let originalAppContentOverflow = '';
     if (appContent) {
-      originalAppContentOverflow = appContent.style.overflow;
+      const originalOverflow = appContent.style.overflow;
       appContent.style.overflow = 'hidden';
+      
+      return () => {
+        appContent.style.overflow = originalOverflow;
+      };
     }
-    
-    // Prevent touchmove on document (PWA scroll bleed fix)
-    const preventScroll = (e: TouchEvent) => {
-      // Allow scrolling inside the chat messages container
-      const target = e.target as HTMLElement;
-      if (messagesContainerRef.current?.contains(target)) {
-        // Check if messages container can scroll
-        const container = messagesContainerRef.current;
-        const canScrollUp = container.scrollTop > 0;
-        const canScrollDown = container.scrollTop < container.scrollHeight - container.clientHeight;
-        
-        // Get touch direction
-        if (e.touches.length === 1) {
-          const touch = e.touches[0];
-          const startY = (container as any)._touchStartY || touch.clientY;
-          const deltaY = startY - touch.clientY;
-          
-          // Allow scroll if there's room in that direction
-          if ((deltaY > 0 && canScrollDown) || (deltaY < 0 && canScrollUp)) {
-            return; // Allow the scroll
-          }
-        }
-      }
-      
-      // Block scroll everywhere else
-      e.preventDefault();
-    };
-    
-    // Track touch start for direction detection
-    const onTouchStart = (e: TouchEvent) => {
-      if (messagesContainerRef.current?.contains(e.target as HTMLElement)) {
-        (messagesContainerRef.current as any)._touchStartY = e.touches[0].clientY;
-      }
-    };
-    
-    document.addEventListener('touchstart', onTouchStart, { passive: true });
-    document.addEventListener('touchmove', preventScroll, { passive: false });
-    
-    return () => {
-      // Restore original styles
-      html.style.overflow = originalHtmlOverflow;
-      html.style.height = originalHtmlHeight;
-      body.style.overflow = originalBodyOverflow;
-      body.style.position = originalBodyPosition;
-      body.style.top = originalBodyTop;
-      body.style.width = originalBodyWidth;
-      body.style.height = originalBodyHeight;
-      
-      if (appContent) {
-        appContent.style.overflow = originalAppContentOverflow;
-      }
-      
-      // Restore scroll position
-      window.scrollTo(0, scrollY);
-      
-      // Remove event listeners
-      document.removeEventListener('touchstart', onTouchStart);
-      document.removeEventListener('touchmove', preventScroll);
-    };
   }, [isMobile, isOpen]);
 
   // Drag handling
@@ -518,12 +393,10 @@ export function AssistantPanel({
           ]
         )}
         style={isMobile ? {
-          // Position directly above tab bar
-          bottom: TAB_BAR_HEIGHT,
-          height: currentHeight,
+          // Position directly above tab bar (56px = h-14)
+          bottom: `${TAB_BAR_HEIGHT}px`,
+          height: `${currentHeight}px`,
           boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.15)",
-          // Prevent any touch events from bleeding through
-          touchAction: 'none',
         } : undefined}
       >
         {/* Drag Handle - always visible on mobile */}
