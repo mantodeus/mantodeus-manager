@@ -227,10 +227,16 @@ export function AssistantPanel({
 
     let lastY = 0;
     let lastScrollTop = 0;
+    let logCount = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
       lastY = e.touches[0]?.clientY ?? 0;
       lastScrollTop = messagesEl.scrollTop;
+      // #region agent log
+      if (logCount < 4) {
+        fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchStart',message:'touchstart messages',data:{scrollTop:messagesEl.scrollTop,scrollHeight:messagesEl.scrollHeight,clientHeight:messagesEl.clientHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
+      }
+      // #endregion
     };
 
     const handleTouchMove = (e: TouchEvent) => {
@@ -261,6 +267,13 @@ export function AssistantPanel({
       
       lastY = y;
       lastScrollTop = scrollTop;
+
+      // #region agent log
+      if (logCount < 12) {
+        logCount++;
+        fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchMove',message:'touchmove messages',data:{scrollTop,scrollHeight,clientHeight,dy,scrollDelta,atTop,atBottom},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
+      }
+      // #endregion
     };
 
     messagesEl.addEventListener('touchstart', handleTouchStart, { passive: true });
