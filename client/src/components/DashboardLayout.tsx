@@ -22,7 +22,7 @@ import {
 import { APP_TITLE } from "@/const";
 import { Logo } from "@/components/Logo";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, File, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, Receipt, ClipboardCheck, DocumentCurrencyEuro } from "@/components/ui/Icon";
+import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, File, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, Receipt, ClipboardCheck, DocumentCurrencyEuro, BugAnt } from "@/components/ui/Icon";
 import { DataExportImportDialog } from "./DataExportImportDialog";
 import { FloatingHelpButton } from "./assistant/FloatingHelpButton";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -227,42 +227,51 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    <AvatarFallback className="text-xs font-medium">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
+            <div className="flex items-center gap-2">
+              {/* Manto Assistant Button */}
+              <FloatingHelpButton inSidebar />
+              
+              {/* User Profile Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors flex-1 text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <Avatar className="h-9 w-9 border shrink-0">
+                      <AvatarFallback className="text-xs font-medium">
+                        {user?.name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {/* Hidden by default, shown in dropdown */}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {/* User info shown in dropdown */}
+                  <div className="px-2 py-2 mb-1">
+                    <p className="text-sm font-medium">
                       {user?.name || "-"}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {user?.email || "-"}
                     </p>
                   </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={() => setDataDialogOpen(true)}
-                  className="cursor-pointer"
-                >
-                  <FileJson className="mr-2 h-4 w-4" />
-                  <span>Export / Import Data</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={logout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setDataDialogOpen(true)}
+                    className="cursor-pointer"
+                  >
+                    <FileJson className="mr-2 h-4 w-4" />
+                    <span>Export / Import Data</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={logout}
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </SidebarFooter>
         </Sidebar>
         <div
@@ -298,9 +307,6 @@ function DashboardLayoutContent({
         open={dataDialogOpen}
         onOpenChange={setDataDialogOpen}
       />
-
-      {/* Bug Assistant - Floating button for both mobile and desktop */}
-      <FloatingHelpButton />
     </>
   );
 }
@@ -331,6 +337,9 @@ function MobileDashboardLayoutContent({
       <ScrollerOverlay />
       <ModuleScroller />
       <BottomTabBar />
+      
+      {/* Manto Assistant - Mobile floating button */}
+      <FloatingHelpButton />
     </div>
   );
 }

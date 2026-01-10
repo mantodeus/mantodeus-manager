@@ -1,8 +1,8 @@
 /**
- * Floating Bug Button
+ * Manto Assistant Button
  * 
  * - Mobile: Floating button bottom-right, above tab bar
- * - Desktop: Floating button bottom-right (triggers left sidebar panel)
+ * - Desktop (inSidebar): Button in sidebar footer next to user profile
  */
 
 import { useState } from "react";
@@ -48,37 +48,62 @@ function usePageContext(): { scope: AssistantScope; scopeId?: number; pageName: 
   return { scope: "general", pageName };
 }
 
-export function FloatingHelpButton() {
-  const [bugOpen, setBugOpen] = useState(false);
+interface FloatingHelpButtonProps {
+  inSidebar?: boolean; // If true, renders as a sidebar button (desktop only)
+}
+
+export function FloatingHelpButton({ inSidebar = false }: FloatingHelpButtonProps) {
+  const [mantoOpen, setMantoOpen] = useState(false);
   const isMobile = useIsMobile();
   const { scope, scopeId, pageName } = usePageContext();
+
+  // If in sidebar mode, only show on desktop
+  if (inSidebar && isMobile) {
+    return null;
+  }
+
+  // If not in sidebar mode, only show on mobile
+  if (!inSidebar && !isMobile) {
+    return null;
+  }
 
   return (
     <>
       <Button
-        onClick={() => setBugOpen(true)}
+        onClick={() => setMantoOpen(true)}
         size="icon"
         className={cn(
-          "fixed rounded-xl",
-          "h-11 w-11",
-          "bg-primary/10 hover:bg-primary/20",
-          "text-primary",
-          "border border-primary/20",
-          "shadow-lg",
-          "transition-all duration-200 ease-out",
-          "hover:scale-105",
-          isMobile ? "bottom-20 right-4" : "bottom-6 right-6", // Mobile: above tab bar
-          bugOpen && "opacity-0 pointer-events-none scale-90"
+          inSidebar ? [
+            // Sidebar button style (desktop)
+            "rounded-lg",
+            "h-9 w-9",
+            "bg-primary/10 hover:bg-primary/20",
+            "text-primary",
+            "border border-primary/20",
+            "transition-colors",
+          ] : [
+            // Floating button style (mobile)
+            "fixed rounded-xl",
+            "h-11 w-11",
+            "bg-primary/10 hover:bg-primary/20",
+            "text-primary",
+            "border border-primary/20",
+            "shadow-lg",
+            "transition-all duration-200 ease-out",
+            "hover:scale-105",
+            "bottom-20 right-4", // Mobile: above tab bar
+            mantoOpen && "opacity-0 pointer-events-none scale-90",
+          ]
         )}
-        style={{ zIndex: 10001 }}
-        aria-label="Open Bug assistant"
+        style={inSidebar ? undefined : { zIndex: 10001 }}
+        aria-label="Open Manto assistant"
       >
-        <BugAnt className="h-5 w-5" />
+        <BugAnt className={inSidebar ? "h-4 w-4" : "h-5 w-5"} />
       </Button>
 
       <AssistantPanel
-        open={bugOpen}
-        onOpenChange={setBugOpen}
+        open={mantoOpen}
+        onOpenChange={setMantoOpen}
         scope={scope}
         scopeId={scopeId}
         pageName={pageName}
