@@ -143,7 +143,7 @@ export function AssistantPanel({
   // Recompute snap heights on viewport changes
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:snapHeightsEffect',message:'isMobile check at mount',data:{isMobile,isOpen,userAgent:navigator.userAgent,standalone:(navigator as any).standalone,displayMode:window.matchMedia?.('(display-mode: standalone)')?.matches},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
+    fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:snapHeightsEffect',message:'isMobile check at mount',data:{isMobile,isOpen,userAgent:navigator.userAgent,standalone:(navigator as any).standalone,displayMode:window.matchMedia?.('(display-mode: standalone)')?.matches},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
     // #endregion
     if (!isMobile) return;
     
@@ -178,12 +178,12 @@ export function AssistantPanel({
   // while allowing normal page scroll elsewhere.
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:scrollLockEffect',message:'Scroll lock effect entry',data:{isMobile,isOpen},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3'})}).catch(()=>{});
+    fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:scrollLockEffect',message:'Scroll lock effect entry',data:{isMobile,isOpen},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3'})}).catch(()=>{});
     // #endregion
     if (!isMobile || !isOpen) return;
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:scrollLockEffect',message:'Attaching touch handlers',data:{isMobile,isOpen},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3'})}).catch(()=>{});
+    fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:scrollLockEffect',message:'Attaching touch handlers',data:{isMobile,isOpen},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3'})}).catch(()=>{});
     // #endregion
 
     let lastY = 0;
@@ -202,7 +202,7 @@ export function AssistantPanel({
       const isInsideSheet = !!sheetEl && !!targetNode && sheetEl.contains(targetNode);
 
       // #region agent log
-      if (touchMoveCount <= 3) { fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:onTouchMove',message:'Touch move fired',data:{isInsideSheet,hasSheetEl:!!sheetEl,targetTag:(targetNode as Element)?.tagName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{}); }
+      if (touchMoveCount <= 3) { fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:onTouchMove',message:'Touch move fired',data:{isInsideSheet,hasSheetEl:!!sheetEl,targetTag:(targetNode as Element)?.tagName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{}); }
       // #endregion
 
       if (!isInsideSheet) return;

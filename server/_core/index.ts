@@ -125,6 +125,20 @@ async function startServer() {
     });
   });
 
+  // #region agent log - Debug logging endpoint for production PWA debugging
+  const fs = await import("fs");
+  const debugLogPath = path.join(__dirname, "../../.cursor/debug-pwa.log");
+  app.post("/api/debug/log", (req, res) => {
+    try {
+      const logEntry = JSON.stringify({ ...req.body, serverTime: Date.now() }) + "\n";
+      fs.appendFileSync(debugLogPath, logEntry);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: String(e) });
+    }
+  });
+  // #endregion
+
   // PDF endpoints - require authentication
   app.get("/api/invoices/:id/pdf", async (req, res) => {
     try {
