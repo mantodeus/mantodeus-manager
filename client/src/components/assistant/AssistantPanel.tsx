@@ -81,6 +81,7 @@ export function AssistantPanel({
   const [dragging, setDragging] = useState(false);
   const dragStartY = useRef<number | null>(null);
   const dragStartHeight = useRef<number | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -104,18 +105,38 @@ export function AssistantPanel({
   const isTourPaused = tourStatus === "paused";
   const isTourComplete = tourStatus === "complete";
 
-  // No body scroll lock - page above Manto should remain fully scrollable and functional
-  // Scroll isolation is handled via overscroll-behavior on the chat container
+  // Lock background page scroll while Manto is open (mobile)
+  useEffect(() => {
+    if (!isMobile) return;
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overscrollBehavior = "none";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overscrollBehavior = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overscrollBehavior = "";
+    };
+  }, [isOpen, isMobile]);
 
   // Compute snap heights based on viewport and measured header/handle
   const snapHeights = useMemo(() => {
     const vh = typeof window !== "undefined" ? window.innerHeight : 800;
     const handleH = handleRef.current?.getBoundingClientRect().height ?? 20;
     const headerH = headerRef.current?.getBoundingClientRect().height ?? 56;
-    const collapsed = handleH + headerH + 12; // small padding
-    const safeBottom = 0; // env() handled in CSS; JS fallback 0
-    const full = Math.max(collapsed + 40, vh - BOTTOM_TAB_BAR_HEIGHT - safeBottom - 8);
+
+    // Collapsed: handle + one text line (~24) + padding
+    const oneLine = 24;
+    const collapsed = handleH + oneLine + 16;
+
+    // Mid: ~50% of viewport
     const mid = Math.max(collapsed + 80, vh * 0.5);
+
+    // Full: near full height above tab bar & safe area (CSS handles env, fallback here)
+    const full = Math.max(collapsed + 120, vh - BOTTOM_TAB_BAR_HEIGHT - 12);
+
     return { collapsed, mid, full };
   }, [isMobile]);
 
@@ -135,24 +156,17 @@ export function AssistantPanel({
   useEffect(() => {
     if (!isMobile) return;
     const onResize = () => {
-      const vh = window.innerHeight;
-      const handleH = handleRef.current?.getBoundingClientRect().height ?? 20;
-      const headerH = headerRef.current?.getBoundingClientRect().height ?? 56;
-      const collapsed = handleH + headerH + 12;
-      const safeBottom = 0;
-      const full = Math.max(collapsed + 40, vh - BOTTOM_TAB_BAR_HEIGHT - safeBottom - 8);
-      const mid = Math.max(collapsed + 80, vh * 0.5);
       const target =
         snap === "collapsed"
-          ? collapsed
+          ? snapHeights.collapsed
           : snap === "mid"
-            ? mid
-            : full;
+            ? snapHeights.mid
+            : snapHeights.full;
       setCurrentHeight(target);
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [snap, isMobile]);
+  }, [snap, snapHeights, isMobile]);
 
   const startDrag = (e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
     if (!isMobile) return;
@@ -324,11 +338,13 @@ export function AssistantPanel({
             "rounded-none border-l-0 border-t-0 border-b-0",
           ]
         )}
+        ref={sheetRef}
         style={isMobile ? {
           bottom: `calc(${BOTTOM_TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
           height: currentHeight ?? snapHeights.mid,
           boxShadow: "0 -8px 32px -4px rgba(0, 0, 0, 0.15), 0 -2px 8px -2px rgba(0, 0, 0, 0.1)",
           touchAction: "none",
+          pointerEvents: "auto",
         } : undefined}
         onPointerMove={onDragMove}
         onPointerUp={endDrag}
@@ -356,158 +372,167 @@ export function AssistantPanel({
           </div>
         )}
 
-        {/* Header */}
-        <div className={cn(
-          "flex items-center justify-between px-4 border-b border-border/30 shrink-0",
-          isMobile ? "py-2.5" : "py-3"
-        )} ref={headerRef}>
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
-              <BugAnt className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold">Manto</h2>
-                {isTourActive && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-[10px] text-primary font-medium">
-                    Step {currentStepIndex + 1}/{totalSteps}
-                  </span>
-                )}
-                {isTourPaused && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 text-[10px] text-amber-600 font-medium">
-                    Paused
-                  </span>
-                )}
-                {isTourComplete && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-500/10 text-[10px] text-green-600 font-medium">
-                    <CheckCircle2 className="h-2.5 w-2.5" />
-                    Done
-                  </span>
-                )}
+        {/* Header - hidden in collapsed snap */}
+        {(snap === "mid" || snap === "full") && (
+          <div className={cn(
+            "flex items-center justify-between px-4 border-b border-border/30 shrink-0",
+            isMobile ? "py-2.5" : "py-3"
+          )} ref={headerRef}>
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                <BugAnt className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold">Manto</h2>
+                  {isTourActive && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-[10px] text-primary font-medium">
+                      Step {currentStepIndex + 1}/{totalSteps}
+                    </span>
+                  )}
+                  {isTourPaused && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 text-[10px] text-amber-600 font-medium">
+                      Paused
+                    </span>
+                  )}
+                  {isTourComplete && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-500/10 text-[10px] text-green-600 font-medium">
+                      <CheckCircle2 className="h-2.5 w-2.5" />
+                      Done
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-lg hover:bg-muted"
-                >
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[200px] text-xs z-[10003]">
-                <p>Powered by Mistral, a European AI company.</p>
-                <p className="mt-1 text-muted-foreground">Your data stays yours - we don't train models on it.</p>
-              </TooltipContent>
-            </Tooltip>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={closeManto}
-              className="h-7 w-7 rounded-lg hover:bg-muted"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Tour Step UI - shows when tour is active */}
-        {(isTourActive || isTourPaused) && currentStep && (
-          <div className="px-4 py-3 border-b border-border/50 bg-primary/5">
-            {/* Step description */}
-            <p className="text-sm font-medium mb-3">{currentStep.description}</p>
-            
-            {/* Navigation buttons */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg hover:bg-muted"
+                  >
+                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[200px] text-xs z-[10003]">
+                  <p>Powered by Mistral, a European AI company.</p>
+                  <p className="mt-1 text-muted-foreground">Your data stays yours - we don't train models on it.</p>
+                </TooltipContent>
+              </Tooltip>
               <Button
                 variant="ghost"
-                size="sm"
-                onClick={previousStep}
-                disabled={currentStepIndex === 0}
-                className="h-8 text-xs gap-1"
+                size="icon"
+                onClick={closeManto}
+                className="h-7 w-7 rounded-lg hover:bg-muted"
               >
-                <ChevronLeft className="h-3.5 w-3.5" />
-                Back
+                <X className="h-3.5 w-3.5" />
               </Button>
-              
-              <div className="flex items-center gap-1.5">
-                {Array.from({ length: totalSteps }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "w-1.5 h-1.5 rounded-full transition-colors",
-                      i === currentStepIndex ? "bg-primary" : "bg-muted-foreground/30"
-                    )}
-                  />
+            </div>
+          </div>
+        )}
+
+        {/* Tour UI hidden in collapsed */}
+        {(snap === "mid" || snap === "full") && (
+          <>
+            {/* Tour Step UI - shows when tour is active */}
+            {(isTourActive || isTourPaused) && currentStep && (
+              <div className="px-4 py-3 border-b border-border/50 bg-primary/5">
+                {/* Step description */}
+                <p className="text-sm font-medium mb-3">{currentStep.description}</p>
+                
+                {/* Navigation buttons */}
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={previousStep}
+                    disabled={currentStepIndex === 0}
+                    className="h-8 text-xs gap-1"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    Back
+                  </Button>
+                  
+                  <div className="flex items-center gap-1.5">
+                    {Array.from({ length: totalSteps }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full transition-colors",
+                          i === currentStepIndex ? "bg-primary" : "bg-muted-foreground/30"
+                        )}
+                      />
+                    ))}
+                  </div>
+                  
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={nextStep}
+                    className="h-8 text-xs gap-1"
+                  >
+                    {currentStepIndex === totalSteps - 1 ? "Finish" : "Next"}
+                    {currentStepIndex < totalSteps - 1 && <ChevronRight className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+                
+                {/* Cancel link */}
+                <div className="mt-2 text-center">
+                  <button
+                    onClick={handleCancelTour}
+                    className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Cancel guide
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tour Complete Message */}
+            {isTourComplete && (
+              <div className="px-4 py-4 border-b border-border/50 bg-green-500/5 text-center">
+                <CheckCircle2 className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-green-600">All done!</p>
+                <p className="text-xs text-muted-foreground mt-1">Ask another question or close</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAndAskNew}
+                  className="mt-3 h-7 text-xs"
+                >
+                  Clear & Ask New Question
+                </Button>
+              </div>
+            )}
+
+            {/* Warnings */}
+            {activeWarnings && activeWarnings.length > 0 && (isTourActive || isTourPaused) && (
+              <div className="px-4 py-2 border-b border-border/50 bg-amber-500/5">
+                {activeWarnings.map((warning, i) => (
+                  <p key={i} className="text-xs text-amber-600 flex items-start gap-1.5">
+                    <span className="shrink-0">⚠️</span>
+                    <span>{warning.message}</span>
+                  </p>
                 ))}
               </div>
-              
-              <Button
-                variant="default"
-                size="sm"
-                onClick={nextStep}
-                className="h-8 text-xs gap-1"
-              >
-                {currentStepIndex === totalSteps - 1 ? "Finish" : "Next"}
-                {currentStepIndex < totalSteps - 1 && <ChevronRight className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-            
-            {/* Cancel link */}
-            <div className="mt-2 text-center">
-              <button
-                onClick={handleCancelTour}
-                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Cancel guide
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Tour Complete Message */}
-        {isTourComplete && (
-          <div className="px-4 py-4 border-b border-border/50 bg-green-500/5 text-center">
-            <CheckCircle2 className="h-8 w-8 text-green-600 mx-auto mb-2" />
-            <p className="text-sm font-medium text-green-600">All done!</p>
-            <p className="text-xs text-muted-foreground mt-1">Ask another question or close</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClearAndAskNew}
-              className="mt-3 h-7 text-xs"
-            >
-              Clear & Ask New Question
-            </Button>
-          </div>
-        )}
-
-        {/* Warnings */}
-        {activeWarnings && activeWarnings.length > 0 && (isTourActive || isTourPaused) && (
-          <div className="px-4 py-2 border-b border-border/50 bg-amber-500/5">
-            {activeWarnings.map((warning, i) => (
-              <p key={i} className="text-xs text-amber-600 flex items-start gap-1.5">
-                <span className="shrink-0">⚠️</span>
-                <span>{warning.message}</span>
-              </p>
-            ))}
-          </div>
+            )}
+          </>
         )}
 
         {/* Messages - with scroll isolation to prevent scroll chaining to page behind */}
         <div 
-          className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0"
+          className={cn(
+            "flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0",
+            snap === "collapsed" && "pb-2"
+          )}
           style={{
-            // Prevent scroll from chaining to the page behind
             overscrollBehavior: 'contain',
-            // Ensure touch scrolling works smoothly on iOS
             WebkitOverflowScrolling: 'touch',
+            pointerEvents: 'auto',
           }}
         >
-          {messages.length === 0 && !isTourActive && !isTourComplete && (
+          {messages.length === 0 && !isTourActive && !isTourComplete && snap !== "collapsed" && (
             <div className="space-y-3 py-2">
               <div className="flex items-start gap-2.5">
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
@@ -541,37 +566,52 @@ export function AssistantPanel({
             </div>
           )}
 
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                "flex gap-2.5",
-                message.role === "user" ? "justify-end" : "justify-start"
-              )}
-            >
-              {message.role === "assistant" && (
-                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
-                  <BugAnt className="h-3.5 w-3.5 text-primary" />
-                </div>
-              )}
+          {messages.map((message, idx) => {
+            const isLast = idx === messages.length - 1;
+            return (
               <div
+                key={message.id}
                 className={cn(
-                  "max-w-[85%] rounded-xl px-3 py-2",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted/60"
+                  "flex gap-2.5",
+                  message.role === "user" ? "justify-end" : "justify-start"
                 )}
               >
-                {message.role === "assistant" ? (
-                  <div className="text-sm prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0.5">
-                    <SimpleMarkdown>{message.content}</SimpleMarkdown>
+                {message.role === "assistant" && (
+                  <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
+                    <BugAnt className="h-3.5 w-3.5 text-primary" />
                   </div>
-                ) : (
-                  <p className="text-sm">{message.content}</p>
                 )}
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-xl px-3 py-2",
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/60"
+                  )}
+                  style={
+                    snap === "collapsed" && !isLast
+                      ? { display: "none" }
+                      : snap === "collapsed"
+                        ? { overflow: "hidden", display: "block" }
+                        : undefined
+                  }
+                >
+                  {message.role === "assistant" ? (
+                    <div className={cn(
+                      "text-sm prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0.5",
+                      snap === "collapsed" && "line-clamp-1"
+                    )}>
+                      <SimpleMarkdown>{message.content}</SimpleMarkdown>
+                    </div>
+                  ) : (
+                    <p className={cn("text-sm", snap === "collapsed" && "line-clamp-1")}>
+                      {message.content}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {isLoading && (
             <div className="flex gap-2.5 justify-start">
@@ -612,10 +652,12 @@ export function AssistantPanel({
                 }}
                 placeholder="Ask anything..."
                 disabled={isLoading}
+                inputMode="text"
                 className={cn(
                   "flex-1 text-sm rounded-xl bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/50",
-                  isMobile ? "h-11" : "h-9" // Larger touch target on mobile
+                  isMobile ? "h-11 text-base" : "h-9"
                 )}
+                style={isMobile ? { fontSize: 16 } : undefined}
               />
               <Button
                 onClick={handleSend}
@@ -623,7 +665,7 @@ export function AssistantPanel({
                 size="icon"
                 className={cn(
                   "rounded-xl shrink-0",
-                  isMobile ? "h-11 w-11" : "h-9 w-9" // Larger touch target on mobile
+                  isMobile ? "h-11 w-11" : "h-9 w-9"
                 )}
               >
                 {isLoading ? (
