@@ -269,15 +269,15 @@ export function ModuleScroller() {
             'md:hidden'
           )}
           style={{
-            top: 'calc(50% - 100px)', // Positioned above the centered icons
+            top: 'calc(50% - 160px)', // Higher up - 160px above center
           }}
         >
           <span
             className={cn(
-              'text-lg font-medium',
+              'text-xl font-semibold uppercase', // Larger font + all caps
               'text-foreground',
               'drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)]',
-              'tracking-wide'
+              'tracking-wider'
             )}
           >
             {highlightedModule.label}

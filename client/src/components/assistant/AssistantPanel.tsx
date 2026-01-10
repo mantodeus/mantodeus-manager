@@ -3,6 +3,13 @@
  * 
  * Modern, sleek AI chat widget powered by Mistral.
  * Supports step-by-step guided tours with element highlighting.
+ * 
+ * Mobile behavior:
+ * - Takes bottom 50% of screen (not fullscreen)
+ * - Sits above the bottom tab bar (never behind it)
+ * - Persists across navigation (doesn't close when switching tabs)
+ * - ModuleScroller appears above it
+ * - Background doesn't scroll when open
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -22,6 +29,9 @@ import {
 } from "@/components/ui/tooltip";
 import { useGuidance, type TourStep, type GuidanceWarning } from "@/contexts/GuidanceContext";
 
+// Bottom tab bar height (h-14 = 56px) - must match BottomTabBar.tsx
+const BOTTOM_TAB_BAR_HEIGHT = 56;
+
 export type AssistantScope = "invoice_detail" | "general";
 
 interface AssistantPanelProps {
@@ -31,12 +41,8 @@ interface AssistantPanelProps {
   onAction?: (action: "OPEN_SHARE" | "OPEN_ADD_PAYMENT" | "OPEN_EDIT_DUE_DATE" | "OPEN_REVERT_STATUS") => void;
 }
 
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-}
+// ChatMessage type is now MantoMessage from context
+import type { MantoMessage } from "@/contexts/MantoContext";
 
 interface AssistantResponse {
   answerMarkdown: string;
@@ -63,9 +69,8 @@ export function AssistantPanel({
   pageName = "Mantodeus",
   onAction,
 }: AssistantPanelProps) {
-  const { isOpen, closeManto } = useManto();
+  const { isOpen, closeManto, messages, addMessage, clearMessages } = useManto();
   const isMobile = useIsMobile();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -89,15 +94,41 @@ export function AssistantPanel({
   const isTourPaused = tourStatus === "paused";
   const isTourComplete = tourStatus === "complete";
 
+  // Mobile: Prevent background scroll when Manto is open
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    if (isOpen) {
+      // Lock body scroll
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${window.scrollY}px`;
+    } else {
+      // Restore body scroll
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    }
+    
+    return () => {
+      // Cleanup on unmount
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
+    };
+  }, [isOpen, isMobile]);
+
   const askMutation = trpc.ai.ask.useMutation({
     onSuccess: (response: AssistantResponse) => {
-      const assistantMessage: ChatMessage = {
-        id: `msg-${Date.now()}`,
+      addMessage({
         role: "assistant",
         content: response.answerMarkdown,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      });
       setIsLoading(false);
       
       // Start tour if steps are present
@@ -139,14 +170,10 @@ export function AssistantPanel({
     // Cancel any active tour before new question
     cancelTour();
 
-    const userMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
+    addMessage({
       role: "user",
       content: trimmed,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    });
     setInputValue("");
     setIsLoading(true);
 
@@ -168,13 +195,10 @@ export function AssistantPanel({
       // Cancel any active tour
       cancelTour();
       
-      const userMessage: ChatMessage = {
-        id: `msg-${Date.now()}`,
+      addMessage({
         role: "user",
         content: prompt,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
+      });
       setInputValue("");
       setIsLoading(true);
       askMutation.mutate({
@@ -190,11 +214,17 @@ export function AssistantPanel({
     cancelTour();
   };
 
+  const handleClearAndAskNew = () => {
+    cancelTour();
+    clearMessages();
+  };
+
   if (!isOpen) return null;
 
   return (
     <>
       {/* Desktop overlay - dims the main content when panel is open */}
+      {/* Mobile: No overlay - content is visible above the panel */}
       {!isMobile && (
         <div
           className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[99] animate-in fade-in duration-300"
@@ -209,11 +239,12 @@ export function AssistantPanel({
           "fixed flex flex-col",
           "bg-background border border-border",
           isMobile ? [
-            "z-[9998]", // Below tab bar (9999)
+            "z-[500]", // Below ModuleScroller (1000) and tab bar (9999), but above page content
             "shadow-2xl",
-            "animate-in slide-in-from-bottom-4 fade-in duration-300",
-            "inset-x-3 top-3 bottom-[4.5rem]", // Top margin + bottom above tab bar (56px + 16px)
-            "rounded-2xl",
+            "animate-in slide-in-from-bottom-4 fade-in duration-200",
+            "inset-x-0", // Full width on mobile
+            "rounded-t-2xl rounded-b-none", // Rounded top only
+            "border-b-0", // No bottom border (sits on tab bar)
           ] : [
             "z-[100]", // Above overlay
             "shadow-xl border-r",
@@ -224,11 +255,24 @@ export function AssistantPanel({
           ]
         )}
         style={isMobile ? {
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05)",
+          // Bottom half of screen, sitting directly above the tab bar
+          top: '50%',
+          bottom: `${BOTTOM_TAB_BAR_HEIGHT}px`,
+          boxShadow: "0 -10px 40px -10px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05)",
         } : undefined}
       >
+        {/* Mobile drag handle indicator */}
+        {isMobile && (
+          <div className="flex justify-center pt-2 pb-1">
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+          </div>
+        )}
+
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+        <div className={cn(
+          "flex items-center justify-between px-4 border-b border-border/50",
+          isMobile ? "py-2" : "py-3"
+        )}>
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
               <BugAnt className="h-4 w-4 text-primary" />
@@ -345,7 +389,7 @@ export function AssistantPanel({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleCancelTour}
+              onClick={handleClearAndAskNew}
               className="mt-3 h-7 text-xs"
             >
               Clear & Ask New Question

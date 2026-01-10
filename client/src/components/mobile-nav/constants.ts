@@ -111,6 +111,20 @@ type _AssertThreeTabs = typeof TABS extends readonly [any, any, any]
  */
 export const MODULE_REGISTRY = {
   office: [
+    // Bottom to top: Projects, Inspections, Reports, Invoices, Expenses, Statements, Notes
+    {
+      id: 'projects',
+      label: 'Projects',
+      path: '/projects',
+      icon: FolderOpen,
+    },
+    {
+      id: 'inspections',
+      label: 'Inspections',
+      path: '/inspections',
+      icon: ClipboardCheck,
+    },
+    { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
     {
       id: 'invoices',
       label: 'Invoices',
@@ -129,22 +143,10 @@ export const MODULE_REGISTRY = {
       path: '/statements',
       icon: FileSpreadsheet,
     },
-    { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
-    {
-      id: 'projects',
-      label: 'Projects',
-      path: '/projects',
-      icon: FolderOpen,
-    },
-    {
-      id: 'inspections',
-      label: 'Inspections',
-      path: '/inspections',
-      icon: ClipboardCheck,
-    },
     { id: 'notes', label: 'Notes', path: '/notes', icon: File },
   ],
   action: [
+    // Bottom to top: Manto, Capto, Voco
     {
       id: 'manto',
       label: 'Manto',
@@ -166,13 +168,7 @@ export const MODULE_REGISTRY = {
     },
   ],
   tools: [
-    { id: 'map', label: 'Map', path: '/maps', icon: MapPin },
-    {
-      id: 'weather',
-      label: 'Weather',
-      path: '/weather',
-      icon: CloudSun,
-    },
+    // Bottom to top: Contacts, Calendar, Gallery, Map, Weather, Settings
     {
       id: 'contacts-tools',
       label: 'Contacts',
@@ -181,12 +177,19 @@ export const MODULE_REGISTRY = {
     },
     { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarIcon },
     { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image },
+    { id: 'map', label: 'Map', path: '/maps', icon: MapPin },
+    {
+      id: 'weather',
+      label: 'Weather',
+      path: '/weather',
+      icon: CloudSun,
+    },
     {
       id: 'settings',
       label: 'Settings',
       path: '/settings',
       icon: SettingsIcon,
-    }, // Always last
+    },
   ],
 } as const;
 
