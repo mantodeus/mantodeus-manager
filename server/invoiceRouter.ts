@@ -1287,10 +1287,13 @@ export const invoiceRouter = router({
             confidence: normalized.confidence.overall,
           });
 
+          console.log("[Invoice Bulk Upload] Starting invoice creation process...");
+
           // Generate invoice number if not extracted
           let invoiceNumber = normalized.invoiceNumber;
           let invoiceCounter = 0;
           if (!invoiceNumber) {
+            console.log("[Invoice Bulk Upload] No invoice number extracted, generating one...");
             const settings = await db.getCompanySettingsByUserId(userId);
             if (settings) {
               // Use extracted date if available, otherwise use current date for invoice number generation
@@ -1303,11 +1306,14 @@ export const invoiceRouter = router({
               );
               invoiceNumber = generated.invoiceNumber;
               invoiceCounter = generated.invoiceCounter;
+              console.log("[Invoice Bulk Upload] Generated invoice number:", invoiceNumber);
             } else {
               // Fallback: generate a simple number
               invoiceNumber = `INV-${invoiceYear}-${Date.now()}`;
+              console.log("[Invoice Bulk Upload] Fallback invoice number:", invoiceNumber);
             }
           } else {
+            console.log("[Invoice Bulk Upload] Using extracted invoice number:", invoiceNumber);
             // Extract counter from invoice number if possible
             const match = invoiceNumber.match(/(\d+)$/);
             if (match) {
@@ -1317,20 +1323,27 @@ export const invoiceRouter = router({
 
           // Derive invoice name from filename
           const invoiceName = file.filename.replace(/\.[^/.]+$/, "");
+          console.log("[Invoice Bulk Upload] Invoice name:", invoiceName);
 
           // Match client (non-destructive - only preselect if confidence is high)
+          console.log("[Invoice Bulk Upload] Matching client:", normalized.clientName);
           const clientMatch = await matchClient(normalized.clientName, userId, 0.85);
           const matchedClientId = clientMatch.matchedClientId; // May be null if confidence too low
+          console.log("[Invoice Bulk Upload] Client match result:", { matchedClientId, confidence: clientMatch.matchConfidence });
 
           // Check for unique invoice name
+          console.log("[Invoice Bulk Upload] Checking invoice name uniqueness...");
           try {
             await db.ensureUniqueInvoiceName(userId, invoiceName);
+            console.log("[Invoice Bulk Upload] Invoice name is unique");
           } catch (error) {
+            console.error("[Invoice Bulk Upload] Invoice name conflict:", error);
             const message = error instanceof Error ? error.message : "Invoice name must be unique";
             throw new Error(message);
           }
 
           // Create invoice with needsReview=true
+          console.log("[Invoice Bulk Upload] Creating invoice record...");
           const uploadedAt = new Date();
           const created = await db.createInvoice({
             userId,
@@ -1366,9 +1379,12 @@ export const invoiceRouter = router({
             })),
           });
 
+          console.log("[Invoice Bulk Upload] Invoice created successfully, ID:", created.id);
           invoiceId = created.id;
           createdInvoiceIds.push(created.id);
         } catch (error) {
+          console.error("[Invoice Bulk Upload] Error during invoice creation:", error);
+          console.error("[Invoice Bulk Upload] Error stack:", error instanceof Error ? error.stack : "No stack trace");
           // If invoice was created but something else failed, try to clean up
           if (invoiceId) {
             try {
@@ -1378,6 +1394,7 @@ export const invoiceRouter = router({
             }
           }
 
+          console.error("[Invoice Bulk Upload] Adding error to list:", file.filename, errorMessage);
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
           errors.push({
             filename: file.filename,
@@ -1385,6 +1402,12 @@ export const invoiceRouter = router({
           });
         }
       }
+
+      console.log("[Invoice Bulk Upload] Bulk upload complete:", {
+        successCount: createdInvoiceIds.length,
+        errorCount: errors.length,
+        createdIds: createdInvoiceIds,
+      });
 
       return {
         success: createdInvoiceIds.length,

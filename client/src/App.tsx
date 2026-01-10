@@ -5,6 +5,7 @@ import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { GuidanceProvider } from "./contexts/GuidanceContext";
+import { MantoProvider } from "./contexts/MantoContext";
 import DashboardLayout from "./components/DashboardLayout";
 import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -374,10 +375,12 @@ function App() {
         // switchable
       >
         <GuidanceProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
+          <MantoProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </MantoProvider>
         </GuidanceProvider>
       </ThemeProvider>
     </ErrorBoundary>

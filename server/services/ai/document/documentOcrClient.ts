@@ -102,13 +102,14 @@ async function extractMarkdownFromDocument(
 
 /**
  * Step 2: Extract structured data from markdown using Mistral Chat
+ * Uses OCR-optimized model for document extraction
  */
 async function extractStructuredDataFromMarkdown(
   markdown: string,
   apiKey: string
 ): Promise<RawExtractionOutput> {
-  // Use a capable model for structured extraction
-  const model = ENV.aiAssistantModel || "mistral-large-latest";
+  // Use OCR-optimized model for structured extraction from documents
+  const model = ENV.ocrExtractionModel || "mistral-ocr-latest";
 
   console.log("[Mistral OCR] Step 2: Extracting structured data from markdown");
   console.log("[Mistral OCR] Using model:", model);

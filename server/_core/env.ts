@@ -57,6 +57,9 @@ export const ENV = {
   aiAssistantEnabled: process.env.AI_ASSISTANT_ENABLED === "true",
   aiAssistantModel: process.env.AI_ASSISTANT_MODEL || "mistral-medium-latest",
   aiAssistantTimeoutMs: Number(process.env.AI_ASSISTANT_TIMEOUT_MS) || 15000,
+  
+  // OCR / Document Extraction (uses mistral-ocr-latest by default)
+  ocrExtractionModel: process.env.OCR_EXTRACTION_MODEL || "mistral-ocr-latest",
 };
 
 // =============================================================================

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { Loader2, X, Send, BugAnt, HelpCircle, ChevronLeft, ChevronRight, CheckCircle2 } from "@/components/ui/Icon";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useManto } from "@/contexts/MantoContext";
 import { cn } from "@/lib/utils";
 import { SimpleMarkdown } from "@/components/SimpleMarkdown";
 import { toast } from "sonner";
@@ -24,8 +25,6 @@ import { useGuidance, type TourStep, type GuidanceWarning } from "@/contexts/Gui
 export type AssistantScope = "invoice_detail" | "general";
 
 interface AssistantPanelProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   scope: AssistantScope;
   scopeId?: number;
   pageName?: string;
@@ -59,13 +58,12 @@ const GENERAL_PROMPTS = [
 ];
 
 export function AssistantPanel({
-  open,
-  onOpenChange,
   scope,
   scopeId,
   pageName = "Mantodeus",
   onAction,
 }: AssistantPanelProps) {
+  const { isOpen, closeManto } = useManto();
   const isMobile = useIsMobile();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -118,21 +116,21 @@ export function AssistantPanel({
   
   // Clear tour when panel closes
   useEffect(() => {
-    if (!open) {
+    if (!isOpen) {
       cancelTour();
     }
-  }, [open, cancelTour]);
+  }, [isOpen, cancelTour]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    if (open) {
+    if (isOpen) {
       scrollToBottom();
       setTimeout(() => inputRef.current?.focus(), 150);
     }
-  }, [open, messages]);
+  }, [isOpen, messages]);
 
   const handleSend = async () => {
     const trimmed = inputValue.trim();
@@ -192,7 +190,7 @@ export function AssistantPanel({
     cancelTour();
   };
 
-  if (!open) return null;
+  if (!isOpen) return null;
 
   return (
     <>
@@ -200,7 +198,7 @@ export function AssistantPanel({
       {!isMobile && (
         <div
           className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[99] animate-in fade-in duration-300"
-          onClick={() => onOpenChange(false)}
+          onClick={closeManto}
           aria-hidden="true"
         />
       )}
@@ -211,12 +209,11 @@ export function AssistantPanel({
           "fixed flex flex-col",
           "bg-background border border-border",
           isMobile ? [
-            "z-[10002]",
+            "z-[9998]", // Below tab bar (9999)
             "shadow-2xl",
             "animate-in slide-in-from-bottom-4 fade-in duration-300",
-            "inset-x-3 bottom-16 top-auto",
+            "inset-x-3 top-3 bottom-[4.5rem]", // Top margin + bottom above tab bar (56px + 16px)
             "rounded-2xl",
-            "max-h-[70vh]",
           ] : [
             "z-[100]", // Above overlay
             "shadow-xl border-r",
@@ -277,7 +274,7 @@ export function AssistantPanel({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onOpenChange(false)}
+              onClick={closeManto}
               className="h-7 w-7 rounded-lg hover:bg-muted"
             >
               <X className="h-3.5 w-3.5" />
