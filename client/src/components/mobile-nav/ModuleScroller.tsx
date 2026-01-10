@@ -14,6 +14,7 @@ import { useMobileNav } from './MobileNavProvider';
 import { MODULE_REGISTRY, DEPTH_OFFSET, VISUAL_HIERARCHY, FEATURES } from './constants';
 import type { GestureState, Module } from './types';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
+import { useManto } from '@/contexts/MantoContext';
 
 /**
  * Calculate depth offset for a module item
@@ -76,6 +77,7 @@ function ModuleItem({
   offset,
   blur,
   scrollerSide,
+  showLabel,
 }: {
   module: Module;
   index: number;
@@ -84,6 +86,7 @@ function ModuleItem({
   offset: number;
   blur: number;
   scrollerSide: 'left' | 'right' | 'center';
+  showLabel: boolean;
 }) {
   const Icon = module.icon;
 
@@ -97,7 +100,11 @@ function ModuleItem({
   const scale = isActive ? VISUAL_HIERARCHY.ACTIVE.scale : 1.0;
 
   // Smaller gap for center tab (site)
-  const iconTextGap = scrollerSide === 'center' ? 'gap-1.5' : 'gap-2.5';
+  const iconTextGap = showLabel
+    ? scrollerSide === 'center'
+      ? 'gap-1.5'
+      : 'gap-2.5'
+    : 'gap-0 justify-center';
 
   return (
     <div
@@ -105,6 +112,7 @@ function ModuleItem({
       className={cn(
         'module-item flex items-center px-5 py-3',
         iconTextGap,
+        showLabel ? 'justify-start' : 'justify-center',
         'gesture-surface',
         'cursor-pointer select-none',
         'transition-all duration-150 ease-out',
@@ -118,18 +126,17 @@ function ModuleItem({
     >
       <Icon
         className={cn(
-          'h-6 w-6 drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)]',
+          showLabel ? 'h-6 w-6' : 'h-7 w-7',
+          'drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)]',
           isActive && 'text-primary'
         )}
         strokeWidth={isActive ? 1.5 : 1.2}
       />
-      <span
-        className={cn(
-          'text-sm drop-shadow-[0_1px_6px_rgba(0,0,0,0.18)]'
-        )}
-      >
-        {module.label}
-      </span>
+      {showLabel && (
+        <span className="text-sm drop-shadow-[0_1px_6px_rgba(0,0,0,0.18)]">
+          {module.label}
+        </span>
+      )}
     </div>
   );
 }
@@ -148,6 +155,7 @@ export function ModuleScroller() {
     setLastUsedModule,
     setGestureTab,
   } = useMobileNav();
+  const { openManto } = useManto();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -178,8 +186,8 @@ export function ModuleScroller() {
     const itemHeight = firstItem.getBoundingClientRect().height;
     const virtualTop = Math.max(0, window.innerHeight - listRect.height);
     const relativeY = pointerPosition.y - virtualTop;
-    // Tab-specific sensitivity: faster for site (center), slower for office/tools (sides)
-    const sensitivityMultiplier = currentTab === 'site' ? 2.0 : 1.2;
+    // Tab-specific sensitivity: faster for action (center), slower for office/tools (sides)
+    const sensitivityMultiplier = currentTab === 'action' ? 2.0 : 1.2;
     const rawIndex = Math.floor((relativeY * sensitivityMultiplier) / itemHeight);
     const clampedIndex = Math.max(0, Math.min(modules.length - 1, rawIndex));
 
@@ -201,9 +209,13 @@ export function ModuleScroller() {
       const module = modules[highlightedIndex];
 
       if (module) {
-        // Navigate to selected module - use currentTab (gestureTab or activeTab)
-        setLastUsedModule(currentTab, module.path);
-        setLocation(module.path);
+        if (module.isAction) {
+          openManto();
+        } else {
+          // Navigate to selected module - use currentTab (gestureTab or activeTab)
+          setLastUsedModule(currentTab, module.path);
+          setLocation(module.path);
+        }
       }
 
       // Reset state
@@ -224,6 +236,7 @@ export function ModuleScroller() {
     setGestureState,
     currentTab,
     setLastUsedModule,
+    openManto,
   ]);
 
   // Initialize highlighted index to first item when scroller appears
@@ -280,6 +293,7 @@ export function ModuleScroller() {
             capabilities.hasBlur,
             scrollerSide
           );
+          const showLabel = currentTab !== 'action';
 
           return (
             <ModuleItem
@@ -291,6 +305,7 @@ export function ModuleScroller() {
               offset={offset}
               blur={blur}
               scrollerSide={scrollerSide}
+              showLabel={showLabel}
             />
           );
         })}

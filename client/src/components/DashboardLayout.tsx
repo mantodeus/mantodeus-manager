@@ -337,9 +337,6 @@ function MobileDashboardLayoutContent({
       <ScrollerOverlay />
       <ModuleScroller />
       <BottomTabBar />
-      
-      {/* Manto Assistant - Mobile floating button */}
-      <FloatingHelpButton />
     </div>
   );
 }

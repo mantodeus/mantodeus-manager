@@ -44,6 +44,8 @@ export {
   ArrowPathRoundedSquareIcon,
   ArrowUturnLeftIcon as Undo,
   ArrowUturnLeftIcon as Undo2,
+  BoltIcon as Bolt,
+  MicrophoneIcon as Microphone,
   
   // Files & Documents
   DocumentIcon as File,

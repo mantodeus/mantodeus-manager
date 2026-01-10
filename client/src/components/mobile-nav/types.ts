@@ -9,7 +9,7 @@ import type { IconComponent } from '@/components/ui/Icon';
 /**
  * Tab ID type (Constitution: Bottom Tab Bar)
  */
-export type TabId = 'office' | 'site' | 'tools';
+export type TabId = 'office' | 'action' | 'tools';
 
 /**
  * Gesture state machine
@@ -40,6 +40,7 @@ export interface Module {
   label: string;
   path: string;
   icon: IconComponent;
+  isAction?: boolean;
 }
 
 /**

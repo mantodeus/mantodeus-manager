@@ -92,7 +92,7 @@ export const PERF_BUDGET = {
  */
 export const TABS = [
   { id: 'office' as const, icon: PencilSquareIcon, label: 'Office' },
-  { id: 'site' as const, icon: HomeModern, label: 'Site' },
+  { id: 'action' as const, icon: Bolt, label: 'Action' },
   { id: 'tools' as const, icon: WrenchScrewdriver, label: 'Tools' },
 ] as const;
 
@@ -126,8 +126,6 @@ export const MODULE_REGISTRY = {
       icon: FileSpreadsheet,
     },
     { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
-  ],
-  site: [
     {
       id: 'projects',
       label: 'Projects',
@@ -140,8 +138,28 @@ export const MODULE_REGISTRY = {
       path: '/inspections',
       icon: ClipboardCheck,
     },
-    { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image },
     { id: 'notes', label: 'Notes', path: '/notes', icon: File },
+  ],
+  action: [
+    {
+      id: 'manto',
+      label: 'Manto',
+      path: '/action/manto',
+      icon: BugAnt,
+      isAction: true,
+    },
+    {
+      id: 'capto',
+      label: 'Capto',
+      path: '/action/capto',
+      icon: Camera,
+    },
+    {
+      id: 'voco',
+      label: 'Voco',
+      path: '/action/voco',
+      icon: Microphone,
+    },
   ],
   tools: [
     { id: 'map', label: 'Map', path: '/maps', icon: MapPin },
@@ -158,6 +176,7 @@ export const MODULE_REGISTRY = {
       icon: Users,
     },
     { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarIcon },
+    { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image },
     {
       id: 'settings',
       label: 'Settings',
