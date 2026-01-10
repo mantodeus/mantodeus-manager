@@ -44,7 +44,7 @@ if ssh-copy-id -i "$PUBLIC_KEY" "$SERVER"; then
     echo "📝 Next steps:"
     echo "   1. Add SSH config to ~/.ssh/config (see ssh-config.example)"
     echo "   2. Test with: ssh mantodeus-server"
-    echo "   3. Run deployment: ssh mantodeus-server 'cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh'"
+    echo "   3. Run deployment: ssh mantodeus-server 'cd /srv/customer/sites/manager.mantodeus.com && bash scripts/deploy.sh'"
   else
     echo ""
     echo "⚠️  Connection test failed. Please check:"

@@ -46,7 +46,7 @@ fi
 
 # Check if infra scripts exist
 INFRA_SCRIPTS_EXIST="false"
-if ssh "$SSH_HOST" "[ -f '$PROJECT_DIR/infra/deploy/deploy.sh' ]" 2>/dev/null; then
+if ssh "$SSH_HOST" "[ -f '$PROJECT_DIR/scripts/deploy.sh' ]" 2>/dev/null; then
   INFRA_SCRIPTS_EXIST="true"
 fi
 

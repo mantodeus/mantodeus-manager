@@ -6,17 +6,16 @@
 
 ```
 infra/
-├── deploy/
-│   └── deploy.sh      # THE canonical deploy script
-├── webhook/           # GitHub webhook handler
+├── deploy/            # Helper scripts (status/restart/fixes)
 ├── ssh/               # SSH key management
 └── shared/            # Shared utilities
+scripts/deploy.sh      # Canonical deploy script (root-level)
 ```
 
 ## The Only Deployment Path
 
 ```
-git push origin main → GitHub Webhook → infra/deploy/deploy.sh → PM2 restart
+git push origin main → GitHub Webhook (/api/github-webhook) → scripts/deploy.sh → PM2 restart
 ```
 
 ## Configuration
@@ -33,17 +32,18 @@ git push origin main → GitHub Webhook → infra/deploy/deploy.sh → PM2 resta
 ```bash
 ssh mantodeus-server
 cd /srv/customer/sites/manager.mantodeus.com
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 ```
 
 ## What the Deploy Script Does
 
 1. `git fetch origin && git reset --hard origin/main`
-2. `npm install --include=dev`
-3. `npx puppeteer browsers install chrome`
-4. `npm run build`
-5. Verify `dist/index.js` and `dist/public/` exist
-6. `npx pm2 restart mantodeus-manager`
+2. Install dependencies when package files change (`pnpm install`)
+3. Run `pnpm run db:migrate` (always; blocking)
+4. `npm run build` (with increased memory limit)
+5. Verify `dist/public/assets` exists
+6. `npx pm2 restart mantodeus-manager` (or start)
+7. Health check `http://localhost:3000/api/health`
 
 ## PM2 Commands
 

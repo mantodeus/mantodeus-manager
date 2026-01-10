@@ -53,14 +53,14 @@ git commit -m "feat(db): describe change"
 git push origin main
 ```
 
-Webhook triggers `infra/deploy/deploy.sh` on the server.
+Webhook triggers `scripts/deploy.sh` on the server.
 
 ## 6) Manual Production Deployment (fallback)
 
 ```bash
 ssh mantodeus-server
 cd /srv/customer/sites/manager.mantodeus.com
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 ```
 
 ## 7) Production Migration (after deploy)
@@ -116,4 +116,4 @@ fly status -a pdf-service-withered-star-4195
 
 - Do not run `drizzle-kit push` in production.
 - Do not edit production `.env` directly; use `env-update.sh`.
-- Do not deploy via other scripts; use `infra/deploy/deploy.sh`.
+- Do not deploy via other scripts; use `scripts/deploy.sh`.

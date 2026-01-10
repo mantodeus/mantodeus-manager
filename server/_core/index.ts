@@ -704,7 +704,7 @@ async function startServer() {
       // Run deployment via detached shell script
       // Using nohup ensures the deploy continues even if PM2 restarts this process
       const appPath = ENV.appPath;
-      const deployCmd = `nohup bash scripts/deploy-prod.sh > deploy.log 2>&1 &`;
+      const deployCmd = `nohup bash scripts/deploy.sh > deploy.log 2>&1 &`;
 
       exec(deployCmd, { cwd: appPath }, (err) => {
         if (err) {

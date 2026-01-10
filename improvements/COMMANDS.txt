@@ -4,7 +4,7 @@ npm run db:generate
 git remote set-url origin git@github.com:mantodeus/mantodeus-manager.git
 git push
 
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 
 
 cd /srv/customer/sites/manager.mantodeus.com

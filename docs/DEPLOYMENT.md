@@ -14,7 +14,7 @@
 ## The Only Deployment Path
 
 ```
-git push origin main → GitHub Webhook → infra/deploy/deploy.sh → PM2 restart
+git push origin main → GitHub Webhook (/api/github-webhook) → scripts/deploy.sh → PM2 restart
 ```
 
 ## Automated Deployment
@@ -37,28 +37,14 @@ The webhook listener runs on port 9000 and is managed by PM2.
 2. Add `WEBHOOK_SECRET=<generated-secret>` to `.env` file
 3. Configure the same secret in GitHub repository settings:
    - Go to Settings → Webhooks → Add webhook
-   - Payload URL: `http://your-server:9000/webhook`
-   - Content type: `application/json`
-   - Secret: (paste the generated secret)
-   - Events: Just the push event
+  - Payload URL: `https://<your-domain>/api/github-webhook`
+  - Content type: `application/json`
+  - Secret: (paste the generated secret; must match `WEBHOOK_SECRET` in `.env`)
+  - Events: Just the push event
 
-**Managing the webhook listener:**
+**Webhook runtime:** The webhook handler is built into the app (`server/_core/index.ts`), so no separate PM2 process is required. Deployment is started with `nohup bash scripts/deploy.sh > deploy.log 2>&1 &` from the app directory.
 
-```bash
-# Check webhook status
-pm2 status webhook-listener
-
-# View webhook logs
-pm2 logs webhook-listener
-
-# Start webhook listener (if not running)
-pm2 start infra/webhook/webhook-listener.js --name webhook-listener
-
-# Restart webhook listener
-pm2 restart webhook-listener
-```
-
-**Security:** The webhook listener will fail to start if `WEBHOOK_SECRET` is not set. All requests without valid signatures are rejected with HTTP 401.
+**Security:** Requests without a valid HMAC signature (using `WEBHOOK_SECRET`) are rejected with HTTP 401.
 
 ## Manual Deployment
 
@@ -72,16 +58,18 @@ ssh mantodeus-server
 cd /srv/customer/sites/manager.mantodeus.com
 
 # Run the canonical deploy script
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 ```
 
 ## What the Deploy Script Does
 
-1. **Fetch** - `git fetch origin && git reset --hard origin/main`
-2. **Install** - `pnpm install --frozen-lockfile`
-3. **Build** - `pnpm build`
-4. **Verify** - Check `dist/index.js` and `dist/public/` exist
-5. **Restart** - `pm2 restart mantodeus-manager`
+1. **Fetch/reset** - `git fetch origin && git reset --hard origin/main`
+2. **Install** - `pnpm install` (only when dependencies change)
+3. **Migrate** - `pnpm run db:migrate` (always; blocking failure aborts deploy)
+4. **Build** - `npm run build` with increased memory limit
+5. **Verify** - Ensure `dist/public/assets` exists
+6. **Restart** - `pm2 restart mantodeus-manager` (or start if missing)
+7. **Health check** - `curl http://localhost:3000/api/health`
 
 ## PM2 Commands
 
@@ -217,10 +205,10 @@ ssh mantodeus-server
 
 ### Deployment Fails
 
-1. Check webhook logs: `pm2 logs webhook-listener`
+1. Check deploy log: `tail -n 200 /srv/customer/sites/manager.mantodeus.com/deploy.log`
 2. Verify git repository is clean: `git status`
 3. Check for merge conflicts: `git diff`
-4. Try manual deployment: `bash infra/deploy/deploy.sh`
+4. Try manual deployment: `bash scripts/deploy.sh`
 
 ## Logging and Monitoring
 

@@ -191,7 +191,7 @@ pm2 show mantodeus-manager
 git push origin main
 
 # Manual deployment
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && bash scripts/deploy.sh"
 
 # Check deployment status
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
@@ -283,8 +283,8 @@ git rev-parse --short HEAD
 | PM2 configuration | `ecosystem.config.js` |
 | Build script | `build-debug.js` |
 | Build validation | `build.js` |
-| Deploy script | `infra/deploy/deploy.sh` |
-| Webhook listener | `infra/webhook/webhook-listener.js` |
+| Deploy script | `scripts/deploy.sh` |
+| Webhook listener | In-app endpoint `/api/github-webhook` (`server/_core/index.ts`) |
 | Golden path workflows | `docs/GOLDEN_PATH_WORKFLOWS.md` |
 
 ---

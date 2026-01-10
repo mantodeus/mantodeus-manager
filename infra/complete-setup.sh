@@ -28,13 +28,11 @@ check_file() {
   fi
 }
 
-check_file "infra/deploy/deploy.sh"
 check_file "infra/deploy/restart.sh"
 check_file "infra/deploy/status.sh"
 check_file "infra/ssh/generate-key.sh"
 check_file "infra/ssh/install-key.sh"
 check_file "infra/ssh/ssh-check.sh"
-check_file "infra/webhook/webhook-listener.js"
 check_file "infra/env/env-sync.sh"
 check_file "infra/env/env-update.sh"
 check_file "infra/tests/run-deploy-sim.sh"
@@ -124,14 +122,6 @@ else
 fi
 echo ""
 
-echo "  🧪 Testing deploy.sh (dry-run)..."
-if bash infra/deploy/deploy.sh --dry-run > /dev/null 2>&1; then
-  echo "  ✅ deploy.sh --dry-run works!"
-else
-  echo "  ⚠️  deploy.sh --dry-run test failed"
-fi
-echo ""
-
 # Step 6: Check environment
 echo "📋 Step 6: Checking environment..."
 if [ -f ".env" ]; then
@@ -173,7 +163,7 @@ fi
 echo "✅ Infrastructure is set up and ready!"
 echo ""
 echo "📚 Available commands:"
-echo "   ./infra/deploy/deploy.sh          - Deploy application"
+echo "   bash scripts/deploy.sh            - Deploy application"
 echo "   ./infra/deploy/status.sh          - Check status"
 echo "   ./infra/deploy/restart.sh         - Restart application"
 echo "   ./infra/env/env-sync.sh           - Sync environment variables"

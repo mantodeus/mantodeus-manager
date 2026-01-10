@@ -278,9 +278,9 @@ ls -t "$BACKUP_DIR"/backup-*.tar.gz 2>/dev/null | tail -n +6 | xargs rm -f
    git log --oneline -10
    ```
 
-4. **Dry Run:** Use `--dry-run` flag to test deployment process
+4. **Deployment:** Use the canonical script (idempotent)
    ```bash
-   ./infra/deploy/deploy.sh --dry-run
+   bash scripts/deploy.sh
    ```
 
 ### During Deployment

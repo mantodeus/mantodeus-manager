@@ -90,7 +90,7 @@ if [ $? -eq 0 ]; then
   echo "  - New user defaults: DD.MM.YYYY, 24h, Europe/Berlin, German"
   echo ""
   echo "Next: Deploy the updated code"
-  echo "  bash infra/deploy/deploy.sh"
+echo "  bash scripts/deploy.sh"
 
 else
   echo ""

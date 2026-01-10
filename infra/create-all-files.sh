@@ -229,19 +229,17 @@ fi
 echo "Using commit: $COMMIT"
 
 # Copy files from that commit
-git show ${COMMIT}:infra/deploy/deploy.sh > infra/deploy/deploy.sh
 git show ${COMMIT}:infra/deploy/restart.sh > infra/deploy/restart.sh
 git show ${COMMIT}:infra/deploy/status.sh > infra/deploy/status.sh
 git show ${COMMIT}:infra/ssh/generate-key.sh > infra/ssh/generate-key.sh
 git show ${COMMIT}:infra/ssh/install-key.sh > infra/ssh/install-key.sh
 git show ${COMMIT}:infra/ssh/ssh-check.sh > infra/ssh/ssh-check.sh
 git show ${COMMIT}:infra/ssh/ssh-config.example > infra/ssh/ssh-config.example
-git show ${COMMIT}:infra/webhook/webhook-listener.js > infra/webhook/webhook-listener.js
 git show ${COMMIT}:infra/env/env-sync.sh > infra/env/env-sync.sh
 git show ${COMMIT}:infra/env/env-update.sh > infra/env/env-update.sh
 git show ${COMMIT}:infra/tests/run-deploy-sim.sh > infra/tests/run-deploy-sim.sh
 
-chmod +x infra/deploy/*.sh infra/ssh/*.sh infra/env/*.sh infra/tests/*.sh infra/webhook/*.js
+chmod +x infra/deploy/*.sh infra/ssh/*.sh infra/env/*.sh infra/tests/*.sh
 
 echo "✅ All files copied!"
 ls -la infra/deploy/

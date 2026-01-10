@@ -69,7 +69,7 @@ Eliminated all staging/preview/development environment logic. Mantodeus Manager 
 ### Deployment
 | File | Changes |
 |------|---------|
-| `infra/deploy/deploy.sh` | Rewritten as the canonical deploy script. |
+| `scripts/deploy.sh` | Rewritten as the canonical deploy script. |
 
 ### Documentation
 | File | Changes |
@@ -85,7 +85,7 @@ Eliminated all staging/preview/development environment logic. Mantodeus Manager 
 | Requirement | Status |
 |-------------|--------|
 | One `.env` file | ✅ |
-| One deploy path (`infra/deploy/deploy.sh`) | ✅ |
+| One deploy path (`scripts/deploy.sh`) | ✅ |
 | One database | ✅ |
 | One domain (`manager.mantodeus.com`) | ✅ |
 | Zero staging logic | ✅ |
@@ -102,7 +102,7 @@ git push origin main
        ↓
 GitHub Webhook
        ↓
-infra/deploy/deploy.sh
+scripts/deploy.sh
        ↓
 PM2 restart mantodeus-manager
        ↓

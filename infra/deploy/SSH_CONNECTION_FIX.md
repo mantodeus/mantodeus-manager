@@ -22,7 +22,7 @@ The error is likely occurring **on the server** during deployment when:
 
 ## Fixes Applied
 
-### 1. Enhanced Deploy Script (`infra/deploy/deploy.sh`)
+### 1. Enhanced Deploy Script (`scripts/deploy.sh`)
 - ✅ **Auto-detects SSH remotes** and converts them to HTTPS
 - ✅ **Better error handling** for git fetch operations
 - ✅ **Network connectivity checks** before failing
@@ -54,7 +54,7 @@ git remote -v  # Verify change
 The updated deploy script will automatically fix SSH remotes on each deployment:
 ```bash
 cd /srv/customer/sites/manager.mantodeus.com
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 ```
 
 ## Verification

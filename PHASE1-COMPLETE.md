@@ -153,7 +153,7 @@ Then revert the code commits:
 ```bash
 git revert 092eb7a daf2a4b 941a011 e6efbfc
 git push
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 ```
 
 ## Documentation

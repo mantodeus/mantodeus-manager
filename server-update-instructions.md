@@ -105,7 +105,7 @@ Or visit https://manager.mantodeus.com in your browser.
 Once the code is pulled, you can try the full deploy script:
 
 ```bash
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 ```
 
 However, this may still cause SSH disconnection during the pnpm install step. If it disconnects:
@@ -134,7 +134,7 @@ import { ENV } from "./env.js";
 
 ### Fix 2: Package Manager (519bb52)
 
-**File**: `infra/deploy/deploy.sh`
+**File**: `scripts/deploy.sh`
 
 **Before**:
 ```bash

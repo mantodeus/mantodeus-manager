@@ -22,7 +22,6 @@ Run this to check all infrastructure files:
 cd /srv/customer/sites/manager.mantodeus.com
 echo "=== Deploy ===" && ls -la infra/deploy/
 echo "=== SSH ===" && ls -la infra/ssh/
-echo "=== Webhook ===" && ls -la infra/webhook/
 echo "=== Env ===" && ls -la infra/env/
 echo "=== Tests ===" && ls -la infra/tests/
 ```

@@ -93,9 +93,9 @@ The following table presents identified friction points ranked by priority, with
 
 | Priority | Symptom | Root Cause | Evidence | Recommended Fix |
 |----------|---------|------------|----------|-----------------|
-| **~~P1~~** | ~~Deployment failures and inconsistencies~~ | **✅ FIXED** - Deploy script now uses `pnpm install --frozen-lockfile` for deterministic dependency resolution (infra/deploy/deploy.sh:38, commit 8290fc4). | ~~`deploy.sh` line 41: `npm install --production=false --legacy-peer-deps`~~ | ~~Replace with `pnpm install --frozen-lockfile`~~ **IMPLEMENTED** |
+| **~~P1~~** | ~~Deployment failures and inconsistencies~~ | **✅ FIXED** - Deploy script now uses `pnpm install --no-frozen-lockfile` when deps change and runs blocking migrations (`scripts/deploy.sh`). | ~~`deploy.sh` line 41: `npm install --production=false --legacy-peer-deps`~~ | ~~Replace with `pnpm install --frozen-lockfile`~~ **IMPLEMENTED** |
 | **~~P1~~** | ~~Documentation sprawl creates confusion~~ | **✅ FIXED** - Documentation consolidated from 29 root files to 2 in root + 12 organized in docs/ folder (commit 76bfe5f). | ~~59 markdown files in root directory~~ | ~~Consolidate into structured `docs/` directory~~ **IMPLEMENTED** |
-| **P1** | Unclear source of truth for commands | Multiple overlapping scripts for same operations | `deploy.sh`, `deploy.ps1`, `quick-deploy.ps1`, `deploy-server.sh` all exist | Standardize on single `./infra/deploy/deploy.sh` and remove alternatives |
+| **~~P1~~** | ~~Unclear source of truth for commands~~ | **✅ FIXED** - Deployment consolidated to `scripts/deploy.sh`; legacy listeners/scripts removed. | `deploy.sh`, `deploy.ps1`, `quick-deploy.ps1`, `deploy-server.sh` all exist | ~~Standardize on single `scripts/deploy.sh` and remove alternatives~~ **IMPLEMENTED** |
 | **P2** | Manual environment variable management | `.env` files managed manually across environments | `.env.example` requires manual copying and editing | Implement secret management (Doppler, Infisical, or GitHub Secrets) |
 | **P2** | Poor observability in production | File-based logging with no aggregation or alerting | `ecosystem.config.js` writes to `./logs/` directory only | Add structured logging with Pino and ship to Axiom, Logtail, or similar |
 | **P2** | Slow cold starts after Fly.io scale-to-zero | PDF service configured with `min_machines_running = 0` | `fly.toml` line 17 | Set `min_machines_running = 1` for consistent latency (cost: ~$2/month) |
@@ -116,7 +116,7 @@ The following risks are ranked by a combination of likelihood and potential impa
 |----------|------|------------|--------|------------|-----------------|
 | **~~P0~~** | ~~Invoice number race condition~~ | ~~High~~ | ~~High~~ | **✅ FIXED** - The `incrementInvoiceNumber` function now uses atomic SQL `UPDATE ... SET nextInvoiceNumber = nextInvoiceNumber + 1` at the database level (server/db.ts:1906-1908). | ~~Rewrite using MySQL atomic UPDATE~~ **IMPLEMENTED** | Load test with 10 concurrent invoice issuance requests; verify no duplicates. |
 | **P1** | Unsafe migration strategy | Medium | High | `db:push` script uses `drizzle-kit push` which can cause data loss in production. | Enforce `drizzle-kit migrate` for production; use `push` only in development. Add CI check to prevent `push` on main branch. | Review migration workflow documentation; add pre-deploy migration check. |
-| **~~P1~~** | ~~Webhook accepts unsigned requests~~ | ~~Medium~~ | ~~High~~ | **✅ FIXED** - The webhook listener now exits with error if `WEBHOOK_SECRET` is not set and rejects all unsigned requests with HTTP 401 (infra/webhook/webhook-listener.js:35-41). | ~~Remove fallback behavior~~ **IMPLEMENTED** | Attempt deployment without secret; verify it fails. |
+| **~~P1~~** | ~~Webhook accepts unsigned requests~~ | ~~Medium~~ | ~~High~~ | **✅ FIXED** - In-app webhook `/api/github-webhook` now enforces signature verification when `WEBHOOK_SECRET` is set (`server/_core/index.ts`). | ~~Remove fallback behavior~~ **IMPLEMENTED** | Attempt deployment without secret; verify it fails. |
 | **~~P2~~** | ~~No database backup automation~~ | ~~High~~ | ~~Medium~~ | **✅ FIXED** - Automated backup scripts created with daily cron job, S3 upload, and 30-day retention (scripts/backup-db.sh, commit fedfc15). | ~~Implement daily automated backups~~ **IMPLEMENTED** | Verify backup file exists and can be restored to test database. |
 | **P2** | PDF service has no queue/backpressure | Medium | Medium | Direct synchronous calls to Fly.io service; high load could cause timeouts or failures. | Implement client-side retry with exponential backoff; consider adding BullMQ for async processing. | Generate 20 PDFs simultaneously; verify all complete without errors. |
 | **P2** | S3 bucket permissions unclear | Low | Medium | Code uses presigned URLs but bucket ACL configuration is not documented. | Audit bucket policy; ensure private-by-default with presigned URL access only. | Attempt direct URL access without signature; verify 403 response. |
@@ -209,7 +209,7 @@ git push origin main
 # Webhook automatically triggers deployment
 
 # Manual deployment (if webhook fails)
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && bash scripts/deploy.sh"
 
 # Verify deployment
 ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/status.sh"
@@ -330,7 +330,7 @@ jobs:
       - name: Deploy
         run: |
           ssh M4S5mQQMRhu_mantodeus@57-105224.ssh.hosting-ik.com \
-            "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"
+            "cd /srv/customer/sites/manager.mantodeus.com && bash scripts/deploy.sh"
       
       - name: Health Check
         run: |

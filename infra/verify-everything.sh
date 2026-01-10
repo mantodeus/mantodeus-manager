@@ -43,7 +43,7 @@ echo "📋 1. Infrastructure Files"
 echo "────────────────────────────────────────────────────────────────────────"
 
 # Deployment scripts
-[ -f "infra/deploy/deploy.sh" ] && test_pass "deploy.sh exists" || test_fail "deploy.sh missing"
+[ -f "scripts/deploy.sh" ] && test_pass "scripts/deploy.sh exists" || test_fail "scripts/deploy.sh missing"
 [ -f "infra/deploy/restart.sh" ] && test_pass "restart.sh exists" || test_fail "restart.sh missing"
 [ -f "infra/deploy/status.sh" ] && test_pass "status.sh exists" || test_fail "status.sh missing"
 
@@ -52,9 +52,6 @@ echo "────────────────────────�
 [ -f "infra/ssh/install-key.sh" ] && test_pass "install-key.sh exists" || test_fail "install-key.sh missing"
 [ -f "infra/ssh/ssh-check.sh" ] && test_pass "ssh-check.sh exists" || test_fail "ssh-check.sh missing"
 [ -f "infra/ssh/ssh-config.example" ] && test_pass "ssh-config.example exists" || test_fail "ssh-config.example missing"
-
-# Webhook
-[ -f "infra/webhook/webhook-listener.js" ] && test_pass "webhook-listener.js exists" || test_fail "webhook-listener.js missing"
 
 # Environment scripts
 [ -f "infra/env/env-sync.sh" ] && test_pass "env-sync.sh exists" || test_fail "env-sync.sh missing"
@@ -76,7 +73,6 @@ echo ""
 echo "📋 2. Script Permissions"
 echo "────────────────────────────────────────────────────────────────────────"
 
-[ -x "infra/deploy/deploy.sh" ] && test_pass "deploy.sh is executable" || test_fail "deploy.sh not executable"
 [ -x "infra/deploy/restart.sh" ] && test_pass "restart.sh is executable" || test_fail "restart.sh not executable"
 [ -x "infra/deploy/status.sh" ] && test_pass "status.sh is executable" || test_fail "status.sh not executable"
 [ -x "infra/ssh/generate-key.sh" ] && test_pass "generate-key.sh is executable" || test_fail "generate-key.sh not executable"
@@ -101,13 +97,6 @@ if bash infra/deploy/status.sh > /dev/null 2>&1; then
   fi
 else
   test_fail "status.sh fails to run"
-fi
-
-# Test deploy.sh dry-run
-if bash infra/deploy/deploy.sh --dry-run > /dev/null 2>&1; then
-  test_pass "deploy.sh --dry-run works"
-else
-  test_warn "deploy.sh --dry-run failed (may need dependencies)"
 fi
 
 echo ""
@@ -244,7 +233,7 @@ if [ $FAILED -eq 0 ]; then
     echo "⚠️  Some warnings (see above) - but everything should work"
     echo ""
     echo "You can now:"
-    echo "  - Deploy: ./infra/deploy/deploy.sh"
+    echo "  - Deploy: bash scripts/deploy.sh"
     echo "  - Check status: ./infra/deploy/status.sh"
     echo "  - Use Cursor AI prompts from: infra/cursor-prompts.md"
     exit 0

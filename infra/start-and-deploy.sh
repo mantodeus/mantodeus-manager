@@ -79,9 +79,9 @@ echo ""
 echo "📋 Step 6: Running deployment..."
 echo ""
 
-if [ -f "infra/deploy/deploy.sh" ]; then
+if [ -f "scripts/deploy.sh" ]; then
   echo "   Running deploy.sh..."
-  bash infra/deploy/deploy.sh
+  bash scripts/deploy.sh
 else
   echo "   Deploy script not found, running manual deployment..."
   

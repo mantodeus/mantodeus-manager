@@ -36,7 +36,7 @@ This is a **single-environment, production-only system**:
 - **ONE** database
 - **ONE** S3 bucket
 - **ONE** `.env` file
-- **ONE** deployment path: `git push main` → webhook → `infra/deploy/deploy.sh`
+- **ONE** deployment path: `git push main` → webhook → `scripts/deploy.sh`
 
 There is no staging, no preview, no dev/prod branching.
 
@@ -117,7 +117,7 @@ The app **fails fast** if any required variable is missing.
 ### The Only Deployment Path
 
 ```
-git push origin main → GitHub Webhook → infra/deploy/deploy.sh → PM2 restart
+git push origin main → GitHub Webhook → scripts/deploy.sh → PM2 restart
 ```
 
 ### Manual Deployment
@@ -125,7 +125,7 @@ git push origin main → GitHub Webhook → infra/deploy/deploy.sh → PM2 resta
 ```bash
 ssh mantodeus-server
 cd /srv/customer/sites/manager.mantodeus.com
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 ```
 
 ### What the Deploy Script Does

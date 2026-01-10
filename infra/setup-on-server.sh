@@ -75,7 +75,6 @@ chmod +x infra/deploy/*.sh 2>/dev/null || true
 chmod +x infra/ssh/*.sh 2>/dev/null || true
 chmod +x infra/env/*.sh 2>/dev/null || true
 chmod +x infra/tests/*.sh 2>/dev/null || true
-chmod +x infra/webhook/*.js 2>/dev/null || true
 echo "✅ Scripts are now executable"
 echo ""
 
@@ -91,12 +90,6 @@ if [ -f "infra/ssh/ssh-check.sh" ]; then
   echo "✅ SSH scripts: OK"
 else
   echo "❌ SSH scripts: Missing"
-fi
-
-if [ -f "infra/webhook/webhook-listener.js" ]; then
-  echo "✅ Webhook listener: OK"
-else
-  echo "❌ Webhook listener: Missing"
 fi
 
 if [ -f "infra/README.md" ]; then
@@ -123,5 +116,5 @@ echo ""
 echo "📚 Next steps:"
 echo "   1. Review documentation: cat infra/README.md"
 echo "   2. Check status: ./infra/deploy/status.sh"
-echo "   3. Test deployment: ./infra/deploy/deploy.sh --dry-run"
+echo "   3. Deploy: bash scripts/deploy.sh"
 echo ""

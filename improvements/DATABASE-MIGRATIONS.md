@@ -40,13 +40,13 @@ This project uses **Drizzle ORM** for database schema management and migrations.
 
 ### Production Deployment
 
-The deploy script (`infra/deploy/deploy.sh`) automatically:
+The deploy script (`scripts/deploy.sh`) automatically:
 
 1. Pulls latest code (including new migrations)
-2. Installs dependencies
-3. Builds the application
-4. **Runs `npm run db:migrate:prod`** ← Applies pending migrations
-5. Restarts PM2
+2. Installs dependencies when package files change
+3. **Runs `pnpm run db:migrate`** (always; blocking)
+4. Builds the application
+5. Restarts PM2 and performs a health check
 
 ### Migration Commands
 
@@ -271,6 +271,6 @@ The schema guards were removed in favor of proper migrations. All schema changes
 2. **Generate migration** → `npm run db:generate`
 3. **Review SQL** → Check `drizzle/*.sql`
 4. **Commit** → `git add drizzle/ && git commit`
-5. **Deploy** → `bash infra/deploy/deploy.sh` (migrations run automatically)
+5. **Deploy** → `bash scripts/deploy.sh` (migrations run automatically)
 
 That's it! Your database schema will stay in sync with your code across all deployments.

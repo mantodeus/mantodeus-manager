@@ -83,9 +83,9 @@ Host 57-105224.ssh.hosting-ik.com
 This sends keepalive packets every 60 seconds to prevent timeout.
 
 ### Option 5: Use the Deploy Script
-The deploy script (`infra/deploy/deploy.sh`) handles this automatically:
+The deploy script (`scripts/deploy.sh`) handles this automatically:
 ```bash
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 ```
 
 ## Checking Installation Status
@@ -129,7 +129,7 @@ df -h .
 
 For production deployments, always use:
 ```bash
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 ```
 
 This script:
@@ -147,6 +147,6 @@ This script:
 | Install deps (SSH-safe) | `bash infra/deploy/install-deps.sh` |
 | Monitor install | `tail -f npm-install-*.log` |
 | Check if running | `ps aux | grep npm` |
-| Full deploy | `bash infra/deploy/deploy.sh` |
+| Full deploy | `bash scripts/deploy.sh` |
 | Fix ENOTEMPTY | `bash infra/deploy/fix-npm-enotempty.sh` |
 

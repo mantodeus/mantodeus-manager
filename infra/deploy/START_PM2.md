@@ -81,14 +81,14 @@ pm2 restart mantodeus-manager
 
 ## Using the Deploy Script
 
-The deploy script (`infra/deploy/deploy.sh`) now automatically:
+The deploy script (`scripts/deploy.sh`) now automatically:
 - Checks if the process exists
 - Starts it if it doesn't exist
 - Restarts it if it does exist
 
 So you can just run:
 ```bash
-bash infra/deploy/deploy.sh
+bash scripts/deploy.sh
 ```
 
 ## Quick Reference

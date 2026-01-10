@@ -95,31 +95,6 @@ check_dependencies_changed() {
 }
 
 # Function to check if migrations needed
-check_migrations_needed() {
-  # Count migration files
-  local current_migration_count=0
-  if [ -d "drizzle" ]; then
-    current_migration_count=$(find drizzle -maxdepth 1 -name "*.sql" -type f 2>/dev/null | wc -l | tr -d ' ')
-  fi
-  
-  # Load last known count
-  local last_migration_count=0
-  if [ -f "$DEPLOY_STATE_FILE" ]; then
-    last_migration_count=$(get_json_value "$DEPLOY_STATE_FILE" "migration_count")
-    [ -z "$last_migration_count" ] && last_migration_count=0
-  fi
-  
-  # Need migrations if count changed (drizzle-kit migrate is already idempotent)
-  if [ "$current_migration_count" != "$last_migration_count" ]; then
-    return 0  # Needed
-  else
-    # Even if count is same, drizzle-kit will check for pending migrations
-    # But we can skip if we know nothing changed
-    return 1  # Not needed (drizzle-kit migrate is idempotent anyway)
-  fi
-}
-
-# Function to update deploy state
 update_deploy_state() {
   local deps_hash="${1:-}"
   local migration_count="${2:-0}"
@@ -199,40 +174,30 @@ fi
 # This step is idempotent and only needed when schema changes
 echo ""
 echo "==> Generate database schema (optional, non-blocking)"
-if npx pnpm run db:generate 2>&1; then
+if pnpm run db:generate 2>&1; then
   echo "  ✓ Schema generated"
 else
   echo "  ⚠ Schema generation skipped (may indicate config issue, but deployment continues)"
   echo "  → To debug: cd $APP_DIR && npx drizzle-kit --version && npx drizzle-kit generate"
 fi
 
-# Check if migrations needed
 echo ""
-echo "==> Checking migrations..."
-MIGRATION_COUNT=$(find drizzle -maxdepth 1 -name "*.sql" -type f 2>/dev/null | wc -l | tr -d ' ' || echo "0")
-
-if check_migrations_needed; then
-  echo "  → New migration files detected, applying..."
-  
-  # Run migrations with error output visible for debugging
-  if npx pnpm run db:migrate 2>&1; then
-    echo "  ✓ Migrations applied"
-    
-    # Post-migrate sanity check
-    if [ -f "./scripts/check-migration-columns.cjs" ]; then
-      echo "  → Running post-migration column check..."
-      node ./scripts/check-migration-columns.cjs || echo "  ⚠ Column check failed, continuing..."
-    fi
-  else
-    echo "  ⚠ Migration skipped (drizzle-kit config issue, but deployment continues)"
-    echo "  → Migrations can be applied manually later if needed"
-    echo "  → To debug, run: cd $APP_DIR && DATABASE_URL=\$(grep DATABASE_URL .env | cut -d'=' -f2) npx pnpm run db:migrate"
-    echo "  → Or check drizzle-kit: npx drizzle-kit --version"
-  fi
-else
-  echo "  ✓ No new migration files, skipping (drizzle-kit migrate is idempotent)"
-  # Note: drizzle-kit migrate is already idempotent, but we skip the call if nothing changed
+echo "==> Running database migrations (blocking, always)"
+if ! pnpm run db:migrate 2>&1; then
+  echo "ERROR: Database migrations failed. Deploy aborted."
+  echo "→ To debug: cd $APP_DIR && export DATABASE_URL=\$(grep -v '^#' .env | grep '^DATABASE_URL=' | cut -d'=' -f2-) && npx drizzle-kit --version"
+  exit 1
 fi
+echo "  ✓ Migrations applied"
+
+# Post-migrate sanity check (non-blocking)
+if [ -f "./scripts/check-migration-columns.cjs" ]; then
+  echo "  → Running post-migration column check..."
+  node ./scripts/check-migration-columns.cjs || echo "  ⚠ Column check failed, continuing..."
+fi
+
+# Track migration file count for state
+MIGRATION_COUNT=$(find drizzle -maxdepth 1 -name "*.sql" -type f 2>/dev/null | wc -l | tr -d ' ' || echo "0")
 
 echo ""
 echo "==> Backup previous build"

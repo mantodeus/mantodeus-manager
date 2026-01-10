@@ -13,7 +13,7 @@ Deploy the Mantodeus Manager application to production.
 
 **Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && bash scripts/deploy.sh"
 ```
 
 ---
@@ -25,7 +25,7 @@ Deploy the application with a dry run first to test the deployment process.
 
 **Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --dry-run"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && bash scripts/deploy.sh"
 ```
 
 ---
@@ -37,7 +37,7 @@ Deploy the application without creating a backup.
 
 **Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --no-backup"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && bash scripts/deploy.sh"
 ```
 
 ---
@@ -49,7 +49,7 @@ Deploy the application but skip the health check at the end.
 
 **Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --skip-health-check"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && bash scripts/deploy.sh"
 ```
 
 ---
@@ -317,7 +317,7 @@ Test the deployment scripts without actually deploying.
 
 **Command Executed:**
 ```bash
-ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && ./infra/deploy/deploy.sh --dry-run"
+ssh mantodeus-server "cd /srv/customer/sites/manager.mantodeus.com && bash scripts/deploy.sh"
 ```
 
 ---

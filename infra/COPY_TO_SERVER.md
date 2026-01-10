@@ -39,7 +39,6 @@ chmod +x infra/deploy/*.sh
 chmod +x infra/ssh/*.sh
 chmod +x infra/env/*.sh
 chmod +x infra/tests/*.sh
-chmod +x infra/webhook/*.js
 ```
 
 ## Verify
