@@ -253,64 +253,96 @@ export function ModuleScroller() {
   const scrollerSide =
     currentTab === 'office' ? 'left' : currentTab === 'tools' ? 'right' : 'center';
 
+  // Get the currently highlighted module for the action tab title
+  const highlightedModule = highlightedIndex !== null ? modules[highlightedIndex] : null;
+  const isActionTab = currentTab === 'action';
+
   return (
-    <div
-      ref={scrollerRef}
-      className={cn(
-        'fixed top-1/2 -translate-y-1/2 z-[1000]',
-        'w-64', // Fixed width
-        'md:hidden', // Â§ 1.1: Mobile only
-        'module-scroller',
-        'gesture-surface',
-        'animate-scroller-slide-in',
-        scrollerSide === 'right'
-          ? 'scroller--right'
-          : scrollerSide === 'left'
-            ? 'scroller--left'
-            : 'scroller--center',
-        // Position based on active tab (Ergonomic Law)
-        scrollerSide === 'right'
-          ? 'right-0'
-          : scrollerSide === 'left'
-            ? 'left-0'
-            : 'left-1/2 -translate-x-1/2',
+    <>
+      {/* Centered title for Action tab - appears above all icons */}
+      {isActionTab && highlightedModule && (
+        <div
+          className={cn(
+            'fixed left-1/2 -translate-x-1/2 z-[1001]',
+            'text-center',
+            'animate-in fade-in duration-150',
+            'md:hidden'
+          )}
+          style={{
+            top: 'calc(50% - 100px)', // Positioned above the centered icons
+          }}
+        >
+          <span
+            className={cn(
+              'text-lg font-medium',
+              'text-foreground',
+              'drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)]',
+              'tracking-wide'
+            )}
+          >
+            {highlightedModule.label}
+          </span>
+        </div>
       )}
-      aria-label={`Module selector for ${activeTab}`}
-      role="menu"
-    >
-      {/* Â§ 10.2: Prohibition - Tab labels must never appear inside scroller */}
-      <div className="py-4" data-module-list ref={listRef}>
-        {modules.map((module, index) => {
-          const isActive = index === highlightedIndex;
-          const isNeighbor =
-            highlightedIndex !== null &&
-            Math.abs(index - highlightedIndex) === 1;
 
-          const offset = calculateOffset(index, highlightedIndex, scrollerSide);
-          const blur = calculateBlur(
-            index,
-            highlightedIndex,
-            capabilities.hasBlur,
-            scrollerSide
-          );
-          const showLabel = currentTab !== 'action';
+      <div
+        ref={scrollerRef}
+        className={cn(
+          'fixed top-1/2 -translate-y-1/2 z-[1000]',
+          'w-64', // Fixed width
+          'md:hidden', // Â§ 1.1: Mobile only
+          'module-scroller',
+          'gesture-surface',
+          'animate-scroller-slide-in',
+          scrollerSide === 'right'
+            ? 'scroller--right'
+            : scrollerSide === 'left'
+              ? 'scroller--left'
+              : 'scroller--center',
+          // Position based on active tab (Ergonomic Law)
+          scrollerSide === 'right'
+            ? 'right-0'
+            : scrollerSide === 'left'
+              ? 'left-0'
+              : 'left-1/2 -translate-x-1/2',
+        )}
+        aria-label={`Module selector for ${activeTab}`}
+        role="menu"
+      >
+        {/* Â§ 10.2: Prohibition - Tab labels must never appear inside scroller */}
+        <div className="py-4" data-module-list ref={listRef}>
+          {modules.map((module, index) => {
+            const isActive = index === highlightedIndex;
+            const isNeighbor =
+              highlightedIndex !== null &&
+              Math.abs(index - highlightedIndex) === 1;
 
-          return (
-            <ModuleItem
-              key={module.id}
-              module={module}
-              index={index}
-              isActive={isActive}
-              isNeighbor={isNeighbor}
-              offset={offset}
-              blur={blur}
-              scrollerSide={scrollerSide}
-              showLabel={showLabel}
-            />
-          );
-        })}
+            const offset = calculateOffset(index, highlightedIndex, scrollerSide);
+            const blur = calculateBlur(
+              index,
+              highlightedIndex,
+              capabilities.hasBlur,
+              scrollerSide
+            );
+            const showLabel = currentTab !== 'action';
+
+            return (
+              <ModuleItem
+                key={module.id}
+                module={module}
+                index={index}
+                isActive={isActive}
+                isNeighbor={isNeighbor}
+                offset={offset}
+                blur={blur}
+                scrollerSide={scrollerSide}
+                showLabel={showLabel}
+              />
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
