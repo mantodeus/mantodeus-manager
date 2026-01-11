@@ -28,15 +28,23 @@ import type { TabGroup, TabId } from './types';
 
 /**
  * Tab definitions with icons
+ * Desktop: Office, Tools, Capture, Record (no Actions tab)
  */
-export const TABS: { id: TabId; icon: typeof PencilSquareIcon; label: string }[] = [
-  { id: 'office', icon: PencilSquareIcon, label: 'Office' },
-  { id: 'action', icon: BugAnt, label: 'Action' },
-  { id: 'tools', icon: WrenchScrewdriver, label: 'Tools' },
+export const TABS: { 
+  id: TabId; 
+  icon: typeof PencilSquareIcon; 
+  label: string;
+  type: 'flyout' | 'direct'; // flyout shows modules, direct navigates immediately
+  path?: string; // for direct navigation
+}[] = [
+  { id: 'office', icon: PencilSquareIcon, label: 'Office', type: 'flyout' },
+  { id: 'tools', icon: WrenchScrewdriver, label: 'Tools', type: 'flyout' },
+  { id: 'capto', icon: Camera, label: 'Capture', type: 'direct', path: '/action/capto' },
+  { id: 'voco', icon: Microphone, label: 'Record', type: 'direct', path: '/action/voco' },
 ];
 
 /**
- * Module registry - each module belongs to one tab group
+ * Module registry - only Office and Tools have flyouts on desktop
  */
 export const TAB_GROUPS: Record<TabId, TabGroup> = {
   office: {
@@ -52,25 +60,39 @@ export const TAB_GROUPS: Record<TabId, TabGroup> = {
       { id: 'notes', label: 'Notes', path: '/notes', icon: File, shortcut: '6' },
     ],
   },
-  action: {
-    id: 'action',
-    label: 'Action',
-    icon: BugAnt,
-    modules: [
-      { id: 'capto', label: 'Capture', path: '/action/capto', icon: Camera, shortcut: '7' },
-      { id: 'voco', label: 'Record', path: '/action/voco', icon: Microphone, shortcut: '8' },
-    ],
-  },
   tools: {
     id: 'tools',
     label: 'Tools',
     icon: WrenchScrewdriver,
     modules: [
-      { id: 'calendar', label: 'Calendar', path: '/calendar', icon: Calendar, shortcut: '9' },
-      { id: 'contacts', label: 'Contacts', path: '/contacts', icon: Users, shortcut: '0' },
-      { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image },
-      { id: 'map', label: 'Maps', path: '/maps', icon: MapPin },
+      { id: 'calendar', label: 'Calendar', path: '/calendar', icon: Calendar, shortcut: '7' },
+      { id: 'contacts', label: 'Contacts', path: '/contacts', icon: Users, shortcut: '8' },
+      { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image, shortcut: '9' },
+      { id: 'map', label: 'Maps', path: '/maps', icon: MapPin, shortcut: '0' },
       { id: 'settings', label: 'Settings', path: '/settings', icon: SettingsIcon },
+    ],
+  },
+  // Capto and Voco don't have modules - they're direct navigation
+  capto: {
+    id: 'capto',
+    label: 'Capture',
+    icon: Camera,
+    modules: [],
+  },
+  voco: {
+    id: 'voco',
+    label: 'Record',
+    icon: Microphone,
+    modules: [],
+  },
+  // Keep action for mobile compatibility (not used on desktop)
+  action: {
+    id: 'action',
+    label: 'Action',
+    icon: BugAnt,
+    modules: [
+      { id: 'capto', label: 'Capture', path: '/action/capto', icon: Camera },
+      { id: 'voco', label: 'Record', path: '/action/voco', icon: Microphone },
     ],
   },
 };

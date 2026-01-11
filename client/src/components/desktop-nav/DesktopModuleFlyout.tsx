@@ -125,8 +125,8 @@ export function DesktopModuleFlyout() {
     handleKeyDown,
   } = useDesktopNav();
 
-  // Get modules for active tab
-  const tabGroup = activeTab ? TAB_GROUPS[activeTab] : null;
+  // Get modules for active tab (only Office and Tools have flyouts)
+  const tabGroup = (activeTab === 'office' || activeTab === 'tools') ? TAB_GROUPS[activeTab] : null;
   const modules = tabGroup?.modules ?? [];
 
   // Close flyout when mouse leaves the entire nav area
@@ -171,7 +171,7 @@ export function DesktopModuleFlyout() {
     >
       {/* Header */}
       <div className="px-4 py-4 border-b border-border/30">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        <h2 className="text-sm font-bold tracking-wide text-foreground">
           {tabGroup.label}
         </h2>
       </div>

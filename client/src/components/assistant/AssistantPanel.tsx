@@ -749,7 +749,7 @@ export function AssistantPanel({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold">Manto</h2>
+                  <h2 className="text-sm font-semibold">Ask Mantodeus</h2>
                   {isTourActive && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-[10px] text-primary font-medium">
                       Step {currentStepIndex + 1}/{totalSteps}

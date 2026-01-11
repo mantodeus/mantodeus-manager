@@ -39,7 +39,7 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
     };
   }, [hoverTimeout]);
 
-  const openFlyout = useCallback((tabId: TabId, lock = false) => {
+  const openFlyout = useCallback((tabId: 'office' | 'tools', lock = false) => {
     // Clear any pending hover timeout
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
@@ -82,6 +82,9 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
   // Keyboard navigation within flyout
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!activeTab || flyoutState === 'closed') return;
+    
+    // Only handle Office and Tools tabs (they have flyouts)
+    if (activeTab !== 'office' && activeTab !== 'tools') return;
 
     const modules = TAB_GROUPS[activeTab].modules;
     const currentIndex = highlightedIndex ?? 0;
@@ -110,20 +113,16 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
         break;
         
       case 'ArrowRight':
-        // Move to next tab group
+        // Move to next flyout tab (Office -> Tools -> Office)
         e.preventDefault();
-        const tabOrder: TabId[] = ['office', 'action', 'tools'];
-        const currentTabIndex = tabOrder.indexOf(activeTab);
-        const nextTab = tabOrder[(currentTabIndex + 1) % tabOrder.length];
+        const nextTab = activeTab === 'office' ? 'tools' : 'office';
         openFlyout(nextTab, flyoutState === 'locked');
         break;
         
       case 'ArrowLeft':
-        // Move to previous tab group
+        // Move to previous flyout tab (Tools -> Office -> Tools)
         e.preventDefault();
-        const tabOrderL: TabId[] = ['office', 'action', 'tools'];
-        const currentTabIndexL = tabOrderL.indexOf(activeTab);
-        const prevTab = tabOrderL[(currentTabIndexL - 1 + tabOrderL.length) % tabOrderL.length];
+        const prevTab = activeTab === 'tools' ? 'office' : 'tools';
         openFlyout(prevTab, flyoutState === 'locked');
         break;
     }

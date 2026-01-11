@@ -260,7 +260,7 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
         </div>
       </div>
       <div style="margin-top: 6px; display: flex; justify-content: flex-end; color: #7A8087; font-size: 9px;">
-        Seite <span class="pageNumber"></span> von <span class="totalPages"></span>
+        Seite&nbsp;<span class="pageNumber"></span>&nbsp;von&nbsp;<span class="totalPages"></span>
       </div>
     </div>
   `;
@@ -308,10 +308,11 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
       line-height: 1.55;
     }
 
-    /* GLOBAL ALIGNMENT GRID - no padding, margins handled by Puppeteer */
+    /* GLOBAL ALIGNMENT GRID - add padding to work with Puppeteer margins */
     .content-grid {
-      padding: 0;
+      padding: 0 8mm;
       width: 100%;
+      box-sizing: border-box;
     }
 
     /* HEADER */

@@ -7,9 +7,11 @@
 import type { IconComponent } from '@/components/ui/Icon';
 
 /**
- * Tab group IDs matching mobile navigation
+ * Tab group IDs
+ * Desktop: office, tools, capto, voco (action only exists for mobile)
+ * Mobile: office, action, tools
  */
-export type TabId = 'office' | 'action' | 'tools';
+export type TabId = 'office' | 'action' | 'tools' | 'capto' | 'voco';
 
 /**
  * Module definition

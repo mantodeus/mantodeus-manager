@@ -1,5 +1,5 @@
 /**
- * Manto Assistant Button
+ * Ask Mantodeus Button
  * 
  * - Mobile: Floating button bottom-right, above tab bar, aligned with tools icon
  * - Desktop (inSidebar): Button in sidebar footer next to user profile
@@ -74,7 +74,7 @@ export function FloatingHelpButton({ inSidebar = false }: FloatingHelpButtonProp
           "transition-colors duration-150",
           "hover:scale-105",
         )}
-        aria-label="Open Manto assistant"
+        aria-label="Ask Mantodeus"
       >
         <BugAnt className="h-4 w-4" />
       </Button>

@@ -1,18 +1,21 @@
 /**
  * Desktop Navigation Rail
  * 
- * 60px vertical strip with tab group icons, Manto button, and user profile.
- * Hovering or clicking a tab reveals the flyout module scroller.
+ * 60px vertical strip:
+ * - Logo at top (click to open Ask Mantodeus)
+ * - Tab icons: Office (flyout), Tools (flyout), Capture (direct), Record (direct)
+ * - User profile at bottom
  */
 
 import { useRef, useCallback } from 'react';
+import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useDesktopNav } from './DesktopNavProvider';
 import { TABS, TIMING, LAYOUT } from './constants';
 import type { TabId } from './types';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { BugAnt, LogOut, FileJson } from '@/components/ui/Icon';
+import { LogOut, FileJson } from '@/components/ui/Icon';
 import { useManto } from '@/contexts/MantoContext';
 import {
   DropdownMenu,
@@ -21,11 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Logo } from '@/components/Logo';
 
 interface DesktopNavRailProps {
@@ -35,11 +33,15 @@ interface DesktopNavRailProps {
 export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
   const { user, logout } = useAuth();
   const { toggleManto } = useManto();
-  const { activeTab, flyoutState, openFlyout, closeFlyout, lockFlyout } = useDesktopNav();
+  const [, setLocation] = useLocation();
+  const { activeTab, flyoutState, openFlyout, closeFlyout } = useDesktopNav();
   
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleTabMouseEnter = useCallback((tabId: TabId) => {
+  const handleTabMouseEnter = useCallback((tab: typeof TABS[0]) => {
+    // Only handle hover for flyout tabs
+    if (tab.type !== 'flyout') return;
+
     // Clear any existing timeout
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
@@ -47,13 +49,13 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
 
     // If already showing a flyout (locked or hovering), switch immediately
     if (flyoutState !== 'closed') {
-      openFlyout(tabId, flyoutState === 'locked');
+      openFlyout(tab.id as 'office' | 'tools', flyoutState === 'locked');
       return;
     }
 
     // Otherwise, delay before showing
     hoverTimeoutRef.current = setTimeout(() => {
-      openFlyout(tabId, false);
+      openFlyout(tab.id as 'office' | 'tools', false);
     }, TIMING.HOVER_DELAY);
   }, [flyoutState, openFlyout]);
 
@@ -65,21 +67,28 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
     }
   }, []);
 
-  const handleTabClick = useCallback((tabId: TabId) => {
+  const handleTabClick = useCallback((tab: typeof TABS[0]) => {
     // Clear any pending hover timeout
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
 
-    if (activeTab === tabId && flyoutState === 'locked') {
-      // Clicking same locked tab closes it
-      closeFlyout();
-    } else {
-      // Lock the flyout open
-      openFlyout(tabId, true);
+    if (tab.type === 'direct' && tab.path) {
+      // Direct navigation (Capture, Record)
+      setLocation(tab.path);
+      closeFlyout(); // Close any open flyout
+    } else if (tab.type === 'flyout') {
+      // Flyout tabs (Office, Tools)
+      if (activeTab === tab.id && flyoutState === 'locked') {
+        // Clicking same locked tab closes it
+        closeFlyout();
+      } else {
+        // Lock the flyout open
+        openFlyout(tab.id as 'office' | 'tools', true);
+      }
     }
-  }, [activeTab, flyoutState, openFlyout, closeFlyout]);
+  }, [activeTab, flyoutState, openFlyout, closeFlyout, setLocation]);
 
   return (
     <div
@@ -94,13 +103,21 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
       style={{ width: LAYOUT.RAIL_WIDTH }}
       onMouseLeave={handleTabMouseLeave}
     >
-      {/* Logo */}
-      <div className="mb-4">
+      {/* Logo - Click to open Ask Mantodeus */}
+      <button
+        className={cn(
+          "mb-4 rounded-lg transition-all duration-150",
+          "hover:scale-105 hover:ring-2 hover:ring-primary/30",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        )}
+        onClick={() => toggleManto()}
+        aria-label="Ask Mantodeus"
+      >
         <Logo
           className="h-9 w-9 rounded-lg object-cover ring-1 ring-border/50"
-          alt="Mantodeus"
+          alt="Ask Mantodeus"
         />
-      </div>
+      </button>
 
       {/* Tab Icons */}
       <div className="flex-1 flex flex-col items-center gap-1 py-2">
@@ -109,74 +126,45 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
           const Icon = tab.icon;
 
           return (
-            <Tooltip key={tab.id}>
-              <TooltipTrigger asChild>
-                <button
-                  data-desktop-nav="tab"
-                  data-tab-id={tab.id}
-                  className={cn(
-                    "relative w-11 h-11 flex items-center justify-center",
-                    "rounded-xl transition-all duration-150",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    isActive ? [
-                      "bg-primary/15 text-primary",
-                      "shadow-[0_0_16px_-4px_hsl(var(--primary)/0.4)]",
-                    ] : [
-                      "text-muted-foreground hover:text-foreground",
-                      "hover:bg-muted/50",
-                    ]
-                  )}
-                  onMouseEnter={() => handleTabMouseEnter(tab.id)}
-                  onClick={() => handleTabClick(tab.id)}
-                  aria-label={tab.label}
-                >
-                  <Icon
-                    className={cn(
-                      "h-5 w-5 transition-transform duration-150",
-                      isActive && "scale-110"
-                    )}
-                    strokeWidth={isActive ? 2 : 1.5}
-                  />
-                  
-                  {/* Active indicator dot */}
-                  {isActive && (
-                    <span className="absolute -right-0.5 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-l-full" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="font-medium">
-                {tab.label}
-              </TooltipContent>
-            </Tooltip>
+            <button
+              key={tab.id}
+              data-desktop-nav="tab"
+              data-tab-id={tab.id}
+              className={cn(
+                "relative w-11 h-11 flex items-center justify-center",
+                "rounded-xl transition-all duration-150",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                isActive ? [
+                  "bg-primary/15 text-primary",
+                  "shadow-[0_0_16px_-4px_hsl(var(--primary)/0.4)]",
+                ] : [
+                  "text-muted-foreground hover:text-foreground",
+                  "hover:bg-muted/50",
+                ]
+              )}
+              onMouseEnter={() => handleTabMouseEnter(tab)}
+              onClick={() => handleTabClick(tab)}
+              aria-label={tab.label}
+            >
+              <Icon
+                className={cn(
+                  "h-5 w-5 transition-transform duration-150",
+                  isActive && "scale-110"
+                )}
+                strokeWidth={isActive ? 2 : 1.5}
+              />
+              
+              {/* Active indicator dot */}
+              {isActive && (
+                <span className="absolute -right-0.5 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-l-full" />
+              )}
+            </button>
           );
         })}
       </div>
 
-      {/* Bottom Actions */}
-      <div className="flex flex-col items-center gap-2 pt-2 border-t border-border/30 mt-2">
-        {/* Manto Assistant */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              className={cn(
-                "w-11 h-11 flex items-center justify-center",
-                "rounded-xl transition-all duration-150",
-                "text-muted-foreground hover:text-primary",
-                "hover:bg-primary/10",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              )}
-              onClick={() => toggleManto()}
-              aria-label="Open Manto Assistant"
-            >
-              <BugAnt className="h-5 w-5" strokeWidth={1.5} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            Manto Assistant
-          </TooltipContent>
-        </Tooltip>
-
-        {/* User Profile */}
+      {/* User Profile */}
+      <div className="pt-2 border-t border-border/30 mt-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
