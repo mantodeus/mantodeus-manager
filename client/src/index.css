@@ -743,7 +743,11 @@
     }
 
     .app-content {
-      padding-bottom: calc(var(--bottom-safe-area) + 1rem) !important;
+      /* Allow scrolling past bottom UI:
+         - bottom tab bar (var(--bottom-safe-area))
+         - Manto sheet when open (var(--manto-sheet-height))
+      */
+      padding-bottom: calc(var(--bottom-safe-area) + var(--manto-sheet-height, 0px) + 1rem) !important;
     }
     
     /* Ensure all scrollable containers respect bottom safe area */

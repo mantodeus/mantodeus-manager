@@ -183,6 +183,21 @@ export function AssistantPanel({
     setCurrentHeight(snapHeights[snapState]);
   }, [snapState, snapHeights, isMobile, isDragging]);
 
+  // Ensure page behind can scroll past the open sheet by increasing app-content bottom padding
+  // via a CSS variable consumed in `index.css`.
+  useEffect(() => {
+    if (!isMobile) return;
+    const root = document.documentElement;
+    const isSheetCoveringPage = isOpen && snapState !== "collapsed";
+    root.style.setProperty(
+      "--manto-sheet-height",
+      isSheetCoveringPage ? `${currentHeight}px` : "0px"
+    );
+    return () => {
+      root.style.removeProperty("--manto-sheet-height");
+    };
+  }, [isMobile, isOpen, snapState, currentHeight]);
+
   // Debug: verify whether page bottom is covered by the chat sheet on mobile.
   useEffect(() => {
     if (!isMobile || !isOpen) return;
