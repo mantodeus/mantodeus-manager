@@ -227,33 +227,53 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   <meta charset="UTF-8" />
   <title>Rechnung ${escapeHtml(invoiceNumber)}</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@100;300;400;500&display=swap" rel="stylesheet">
-
   <style>
+    @font-face {
+      font-family: 'Kanit';
+      src: url('/fonts/kanit-variable.woff2') format('woff2');
+      font-weight: 100 500;
+      font-style: normal;
+      font-display: block;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
     :root {
       --accent: ${accentColor};
       --text-primary: #1C1F23;
       --text-secondary: #4A5058;
-      --text-muted: #7A8087;
-      --border-soft: #ececec;
+      --text-muted: #6A7078;
+      --border-soft: #d0d0d0;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
 
     body {
       font-family: 'Kanit', Arial, sans-serif;
       font-weight: 300;
       color: var(--text-primary);
       background: #fff;
-      padding: 56px;
-      max-width: 900px;
-      margin: auto;
+      margin: 0;
+      padding: 0;
       line-height: 1.55;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 18mm;
     }
 
     /* GLOBAL ALIGNMENT GRID */
     .content-grid {
-      padding: 0 24px; /* aligns with card padding, not shadow */
+      padding: 0;
     }
 
     /* HEADER */
@@ -265,16 +285,16 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     }
 
     h1 {
-      font-size: 32pt;
+      font-size: 32px;
       font-weight: 100;
-      letter-spacing: 1.6px;
+      letter-spacing: 2px;
       margin: 0;
       line-height: 1;
     }
 
     .invoice-number {
       margin-top: 4px;
-      font-size: 14pt;
+      font-size: 14px;
       font-weight: 500;
       color: var(--text-secondary);
     }
@@ -298,7 +318,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 
     .dates {
       text-align: right;
-      font-size: 10.5pt;
+      font-size: 11px;
       color: var(--text-secondary);
       white-space: nowrap;
     }
@@ -311,7 +331,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       background: #ffffff;
       border-radius: 16px;
       padding: 22px 24px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+      border: 1px solid var(--border-soft);
     }
 
     .billing {
@@ -324,7 +344,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     .box-label {
       text-transform: uppercase;
       font-size: 9px;
-      letter-spacing: 0.08em;
+      letter-spacing: 1px;
       color: var(--text-muted);
       margin-bottom: 10px;
     }
@@ -353,8 +373,8 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 
     tbody td {
       padding: 14px;
-      font-size: 11.5px;
-      border-bottom: 1px solid #f0f0f0;
+      font-size: 12px;
+      border-bottom: 1px solid var(--border-soft);
     }
 
     .right { text-align: right; }
@@ -366,14 +386,14 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       width: 320px;
       padding: 20px 22px;
       border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+      border: 1px solid var(--border-soft);
       background: #fff;
     }
 
     .totals-row {
       display: flex;
       justify-content: space-between;
-      font-size: 11.5px;
+      font-size: 12px;
       padding: 6px 0;
     }
 
@@ -391,7 +411,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       top: 0;
       left: 0;
       right: 0;
-      height: 1px;
+      height: 0.5px;
       background: linear-gradient(
         to right,
         ${gradientStart} 0%,
@@ -408,7 +428,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     }
 
     .vat-note {
-      font-size: 10.5px;
+      font-size: 11px;
       color: var(--text-muted);
     }
 
@@ -418,7 +438,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       grid-template-columns: 1.3fr 1fr 1.3fr;
       gap: 36px;
       margin-top: 64px;
-      font-size: 10.5px;
+      font-size: 11px;
       color: var(--text-secondary);
     }
 
@@ -428,6 +448,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 
 <body>
 
+<div class="page">
 <div class="content-grid">
 
   <!-- HEADER -->
@@ -513,6 +534,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     </div>
   </div>
 
+</div>
 </div>
 
 </body>

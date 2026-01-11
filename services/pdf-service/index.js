@@ -1,5 +1,6 @@
 import express from "express";
 import puppeteer from "puppeteer";
+import path from "path";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -68,6 +69,9 @@ async function getBrowser() {
 
 app.use(express.json({ limit: "5mb" }));
 
+// Serve fonts as static assets
+app.use("/fonts", express.static(path.join(process.cwd(), "fonts")));
+
 app.post("/render", internalAuthMiddleware, async (req, res) => {
   try {
     const { html, options } = req.body;
@@ -76,6 +80,20 @@ app.post("/render", internalAuthMiddleware, async (req, res) => {
     const browserInstance = await getBrowser();
     const page = await browserInstance.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
+
+    // Wait for fonts to load before rendering PDF
+    await page.evaluateHandle("document.fonts.ready");
+
+    // Wait for layout stabilization
+    await page.evaluate(() => {
+      return new Promise((resolve) => {
+        if (document.readyState === 'complete') {
+          setTimeout(resolve, 100);
+        } else {
+          window.addEventListener('load', () => setTimeout(resolve, 100));
+        }
+      });
+    });
 
     const pdfBuffer = await page.pdf({
       format: "A4",
