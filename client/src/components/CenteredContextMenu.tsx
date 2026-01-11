@@ -18,8 +18,25 @@ import { useLongPress } from "@/hooks/useLongPress";
 import { cn } from "@/lib/utils";
 import { Edit, Trash2, Copy, CheckCircle2, Archive, RotateCcw, Eye, DollarSign, XCircle, Send, CurrencyEuro } from "@/components/ui/Icon";
 
-const DEBUG_INGEST_ENDPOINT =
-  "http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e";
+function debugLog(payload: {
+  location: string;
+  message: string;
+  data?: Record<string, unknown>;
+  hypothesisId: string;
+  runId: string;
+}) {
+  // IMPORTANT: Must be reachable from iOS PWA in production.
+  // We use same-origin HTTPS endpoint which writes to server-side `.cursor/debug-pwa.log`.
+  fetch("/api/debug/log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...payload,
+      timestamp: Date.now(),
+      sessionId: "debug-session",
+    }),
+  }).catch(() => {});
+}
 
 export type CenteredContextMenuAction =
   | "edit"
@@ -242,7 +259,27 @@ export const CenteredContextMenu = React.forwardRef<
         window.matchMedia?.("(display-mode: standalone)")?.matches ||
         (window.navigator as any).standalone === true;
       const bottomObstruction = getBottomObstructionHeight();
-      fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:openMenu',message:'openMenu called (pre-state)',data:{isPWA,innerHeight:window.innerHeight,innerWidth:window.innerWidth,vvH:vv?.height,vvOffsetTop:vv?.offsetTop,scrollY:window.scrollY,bodyPos:document.body.style.position,bodyTop:document.body.style.top,bottomObstruction,tabTop:tabRect?Math.round(tabRect.top):null,tabBottom:tabRect?Math.round(tabRect.bottom):null,tabHeight:tabRect?Math.round(tabRect.height):null,tabZ:tabBar?getComputedStyle(tabBar).zIndex:null},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H2,H3',runId:'inv-menu-1'})}).catch(()=>{});
+      debugLog({
+        location: "CenteredContextMenu.tsx:openMenu",
+        message: "openMenu called (pre-state)",
+        data: {
+          isPWA,
+          innerHeight: window.innerHeight,
+          innerWidth: window.innerWidth,
+          vvH: vv?.height,
+          vvOffsetTop: vv?.offsetTop,
+          scrollY: window.scrollY,
+          bodyPos: document.body.style.position,
+          bodyTop: document.body.style.top,
+          bottomObstruction,
+          tabTop: tabRect ? Math.round(tabRect.top) : null,
+          tabBottom: tabRect ? Math.round(tabRect.bottom) : null,
+          tabHeight: tabRect ? Math.round(tabRect.height) : null,
+          tabZ: tabBar ? getComputedStyle(tabBar).zIndex : null,
+        },
+        hypothesisId: "H1,H2,H3",
+        runId: "inv-menu-2",
+      });
     } catch {}
     // #endregion
 
@@ -488,7 +525,22 @@ export const CenteredContextMenu = React.forwardRef<
       const vv = window.visualViewport;
       const tabBar = document.querySelector(".bottom-tab-bar") as HTMLElement | null;
       const tabRect = tabBar?.getBoundingClientRect();
-      fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:scrollLockEffect',message:'apply scroll lock (pre)',data:{innerHeight:window.innerHeight,vvH:vv?.height,scrollY,origOverflow:originalBodyOverflow,origPos:originalBodyPosition,origTop:originalBodyTop,tabTop:tabRect?Math.round(tabRect.top):null,tabBottom:tabRect?Math.round(tabRect.bottom):null},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1',runId:'inv-menu-1'})}).catch(()=>{});
+      debugLog({
+        location: "CenteredContextMenu.tsx:scrollLockEffect",
+        message: "apply scroll lock (pre)",
+        data: {
+          innerHeight: window.innerHeight,
+          vvH: vv?.height,
+          scrollY,
+          origOverflow: originalBodyOverflow,
+          origPos: originalBodyPosition,
+          origTop: originalBodyTop,
+          tabTop: tabRect ? Math.round(tabRect.top) : null,
+          tabBottom: tabRect ? Math.round(tabRect.bottom) : null,
+        },
+        hypothesisId: "H1",
+        runId: "inv-menu-2",
+      });
     } catch {}
     // #endregion
 
@@ -537,7 +589,22 @@ export const CenteredContextMenu = React.forwardRef<
         const vv = window.visualViewport;
         const tabBar = document.querySelector(".bottom-tab-bar") as HTMLElement | null;
         const tabRect = tabBar?.getBoundingClientRect();
-        fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:scrollLockEffect',message:'cleanup scroll lock (pre-restore)',data:{innerHeight:window.innerHeight,vvH:vv?.height,scrollY,curOverflow:document.body.style.overflow,curPos:document.body.style.position,curTop:document.body.style.top,tabTop:tabRect?Math.round(tabRect.top):null,tabBottom:tabRect?Math.round(tabRect.bottom):null},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1',runId:'inv-menu-1'})}).catch(()=>{});
+        debugLog({
+          location: "CenteredContextMenu.tsx:scrollLockEffect",
+          message: "cleanup scroll lock (pre-restore)",
+          data: {
+            innerHeight: window.innerHeight,
+            vvH: vv?.height,
+            scrollY,
+            curOverflow: document.body.style.overflow,
+            curPos: document.body.style.position,
+            curTop: document.body.style.top,
+            tabTop: tabRect ? Math.round(tabRect.top) : null,
+            tabBottom: tabRect ? Math.round(tabRect.bottom) : null,
+          },
+          hypothesisId: "H1",
+          runId: "inv-menu-2",
+        });
       } catch {}
       // #endregion
 
@@ -676,7 +743,23 @@ export const CenteredContextMenu = React.forwardRef<
       const tabRect = tabBar?.getBoundingClientRect();
       const menuRect = menuRef.current.getBoundingClientRect();
       const menuZ = getComputedStyle(menuRef.current).zIndex;
-      fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:menuLayout',message:'menu rendered/laid out',data:{innerHeight:window.innerHeight,vvH:vv?.height,menuTop:Math.round(menuRect.top),menuBottom:Math.round(menuRect.bottom),menuHeight:Math.round(menuRect.height),menuZ,tabTop:tabRect?Math.round(tabRect.top):null,tabHeight:tabRect?Math.round(tabRect.height):null,menuOverlapsTab:tabRect?Math.round(menuRect.bottom)>Math.round(tabRect.top):null},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2,H3',runId:'inv-menu-1'})}).catch(()=>{});
+      debugLog({
+        location: "CenteredContextMenu.tsx:menuLayout",
+        message: "menu rendered/laid out",
+        data: {
+          innerHeight: window.innerHeight,
+          vvH: vv?.height,
+          menuTop: Math.round(menuRect.top),
+          menuBottom: Math.round(menuRect.bottom),
+          menuHeight: Math.round(menuRect.height),
+          menuZ,
+          tabTop: tabRect ? Math.round(tabRect.top) : null,
+          tabHeight: tabRect ? Math.round(tabRect.height) : null,
+          menuOverlapsTab: tabRect ? Math.round(menuRect.bottom) > Math.round(tabRect.top) : null,
+        },
+        hypothesisId: "H2,H3",
+        runId: "inv-menu-2",
+      });
     } catch {}
     // #endregion
 
