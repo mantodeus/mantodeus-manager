@@ -222,7 +222,7 @@ export default function InvoicesRubbish() {
       return <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600">NOT SENT</Badge>;
     }
 
-    return <Badge variant="outline" className="text-xs">DRAFT</Badge>;
+    return <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
   };
 
   const handleItemAction = (action: ItemAction, invoiceId: number, status: string) => {

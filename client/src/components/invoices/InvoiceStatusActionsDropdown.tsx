@@ -333,14 +333,9 @@ export function InvoiceStatusActionsDropdown({
       return (
         <Button
           asChild={false}
-          variant="default"
+          variant="outline"
           size="default"
-          className="text-sm font-semibold border cursor-pointer"
-          style={{
-            backgroundColor: isDarkMode ? "#0A0F14" : "#F2F1EE",
-            color: isDarkMode ? "#FFFFFF" : "#000000",
-            borderColor: isDarkMode ? "rgba(10, 15, 20, 0.5)" : "rgba(0, 0, 0, 0.2)",
-          }}
+          className="text-sm font-semibold border-foreground text-foreground dark:border-white dark:text-white cursor-pointer"
         >
           CANCELLED
         </Button>
@@ -401,7 +396,7 @@ export function InvoiceStatusActionsDropdown({
     }
 
     if (invoiceState === "DRAFT") {
-      return <Button asChild={false} variant="outline" size="default" className="text-sm font-semibold cursor-pointer">DRAFT</Button>;
+      return <Button asChild={false} variant="outline" size="default" className="text-sm font-semibold border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600 cursor-pointer">DRAFT</Button>;
     }
 
     if (invoiceState === "REVIEW") {

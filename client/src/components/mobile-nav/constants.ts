@@ -146,22 +146,22 @@ export const MODULE_REGISTRY = {
     },
   ],
   action: [
-    // Array order reversed: Voco at top = bottom of screen
+    // Array order reversed: Record at top = bottom of screen
     {
       id: 'voco',
-      label: 'Voco',
+      label: 'Record',
       path: '/action/voco',
       icon: Microphone,
     },
     {
       id: 'capto',
-      label: 'Capto',
+      label: 'Capture',
       path: '/action/capto',
       icon: Camera,
     },
     {
       id: 'manto',
-      label: 'Manto',
+      label: 'Mantodeus',
       path: '/action/manto',
       icon: BugAnt,
       isAction: true,

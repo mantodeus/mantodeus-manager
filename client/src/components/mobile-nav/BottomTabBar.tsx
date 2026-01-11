@@ -94,13 +94,11 @@ export function BottomTabBar() {
     // This allows users to return to the last page in that tab
     setActiveTab(tabId);
     
-    // Special handling for action tab - don't navigate, just open Manto if it's the first module
+    // Special handling for action tab - always open Mantodeus chat overlay
+    // Do NOT navigate - chat is an overlay that appears over current page
     if (tabId === 'action') {
-      const firstModule = MODULE_REGISTRY[tabId]?.[0];
-      if (firstModule?.isAction) {
-        openManto();
-        return;
-      }
+      openManto();
+      return;
     }
     
     const lastUsedPath = lastUsedModuleByTab[tabId];

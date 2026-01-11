@@ -7,7 +7,7 @@
  * Section 8: Depth displacement (readability law)
  * Section 9: Visual hierarchy
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, Fragment } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useMobileNav } from './MobileNavProvider';
@@ -210,6 +210,8 @@ export function ModuleScroller() {
 
       if (module) {
         if (module.isAction) {
+          // Mantodeus chat is an overlay - open it but don't navigate
+          // User stays on current page while chat appears
           openManto();
         } else {
           // Navigate to selected module - use currentTab (gestureTab or activeTab)
@@ -237,6 +239,7 @@ export function ModuleScroller() {
     currentTab,
     setLastUsedModule,
     openManto,
+    gestureTab,
   ]);
 
   // Initialize highlighted index to first item when scroller appears
@@ -327,17 +330,22 @@ export function ModuleScroller() {
             const showLabel = currentTab !== 'action';
 
             return (
-              <ModuleItem
-                key={module.id}
-                module={module}
-                index={index}
-                isActive={isActive}
-                isNeighbor={isNeighbor}
-                offset={offset}
-                blur={blur}
-                scrollerSide={scrollerSide}
-                showLabel={showLabel}
-              />
+              <Fragment key={module.id}>
+                <ModuleItem
+                  module={module}
+                  index={index}
+                  isActive={isActive}
+                  isNeighbor={isNeighbor}
+                  offset={offset}
+                  blur={blur}
+                  scrollerSide={scrollerSide}
+                  showLabel={showLabel}
+                />
+                {/* Visual spacer between quick actions and Mantodeus chat */}
+                {isActionTab && index === 1 && (
+                  <div className="h-[100px] w-full pointer-events-none" aria-hidden="true" />
+                )}
+              </Fragment>
             );
           })}
         </div>

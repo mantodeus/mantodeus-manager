@@ -1579,13 +1579,8 @@ export default function Invoices() {
     if (invoice.cancelledAt) {
       return (
         <Badge 
-          variant="default" 
-          className="text-xs border" 
-          style={{
-            backgroundColor: isDarkMode ? '#0A0F14' : '#F2F1EE',
-            color: isDarkMode ? '#FFFFFF' : '#000000',
-            borderColor: isDarkMode ? 'rgba(10, 15, 20, 0.5)' : 'rgba(0, 0, 0, 0.2)',
-          }}
+          variant="outline" 
+          className="text-xs border-foreground text-foreground dark:border-white dark:text-white"
         >
           CANCELLED
         </Badge>
@@ -1621,7 +1616,7 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'DRAFT') {
-      return <Badge variant="outline" className="text-xs">DRAFT</Badge>;
+      return <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
     }
     
     return null;
