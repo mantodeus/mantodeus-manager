@@ -229,7 +229,7 @@ export function LogoUploadSection() {
           <Button
             onClick={handleDelete}
             disabled={uploading || deleteMutation.isPending}
-            variant="destructive"
+            variant="destructive-outline"
           >
             {deleteMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

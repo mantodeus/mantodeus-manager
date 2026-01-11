@@ -374,7 +374,7 @@ export default function ProjectDetail() {
           </Button>
         )}
         <Button
-          variant="destructive"
+          variant="destructive-outline"
           onClick={handleDeleteProject}
           disabled={deleteProject.isPending}
           className="gap-2"

@@ -757,7 +757,7 @@ const FindingMediaSection = memo(function FindingMediaSection({
                 </Button>
                 <Button
                   size="sm"
-                  variant="destructive"
+                  variant="destructive-outline"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteMedia(m);

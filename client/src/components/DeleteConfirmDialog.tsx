@@ -68,7 +68,7 @@ export function DeleteConfirmDialog({
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isDeleting}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="border border-destructive text-destructive bg-transparent hover:bg-destructive/10 dark:hover:bg-destructive/20"
           >
             {isDeleting ? "Deleting..." : confirmLabel}
           </AlertDialogAction>

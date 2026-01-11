@@ -704,7 +704,7 @@ export function InvoiceUploadReviewDialog({
     // Button priority: OVERDUE > PARTIAL > SENT/PAID
     if (derivedValues.isOverdue) {
       return (
-        <Button asChild={false} variant="destructive" size="default" className="text-sm font-semibold cursor-pointer">
+        <Button asChild={false} variant="destructive-outline" size="default" className="text-sm font-semibold cursor-pointer">
           OVERDUE
         </Button>
       );
@@ -714,9 +714,9 @@ export function InvoiceUploadReviewDialog({
       return (
         <Button
           asChild={false}
-          variant="default"
+          variant="outline"
           size="default"
-          className="text-sm font-semibold bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50 cursor-pointer hover:bg-orange-600 dark:hover:bg-orange-700"
+          className="text-sm font-semibold border-orange-500 text-orange-600 dark:text-orange-400 dark:border-orange-600 hover:bg-orange-500/10 dark:hover:bg-orange-600/20 cursor-pointer"
         >
           PARTIAL
         </Button>
@@ -745,9 +745,9 @@ export function InvoiceUploadReviewDialog({
       return (
         <Button
           asChild={false}
-          variant="default"
+          variant="outline"
           size="default"
-          className="text-sm font-semibold bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50 cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700"
+          className="text-sm font-semibold border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-600 hover:bg-blue-500/10 dark:hover:bg-blue-600/20 cursor-pointer"
         >
           SENT
         </Button>
@@ -1454,7 +1454,7 @@ export function InvoiceUploadReviewDialog({
                 {/* Delete and Save buttons on same line - Delete left, Save right */}
                 <div className="flex gap-2">
                   <Button
-                    variant="destructive"
+                    variant="destructive-outline"
                     onClick={handleDelete}
                     disabled={isLoading || (isReview ? cancelMutation.isPending : moveToTrashMutation.isPending)}
                     className="flex-1"
@@ -1554,7 +1554,7 @@ export function InvoiceUploadReviewDialog({
                 <div className="flex gap-2">
                   {/* Delete (replaces Cancel) */}
                   <Button 
-                    variant="destructive" 
+                    variant="destructive-outline" 
                     onClick={handleDelete} 
                     disabled={isLoading || moveToTrashMutation.isPending}
                     className="flex-1"

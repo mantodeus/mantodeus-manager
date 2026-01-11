@@ -125,7 +125,7 @@ export default function ProjectsRubbish() {
         actions={
           trashedProjects && trashedProjects.length > 0 ? (
             <Button
-              variant="destructive"
+              variant="destructive-outline"
               size="sm"
               onClick={() => setEmptyRubbishDialogOpen(true)}
               disabled={deleteProjectPermanentlyMutation.isPending}

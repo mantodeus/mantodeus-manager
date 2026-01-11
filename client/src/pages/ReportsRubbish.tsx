@@ -173,7 +173,6 @@ export default function ReportsRubbish() {
         title="Delete Permanently"
         description="Are you sure? This action cannot be undone. This report will be permanently deleted."
         confirmLabel="Delete Permanently"
-        variant="destructive"
         isDeleting={deleteReportPermanentlyMutation.isPending}
       />
     </div>

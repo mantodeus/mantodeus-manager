@@ -210,9 +210,9 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     : '';
 
   // Info sections (only render if any exist)
-  const infoSectionsHTML = (kleinunternehmerCardHTML || notesCardHTML || termsCardHTML)
+  // Separate kleinunternehmer note to keep with totals
+  const otherInfoSectionsHTML = (notesCardHTML || termsCardHTML)
     ? `<div class="info-section">
-        ${kleinunternehmerCardHTML}
         ${notesCardHTML}
         ${termsCardHTML}
       </div>`
@@ -275,9 +275,10 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     :root {
       --accent: ${accentColor};
       --text-primary: #1C1F23;
-      --text-secondary: #4A5058;
-      --text-muted: #6A7078;
-      --border-soft: #d0d0d0;
+      --text-secondary: #5A6068;
+      --text-muted: #7A8087;
+      --border-soft: #d8d8d8;
+      --bg-soft: #fafafa;
     }
 
     * {
@@ -360,10 +361,11 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 
     /* CARDS */
     .card {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 22px 24px;
+      background: var(--bg-soft);
+      border-radius: 12px;
+      padding: 14px 16px;
       border: 1px solid var(--border-soft);
+      line-height: 1.4;
     }
 
     .billing {
@@ -378,7 +380,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       font-size: 9px;
       letter-spacing: 1px;
       color: var(--text-muted);
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     /* TABLE */
@@ -396,7 +398,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 
     thead th {
       background: #f7f7f7;
-      padding: 16px 14px;
+      padding: 12px 14px;
       font-size: 12px;
       font-weight: 500;
       border-bottom: 1px solid var(--border-soft);
@@ -404,7 +406,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     }
 
     tbody td {
-      padding: 14px;
+      padding: 10px 14px;
       font-size: 12px;
       border-bottom: 1px solid var(--border-soft);
       vertical-align: top;
@@ -425,14 +427,19 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     .right { text-align: right; }
 
     /* TOTALS */
-    .totals {
+    .totals-wrapper {
       margin-top: 28px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .totals {
       margin-left: auto;
       width: 320px;
       padding: 20px 22px;
-      border-radius: 16px;
+      border-radius: 12px;
       border: 1px solid var(--border-soft);
-      background: #fff;
+      background: var(--bg-soft);
     }
 
     .totals-row {
@@ -443,11 +450,12 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     }
 
     .totals-row.total {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 500;
-      margin-top: 8px;
-      padding-top: 10px;
+      margin-top: 10px;
+      padding-top: 12px;
       position: relative;
+      color: var(--text-primary);
     }
 
     .totals-row.total::before {
@@ -475,6 +483,13 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     .vat-note {
       font-size: 11px;
       color: var(--text-muted);
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .totals-with-vat-note {
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
 
     /* FOOTER - Fixed at bottom of page */
@@ -490,6 +505,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       color: var(--text-secondary);
       padding-top: 24px;
       border-top: 1px solid var(--border-soft);
+      opacity: 0.85;
     }
 
     strong { font-weight: 400; }
@@ -552,16 +568,21 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   </div>
 
   <!-- TOTALS -->
-  <div class="totals">
-    ${vatRowHTML}
-    <div class="totals-row total">
-      <span>Gesamtbetrag</span>
-      <span>${formatCurrency(total)}</span>
+  <div class="totals-wrapper">
+    <div class="totals-with-vat-note">
+      <div class="totals">
+        ${vatRowHTML}
+        <div class="totals-row total">
+          <span>Gesamtbetrag</span>
+          <span>${formatCurrency(total)}</span>
+        </div>
+      </div>
+      ${kleinunternehmerCardHTML}
     </div>
   </div>
 
   <!-- INFO SECTIONS -->
-  ${infoSectionsHTML}
+  ${otherInfoSectionsHTML}
 
   <!-- FOOTER -->
   <div class="footer">

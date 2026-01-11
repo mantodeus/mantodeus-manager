@@ -1594,11 +1594,11 @@ export default function Invoices() {
     
     // Badge priority: OVERDUE > PARTIAL > SENT/PAID
     if (derivedValues.isOverdue) {
-      return <Badge variant="destructive" className="text-xs">OVERDUE</Badge>;
+      return <Badge variant="destructive-outline" className="text-xs">OVERDUE</Badge>;
     }
     
     if (invoiceState === 'PARTIAL') {
-      return <Badge variant="default" className="text-xs bg-orange-500 text-white dark:bg-orange-600 dark:text-white border-orange-500/50">PARTIAL</Badge>;
+      return <Badge variant="outline" className="text-xs border-orange-500 text-orange-600 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
     }
     
     if (invoiceState === 'PAID') {
@@ -1617,7 +1617,7 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'SENT') {
-      return <Badge variant="default" className="text-xs bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50">SENT</Badge>;
+      return <Badge variant="blue-outline" className="text-xs">SENT</Badge>;
     }
     
     if (invoiceState === 'DRAFT') {

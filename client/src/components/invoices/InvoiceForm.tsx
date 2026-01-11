@@ -770,7 +770,7 @@ export function InvoiceForm({
           {!isCreate && invoice && (
             <Button 
               type="button" 
-              variant="destructive" 
+              variant="destructive-outline" 
               className="flex-1" 
               onClick={() => {
                 if (isDraft || isReview) {

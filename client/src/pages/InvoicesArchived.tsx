@@ -265,9 +265,9 @@ export default function InvoicesArchived() {
 
     if (status === 'open' && sentAt) {
       if (dueDate && new Date(dueDate) < new Date() && !paidAt) {
-        return <Badge variant="destructive" className="text-xs">OVERDUE</Badge>;
+        return <Badge variant="destructive-outline" className="text-xs">OVERDUE</Badge>;
       }
-      return <Badge variant="default" className="text-xs bg-blue-500 text-white dark:bg-blue-600 dark:text-white border-blue-500/50">SENT</Badge>;
+      return <Badge variant="blue-outline" className="text-xs">SENT</Badge>;
     }
 
     if (status === 'open' && !sentAt) {

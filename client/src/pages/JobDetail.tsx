@@ -210,7 +210,7 @@ export default function JobDetail() {
       <div className="flex justify-end gap-2 pt-6 border-t border-border">
         <PDFExportButton jobId={jobId} jobTitle={job?.title || "Job"} />
         <Button
-          variant="destructive"
+          variant="destructive-outline"
           onClick={handleDeleteJob}
           disabled={deleteJob.isPending}
           className="gap-2"

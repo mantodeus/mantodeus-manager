@@ -252,7 +252,7 @@ export default function ProjectJobDetail() {
 
       <div className="flex justify-end gap-2 pt-6 border-t border-border">
         <Button
-          variant="destructive"
+          variant="destructive-outline"
           onClick={handleDeleteJob}
           disabled={deleteJob.isPending}
           className="gap-2"

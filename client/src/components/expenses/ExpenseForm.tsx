@@ -413,7 +413,7 @@ export function ExpenseForm({
               )}
               {canDelete && onDelete && (
                 <Button
-                  variant="destructive"
+                  variant="destructive-outline"
                   onClick={onDelete}
                   disabled={isDeleting}
                 >

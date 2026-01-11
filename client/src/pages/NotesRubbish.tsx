@@ -134,7 +134,7 @@ export default function NotesRubbish() {
         actions={
           trashedNotes.length > 0 ? (
             <Button
-              variant="destructive"
+              variant="destructive-outline"
               size="sm"
               onClick={() => setEmptyRubbishDialogOpen(true)}
               disabled={deletePermanentlyMutation.isPending}
