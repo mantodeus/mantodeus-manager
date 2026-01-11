@@ -520,6 +520,11 @@ export const CenteredContextMenu = React.forwardRef<
     const originalBodyTop = document.body.style.top;
     const scrollY = window.scrollY;
 
+    // Store original app scroller styles (our app scrolls inside .app-content on mobile)
+    const appContent = document.querySelector(".app-content") as HTMLElement | null;
+    const originalAppOverflowY = appContent?.style.overflowY ?? "";
+    const originalAppOverflow = appContent?.style.overflow ?? "";
+
     // #region agent log
     try {
       const vv = window.visualViewport;
@@ -544,11 +549,14 @@ export const CenteredContextMenu = React.forwardRef<
     } catch {}
     // #endregion
 
-    // Lock body scroll
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.top = `-${scrollY}px`;
+    // IMPORTANT (iOS PWA): Avoid `body { position: fixed }` scroll lock, it can
+    // change viewport metrics and cause fixed UI (bottom tab bar) to "jump".
+    // Instead, lock the actual app scroller (`.app-content`) and prevent wheel/touchmove.
+    document.body.style.overflow = "hidden";
+    if (appContent) {
+      appContent.style.overflowY = "hidden";
+      appContent.style.overflow = "hidden";
+    }
 
     // Also prevent scroll events on window
     const preventScroll = (e: Event) => {
@@ -614,7 +622,13 @@ export const CenteredContextMenu = React.forwardRef<
       document.body.style.width = originalBodyWidth;
       document.body.style.top = originalBodyTop;
 
-      // Restore scroll position
+      // Restore app scroller styles
+      if (appContent) {
+        appContent.style.overflowY = originalAppOverflowY;
+        appContent.style.overflow = originalAppOverflow;
+      }
+
+      // Restore scroll position (no-op for our default scroller, but keep for safety)
       window.scrollTo(0, scrollY);
 
       // Remove event listeners
