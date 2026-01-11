@@ -47,18 +47,38 @@ if ! npx pnpm -v >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> Fetching and resetting to main"
-git fetch origin
+echo "==> Checking git remote configuration"
+CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
+if [ -z "$CURRENT_REMOTE" ]; then
+  echo "ERROR: Git remote 'origin' is not configured."
+  echo "Run: git remote add origin git@github.com:mantodeus/mantodeus-manager.git"
+  exit 1
+fi
 
 # Verify git remote is set to SSH (prevents hangs in production)
-CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
 if echo "$CURRENT_REMOTE" | grep -qE "^https?://"; then
   echo "ERROR: Git remote uses HTTPS. Automated deploy requires SSH."
+  echo "Current remote: $CURRENT_REMOTE"
   echo "Run: git remote set-url origin git@github.com:mantodeus/mantodeus-manager.git"
   exit 1
 fi
 
-git reset --hard origin/main
+echo "  ✓ Remote configured: $CURRENT_REMOTE"
+
+echo "==> Fetching and resetting to main"
+if ! git fetch origin; then
+  echo "ERROR: git fetch origin failed"
+  echo "  → Check SSH key configuration: ssh -T git@github.com"
+  echo "  → Verify network connectivity"
+  echo "  → Check git remote: git remote -v"
+  exit 1
+fi
+
+if ! git reset --hard origin/main; then
+  echo "ERROR: git reset --hard origin/main failed"
+  echo "  → Check if 'main' branch exists: git branch -r"
+  exit 1
+fi
 
 echo "==> Current commit"
 CURRENT_COMMIT=$(git rev-parse HEAD)
