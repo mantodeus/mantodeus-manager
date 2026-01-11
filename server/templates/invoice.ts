@@ -141,12 +141,22 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   };
 
   // Build items table rows with VAT rate column
+  // Parse description to separate title and description (format: "Title - Description")
   const itemsHTML = items
     .map((item) => {
       const vatRate = company.isKleinunternehmer ? 0 : (item.vatRate ?? Number(company.vatRate));
+      
+      // Parse description: if it contains " - ", split into title and description
+      const descParts = item.description.split(' - ');
+      const itemTitle = descParts[0] || item.description;
+      const itemDescription = descParts.length > 1 ? descParts.slice(1).join(' - ') : '';
+      
       return `
         <tr>
-          <td>${escapeHtml(item.description)}</td>
+          <td>
+            <div class="item-title">${escapeHtml(itemTitle)}</div>
+            ${itemDescription ? `<div class="item-description">${escapeHtml(itemDescription)}</div>` : ''}
+          </td>
           <td class="right">${item.quantity}</td>
           <td class="right">${formatCurrency(item.unitPrice)}</td>
           <td class="right">${vatRate} %</td>
@@ -289,7 +299,8 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     .page {
       width: 210mm;
       min-height: 297mm;
-      padding: 18mm;
+      padding: 20mm 15mm 120mm 15mm;
+      position: relative;
     }
 
     /* GLOBAL ALIGNMENT GRID */
@@ -396,6 +407,19 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       padding: 14px;
       font-size: 12px;
       border-bottom: 1px solid var(--border-soft);
+      vertical-align: top;
+    }
+
+    .item-title {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .item-description {
+      font-weight: 300;
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
     }
 
     .right { text-align: right; }
@@ -453,14 +477,19 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       color: var(--text-muted);
     }
 
-    /* FOOTER */
+    /* FOOTER - Fixed at bottom of page */
     .footer {
+      position: fixed;
+      bottom: 30mm;
+      left: 15mm;
+      right: 15mm;
       display: grid;
-      grid-template-columns: 1.3fr 1fr 1.3fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 36px;
-      margin-top: 64px;
       font-size: 11px;
       color: var(--text-secondary);
+      padding-top: 24px;
+      border-top: 1px solid var(--border-soft);
     }
 
     strong { font-weight: 400; }
@@ -537,10 +566,9 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   <!-- FOOTER -->
   <div class="footer">
     <div>
-      <strong>Bankverbindung</strong><br>
-      ${accountHolderName ? `Kontoinhaber: ${escapeHtml(accountHolderName)}<br>` : ''}
-      ${company.iban ? `IBAN: ${escapeHtml(company.iban)}<br>` : ''}
-      Verwendungszweck: ${escapeHtml(invoiceNumber)}
+      <strong>Kontakt</strong><br>
+      ${company.email ? escapeHtml(company.email) : ''}
+      ${company.phone ? `<br>${escapeHtml(company.phone)}` : ''}
     </div>
 
     <div>
@@ -549,9 +577,10 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     </div>
 
     <div>
-      <strong>Kontakt</strong><br>
-      ${company.email ? escapeHtml(company.email) : ''}
-      ${company.phone ? `<br>${escapeHtml(company.phone)}` : ''}
+      <strong>Bankverbindung</strong><br>
+      ${accountHolderName ? `Kontoinhaber: ${escapeHtml(accountHolderName)}<br>` : ''}
+      ${company.iban ? `IBAN: ${escapeHtml(company.iban)}<br>` : ''}
+      Verwendungszweck: ${escapeHtml(invoiceNumber)}
     </div>
   </div>
 
