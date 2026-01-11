@@ -183,6 +183,88 @@ export function AssistantPanel({
     setCurrentHeight(snapHeights[snapState]);
   }, [snapState, snapHeights, isMobile, isDragging]);
 
+  // Debug: verify whether page bottom is covered by the chat sheet on mobile.
+  useEffect(() => {
+    if (!isMobile || !isOpen) return;
+
+    let logCount = 0;
+    const appContent = document.querySelector(".app-content") as HTMLElement | null;
+    const vv = window.visualViewport;
+
+    const log = (message: string, data: Record<string, unknown>) => {
+      // #region agent log
+      fetch("/api/debug/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          location: "AssistantPanel.tsx:pageBehindChat",
+          message,
+          data,
+          timestamp: Date.now(),
+          sessionId: "debug-session",
+          hypothesisId: "H1,H2",
+          runId: "manto-page-bottom-1",
+        }),
+      }).catch(() => {});
+      // #endregion
+    };
+
+    const snapshot = (reason: string) => {
+      const sheetEl = sheetRef.current;
+      const sheetRect = sheetEl?.getBoundingClientRect();
+      const cs = appContent ? getComputedStyle(appContent) : null;
+      log("snapshot", {
+        reason,
+        snapState,
+        currentHeight,
+        innerHeight: window.innerHeight,
+        vvH: vv?.height,
+        vvOffsetTop: vv?.offsetTop,
+        appExists: !!appContent,
+        appClientH: appContent?.clientHeight,
+        appScrollH: appContent?.scrollHeight,
+        appScrollTop: appContent?.scrollTop,
+        appPadBottom: cs?.paddingBottom,
+        sheetTop: sheetRect ? Math.round(sheetRect.top) : null,
+        sheetHeight: sheetRect ? Math.round(sheetRect.height) : null,
+      });
+    };
+
+    const onScroll = () => {
+      if (!appContent) return;
+      if (logCount >= 4) return;
+      const nearBottom =
+        appContent.scrollTop + appContent.clientHeight >= appContent.scrollHeight - 2;
+      if (!nearBottom) return;
+      logCount++;
+
+      const sheetEl = sheetRef.current;
+      const sheetRect = sheetEl?.getBoundingClientRect();
+      const cs = getComputedStyle(appContent);
+      log("app-content scrolled near bottom", {
+        snapState,
+        currentHeight,
+        appClientH: appContent.clientHeight,
+        appScrollH: appContent.scrollHeight,
+        appScrollTop: appContent.scrollTop,
+        appPadBottom: cs.paddingBottom,
+        sheetTop: sheetRect ? Math.round(sheetRect.top) : null,
+        sheetHeight: sheetRect ? Math.round(sheetRect.height) : null,
+        coveredBySheet: sheetRect
+          ? Math.round(appContent.getBoundingClientRect().bottom) > Math.round(sheetRect.top)
+          : null,
+      });
+    };
+
+    snapshot("effect-mount");
+    appContent?.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      appContent?.removeEventListener("scroll", onScroll);
+      snapshot("effect-unmount");
+    };
+  }, [isMobile, isOpen, snapState, currentHeight]);
+
   // Lock page scroll when chat is open (PWA-compatible)
   // We rely on sheet-level handlers + CSS overscroll-behavior instead of document-level blocking
   // This allows page scroll when chat is closed and messages scroll when chat is open
