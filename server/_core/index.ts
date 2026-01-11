@@ -238,6 +238,101 @@ async function startServer() {
     }
   });
 
+  // HTML endpoint (debug/preview) - returns the exact HTML used for invoice PDF rendering
+  app.get("/api/invoices/:id/html", async (req, res) => {
+    try {
+      const user = await supabaseAuth.authenticateRequest(req);
+
+      if (!user || !user.id) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const invoiceId = parseInt(req.params.id, 10);
+      const isPreview = req.query.preview === "true";
+
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ error: "Invalid invoice ID" });
+      }
+
+      const { getInvoiceById, getCompanySettingsByUserId, getContactById } = await import("../db");
+      const { generateInvoiceHTML } = await import("../templates/invoice");
+
+      const invoice = await getInvoiceById(invoiceId);
+      if (!invoice || invoice.userId !== user.id) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      const companySettings = await getCompanySettingsByUserId(user.id);
+      if (!companySettings) {
+        return res.status(500).json({ error: "Company settings not found" });
+      }
+
+      // Get invoice items (new structure uses lineItems table)
+      const { getInvoiceItemsByInvoiceId } = await import("../db");
+      const lineItems = await getInvoiceItemsByInvoiceId(invoiceId);
+
+      // Convert lineItems to legacy format for PDF template
+      const itemsForPDF = lineItems.length > 0
+        ? lineItems.map((item) => ({
+            description: item.name + (item.description ? ` - ${item.description}` : ""),
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.unitPrice),
+            total: Number(item.lineTotal),
+          }))
+        : (invoice.items as Array<{
+            description: string;
+            quantity: number;
+            unitPrice: number;
+            total: number;
+          }>) || [];
+
+      // Get client contact if linked
+      let client = null;
+      if (invoice.contactId || invoice.clientId) {
+        const contact = await getContactById(invoice.contactId || invoice.clientId);
+        if (contact) {
+          client = {
+            name: contact.name,
+            address: contact.address,
+          };
+        }
+      }
+
+      // Use draft invoice number or generate preview number
+      const invoiceNumber = invoice.invoiceNumber || (isPreview ? `DRAFT-${invoiceId}` : `PREVIEW-${invoiceId}`);
+
+      const html = generateInvoiceHTML({
+        invoiceNumber,
+        invoiceDate: invoice.issueDate ?? new Date(),
+        dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        company: companySettings,
+        client,
+        items: itemsForPDF,
+        subtotal: Number(invoice.subtotal ?? 0),
+        vatAmount: Number(invoice.vatAmount ?? 0),
+        total: Number(invoice.total ?? 0),
+        notes: invoice.notes || undefined,
+        terms: invoice.terms || undefined,
+        logoUrl: companySettings.logoUrl || "",
+        servicePeriodStart: invoice.servicePeriodStart || undefined,
+        servicePeriodEnd: invoice.servicePeriodEnd || undefined,
+      });
+
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Content-Disposition", `inline; filename="invoice-${invoiceNumber}.html"`);
+      res.send(html);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Invalid or missing session")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      req.log.error({ err: error }, "Invoice HTML generation failed");
+      res.status(500).json({
+        error: "Failed to generate HTML",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Type declaration for global preview locks
   declare global {
     var previewLocks: Map<number, number> | undefined;
