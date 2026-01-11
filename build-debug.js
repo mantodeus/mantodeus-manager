@@ -6,7 +6,7 @@
  */
 
 import { execSync, spawnSync } from 'child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, copyFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
@@ -586,6 +586,29 @@ if (!esbuildSuccess) {
   }
   
   process.exit(1);
+}
+
+// STEP 3.5: Copy required static files for backend
+console.log('\n' + '='.repeat(80));
+console.log('📋 STEP 3.5: Copy required static files');
+console.log('='.repeat(80));
+
+// Copy font file needed by invoice template
+const fontSourcePath = join(__dirname, 'server/templates/kanit-fonts-base64.css');
+const fontDestPath = join(__dirname, 'dist/kanit-fonts-base64.css');
+
+console.log('📄 Copying kanit-fonts-base64.css to dist/...');
+if (existsSync(fontSourcePath)) {
+  try {
+    copyFileSync(fontSourcePath, fontDestPath);
+    console.log('✅ Font file copied successfully');
+  } catch (error) {
+    console.error('❌ Failed to copy font file:', error.message);
+    console.warn('⚠️  Invoice PDF generation may fail without this file');
+  }
+} else {
+  console.error('❌ Font file not found at source:', fontSourcePath);
+  console.warn('⚠️  Invoice PDF generation will fail without this file');
 }
 
 // STEP 4: Verify backend output
