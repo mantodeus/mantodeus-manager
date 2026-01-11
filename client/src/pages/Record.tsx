@@ -1,5 +1,11 @@
 import { Microphone } from "@/components/ui/Icon";
 
+/**
+ * Record page - Voice recording module
+ * 
+ * NOTE: This page does NOT open Mantodeus chat.
+ * Mantodeus chat only opens when the action tab button is tapped.
+ */
 export default function Record() {
   return (
     <div className="p-4 space-y-3">
