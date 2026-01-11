@@ -205,6 +205,7 @@ export function AssistantPanel({
     let logCount = 0;
     const appContent = document.querySelector(".app-content") as HTMLElement | null;
     const vv = window.visualViewport;
+    let resizeLogCount = 0;
 
     const log = (message: string, data: Record<string, unknown>) => {
       // #region agent log
@@ -221,6 +222,25 @@ export function AssistantPanel({
           runId: "manto-page-bottom-1",
         }),
       }).catch(() => {});
+      // #endregion
+    };
+
+    const logVars = (reason: string) => {
+      // #region agent log
+      try {
+        const rootCs = getComputedStyle(document.documentElement);
+        const appLastDiv = appContent?.querySelector("div:last-child") as HTMLElement | null;
+        const appLastDivCs = appLastDiv ? getComputedStyle(appLastDiv) : null;
+        log("vars", {
+          reason,
+          rootBottomSafeArea: rootCs.getPropertyValue("--bottom-safe-area")?.trim(),
+          rootMantoSheetHeight: rootCs.getPropertyValue("--manto-sheet-height")?.trim(),
+          appPadBottom: appContent ? getComputedStyle(appContent).paddingBottom : null,
+          appLastDivPadBottom: appLastDivCs?.paddingBottom ?? null,
+          displayModeStandalone: window.matchMedia?.("(display-mode: standalone)")?.matches ?? null,
+          navigatorStandalone: (window.navigator as any).standalone ?? null,
+        });
+      } catch {}
       // #endregion
     };
 
@@ -243,6 +263,7 @@ export function AssistantPanel({
         sheetTop: sheetRect ? Math.round(sheetRect.top) : null,
         sheetHeight: sheetRect ? Math.round(sheetRect.height) : null,
       });
+      logVars(`snapshot:${reason}`);
     };
 
     const onScroll = () => {
@@ -269,13 +290,32 @@ export function AssistantPanel({
           ? Math.round(appContent.getBoundingClientRect().bottom) > Math.round(sheetRect.top)
           : null,
       });
+      logVars("scroll:near-bottom");
+    };
+
+    const onViewportResize = () => {
+      if (resizeLogCount >= 6) return;
+      resizeLogCount++;
+      log("viewport resize", {
+        innerHeight: window.innerHeight,
+        innerWidth: window.innerWidth,
+        vvH: vv?.height,
+        vvOffsetTop: vv?.offsetTop,
+        snapState,
+        currentHeight,
+      });
+      logVars("viewport-resize");
     };
 
     snapshot("effect-mount");
     appContent?.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onViewportResize, { passive: true } as any);
+    vv?.addEventListener("resize", onViewportResize, { passive: true } as any);
 
     return () => {
       appContent?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onViewportResize, { passive: true } as any);
+      vv?.removeEventListener("resize", onViewportResize as any);
       snapshot("effect-unmount");
     };
   }, [isMobile, isOpen, snapState, currentHeight]);
