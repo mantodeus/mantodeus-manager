@@ -81,8 +81,15 @@ app.post("/render", internalAuthMiddleware, async (req, res) => {
     const page = await browserInstance.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
 
-    // Wait for fonts to load before rendering PDF
+    // Wait for fonts to load before rendering PDF (deterministic Kanit embedding)
     await page.evaluateHandle("document.fonts.ready");
+    
+    // Robust font check with timeout (verify Kanit loaded successfully)
+    try {
+      await page.waitForFunction(() => document.fonts.check('12px "Kanit"'), { timeout: 2000 });
+    } catch (err) {
+      console.warn('⚠️  Kanit font failed to load within 2s (fallback to Arial likely). Verify base64 embedding.');
+    }
 
     // Wait for layout stabilization
     await page.evaluate(() => {
@@ -100,13 +107,13 @@ app.post("/render", internalAuthMiddleware, async (req, res) => {
       format: "A4",
       printBackground: true,
       preferCSSPageSize: true,
-      displayHeaderFooter: options.displayHeaderFooter || false,
+      displayHeaderFooter: options.displayHeaderFooter || (options.footerTemplate && options.footerTemplate.trim() !== '<div></div>'),
       headerTemplate: options.headerTemplate || '<div></div>',
       footerTemplate: options.footerTemplate || '<div></div>',
       margin: options.margin || {
         top: "16mm",
         right: "16mm",
-        bottom: "28mm",
+        bottom: "24mm",
         left: "16mm",
       },
     };

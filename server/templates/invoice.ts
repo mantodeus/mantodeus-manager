@@ -1,4 +1,16 @@
 import type { CompanySettings } from '../../drizzle/schema';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load embedded base64 Kanit fonts (deterministic, no external requests)
+const kanitFontsCSS = fs.readFileSync(
+  path.join(__dirname, 'kanit-fonts-base64.css'),
+  'utf-8'
+);
 
 interface InvoiceClient {
   name: string;
@@ -261,34 +273,10 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
   <title>Rechnung ${escapeHtml(invoiceNumber)}</title>
 
   <style>
-    @font-face {
-      font-family: 'Kanit';
-      src: url('/fonts/Kanit/Kanit-Thin.woff2') format('woff2');
-      font-weight: 100;
-      font-style: normal;
-      font-display: block;
-    }
-    @font-face {
-      font-family: 'Kanit';
-      src: url('/fonts/Kanit/Kanit-Light.woff2') format('woff2');
-      font-weight: 300;
-      font-style: normal;
-      font-display: block;
-    }
-    @font-face {
-      font-family: 'Kanit';
-      src: url('/fonts/Kanit/Kanit-Regular.woff2') format('woff2');
-      font-weight: 400;
-      font-style: normal;
-      font-display: block;
-    }
-    @font-face {
-      font-family: 'Kanit';
-      src: url('/fonts/Kanit/Kanit-Medium.woff2') format('woff2');
-      font-weight: 500;
-      font-style: normal;
-      font-display: block;
-    }
+    /* Embedded Kanit fonts (base64) - deterministic loading, no external requests */
+    /* To verify fonts are embedded: macOS Preview -> Tools -> Show Inspector -> Fonts tab */
+    /* Or: Windows Edge -> Open PDF -> Right-click -> Inspect -> Look for Kanit in font list */
+    ${kanitFontsCSS}
 
     @page {
       size: A4;
@@ -335,7 +323,7 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
     }
 
     h1 {
-      font-size: 32px;
+      font-size: 42px;
       font-weight: 100;
       letter-spacing: 2px;
       margin: 0;
@@ -344,7 +332,7 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
 
     .invoice-number {
       margin-top: 4px;
-      font-size: 14px;
+      font-size: 19px;
       font-weight: 500;
       color: var(--text-secondary);
     }
@@ -368,7 +356,7 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
 
     .dates {
       text-align: right;
-      font-size: 11px;
+      font-size: 13px;
       color: var(--text-secondary);
       white-space: nowrap;
     }
@@ -381,7 +369,7 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
       background: #ffffff;
       border-radius: 16px;
       padding: 22px 24px;
-      border: 1px solid var(--border-soft);
+      border: 1px solid rgba(0, 0, 0, 0.06);
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
     }
 
@@ -424,7 +412,7 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
     }
 
     tbody td {
-      padding: 10px 14px;
+      padding: 12px 14px;
       font-size: 12px;
       border-bottom: 1px solid var(--border-soft);
       vertical-align: top;
@@ -445,8 +433,8 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
     .right { text-align: right; }
 
     /* TOTALS */
-    .totals-wrapper {
-      margin-top: 28px;
+    .totals-and-vat {
+      margin-top: 18px;
       break-inside: avoid;
       page-break-inside: avoid;
     }
@@ -456,7 +444,7 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
       width: 320px;
       padding: 20px 22px;
       border-radius: 16px;
-      border: 1px solid var(--border-soft);
+      border: 1px solid rgba(0, 0, 0, 0.06);
       background: #fff;
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
     }
@@ -503,11 +491,6 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
     .vat-note {
       font-size: 11px;
       color: var(--text-muted);
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-
-    .totals-with-vat-note {
       break-inside: avoid;
       page-break-inside: avoid;
     }
@@ -570,19 +553,17 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
     </table>
   </div>
 
-  <!-- TOTALS -->
-  <div class="totals-wrapper">
-    <div class="totals-with-vat-note">
-      <div class="totals">
-        ${vatRowHTML}
-        <div class="totals-row total">
-          <span>Gesamtbetrag</span>
-          <span>${formatCurrency(total)}</span>
-        </div>
+  <!-- TOTALS AND VAT NOTE (grouped together, never split) -->
+  <section class="totals-and-vat">
+    <div class="totals">
+      ${vatRowHTML}
+      <div class="totals-row total">
+        <span>Gesamtbetrag</span>
+        <span>${formatCurrency(total)}</span>
       </div>
-      ${kleinunternehmerCardHTML}
     </div>
-  </div>
+    ${kleinunternehmerCardHTML}
+  </section>
 
   <!-- INFO SECTIONS -->
   ${otherInfoSectionsHTML}
