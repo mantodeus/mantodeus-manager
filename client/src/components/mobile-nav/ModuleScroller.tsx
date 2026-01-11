@@ -7,14 +7,13 @@
  * Section 8: Depth displacement (readability law)
  * Section 9: Visual hierarchy
  */
-import { useEffect, useRef, Fragment } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useMobileNav } from './MobileNavProvider';
 import { MODULE_REGISTRY, DEPTH_OFFSET, VISUAL_HIERARCHY, FEATURES } from './constants';
 import type { GestureState, Module } from './types';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
-import { useManto } from '@/contexts/MantoContext';
 
 /**
  * Calculate depth offset for a module item
@@ -155,7 +154,6 @@ export function ModuleScroller() {
     setLastUsedModule,
     setGestureTab,
   } = useMobileNav();
-  const { openManto } = useManto();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -209,15 +207,9 @@ export function ModuleScroller() {
       const module = modules[highlightedIndex];
 
       if (module) {
-        if (module.isAction) {
-          // Mantodeus chat is an overlay - open it but don't navigate
-          // User stays on current page while chat appears
-          openManto();
-        } else {
-          // Navigate to selected module - use currentTab (gestureTab or activeTab)
-          setLastUsedModule(currentTab, module.path);
-          setLocation(module.path);
-        }
+        // Navigate to selected module - use currentTab (gestureTab or activeTab)
+        setLastUsedModule(currentTab, module.path);
+        setLocation(module.path);
       }
 
       // Reset state
@@ -238,19 +230,16 @@ export function ModuleScroller() {
     setGestureState,
     currentTab,
     setLastUsedModule,
-    openManto,
     gestureTab,
   ]);
 
   // Initialize highlighted index when scroller appears
   useEffect(() => {
     if (scrollerVisible && highlightedIndex === null && modules.length > 0) {
-      // For action tab, highlight Mantodeus (index 0, appears at bottom)
-      // For other tabs, highlight the last item in array (first visual item)
-      const initialIndex = currentTab === 'action' ? 0 : modules.length - 1;
-      setHighlightedIndex(initialIndex);
+      // Always highlight the last item in array (first visual item)
+      setHighlightedIndex(modules.length - 1);
     }
-  }, [scrollerVisible, highlightedIndex, modules.length, setHighlightedIndex, currentTab]);
+  }, [scrollerVisible, highlightedIndex, modules.length, setHighlightedIndex]);
 
   if (!scrollerVisible) {
     return null;
@@ -333,22 +322,17 @@ export function ModuleScroller() {
             const showLabel = currentTab !== 'action';
 
             return (
-              <Fragment key={module.id}>
-                <ModuleItem
-                  module={module}
-                  index={index}
-                  isActive={isActive}
-                  isNeighbor={isNeighbor}
-                  offset={offset}
-                  blur={blur}
-                  scrollerSide={scrollerSide}
-                  showLabel={showLabel}
-                />
-                {/* Visual spacer between quick actions and Mantodeus chat */}
-                {isActionTab && index === 1 && (
-                  <div className="h-[100px] w-full pointer-events-none" aria-hidden="true" />
-                )}
-              </Fragment>
+              <ModuleItem
+                key={module.id}
+                module={module}
+                index={index}
+                isActive={isActive}
+                isNeighbor={isNeighbor}
+                offset={offset}
+                blur={blur}
+                scrollerSide={scrollerSide}
+                showLabel={showLabel}
+              />
             );
           })}
         </div>

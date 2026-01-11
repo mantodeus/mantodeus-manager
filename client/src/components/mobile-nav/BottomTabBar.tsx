@@ -87,17 +87,17 @@ export function BottomTabBar() {
 
   const gesture = useGestureRecognition();
   const [location, setLocation] = useLocation();
-  const { openManto } = useManto();
+  const { toggleManto } = useManto();
 
   const handleTabClick = (tabId: TabId) => {
     // Always navigate when tab is clicked, even if it's already active
     // This allows users to return to the last page in that tab
     setActiveTab(tabId);
     
-    // Special handling for action tab - always open Mantodeus chat overlay
+    // Special handling for action tab - toggle Mantodeus chat overlay
     // Do NOT navigate - chat is an overlay that appears over current page
     if (tabId === 'action') {
-      openManto();
+      toggleManto();
       return;
     }
     

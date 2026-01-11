@@ -96,7 +96,7 @@ export const PERF_BUDGET = {
  */
 export const TABS = [
   { id: 'office' as const, icon: PencilSquareIcon, label: 'Office' },
-  { id: 'action' as const, icon: Bolt, label: 'Action' },
+  { id: 'action' as const, icon: BugAnt, label: 'Action' },
   { id: 'tools' as const, icon: WrenchScrewdriver, label: 'Tools' },
 ] as const;
 
@@ -147,6 +147,7 @@ export const MODULE_REGISTRY = {
   ],
   action: [
     // Array order reversed: Record at top = bottom of screen
+    // Mantodeus removed - it's now the tab icon itself
     {
       id: 'voco',
       label: 'Record',
@@ -158,13 +159,6 @@ export const MODULE_REGISTRY = {
       label: 'Capture',
       path: '/action/capto',
       icon: Camera,
-    },
-    {
-      id: 'manto',
-      label: 'Mantodeus',
-      path: '/action/manto',
-      icon: BugAnt,
-      isAction: true,
     },
   ],
   tools: [
