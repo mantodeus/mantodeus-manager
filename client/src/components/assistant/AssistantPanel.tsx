@@ -374,6 +374,50 @@ export function AssistantPanel({
     }
   }, [isOpen, cancelTour]);
 
+  // Debug: capture desktop overlay blur behavior + any Radix overlays present
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const vw = typeof window !== "undefined" ? window.innerWidth : null;
+    const vh = typeof window !== "undefined" ? window.innerHeight : null;
+
+    // #region agent log H1
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'client/src/components/assistant/AssistantPanel.tsx:useEffect(isOpen)',message:'AssistantPanel opened',data:{isMobile,isOpen,snapState,viewport:{w:vw,h:vh}},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion agent log H1
+
+    const overlayEl = document.querySelector('[data-manto-overlay="true"]') as HTMLElement | null;
+    const overlayStyle = overlayEl ? getComputedStyle(overlayEl) : null;
+
+    // #region agent log H1
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'client/src/components/assistant/AssistantPanel.tsx:overlayComputedStyle',message:'Manto overlay computed style',data:{foundOverlay:!!overlayEl,overlayClassName:overlayEl?.className ?? null,overlayBackdropFilter:overlayStyle?.backdropFilter ?? null,overlayWebkitBackdropFilter:(overlayStyle as any)?.webkitBackdropFilter ?? null,overlayFilter:overlayStyle?.filter ?? null,overlayBg:overlayStyle?.backgroundColor ?? null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion agent log H1
+
+    const appContent = document.querySelector('main.app-content') as HTMLElement | null;
+    const appStyle = appContent ? getComputedStyle(appContent) : null;
+
+    // #region agent log H4
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'client/src/components/assistant/AssistantPanel.tsx:appContentComputedStyle',message:'App content computed style',data:{foundAppContent:!!appContent,appFilter:appStyle?.filter ?? null,appBackdropFilter:(appStyle as any)?.backdropFilter ?? null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4'})}).catch(()=>{});
+    // #endregion agent log H4
+
+    const radixOverlays = Array.from(
+      document.querySelectorAll('[data-slot="sheet-overlay"],[data-slot="dialog-overlay"],[data-slot="drawer-overlay"]')
+    ) as HTMLElement[];
+    const radixOverlayData = radixOverlays.slice(0, 3).map((el) => {
+      const s = getComputedStyle(el);
+      return {
+        slot: el.getAttribute("data-slot"),
+        className: el.className,
+        backdropFilter: s.backdropFilter,
+        filter: s.filter,
+        bg: s.backgroundColor,
+      };
+    });
+
+    // #region agent log H2
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'client/src/components/assistant/AssistantPanel.tsx:radixOverlays',message:'Radix overlays present',data:{count:radixOverlays.length,first:radixOverlayData[0] ?? null,second:radixOverlayData[1] ?? null,third:radixOverlayData[2] ?? null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion agent log H2
+  }, [isOpen, isMobile, snapState]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -463,6 +507,7 @@ export function AssistantPanel({
       {/* Overlay - allows tap to close, but scroll blocking handled by document-level handler */}
       {/* Desktop: visible backdrop; Mobile: invisible */}
       <div
+        data-manto-overlay="true"
         className={cn(
           "fixed inset-0 z-[499]", // Just below the panel (z-500)
           // Mobile: don't intercept taps/scrolls; user can interact with the page behind.
