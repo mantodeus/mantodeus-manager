@@ -463,7 +463,7 @@ async function startServer() {
       const total = subtotal + vatAmount;
 
       // Generate HTML
-      const html = generateInvoiceHTML({
+      const { html, footerTemplate } = generateInvoiceHTML({
         invoiceNumber: String(invoiceNumber),
         invoiceDate: new Date(issueDate),
         dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
@@ -481,7 +481,11 @@ async function startServer() {
       });
 
       // Generate PDF
-      const pdfBuffer = await renderPDF(html);
+      const pdfBuffer = await renderPDF(html, {
+        displayHeaderFooter: true,
+        headerTemplate: '<div></div>',
+        footerTemplate,
+      });
       const filename = `INVOICE_PREVIEW_${invoiceNumber}_UNSAVED.pdf`;
 
       // Release lock
@@ -570,7 +574,7 @@ async function startServer() {
       }));
 
       // Generate PDF
-      const html = generateInvoiceHTML({
+      const { html, footerTemplate } = generateInvoiceHTML({
         invoiceNumber,
         invoiceDate: issueDate,
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
@@ -587,7 +591,11 @@ async function startServer() {
         servicePeriodEnd: invoice.servicePeriodEnd || undefined,
       });
 
-      const pdfBuffer = await renderPDF(html);
+      const pdfBuffer = await renderPDF(html, {
+        displayHeaderFooter: true,
+        headerTemplate: '<div></div>',
+        footerTemplate,
+      });
 
       // Upload PDF to S3
       const timestamp = Date.now();

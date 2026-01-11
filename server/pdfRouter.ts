@@ -355,7 +355,7 @@ export const pdfRouter = router({
         }));
 
         // Generate PDF with latest data
-        const html = generateInvoiceHTML({
+        const { html, footerTemplate } = generateInvoiceHTML({
           invoiceNumber: invoice.invoiceNumber || "DRAFT",
           invoiceDate: invoice.issueDate || new Date(),
           dueDate: invoice.dueDate || new Date(),
@@ -372,7 +372,11 @@ export const pdfRouter = router({
           servicePeriodEnd: invoice.servicePeriodEnd || undefined,
         });
 
-        const pdfBuffer = await renderPDF(html);
+        const pdfBuffer = await renderPDF(html, {
+          displayHeaderFooter: true,
+          headerTemplate: '<div></div>',
+          footerTemplate,
+        });
 
         // Upload new PDF to S3
         const timestamp = Date.now();
