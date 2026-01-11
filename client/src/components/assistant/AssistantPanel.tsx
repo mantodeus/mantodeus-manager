@@ -219,9 +219,12 @@ export function AssistantPanel({
   }, [isMobile, isOpen]);
 
   // Native event listener on messages container to prevent scroll chaining ONLY at edges.
-  // Must attach after the messages container exists (when showFullMessages is true).
+  // Must attach after the messages container exists (when snapState !== 'collapsed').
+  // Note: We use snapState directly here instead of showFullMessages to avoid TDZ error
+  // (showFullMessages is declared later in the component).
   useEffect(() => {
-    if (!isMobile || !isOpen || !showFullMessages) return;
+    const showMessages = snapState !== 'collapsed';
+    if (!isMobile || !isOpen || !showMessages) return;
     
     const attach = () => {
       const messagesEl = messagesContainerRef.current;
@@ -297,7 +300,7 @@ export function AssistantPanel({
     // If not attached yet (element not ready), retry on next frame
     let rafId = requestAnimationFrame(() => attach());
     return () => cancelAnimationFrame(rafId);
-  }, [isMobile, isOpen, showFullMessages]);
+  }, [isMobile, isOpen, snapState]);
 
   // Drag handling
   const handleDragStart = useCallback((e: React.TouchEvent | React.PointerEvent | React.MouseEvent) => {
