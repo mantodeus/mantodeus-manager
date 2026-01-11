@@ -35,6 +35,10 @@ import {
 import { useGuidance, type TourStep, type GuidanceWarning } from "@/contexts/GuidanceContext";
 import type { MantoMessage } from "@/contexts/MantoContext";
 
+// Debug-mode ingest endpoint (Cursor NDJSON ingest). Safe to fail silently.
+const DEBUG_INGEST_ENDPOINT =
+  "http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e";
+
 // Bottom tab bar height (h-14 = 56px) - must match BottomTabBar.tsx
 const TAB_BAR_HEIGHT = 56;
 
@@ -196,6 +200,12 @@ export function AssistantPanel({
     
     const sheetEl = sheetRef.current;
     if (!sheetEl) return;
+    let moveLogCount = 0;
+
+    // #region agent log
+    fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:sheetTouchEffect',message:'attach sheet touchmove',data:{isMobile,isOpen,snapState,hasSheetEl:!!sheetEl,hasMessagesEl:!!messagesContainerRef.current},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H2',runId:'pwa-scroll-1'})}).catch(()=>{});
+    fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:sheetTouchEffect',message:'attach sheet touchmove',data:{isMobile,isOpen,snapState,hasSheetEl:!!sheetEl,hasMessagesEl:!!messagesContainerRef.current},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H2',runId:'pwa-scroll-1'})}).catch(()=>{});
+    // #endregion
 
     const handleTouchMove = (e: TouchEvent) => {
       const target = e.target as Node;
@@ -203,11 +213,25 @@ export function AssistantPanel({
       
       // If messages container exists and contains the target, let it scroll freely
       if (scrollEl && scrollEl.contains(target)) {
+        // #region agent log
+        if (moveLogCount < 6) {
+          moveLogCount++;
+          fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:sheetTouchMove',message:'touchmove inside messages (allow)',data:{targetTag:(target as Element)?.tagName,hasScrollEl:!!scrollEl},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2',runId:'pwa-scroll-1'})}).catch(()=>{});
+          fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:sheetTouchMove',message:'touchmove inside messages (allow)',data:{targetTag:(target as Element)?.tagName,hasScrollEl:!!scrollEl},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2',runId:'pwa-scroll-1'})}).catch(()=>{});
+        }
+        // #endregion
         // Allow normal scrolling - CSS overscroll-behavior: contain handles scroll chaining
         return;
       }
       
       // For all other areas of the panel (header, input, drag handle), block scroll
+      // #region agent log
+      if (moveLogCount < 6) {
+        moveLogCount++;
+        fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:sheetTouchMove',message:'touchmove NOT inside messages (preventDefault)',data:{targetTag:(target as Element)?.tagName,hasScrollEl:!!scrollEl},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2',runId:'pwa-scroll-1'})}).catch(()=>{});
+        fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:sheetTouchMove',message:'touchmove NOT inside messages (preventDefault)',data:{targetTag:(target as Element)?.tagName,hasScrollEl:!!scrollEl},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2',runId:'pwa-scroll-1'})}).catch(()=>{});
+      }
+      // #endregion
       e.preventDefault();
     };
 
@@ -234,21 +258,31 @@ export function AssistantPanel({
       let lastScrollTop = 0;
       let logCount = 0;
 
+      // #region agent log
+      try {
+        const cs = getComputedStyle(messagesEl);
+        fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesListener',message:'ATTACH messages listeners + computed styles',data:{clientHeight:messagesEl.clientHeight,scrollHeight:messagesEl.scrollHeight,overflowY:cs.overflowY,webkitOverflowScrolling:(cs as any).webkitOverflowScrolling,touchAction:cs.touchAction},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3',runId:'pwa-scroll-1'})}).catch(()=>{});
+        fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesListener',message:'ATTACH messages listeners + computed styles',data:{clientHeight:messagesEl.clientHeight,scrollHeight:messagesEl.scrollHeight,overflowY:cs.overflowY,webkitOverflowScrolling:(cs as any).webkitOverflowScrolling,touchAction:cs.touchAction},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3',runId:'pwa-scroll-1'})}).catch(()=>{});
+      } catch {}
+      // #endregion
+
       const handleTouchStart = (e: TouchEvent) => {
         lastY = e.touches[0]?.clientY ?? 0;
         lastScrollTop = messagesEl.scrollTop;
         // #region agent log
         if (logCount < 4) {
-          fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchStart',message:'touchstart messages',data:{scrollTop:messagesEl.scrollTop,scrollHeight:messagesEl.scrollHeight,clientHeight:messagesEl.clientHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
+          fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchStart',message:'touchstart messages',data:{scrollTop:messagesEl.scrollTop,scrollHeight:messagesEl.scrollHeight,clientHeight:messagesEl.clientHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3',runId:'pwa-scroll-1'})}).catch(()=>{});
+          fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchStart',message:'touchstart messages',data:{scrollTop:messagesEl.scrollTop,scrollHeight:messagesEl.scrollHeight,clientHeight:messagesEl.clientHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3',runId:'pwa-scroll-1'})}).catch(()=>{});
         }
         // #endregion
       };
 
       const handleTouchMove = (e: TouchEvent) => {
         const { scrollTop, scrollHeight, clientHeight } = messagesEl;
+        const cantScroll = scrollHeight <= clientHeight + 1;
         
         // If can't scroll, prevent page scroll
-        if (scrollHeight <= clientHeight + 1) {
+        if (cantScroll) {
           e.preventDefault();
           return;
         }
@@ -276,7 +310,8 @@ export function AssistantPanel({
         // #region agent log
         if (logCount < 12) {
           logCount++;
-          fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchMove',message:'touchmove messages',data:{scrollTop,scrollHeight,clientHeight,dy,scrollDelta,atTop,atBottom},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
+          fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchMove',message:'touchmove messages',data:{scrollTop,scrollHeight,clientHeight,cantScroll,dy,scrollDelta,atTop,atBottom},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3',runId:'pwa-scroll-1'})}).catch(()=>{});
+          fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesTouchMove',message:'touchmove messages',data:{scrollTop,scrollHeight,clientHeight,cantScroll,dy,scrollDelta,atTop,atBottom},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3',runId:'pwa-scroll-1'})}).catch(()=>{});
         }
         // #endregion
       };
@@ -285,7 +320,8 @@ export function AssistantPanel({
       messagesEl.addEventListener('touchmove', handleTouchMove, { passive: false });
 
       // #region agent log
-      fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesListener',message:'attached',data:{hasEl:!!messagesEl,scrollHeight:messagesEl.scrollHeight,clientHeight:messagesEl.clientHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
+      fetch(DEBUG_INGEST_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesListener',message:'attached',data:{hasEl:!!messagesEl,scrollHeight:messagesEl.scrollHeight,clientHeight:messagesEl.clientHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3',runId:'pwa-scroll-1'})}).catch(()=>{});
+      fetch('/api/debug/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AssistantPanel.tsx:messagesListener',message:'attached',data:{hasEl:!!messagesEl,scrollHeight:messagesEl.scrollHeight,clientHeight:messagesEl.clientHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1,H3',runId:'pwa-scroll-1'})}).catch(()=>{});
       // #endregion
 
       return () => {
