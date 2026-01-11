@@ -95,29 +95,21 @@ app.post("/render", internalAuthMiddleware, async (req, res) => {
       });
     });
 
-    // Build PDF options with header/footer support
+    // Build PDF options with header/footer support for repeating footer
     const pdfOptions = {
       format: "A4",
       printBackground: true,
-      margin: {
-        top: "0mm",
-        right: "0mm",
-        bottom: "22mm",
-        left: "0mm",
+      preferCSSPageSize: true,
+      displayHeaderFooter: options.displayHeaderFooter || false,
+      headerTemplate: options.headerTemplate || '<div></div>',
+      footerTemplate: options.footerTemplate || '<div></div>',
+      margin: options.margin || {
+        top: "16mm",
+        right: "16mm",
+        bottom: "28mm",
+        left: "16mm",
       },
-      ...options,
     };
-
-    // Support headerTemplate/footerTemplate from options if provided
-    if (options.displayHeaderFooter) {
-      pdfOptions.displayHeaderFooter = true;
-      if (options.headerTemplate) {
-        pdfOptions.headerTemplate = options.headerTemplate;
-      }
-      if (options.footerTemplate) {
-        pdfOptions.footerTemplate = options.footerTemplate;
-      }
-    }
 
     const pdfBuffer = await page.pdf(pdfOptions);
 

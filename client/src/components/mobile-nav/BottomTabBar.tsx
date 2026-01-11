@@ -96,8 +96,14 @@ export function BottomTabBar() {
     
     // Special handling for action tab - toggle Mantodeus chat overlay
     // Do NOT navigate - chat is an overlay that appears over current page
+    // BUT: Don't open chat if a gesture is in progress or was just completed
+    // This prevents chat from opening when selecting modules via long-press gesture
     if (tabId === 'action') {
-      toggleManto();
+      // Only toggle chat if no gesture is active (scroller not visible, no gesture tab set)
+      // This ensures gesture-based navigation doesn't trigger chat
+      if (!scrollerVisible && gestureState === 'idle' && gestureTab === null) {
+        toggleManto();
+      }
       return;
     }
     

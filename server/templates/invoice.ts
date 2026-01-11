@@ -186,9 +186,9 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
       </div>`
     : '';
 
-  // Kleinunternehmer notice (directly under totals, no card)
+  // Kleinunternehmer notice (directly under totals, subtle styling)
   const kleinunternehmerCardHTML = company.isKleinunternehmer
-    ? `<div class="vat-note" style="margin-top: 12px; font-size: 11px; color: var(--text-muted); text-align: center;">
+    ? `<div class="vat-note" style="margin-top: 16px; padding: 12px 16px; background: #fafafa; border-radius: 8px; font-size: 11px; color: #7A8087; text-align: center;">
         Umsatzsteuerbefreiung aufgrund des Kleinunternehmerstatus gemäß § 19 UStG
       </div>`
     : '';
@@ -230,25 +230,24 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
     companyAddressParts.push(`${escapeHtml(company.postalCode)} ${escapeHtml(company.city)}`);
   }
 
-  // Generate footer template HTML for Puppeteer
+  // Generate footer template HTML for Puppeteer (repeats on every page)
   const footerTemplateHTML = `
-    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 36px; font-size: 11px; color: #5A6068; padding: 16px 15mm 8mm 15mm; font-family: 'Kanit', Arial, sans-serif; border-top: 1px solid #d8d8d8;">
-      <div>
-        <strong style="font-weight: 500;">Kontakt</strong><br>
-        ${company.email ? escapeHtml(company.email) : ''}
-        ${company.phone ? `<br>${escapeHtml(company.phone)}` : ''}
+    <div style="width: 100%; padding: 0 16mm; font-family: 'Kanit', Arial, sans-serif; font-size: 10.5px; color: #4A5058; border-top: 1px solid #e0e0e0;">
+      <div style="display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; padding-top: 8px;">
+        <div style="flex: 1.2;">
+          <div style="font-weight: 400; font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #7A8087; margin-bottom: 4px;">Kontakt</div>
+          <div style="font-size: 10px; line-height: 1.4;">${company.email ? escapeHtml(company.email) : ''}${company.phone ? `<br>${escapeHtml(company.phone)}` : ''}</div>
+        </div>
+        <div style="flex: 1; text-align: center;">
+          <div style="font-weight: 400; font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #7A8087; margin-bottom: 4px;">Adresse</div>
+          <div style="font-size: 10px; line-height: 1.4;">${companyAddressParts.join('<br>')}</div>
+        </div>
+        <div style="flex: 1.2; text-align: right;">
+          <div style="font-weight: 400; font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #7A8087; margin-bottom: 4px;">Bankverbindung</div>
+          <div style="font-size: 10px; line-height: 1.4;">${accountHolderName ? `${escapeHtml(accountHolderName)}<br>` : ''}${company.iban ? `IBAN: ${escapeHtml(company.iban)}<br>` : ''}Ref: ${escapeHtml(invoiceNumber)}</div>
+        </div>
       </div>
-      <div>
-        <strong style="font-weight: 500;">Adresse</strong><br>
-        ${companyAddressParts.join('<br>')}
-      </div>
-      <div>
-        <strong style="font-weight: 500;">Bankverbindung</strong><br>
-        ${accountHolderName ? `Kontoinhaber: ${escapeHtml(accountHolderName)}<br>` : ''}
-        ${company.iban ? `IBAN: ${escapeHtml(company.iban)}<br>` : ''}
-        Verwendungszweck: ${escapeHtml(invoiceNumber)}
-      </div>
-      <div style="grid-column: 1 / -1; text-align: right; font-size: 10px; color: #7A8087; margin-top: 12px; padding-top: 12px; border-top: 1px solid #d8d8d8;">
+      <div style="margin-top: 6px; display: flex; justify-content: flex-end; color: #7A8087; font-size: 9px;">
         Seite <span class="pageNumber"></span> von <span class="totalPages"></span>
       </div>
     </div>
@@ -321,16 +320,10 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
       line-height: 1.55;
     }
 
-    .page {
-      width: 210mm;
-      min-height: 297mm;
-      padding: 20mm 15mm 120mm 15mm;
-      position: relative;
-    }
-
-    /* GLOBAL ALIGNMENT GRID */
+    /* GLOBAL ALIGNMENT GRID - no padding, margins handled by Puppeteer */
     .content-grid {
       padding: 0;
+      width: 100%;
     }
 
     /* HEADER */
@@ -383,37 +376,33 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
     .date-row { margin-bottom: 6px; }
     .date-label { color: var(--text-muted); margin-right: 8px; }
 
-    /* BILLING - Letterhead blocks (not cards) */
+    /* CARDS - Premium v4 styling */
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 22px 24px;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+    }
+
     .billing {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 32px;
+      gap: 28px;
       margin-bottom: 40px;
-    }
-
-    .billing-block {
-      line-height: 1.5;
     }
 
     .box-label {
       text-transform: uppercase;
-      font-size: 8px;
-      letter-spacing: 1.2px;
+      font-size: 9px;
+      letter-spacing: 0.08em;
       color: var(--text-muted);
-      margin-bottom: 6px;
-      font-weight: 400;
-    }
-
-    .billing-block strong {
-      font-weight: 500;
-      display: block;
-      margin-bottom: 4px;
-      color: var(--text-primary);
+      margin-bottom: 10px;
     }
 
     /* TABLE */
     .table-wrapper {
-      border-radius: 12px;
+      border-radius: 16px;
       overflow: hidden;
       border: 1px solid var(--border-soft);
       margin-top: 32px;
@@ -466,9 +455,9 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
       margin-left: auto;
       width: 320px;
       padding: 20px 22px;
-      border-radius: 12px;
+      border-radius: 16px;
       border: 1px solid var(--border-soft);
-      background: var(--bg-soft);
+      background: #fff;
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
     }
 
@@ -529,7 +518,6 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
 
 <body>
 
-<div class="page">
 <div class="content-grid">
 
   <!-- HEADER -->
@@ -550,17 +538,17 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
 
   <!-- BILLING -->
   <div class="billing">
-    <div class="billing-block">
+    <div class="card">
       <div class="box-label">An</div>
-      <strong>${client ? escapeHtml(client.name) : 'Nicht angegeben'}</strong>
+      <strong>${client ? escapeHtml(client.name) : 'Nicht angegeben'}</strong><br>
       ${client ? formatClientAddress() : ''}
     </div>
 
-    <div class="billing-block">
+    <div class="card">
       <div class="box-label">Von</div>
-      <strong>${escapeHtml(company.companyName || '')}</strong>
+      <strong>${escapeHtml(company.companyName || '')}</strong><br>
       ${formatCompanyAddress()}
-      ${company.steuernummer ? `<br>Steuernummer: ${escapeHtml(company.steuernummer)}` : ''}
+      ${company.steuernummer ? `<br><br>Steuernummer: ${escapeHtml(company.steuernummer)}` : ''}
     </div>
   </div>
 
@@ -599,7 +587,6 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
   <!-- INFO SECTIONS -->
   ${otherInfoSectionsHTML}
 
-</div>
 </div>
 
 </body>

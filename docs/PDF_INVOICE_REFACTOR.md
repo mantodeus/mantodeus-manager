@@ -1,3 +1,30 @@
+# PDF Invoice Refactor - Premium v4 Final
+
+## Latest Update: Premium v4 Restoration
+
+Restored the premium aesthetic with proper print mechanics:
+
+### Key Changes
+1. **Repeating footer** - Footer appears on every page via Puppeteer's `footerTemplate`
+2. **Premium card styling** - AN/VON cards with `box-shadow: 0 6px 20px rgba(0,0,0,0.04)`, 16px radii
+3. **Proper margins** - PDF margins handled by Puppeteer (16mm sides, 28mm bottom)
+4. **No in-body footer** - Footer removed from HTML template to avoid duplication
+5. **Totals protection** - Totals + VAT note never orphan to page 2
+
+### Margin Configuration
+- Top: 16mm
+- Right: 16mm
+- Bottom: 28mm (reserves space for footer)
+- Left: 16mm
+
+### Footer Template
+- 3 columns: Kontakt | Adresse | Bankverbindung
+- Page numbers: "Seite X von Y"
+- Premium typography matching v4 aesthetic
+- ~20mm total height
+
+---
+
 # PDF Invoice Refactor - Premium Look Restoration
 
 ## Summary
