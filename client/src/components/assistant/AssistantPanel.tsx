@@ -513,9 +513,9 @@ export function AssistantPanel({
           // Mobile: don't intercept taps/scrolls; user can interact with the page behind.
           isMobile
             ? "bg-transparent pointer-events-none"
-            : "bg-black/20 backdrop-blur-sm animate-in fade-in duration-300"
+            : "bg-transparent pointer-events-none"
         )}
-        onClick={isMobile ? undefined : closeManto}
+        onClick={undefined}
         aria-hidden="true"
       />
 
