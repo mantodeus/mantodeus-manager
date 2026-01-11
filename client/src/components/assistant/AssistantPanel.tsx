@@ -536,9 +536,12 @@ export function AssistantPanel({
       <div
         className={cn(
           "fixed inset-0 z-[499]", // Just below the panel (z-500)
-          isMobile ? "bg-transparent" : "bg-black/20 backdrop-blur-sm animate-in fade-in duration-300"
+          // Mobile: don't intercept taps/scrolls; user can interact with the page behind.
+          isMobile
+            ? "bg-transparent pointer-events-none"
+            : "bg-black/20 backdrop-blur-sm animate-in fade-in duration-300"
         )}
-        onClick={closeManto}
+        onClick={isMobile ? undefined : closeManto}
         aria-hidden="true"
       />
 
