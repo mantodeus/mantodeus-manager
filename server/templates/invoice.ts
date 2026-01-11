@@ -230,8 +230,29 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   <style>
     @font-face {
       font-family: 'Kanit';
-      src: url('/fonts/kanit-variable.woff2') format('woff2');
-      font-weight: 100 500;
+      src: url('/fonts/Kanit/Kanit-Thin.woff2') format('woff2');
+      font-weight: 100;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: 'Kanit';
+      src: url('/fonts/Kanit/Kanit-Light.woff2') format('woff2');
+      font-weight: 300;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: 'Kanit';
+      src: url('/fonts/Kanit/Kanit-Regular.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: 'Kanit';
+      src: url('/fonts/Kanit/Kanit-Medium.woff2') format('woff2');
+      font-weight: 500;
       font-style: normal;
       font-display: block;
     }
