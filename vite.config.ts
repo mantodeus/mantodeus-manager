@@ -78,6 +78,10 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: path.resolve(projectRoot, "dist/public"),
       emptyOutDir: true,
+      // DEBUG MODE: enable sourcemaps to identify "Cannot access uninitialized variable" source on iOS PWA
+      sourcemap: true,
+      // DEBUG MODE: avoid minification to preserve clearer stack traces / variable names
+      minify: false,
       rollupOptions: {
         output: {
           manualChunks: {
