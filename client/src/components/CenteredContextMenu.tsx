@@ -18,26 +18,6 @@ import { useLongPress } from "@/hooks/useLongPress";
 import { cn } from "@/lib/utils";
 import { Edit, Trash2, Copy, CheckCircle2, Archive, RotateCcw, Eye, DollarSign, XCircle, Send, CurrencyEuro } from "@/components/ui/Icon";
 
-function debugLog(payload: {
-  location: string;
-  message: string;
-  data?: Record<string, unknown>;
-  hypothesisId: string;
-  runId: string;
-}) {
-  // IMPORTANT: Must be reachable from iOS PWA in production.
-  // We use same-origin HTTPS endpoint which writes to server-side `.cursor/debug-pwa.log`.
-  fetch("/api/debug/log", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...payload,
-      timestamp: Date.now(),
-      sessionId: "debug-session",
-    }),
-  }).catch(() => {});
-}
-
 export type CenteredContextMenuAction =
   | "edit"
   | "duplicate"
@@ -249,39 +229,6 @@ export const CenteredContextMenu = React.forwardRef<
 
   const openMenu = useCallback((event?: PointerEvent | TouchEvent | React.MouseEvent) => {
     if (disabled) return;
-
-    // #region agent log
-    try {
-      const vv = window.visualViewport;
-      const tabBar = document.querySelector(".bottom-tab-bar") as HTMLElement | null;
-      const tabRect = tabBar?.getBoundingClientRect();
-      const isPWA =
-        window.matchMedia?.("(display-mode: standalone)")?.matches ||
-        (window.navigator as any).standalone === true;
-      const bottomObstruction = getBottomObstructionHeight();
-      debugLog({
-        location: "CenteredContextMenu.tsx:openMenu",
-        message: "openMenu called (pre-state)",
-        data: {
-          isPWA,
-          innerHeight: window.innerHeight,
-          innerWidth: window.innerWidth,
-          vvH: vv?.height,
-          vvOffsetTop: vv?.offsetTop,
-          scrollY: window.scrollY,
-          bodyPos: document.body.style.position,
-          bodyTop: document.body.style.top,
-          bottomObstruction,
-          tabTop: tabRect ? Math.round(tabRect.top) : null,
-          tabBottom: tabRect ? Math.round(tabRect.bottom) : null,
-          tabHeight: tabRect ? Math.round(tabRect.height) : null,
-          tabZ: tabBar ? getComputedStyle(tabBar).zIndex : null,
-        },
-        hypothesisId: "H1,H2,H3",
-        runId: "inv-menu-2",
-      });
-    } catch {}
-    // #endregion
 
     // Find the item element
     const findItemElement = (): HTMLElement | null => {
@@ -525,30 +472,6 @@ export const CenteredContextMenu = React.forwardRef<
     const originalAppOverflowY = appContent?.style.overflowY ?? "";
     const originalAppOverflow = appContent?.style.overflow ?? "";
 
-    // #region agent log
-    try {
-      const vv = window.visualViewport;
-      const tabBar = document.querySelector(".bottom-tab-bar") as HTMLElement | null;
-      const tabRect = tabBar?.getBoundingClientRect();
-      debugLog({
-        location: "CenteredContextMenu.tsx:scrollLockEffect",
-        message: "apply scroll lock (pre)",
-        data: {
-          innerHeight: window.innerHeight,
-          vvH: vv?.height,
-          scrollY,
-          origOverflow: originalBodyOverflow,
-          origPos: originalBodyPosition,
-          origTop: originalBodyTop,
-          tabTop: tabRect ? Math.round(tabRect.top) : null,
-          tabBottom: tabRect ? Math.round(tabRect.bottom) : null,
-        },
-        hypothesisId: "H1",
-        runId: "inv-menu-2",
-      });
-    } catch {}
-    // #endregion
-
     // IMPORTANT (iOS PWA): Avoid `body { position: fixed }` scroll lock, it can
     // change viewport metrics and cause fixed UI (bottom tab bar) to "jump".
     // Instead, lock the actual app scroller (`.app-content`) and prevent wheel/touchmove.
@@ -592,30 +515,6 @@ export const CenteredContextMenu = React.forwardRef<
     document.body.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true });
 
     return () => {
-      // #region agent log
-      try {
-        const vv = window.visualViewport;
-        const tabBar = document.querySelector(".bottom-tab-bar") as HTMLElement | null;
-        const tabRect = tabBar?.getBoundingClientRect();
-        debugLog({
-          location: "CenteredContextMenu.tsx:scrollLockEffect",
-          message: "cleanup scroll lock (pre-restore)",
-          data: {
-            innerHeight: window.innerHeight,
-            vvH: vv?.height,
-            scrollY,
-            curOverflow: document.body.style.overflow,
-            curPos: document.body.style.position,
-            curTop: document.body.style.top,
-            tabTop: tabRect ? Math.round(tabRect.top) : null,
-            tabBottom: tabRect ? Math.round(tabRect.bottom) : null,
-          },
-          hypothesisId: "H1",
-          runId: "inv-menu-2",
-        });
-      } catch {}
-      // #endregion
-
       // Restore original body styles
       document.body.style.overflow = originalBodyOverflow;
       document.body.style.position = originalBodyPosition;
@@ -749,33 +648,6 @@ export const CenteredContextMenu = React.forwardRef<
 
     measure();
     rafId = requestAnimationFrame(measure);
-
-    // #region agent log
-    try {
-      const vv = window.visualViewport;
-      const tabBar = document.querySelector(".bottom-tab-bar") as HTMLElement | null;
-      const tabRect = tabBar?.getBoundingClientRect();
-      const menuRect = menuRef.current.getBoundingClientRect();
-      const menuZ = getComputedStyle(menuRef.current).zIndex;
-      debugLog({
-        location: "CenteredContextMenu.tsx:menuLayout",
-        message: "menu rendered/laid out",
-        data: {
-          innerHeight: window.innerHeight,
-          vvH: vv?.height,
-          menuTop: Math.round(menuRect.top),
-          menuBottom: Math.round(menuRect.bottom),
-          menuHeight: Math.round(menuRect.height),
-          menuZ,
-          tabTop: tabRect ? Math.round(tabRect.top) : null,
-          tabHeight: tabRect ? Math.round(tabRect.height) : null,
-          menuOverlapsTab: tabRect ? Math.round(menuRect.bottom) > Math.round(tabRect.top) : null,
-        },
-        hypothesisId: "H2,H3",
-        runId: "inv-menu-2",
-      });
-    } catch {}
-    // #endregion
 
     return () => {
       if (rafId !== null) {
