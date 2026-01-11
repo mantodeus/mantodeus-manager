@@ -35,8 +35,8 @@ import NotesRubbish from "./pages/NotesRubbish";
 import NoteDetail from "./pages/NoteDetail";
 import Maps from "./pages/Maps";
 import Gallery from "./pages/Gallery";
-import Capto from "./pages/Capto";
-import Voco from "./pages/Voco";
+import Capture from "./pages/Capture";
+import Record from "./pages/Record";
 import MantoPage from "./pages/Manto";
 import Statements from "./pages/Statements";
 import Weather from "./pages/Weather";
@@ -326,12 +326,12 @@ function Router() {
       </Route>
       <Route path="/action/capto">
         <DashboardLayout>
-          <Capto />
+          <Capture />
         </DashboardLayout>
       </Route>
       <Route path="/action/voco">
         <DashboardLayout>
-          <Voco />
+          <Record />
         </DashboardLayout>
       </Route>
       <Route path="/gallery">

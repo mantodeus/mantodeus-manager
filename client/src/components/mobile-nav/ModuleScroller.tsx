@@ -242,12 +242,15 @@ export function ModuleScroller() {
     gestureTab,
   ]);
 
-  // Initialize highlighted index to first item when scroller appears
+  // Initialize highlighted index when scroller appears
   useEffect(() => {
     if (scrollerVisible && highlightedIndex === null && modules.length > 0) {
-      setHighlightedIndex(modules.length - 1);
+      // For action tab, highlight Mantodeus (index 0, appears at bottom)
+      // For other tabs, highlight the last item in array (first visual item)
+      const initialIndex = currentTab === 'action' ? 0 : modules.length - 1;
+      setHighlightedIndex(initialIndex);
     }
-  }, [scrollerVisible, highlightedIndex, modules.length, setHighlightedIndex]);
+  }, [scrollerVisible, highlightedIndex, modules.length, setHighlightedIndex, currentTab]);
 
   if (!scrollerVisible) {
     return null;
