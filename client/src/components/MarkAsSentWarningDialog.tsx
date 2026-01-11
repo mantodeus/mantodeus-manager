@@ -79,7 +79,7 @@ export function MarkAsSentWarningDialog({
           <AlertDialogAction
             disabled={!canConfirm}
             onClick={handleConfirm}
-            className="bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+            className="border border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-600 hover:bg-blue-500/10 dark:hover:bg-blue-600/20"
           >
             {isProcessing ? "Processing..." : "Mark as Sent"}
           </AlertDialogAction>

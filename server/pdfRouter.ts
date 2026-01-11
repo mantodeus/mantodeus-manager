@@ -221,7 +221,7 @@ export const pdfRouter = router({
       }));
 
       // Generate HTML
-      const html = generateInvoiceHTML({
+      const { html, footerTemplate } = generateInvoiceHTML({
         invoiceNumber,
         invoiceDate: issueDate,
         dueDate: input.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // Default 14 days
@@ -239,7 +239,11 @@ export const pdfRouter = router({
       });
 
       // Generate PDF
-      const pdfBuffer = await renderPDF(html);
+      const pdfBuffer = await renderPDF(html, {
+        displayHeaderFooter: true,
+        headerTemplate: '<div></div>',
+        footerTemplate,
+      });
 
       // Upload to S3
       const timestamp = Date.now();

@@ -10,6 +10,9 @@ export interface PDFOptions {
     left?: string;
   };
   printBackground?: boolean;
+  displayHeaderFooter?: boolean;
+  headerTemplate?: string;
+  footerTemplate?: string;
 }
 
 export class PDFServiceError extends Error {
@@ -55,12 +58,15 @@ async function renderPDFAttempt(
         options: {
           format: options.format || "A4",
           margin: options.margin || {
-            top: "10mm",
-            right: "10mm",
-            bottom: "10mm",
-            left: "10mm",
+            top: "0mm",
+            right: "0mm",
+            bottom: "22mm",
+            left: "0mm",
           },
           printBackground: options.printBackground !== false,
+          displayHeaderFooter: options.displayHeaderFooter || false,
+          headerTemplate: options.headerTemplate || '<div></div>',
+          footerTemplate: options.footerTemplate || '',
         },
       }),
       signal: controller.signal,

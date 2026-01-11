@@ -756,9 +756,10 @@ export function InvoiceForm({
         {!isCreate && invoice && invoiceState === 'DRAFT' && !isCancelled && (
           <Button
             type="button"
+            variant="outline"
             onClick={handleSend}
             disabled={isLoading || !formState.dueDate || totals.total <= 0}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
+            className="w-full border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-600 hover:bg-blue-500/10 dark:hover:bg-blue-600/20"
           >
             <Send className="h-4 w-4 mr-2" />
             Send

@@ -203,7 +203,7 @@ async function startServer() {
       // Use draft invoice number or generate preview number
       const invoiceNumber = invoice.invoiceNumber || (isPreview ? `DRAFT-${invoiceId}` : `PREVIEW-${invoiceId}`);
 
-      const html = generateInvoiceHTML({
+      const { html, footerTemplate } = generateInvoiceHTML({
         invoiceNumber,
         invoiceDate: invoice.issueDate ?? new Date(),
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
@@ -220,7 +220,11 @@ async function startServer() {
         servicePeriodEnd: invoice.servicePeriodEnd || undefined,
       });
 
-      const pdfBuffer = await renderPDF(html);
+      const pdfBuffer = await renderPDF(html, {
+        displayHeaderFooter: true,
+        headerTemplate: '<div></div>',
+        footerTemplate,
+      });
       const filename = `invoice-${invoiceNumber}.pdf`;
 
       res.setHeader("Content-Type", "application/pdf");
@@ -301,7 +305,7 @@ async function startServer() {
       // Use draft invoice number or generate preview number
       const invoiceNumber = invoice.invoiceNumber || (isPreview ? `DRAFT-${invoiceId}` : `PREVIEW-${invoiceId}`);
 
-      const html = generateInvoiceHTML({
+      const { html } = generateInvoiceHTML({
         invoiceNumber,
         invoiceDate: invoice.issueDate ?? new Date(),
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),

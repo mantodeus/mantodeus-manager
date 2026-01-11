@@ -95,23 +95,31 @@ app.post("/render", internalAuthMiddleware, async (req, res) => {
       });
     });
 
-    const pdfBuffer = await page.pdf({
+    // Build PDF options with header/footer support
+    const pdfOptions = {
       format: "A4",
       printBackground: true,
-      displayHeaderFooter: true,
-      footerTemplate: `
-        <div style="font-size: 10px; color: #6A7078; text-align: right; width: 100%; padding: 0 15mm 8mm 15mm; font-family: 'Kanit', Arial, sans-serif;">
-          Seite <span class="pageNumber"></span> von <span class="totalPages"></span>
-        </div>
-      `,
       margin: {
         top: "0mm",
         right: "0mm",
-        bottom: "30mm",
+        bottom: "22mm",
         left: "0mm",
       },
       ...options,
-    });
+    };
+
+    // Support headerTemplate/footerTemplate from options if provided
+    if (options.displayHeaderFooter) {
+      pdfOptions.displayHeaderFooter = true;
+      if (options.headerTemplate) {
+        pdfOptions.headerTemplate = options.headerTemplate;
+      }
+      if (options.footerTemplate) {
+        pdfOptions.footerTemplate = options.footerTemplate;
+      }
+    }
+
+    const pdfBuffer = await page.pdf(pdfOptions);
 
     await page.close();
 
