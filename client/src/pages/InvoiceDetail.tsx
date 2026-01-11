@@ -1,4 +1,4 @@
-import { InvoiceForm } from "@/components/invoices/InvoiceForm";
+import { InvoiceForm, type InvoicePreviewData } from "@/components/invoices/InvoiceForm";
 import { ShareInvoiceDialog } from "@/components/invoices/ShareInvoiceDialog";
 import { InvoiceStatusActionsDropdown } from "@/components/invoices/InvoiceStatusActionsDropdown";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getInvoiceState } from "@/lib/invoiceState";
@@ -31,6 +31,10 @@ export default function InvoiceDetail() {
     { enabled: !!invoiceId }
   );
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+
+  // Preview state for "Update Preview" button (unsaved preview)
+  const getFormDataRef = useRef<(() => InvoicePreviewData | null) | null>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
 
   // Redirect ALL uploaded invoices to review dialog (never show full InvoiceForm)
   useEffect(() => {
@@ -90,6 +94,70 @@ export default function InvoiceDetail() {
       toast.error('Failed to open preview');
     }
   };
+
+  // Handle "Update Preview" button - generates preview from unsaved form data
+  const handleUpdatePreview = useCallback(async () => {
+    if (!getFormDataRef.current) {
+      toast.error("Form not ready");
+      return;
+    }
+
+    const formData = getFormDataRef.current();
+    if (!formData) {
+      toast.error("Please fill in invoice number and at least one item");
+      return;
+    }
+
+    setIsGeneratingPreview(true);
+    try {
+      const { data: { session } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+      if (!session?.access_token) {
+        toast.error("Please log in to preview invoices");
+        return;
+      }
+
+      const response = await fetch("/api/invoices/preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          invoiceNumber: formData.invoiceNumber,
+          clientId: formData.clientId ? parseInt(formData.clientId) : undefined,
+          issueDate: formData.issueDate,
+          dueDate: formData.dueDate,
+          notes: formData.notes,
+          terms: formData.terms,
+          servicePeriodStart: formData.servicePeriodStart,
+          servicePeriodEnd: formData.servicePeriodEnd,
+          items: formData.items,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        toast.error(errorData.error || "Failed to generate preview");
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+      setPreviewFileName(`INVOICE_PREVIEW_${formData.invoiceNumber}_UNSAVED.pdf`);
+      setPreviewModalOpen(true);
+    } catch (error) {
+      console.error("Preview generation error:", error);
+      toast.error("Failed to generate preview");
+    } finally {
+      setIsGeneratingPreview(false);
+    }
+  }, []);
 
   if (!invoiceId || Number.isNaN(invoiceId)) {
     navigate("/invoices");
@@ -245,6 +313,28 @@ export default function InvoiceDetail() {
               onOpenInvoice={(nextId) => navigate(`/invoices/${nextId}`)}
               onPreview={handlePreviewPDF}
               showPreview={invoice && invoice.status !== "draft"}
+              getFormDataRef={getFormDataRef}
+              renderBeforeFooter={
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleUpdatePreview}
+                  disabled={isGeneratingPreview}
+                  className="w-full"
+                >
+                  {isGeneratingPreview ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Update Preview
+                    </>
+                  )}
+                </Button>
+              }
             />
           ) : (
             <div className="text-center py-8 text-muted-foreground">
