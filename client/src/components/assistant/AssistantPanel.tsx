@@ -83,8 +83,11 @@ const GENERAL_PROMPTS = [
  * Compute snap heights based on viewport
  * Using simple window.innerHeight - more reliable across browsers and PWA
  */
-function computeSnapHeights(): SnapHeights {
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+function computeSnapHeights(vhOverride?: number): SnapHeights {
+  const vh =
+    typeof window !== "undefined"
+      ? (vhOverride ?? window.innerHeight)
+      : 800;
   
   // Get safe area inset top (for status bar in PWA)
   // CSS env() isn't directly accessible in JS, so we read it from a temp element
@@ -157,12 +160,62 @@ export function AssistantPanel({
   useEffect(() => {
     if (!isMobile) return;
     
+    // iOS Safari frequently fires many small resize events while scrolling (URL bar show/hide),
+    // which can cause the sheet to "jump" as we re-snap heights.
+    // Only react to "real" resizes (keyboard open/close, orientation/width change).
+    const IGNORE_SMALL_RESIZE_PX = 120;
+    const lastAppliedViewport = { vh: 0, vw: 0, initialized: false };
+    let decisionLogCount = 0;
+
     const updateHeights = () => {
-      const newHeights = computeSnapHeights();
-      setSnapHeights(newHeights);
-      if (!isDragging) {
-        setCurrentHeight(newHeights[snapState]);
+      const vv = window.visualViewport;
+      const vh = vv?.height ?? window.innerHeight;
+      const vw = vv?.width ?? window.innerWidth;
+
+      const isFirst = !lastAppliedViewport.initialized;
+      const widthChanged = !isFirst && Math.abs(vw - lastAppliedViewport.vw) > 1;
+      const heightDelta = isFirst ? 9999 : Math.abs(vh - lastAppliedViewport.vh);
+      const shouldApply = isFirst || widthChanged || heightDelta >= IGNORE_SMALL_RESIZE_PX;
+
+      if (!shouldApply) {
+        if (decisionLogCount < 4) {
+          decisionLogCount++;
+          // #region agent log
+          fetch("/api/debug/log", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "AssistantPanel.tsx:resizeGuard",
+              message: "ignored small viewport resize",
+              data: {
+                snapState,
+                isDragging,
+                vh,
+                vw,
+                prevVh: lastAppliedViewport.vh,
+                prevVw: lastAppliedViewport.vw,
+                heightDelta,
+                widthChanged,
+                threshold: IGNORE_SMALL_RESIZE_PX,
+              },
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              hypothesisId: "H3",
+              runId: "manto-chrome-resize-1",
+            }),
+          }).catch(() => {});
+          // #endregion
+        }
+        return;
       }
+
+      lastAppliedViewport.initialized = true;
+      lastAppliedViewport.vh = vh;
+      lastAppliedViewport.vw = vw;
+
+      const newHeights = computeSnapHeights(vh);
+      setSnapHeights(newHeights);
+      if (!isDragging) setCurrentHeight(newHeights[snapState]);
     };
     
     // Initial computation
@@ -277,6 +330,8 @@ export function AssistantPanel({
       const sheetEl = sheetRef.current;
       const sheetRect = sheetEl?.getBoundingClientRect();
       const cs = getComputedStyle(appContent);
+      const lastEl = appContent.lastElementChild as HTMLElement | null;
+      const lastRect = lastEl?.getBoundingClientRect();
       log("app-content scrolled near bottom", {
         snapState,
         currentHeight,
@@ -286,6 +341,9 @@ export function AssistantPanel({
         appPadBottom: cs.paddingBottom,
         sheetTop: sheetRect ? Math.round(sheetRect.top) : null,
         sheetHeight: sheetRect ? Math.round(sheetRect.height) : null,
+        lastElTag: lastEl?.tagName ?? null,
+        lastElBottom: lastRect ? Math.round(lastRect.bottom) : null,
+        gapAboveSheet: sheetRect && lastRect ? Math.round(sheetRect.top - lastRect.bottom) : null,
         coveredBySheet: sheetRect
           ? Math.round(appContent.getBoundingClientRect().bottom) > Math.round(sheetRect.top)
           : null,
