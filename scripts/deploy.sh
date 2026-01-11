@@ -239,14 +239,6 @@ echo "==> Build"
 export NODE_OPTIONS=--max-old-space-size=4096
 npm run build
 
-# Ensure frontend assets are in dist/public for server to serve
-echo "==> Copy frontend build to dist/public"
-mkdir -p dist/public
-rsync -av --delete client/dist/ dist/public/ || {
-  echo "ERROR: Failed to copy client build to dist/public"
-  exit 1
-}
-
 echo ""
 echo "==> Verify build output"
 if [[ ! -d "$APP_DIR/dist/public/assets" ]]; then
