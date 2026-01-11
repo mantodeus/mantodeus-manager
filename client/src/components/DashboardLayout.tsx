@@ -11,25 +11,29 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { APP_TITLE } from "@/const";
 import { Logo } from "@/components/Logo";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, File, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, Receipt, ClipboardCheck, DocumentCurrencyEuro, BugAnt } from "@/components/ui/Icon";
+import { LogOut, PanelLeft, FileText, Calendar as CalendarIcon, Users, File, MapPin, FileJson, FolderOpen, Settings as SettingsIcon, Receipt, ClipboardCheck, DocumentCurrencyEuro, BugAnt, Image, Camera, Microphone } from "@/components/ui/Icon";
 import { DataExportImportDialog } from "./DataExportImportDialog";
 import { FloatingHelpButton } from "./assistant/FloatingHelpButton";
 import { AssistantPanel } from "./assistant/AssistantPanel";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { AppLoadingScreen } from './AppLoadingScreen';
 import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 import {
   MobileNavProvider,
   BottomTabBar,
@@ -38,17 +42,43 @@ import {
   useRouteTracking,
 } from "./mobile-nav";
 
-const menuItems = [
-  { icon: FolderOpen, label: "Projects", path: "/projects" },
-  { icon: ClipboardCheck, label: "Inspections", path: "/inspections" },
-  { icon: CalendarIcon, label: "Calendar", path: "/calendar" },
-  { icon: Users, label: "Contacts", path: "/contacts" },
-  { icon: DocumentCurrencyEuro, label: "Invoices", path: "/invoices" },
-  { icon: Receipt, label: "Expenses", path: "/expenses" },
-  { icon: File, label: "Notes", path: "/notes" },
-  { icon: MapPin, label: "Maps", path: "/maps" },
-  { icon: FileText, label: "Reports", path: "/reports" },
-  { icon: SettingsIcon, label: "Settings", path: "/settings" },
+// Grouped menu items matching mobile's Office / Action / Tools hierarchy
+const menuGroups = {
+  office: {
+    label: "Office",
+    items: [
+      { icon: FolderOpen, label: "Projects", path: "/projects", shortcut: "1" },
+      { icon: ClipboardCheck, label: "Inspections", path: "/inspections", shortcut: "2" },
+      { icon: DocumentCurrencyEuro, label: "Invoices", path: "/invoices", shortcut: "3" },
+      { icon: Receipt, label: "Expenses", path: "/expenses", shortcut: "4" },
+      { icon: FileText, label: "Reports", path: "/reports", shortcut: "5" },
+      { icon: File, label: "Notes", path: "/notes", shortcut: "6" },
+    ],
+  },
+  action: {
+    label: "Action",
+    items: [
+      { icon: Camera, label: "Capture", path: "/action/capto", shortcut: "7" },
+      { icon: Microphone, label: "Record", path: "/action/voco", shortcut: "8" },
+    ],
+  },
+  tools: {
+    label: "Tools",
+    items: [
+      { icon: CalendarIcon, label: "Calendar", path: "/calendar", shortcut: "9" },
+      { icon: Users, label: "Contacts", path: "/contacts", shortcut: "0" },
+      { icon: Image, label: "Gallery", path: "/gallery" },
+      { icon: MapPin, label: "Maps", path: "/maps" },
+      { icon: SettingsIcon, label: "Settings", path: "/settings" },
+    ],
+  },
+};
+
+// Flat list for keyboard shortcuts
+const allMenuItems = [
+  ...menuGroups.office.items,
+  ...menuGroups.action.items,
+  ...menuGroups.tools.items,
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -129,6 +159,32 @@ function DashboardLayoutContent({
     }
   }, [isCollapsed]);
 
+  // Keyboard shortcuts for quick navigation (Cmd/Ctrl + 1-9, 0)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle when Cmd/Ctrl is pressed
+      if (!e.metaKey && !e.ctrlKey) return;
+      
+      // Don't interfere with input fields
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+        return;
+      }
+
+      const key = e.key;
+      
+      // Find matching menu item by shortcut
+      const matchingItem = allMenuItems.find(item => item.shortcut === key);
+      if (matchingItem) {
+        e.preventDefault();
+        setLocation(matchingItem.path);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setLocation]);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
@@ -204,27 +260,139 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
-                const isActive = location === item.path;
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
-                    >
-                      <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
-                      />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
+          <SidebarContent className="gap-0 px-2">
+            {/* Office Group */}
+            <SidebarGroup className="py-2">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">
+                {menuGroups.office.label}
+              </SidebarGroupLabel>
+              <SidebarMenu>
+                {menuGroups.office.items.map(item => {
+                  const isActive = location === item.path || location.startsWith(item.path + "/");
+                  return (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => setLocation(item.path)}
+                        tooltip={item.label}
+                        className={cn(
+                          "h-9 transition-all duration-150 font-normal relative",
+                          isActive && [
+                            "bg-primary/10 text-primary font-medium",
+                            "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2",
+                            "before:w-[3px] before:h-5 before:bg-primary before:rounded-r-full",
+                            "shadow-[0_0_12px_-2px_hsl(var(--primary)/0.3)]",
+                          ]
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-4 w-4 transition-transform duration-150",
+                            isActive && "text-primary scale-110"
+                          )}
+                        />
+                        <span>{item.label}</span>
+                        {item.shortcut && (
+                          <span className="ml-auto text-[10px] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
+                            ⌘{item.shortcut}
+                          </span>
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroup>
+
+            <SidebarSeparator className="my-1 opacity-50" />
+
+            {/* Action Group */}
+            <SidebarGroup className="py-2">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">
+                {menuGroups.action.label}
+              </SidebarGroupLabel>
+              <SidebarMenu>
+                {menuGroups.action.items.map(item => {
+                  const isActive = location === item.path || location.startsWith(item.path + "/");
+                  return (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => setLocation(item.path)}
+                        tooltip={item.label}
+                        className={cn(
+                          "h-9 transition-all duration-150 font-normal relative",
+                          isActive && [
+                            "bg-primary/10 text-primary font-medium",
+                            "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2",
+                            "before:w-[3px] before:h-5 before:bg-primary before:rounded-r-full",
+                            "shadow-[0_0_12px_-2px_hsl(var(--primary)/0.3)]",
+                          ]
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-4 w-4 transition-transform duration-150",
+                            isActive && "text-primary scale-110"
+                          )}
+                        />
+                        <span>{item.label}</span>
+                        {item.shortcut && (
+                          <span className="ml-auto text-[10px] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
+                            ⌘{item.shortcut}
+                          </span>
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroup>
+
+            <SidebarSeparator className="my-1 opacity-50" />
+
+            {/* Tools Group */}
+            <SidebarGroup className="py-2">
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">
+                {menuGroups.tools.label}
+              </SidebarGroupLabel>
+              <SidebarMenu>
+                {menuGroups.tools.items.map(item => {
+                  const isActive = location === item.path || location.startsWith(item.path + "/");
+                  return (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => setLocation(item.path)}
+                        tooltip={item.label}
+                        className={cn(
+                          "h-9 transition-all duration-150 font-normal relative",
+                          isActive && [
+                            "bg-primary/10 text-primary font-medium",
+                            "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2",
+                            "before:w-[3px] before:h-5 before:bg-primary before:rounded-r-full",
+                            "shadow-[0_0_12px_-2px_hsl(var(--primary)/0.3)]",
+                          ]
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-4 w-4 transition-transform duration-150",
+                            isActive && "text-primary scale-110"
+                          )}
+                        />
+                        <span>{item.label}</span>
+                        {item.shortcut && (
+                          <span className="ml-auto text-[10px] text-muted-foreground/40 group-data-[collapsible=icon]:hidden">
+                            ⌘{item.shortcut}
+                          </span>
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter className="p-3">

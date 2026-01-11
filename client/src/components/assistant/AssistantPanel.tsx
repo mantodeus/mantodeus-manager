@@ -682,10 +682,12 @@ export function AssistantPanel({
             !isDragging && "transition-[height] duration-200 ease-out",
           ] : [
             "z-[100]",
-            "shadow-xl border-r border-border",
-            "animate-in slide-in-from-left fade-in duration-300",
-            "left-0 top-0 bottom-0",
+            "shadow-xl border-l border-border",
+            "animate-in slide-in-from-right fade-in duration-300",
+            "right-0 top-0 bottom-0",
             "w-[420px]",
+            // Glass effect for premium feel
+            "bg-background/95 backdrop-blur-xl",
           ]
         )}
         style={isMobile ? {
