@@ -64,8 +64,18 @@ function Input({
       data-slot="input"
       data-hide-tabbar-when-keyboard={type === "search" ? "true" : undefined}
       className={cn(
-        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground border-input h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+        // Base styling with surface tokens
+        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground",
+        "h-9 w-full min-w-0 rounded-md border border-border/50 bg-input px-3 py-1 text-base shadow-xs outline-none md:text-sm",
+        // Motion tokens for transitions
+        "transition-[color,box-shadow,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
+        // Focus state
+        "focus-visible:border-ring focus-visible:ring-ring/20 focus-visible:ring-2",
+        // File input styling
+        "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
+        // Disabled state
+        "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+        // Invalid state
         "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
         className
       )}

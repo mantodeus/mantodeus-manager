@@ -43,51 +43,59 @@
 }
 
 :root {
-  /* Light mode - Orchid Mantis theme */
+  /* ============================================
+   * SUPERWHISPER-INSPIRED DESIGN SYSTEM
+   * Light mode - Orchid Mantis theme
+   * Pure monochrome greys + pink accent
+   * ============================================ */
+  
+  /* Surface hierarchy - pure grey, no warm tint */
+  --surface-0: oklch(0.98 0 0);   /* Page background - lightest */
+  --surface-1: oklch(0.94 0 0);   /* Cards - slight elevation */
+  --surface-2: oklch(0.90 0 0);   /* Popovers, inputs - more elevation */
+  --surface-3: oklch(0.86 0 0);   /* Highest elevation */
+  --surface-overlay: oklch(0.98 0 0 / 0.90);
+  
+  /* Brand accent - Orchid Mantis pink (preserved) */
   --primary: oklch(0.75 0.25 330);
   --primary-foreground: oklch(0.98 0 0);
+  
+  /* Map surfaces to shadcn semantic tokens */
+  --background: var(--surface-0);
+  --foreground: oklch(0.15 0 0);
+  --card: var(--surface-1);
+  --card-foreground: oklch(0.15 0 0);
+  --popover: var(--surface-1);
+  --popover-foreground: oklch(0.15 0 0);
+  --secondary: var(--surface-2);
+  --secondary-foreground: oklch(0.15 0 0);
+  --muted: var(--surface-2);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.75 0.25 330);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.55 0.25 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.82 0 0);
+  --input: var(--surface-2);
+  --ring: oklch(0.75 0.25 330);
+  --radius: 0.5rem;
+  
+  /* Sidebar - uses surface tokens */
+  --sidebar: var(--surface-1);
+  --sidebar-foreground: oklch(0.15 0 0);
   --sidebar-primary: oklch(0.75 0.25 330);
   --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: var(--surface-2);
+  --sidebar-accent-foreground: oklch(0.75 0.25 330);
+  --sidebar-border: oklch(0.82 0 0);
+  --sidebar-ring: oklch(0.75 0.25 330);
+  
+  /* Charts */
   --chart-1: oklch(0.75 0.25 330);
   --chart-2: oklch(0.7 0.2 330);
   --chart-3: oklch(0.5 0.15 330);
   --chart-4: oklch(0.4 0.1 200);
   --chart-5: oklch(0.3 0.05 200);
-  --radius: 0.5rem;
-  --background: oklch(0.98 0.01 85);
-  --foreground: oklch(0.2 0 0);
-  --card: oklch(0.96 0.01 85);
-  --card-foreground: oklch(0.2 0 0);
-  --popover: oklch(0.98 0.01 85);
-  --popover-foreground: oklch(0.2 0 0);
-  --secondary: oklch(0.92 0.01 85);
-  --secondary-foreground: oklch(0.2 0 0);
-  --muted: oklch(0.9 0.01 85);
-  --muted-foreground: oklch(0.4 0 0);
-  --accent: oklch(0.75 0.25 330);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.6 0.25 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.88 0.01 85);
-  --input: oklch(0.94 0.01 85);
-  --ring: oklch(0.75 0.25 330);
-  --sidebar: oklch(0.95 0.01 85);
-  --sidebar-foreground: oklch(0.2 0 0);
-  --sidebar-accent: oklch(0.92 0.01 85);
-  --sidebar-accent-foreground: oklch(0.75 0.25 330);
-  --sidebar-border: oklch(0.88 0.01 85);
-  --sidebar-ring: oklch(0.75 0.25 330);
-  
-  /* ============================================
-   * SUPERWHISPER-INSPIRED DESIGN SYSTEM TOKENS
-   * ============================================ */
-  
-  /* Surface hierarchy - light mode */
-  --surface-0: oklch(0.98 0.01 85);
-  --surface-1: oklch(0.96 0.01 85);
-  --surface-2: oklch(0.94 0.01 85);
-  --surface-3: oklch(0.92 0.01 85);
-  --surface-overlay: oklch(0.98 0.01 85 / 0.85);
   
   /* Header spacing tokens */
   --space-header-subtitle: 12px;
@@ -105,6 +113,7 @@
   /* Safe area tokens */
   --tab-bar-height: 56px;
   --multi-select-bar-height: 72px;
+  --bottom-safe-area: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
   --bottom-safe-area-with-select: calc(var(--bottom-safe-area) + var(--multi-select-bar-height));
   
   /* Motion tokens - easing curves */
@@ -133,46 +142,58 @@
 }
 
 .dark {
-  /* Dark mode - Green Mantis theme */
+  /* ============================================
+   * SUPERWHISPER-INSPIRED DESIGN SYSTEM
+   * Dark mode - Green Mantis theme
+   * Deep blacks + neon green accent
+   * ============================================ */
+  
+  /* Surface hierarchy - deep blacks */
+  --surface-0: oklch(0.08 0 0);   /* Page background - deepest black */
+  --surface-1: oklch(0.12 0 0);   /* Cards - slight lift */
+  --surface-2: oklch(0.16 0 0);   /* Popovers, inputs */
+  --surface-3: oklch(0.20 0 0);   /* Highest elevation */
+  --surface-overlay: oklch(0.08 0 0 / 0.90);
+  
+  /* Brand accent - Green Mantis neon (preserved) */
   --primary: oklch(0.85 0.25 155);
-  --primary-foreground: oklch(0.1 0 0);
-  --sidebar-primary: oklch(0.85 0.25 155);
-  --sidebar-primary-foreground: oklch(0.1 0 0);
-  --background: oklch(0.1 0 0);
-  --foreground: oklch(0.78 0 0);
-  --card: oklch(0.12 0 0);
-  --card-foreground: oklch(0.78 0 0);
-  --popover: oklch(0.12 0 0);
-  --popover-foreground: oklch(0.78 0 0);
-  --secondary: oklch(0.2 0 0);
-  --secondary-foreground: oklch(0.78 0 0);
-  --muted: oklch(0.18 0 0);
-  --muted-foreground: oklch(0.6 0 0);
+  --primary-foreground: oklch(0.08 0 0);
+  
+  /* Map surfaces to shadcn semantic tokens */
+  --background: var(--surface-0);
+  --foreground: oklch(0.85 0 0);
+  --card: var(--surface-1);
+  --card-foreground: oklch(0.85 0 0);
+  --popover: var(--surface-1);
+  --popover-foreground: oklch(0.85 0 0);
+  --secondary: var(--surface-2);
+  --secondary-foreground: oklch(0.85 0 0);
+  --muted: var(--surface-2);
+  --muted-foreground: oklch(0.55 0 0);
   --accent: oklch(0.85 0.25 155);
-  --accent-foreground: oklch(0.1 0 0);
-  --destructive: oklch(0.6 0.25 25);
+  --accent-foreground: oklch(0.08 0 0);
+  --destructive: oklch(0.55 0.25 25);
   --destructive-foreground: oklch(0.95 0 0);
-  --border: oklch(0.15 0 0);
-  --input: oklch(0.2 0 0);
+  --border: oklch(0.22 0 0);
+  --input: var(--surface-2);
   --ring: oklch(0.85 0.25 155);
+  
+  /* Sidebar - uses surface tokens */
+  --sidebar: var(--surface-0);
+  --sidebar-foreground: oklch(0.85 0 0);
+  --sidebar-primary: oklch(0.85 0.25 155);
+  --sidebar-primary-foreground: oklch(0.08 0 0);
+  --sidebar-accent: var(--surface-2);
+  --sidebar-accent-foreground: oklch(0.85 0.25 155);
+  --sidebar-border: oklch(0.22 0 0);
+  --sidebar-ring: oklch(0.85 0.25 155);
+  
+  /* Charts */
   --chart-1: oklch(0.85 0.25 155);
   --chart-2: oklch(0.7 0.2 155);
   --chart-3: oklch(0.5 0.15 155);
   --chart-4: oklch(0.4 0.1 200);
   --chart-5: oklch(0.3 0.05 200);
-  --sidebar: oklch(0.08 0 0);
-  --sidebar-foreground: oklch(0.78 0 0);
-  --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(0.85 0.25 155);
-  --sidebar-border: oklch(0.15 0 0);
-  --sidebar-ring: oklch(0.85 0.25 155);
-  
-  /* Surface hierarchy - dark mode */
-  --surface-0: oklch(0.10 0 0);
-  --surface-1: oklch(0.12 0 0);
-  --surface-2: oklch(0.14 0 0);
-  --surface-3: oklch(0.16 0 0);
-  --surface-overlay: oklch(0.10 0 0 / 0.85);
 }
 
 /* Mobile spacing overrides */
@@ -492,23 +513,23 @@
     }
   }
 
-  /* Glass context menu - Mantodeus design language */
+  /* Glass context menu - Mantodeus design language
+   * Uses surface tokens for proper theming */
   .glass-context-menu {
-    background: rgba(15, 18, 25, 0.85);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--surface-overlay);
+    backdrop-filter: blur(var(--blur-overlay));
+    -webkit-backdrop-filter: blur(var(--blur-overlay));
+    border: 1px solid var(--border);
     border-radius: 14px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
     padding: 8px;
     min-width: 180px;
-    animation: contextMenuIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: contextMenuIn var(--dur-quick) var(--ease-out);
   }
 
   /* Increase opacity and blur on desktop for better readability */
   @media (min-width: 768px) {
     .glass-context-menu {
-      background: rgba(15, 18, 25, 0.98);
       backdrop-filter: blur(32px);
       -webkit-backdrop-filter: blur(32px);
       /* Hide scrollbar on desktop while keeping scroll functionality */
