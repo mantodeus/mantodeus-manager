@@ -90,18 +90,11 @@ function ModuleItem({
       <span
         className={cn(
           "flex-1 text-sm transition-colors duration-100",
-          isActive ? "text-primary font-medium" : "text-foreground"
+          isActive ? "text-primary" : "text-foreground"
         )}
       >
         {module.label}
       </span>
-
-      {/* Keyboard shortcut hint */}
-      {module.shortcut && (
-        <span className="text-[10px] text-muted-foreground/50 font-mono">
-          ⌘{module.shortcut}
-        </span>
-      )}
 
       {/* Current page indicator */}
       {isCurrentPage && (
@@ -171,13 +164,13 @@ export function DesktopModuleFlyout() {
     >
       {/* Header */}
       <div className="px-4 py-4 border-b border-border/30">
-        <h2 className="text-sm font-bold tracking-wide text-foreground">
+        <h2 className="text-sm font-bold tracking-wide text-foreground uppercase">
           {tabGroup.label}
         </h2>
       </div>
 
       {/* Module List */}
-      <div className="flex-1 overflow-y-auto py-2 px-2">
+      <div className="flex-1 overflow-y-auto py-2 px-2 scrollbar-hide">
         {modules.map((module, index) => {
           const isActive = index === highlightedIndex;
           const isCurrentPage = location === module.path || location.startsWith(module.path + '/');
