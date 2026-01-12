@@ -5,7 +5,7 @@
  * Shows modules with depth displacement effect matching mobile navigation.
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useDesktopNav } from './DesktopNavProvider';
@@ -58,7 +58,8 @@ function ModuleItem({
       ? VISUAL_HIERARCHY.NEIGHBOR.opacity
       : VISUAL_HIERARCHY.DISTANT.opacity;
 
-  const scale = isActive ? VISUAL_HIERARCHY.ACTIVE.scale : 1;
+  // Remove scale animation for calmer desktop feel
+  const scale = 1;
 
   return (
     <button
@@ -79,7 +80,7 @@ function ModuleItem({
         isCurrentPage && !isActive && "bg-muted/50",
       )}
       style={{
-        transform: `translateX(${offset}px) scale(${scale})`,
+        transform: `translateX(${offset}px)`, // Remove scale for calmer feel
         opacity,
       }}
       onClick={onNavigate}
@@ -118,27 +119,68 @@ export function DesktopModuleFlyout() {
     activeTab,
     flyoutState,
     highlightedIndex,
+    flyoutAnchor,
     setHighlightedIndex,
     navigateToModule,
     closeFlyout,
     handleKeyDown,
   } = useDesktopNav();
 
-  // Get modules for active tab (only Office and Tools have flyouts)
-  const tabGroup = (activeTab === 'office' || activeTab === 'tools') ? TAB_GROUPS[activeTab] : null;
+  // Get modules for active tab (Office, Action, and Tools all have flyouts)
+  const tabGroup = (activeTab === 'office' || activeTab === 'action' || activeTab === 'tools') ? TAB_GROUPS[activeTab] : null;
   const modules = tabGroup?.modules ?? [];
 
-  // Close flyout when mouse leaves the entire nav area
+  // Close flyout when mouse leaves (only for hovering state, not locked)
   const handleMouseLeave = useCallback(() => {
     if (flyoutState === 'hovering') {
       closeFlyout();
     }
   }, [flyoutState, closeFlyout]);
 
-  // Focus the flyout for keyboard navigation when it opens
+  // Calculate position based on anchor
+  const [flyoutPosition, setFlyoutPosition] = useState<{ left: number; bottom?: number; top?: number }>({
+    left: LAYOUT.RAIL_WIDTH,
+  });
+
+  // Update position when anchor or activeTab changes
+  useEffect(() => {
+    if (flyoutState === 'closed' || !activeTab) return;
+
+    if (flyoutAnchor === 'bottom-bar') {
+      // Position above the bottom tab bar, centered on the active tab
+      const tabElement = document.querySelector(`[data-desktop-nav="bottom-tab"][data-tab-id="${activeTab}"]`) as HTMLElement;
+      if (tabElement) {
+        const tabRect = tabElement.getBoundingClientRect();
+        const tabCenterX = tabRect.left + tabRect.width / 2;
+        const flyoutLeft = Math.max(
+          LAYOUT.RAIL_WIDTH,
+          Math.min(
+            tabCenterX - LAYOUT.FLYOUT_WIDTH / 2,
+            window.innerWidth - LAYOUT.FLYOUT_WIDTH
+          )
+        );
+        setFlyoutPosition({
+          left: flyoutLeft,
+          bottom: window.innerHeight - tabRect.top + 8, // 8px gap above tab bar
+        });
+      }
+    } else {
+      // Rail anchor: position at left edge
+      setFlyoutPosition({
+        left: LAYOUT.RAIL_WIDTH,
+        top: 0,
+      });
+    }
+  }, [flyoutAnchor, activeTab, flyoutState]);
+
+  // Focus the flyout for keyboard navigation when it opens (but don't steal focus from inputs)
   useEffect(() => {
     if (flyoutState !== 'closed' && flyoutRef.current) {
-      flyoutRef.current.focus();
+      // Only focus if no input is currently focused
+      const activeElement = document.activeElement;
+      if (!activeElement || (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA' && !activeElement.isContentEditable)) {
+        flyoutRef.current.focus();
+      }
     }
   }, [flyoutState, activeTab]);
 
@@ -150,27 +192,33 @@ export function DesktopModuleFlyout() {
     <div
       ref={flyoutRef}
       data-desktop-nav="flyout"
-      tabIndex={0}
+      data-flyout-anchor={flyoutAnchor}
+      tabIndex={-1} // Don't steal focus, but allow programmatic focus for keyboard nav
       className={cn(
-        "fixed top-0 bottom-0 z-[49]",
+        "fixed z-[49]",
         "flex flex-col",
+        "max-h-[60vh]", // Limit height when bottom-anchored
         // Glass effect
         "bg-background/90 backdrop-blur-2xl",
-        "border-r border-border/50",
+        "border border-border/50",
         "shadow-xl shadow-black/10",
-        // Animation
-        "animate-in slide-in-from-left-4 fade-in duration-200",
+        "rounded-lg",
+        // Animation - subtle fade only, no heavy motion
+        "animate-in fade-in duration-150",
       )}
       style={{
-        left: LAYOUT.RAIL_WIDTH,
-        width: LAYOUT.FLYOUT_WIDTH,
+        left: flyoutPosition.left,
+        ...(flyoutAnchor === 'bottom-bar' 
+          ? { bottom: flyoutPosition.bottom, width: LAYOUT.FLYOUT_WIDTH }
+          : { top: 0, bottom: 0, width: LAYOUT.FLYOUT_WIDTH }
+        ),
       }}
       onMouseLeave={handleMouseLeave}
       onKeyDown={handleKeyDown}
     >
-      {/* Header */}
-      <div className="px-4 py-4 border-b border-border/30">
-        <h2 className="text-sm font-bold tracking-wide text-foreground uppercase">
+      {/* Header - Section Title */}
+      <div className="px-4 py-5 border-b border-border/20">
+        <h2 className="text-xs uppercase tracking-[0.15em] font-extralight text-foreground/80">
           {tabGroup.label}
         </h2>
       </div>

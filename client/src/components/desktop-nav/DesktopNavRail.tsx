@@ -3,7 +3,7 @@
  * 
  * 60px vertical strip:
  * - Logo at top (click to open Ask Mantodeus)
- * - Tab icons: Office (flyout), Tools (flyout), Capture (direct), Record (direct), Settings (direct)
+ * - Tab icons: Office (flyout), Action (flyout), Tools (flyout)
  * - User profile at bottom
  */
 
@@ -49,13 +49,13 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
 
     // If already showing a flyout (locked or hovering), switch immediately
     if (flyoutState !== 'closed') {
-      openFlyout(tab.id as 'office' | 'tools', flyoutState === 'locked');
+      openFlyout(tab.id as 'office' | 'action' | 'tools', flyoutState === 'locked', 'rail');
       return;
     }
 
     // Otherwise, delay before showing
     hoverTimeoutRef.current = setTimeout(() => {
-      openFlyout(tab.id as 'office' | 'tools', false);
+      openFlyout(tab.id as 'office' | 'action' | 'tools', false, 'rail');
     }, TIMING.HOVER_DELAY);
   }, [flyoutState, openFlyout]);
 
@@ -85,7 +85,7 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
         closeFlyout();
       } else {
         // Lock the flyout open
-        openFlyout(tab.id as 'office' | 'tools', true);
+        openFlyout(tab.id as 'office' | 'action' | 'tools', true, 'rail');
       }
     }
   }, [activeTab, flyoutState, openFlyout, closeFlyout, setLocation]);

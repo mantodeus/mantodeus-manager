@@ -2053,7 +2053,7 @@ export default function Invoices() {
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <div className="text-base font-normal tabular-nums">{displayTotal}</div>
-                        <Badge variant="outline" className="text-[11px] uppercase tracking-widest font-normal">NEEDS REVIEW</Badge>
+                        <Badge variant="outline" className="badge-needs-review text-[11px] uppercase tracking-widest font-normal">NEEDS REVIEW</Badge>
                         <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
                         {!isMultiSelectMode && (() => {
                           const availableActions = getInvoiceActions({

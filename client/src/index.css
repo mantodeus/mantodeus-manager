@@ -900,9 +900,19 @@
   }
   
   /* Global bottom safe area for content (bottom tab bar + safe area) */
-  /* On desktop (md and up), bottom tab bar is hidden, so safe area is 0 */
-  :root {
-    --bottom-safe-area: 0px;
+  /* Desktop bottom tab bar (md and up) - reduced height for dock-like feel */
+  @media (min-width: 768px) {
+    :root {
+      --bottom-safe-area: calc(44px + env(safe-area-inset-bottom));
+    }
+
+    .app-content {
+      /* Allow scrolling past bottom UI on desktop:
+         - bottom tab bar (var(--bottom-safe-area))
+         - Manto sheet when open (var(--manto-sheet-height))
+      */
+      padding-bottom: calc(var(--bottom-safe-area) + var(--manto-sheet-height, 0px) + 1rem) !important;
+    }
   }
   
   @media (max-width: 767px) {
@@ -933,6 +943,21 @@
     /* Prevent content from being hidden behind tab bar */
     .app-content > div:last-child {
       padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+  }
+
+  /* Needs Review badge - cool mint accent, no warm tones */
+  .badge-needs-review {
+    background: color-mix(in oklab, var(--primary) 7%, var(--card));
+    border-color: color-mix(in oklab, var(--primary) 21%, var(--border));
+    color: var(--foreground);
+  }
+  
+  /* Desktop: slightly less tint than mobile */
+  @media (min-width: 768px) {
+    .badge-needs-review {
+      background: color-mix(in oklab, var(--primary) 6%, var(--card));
+      border-color: color-mix(in oklab, var(--primary) 18%, var(--border));
     }
   }
 

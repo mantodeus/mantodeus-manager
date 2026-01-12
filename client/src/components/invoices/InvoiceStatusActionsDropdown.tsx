@@ -400,7 +400,7 @@ export function InvoiceStatusActionsDropdown({
     }
 
     if (invoiceState === "REVIEW") {
-      return <Button asChild={false} variant="outline" size="default" className="text-sm font-semibold cursor-pointer">NEEDS REVIEW</Button>;
+      return <Button asChild={false} variant="outline" size="default" className="badge-needs-review text-sm font-semibold cursor-pointer">NEEDS REVIEW</Button>;
     }
 
     return null;

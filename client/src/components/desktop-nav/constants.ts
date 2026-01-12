@@ -22,13 +22,14 @@ import {
   PencilSquareIcon,
   BugAnt,
   WrenchScrewdriver,
+  CloudSun,
 } from '@/components/ui/Icon';
 
 import type { TabGroup, TabId } from './types';
 
 /**
  * Tab definitions with icons
- * Desktop: Office, Tools, Capture, Record, Settings
+ * Desktop: Office, Action, Tools (matching mobile mental model)
  */
 export const TABS: { 
   id: TabId; 
@@ -38,14 +39,12 @@ export const TABS: {
   path?: string; // for direct navigation
 }[] = [
   { id: 'office', icon: PencilSquareIcon, label: 'Office', type: 'flyout' },
+  { id: 'action', icon: BugAnt, label: 'Action', type: 'flyout' },
   { id: 'tools', icon: WrenchScrewdriver, label: 'Tools', type: 'flyout' },
-  { id: 'capto', icon: Camera, label: 'Capture', type: 'direct', path: '/action/capto' },
-  { id: 'voco', icon: Microphone, label: 'Record', type: 'direct', path: '/action/voco' },
-  { id: 'settings', icon: SettingsIcon, label: 'Settings', type: 'direct', path: '/settings' },
 ];
 
 /**
- * Module registry - only Office and Tools have flyouts on desktop
+ * Module registry - Office, Action, and Tools all have flyouts on desktop
  */
 export const TAB_GROUPS: Record<TabId, TabGroup> = {
   office: {
@@ -61,6 +60,15 @@ export const TAB_GROUPS: Record<TabId, TabGroup> = {
       { id: 'notes', label: 'Notes', path: '/notes', icon: File, shortcut: '6' },
     ],
   },
+  action: {
+    id: 'action',
+    label: 'Action',
+    icon: BugAnt,
+    modules: [
+      { id: 'capto', label: 'Capture', path: '/action/capto', icon: Camera },
+      { id: 'voco', label: 'Record', path: '/action/voco', icon: Microphone },
+    ],
+  },
   tools: {
     id: 'tools',
     label: 'Tools',
@@ -70,9 +78,11 @@ export const TAB_GROUPS: Record<TabId, TabGroup> = {
       { id: 'contacts', label: 'Contacts', path: '/contacts', icon: Users, shortcut: '8' },
       { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image, shortcut: '9' },
       { id: 'map', label: 'Maps', path: '/maps', icon: MapPin, shortcut: '0' },
+      { id: 'settings', label: 'Settings', path: '/settings', icon: SettingsIcon },
+      { id: 'weather', label: 'Weather', path: '/weather', icon: CloudSun },
     ],
   },
-  // Capto and Voco don't have modules - they're direct navigation
+  // Legacy tabs kept for type compatibility (not used in TABS array)
   capto: {
     id: 'capto',
     label: 'Capture',
@@ -85,15 +95,11 @@ export const TAB_GROUPS: Record<TabId, TabGroup> = {
     icon: Microphone,
     modules: [],
   },
-  // Keep action for mobile compatibility (not used on desktop)
-  action: {
-    id: 'action',
-    label: 'Action',
-    icon: BugAnt,
-    modules: [
-      { id: 'capto', label: 'Capture', path: '/action/capto', icon: Camera },
-      { id: 'voco', label: 'Record', path: '/action/voco', icon: Microphone },
-    ],
+  settings: {
+    id: 'settings',
+    label: 'Settings',
+    icon: SettingsIcon,
+    modules: [],
   },
 };
 

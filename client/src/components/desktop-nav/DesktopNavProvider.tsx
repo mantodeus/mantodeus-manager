@@ -6,8 +6,11 @@
 
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import type { DesktopNavContextValue, TabId, FlyoutState } from './types';
+import type { DesktopNavContextValue, TabId, FlyoutState, FlyoutAnchor } from './types';
 import { TAB_GROUPS, ALL_MODULES, TIMING } from './constants';
+
+// Type helper for flyout-capable tabs
+export type FlyoutTabId = 'office' | 'action' | 'tools';
 
 const DesktopNavContext = createContext<DesktopNavContextValue | undefined>(undefined);
 
@@ -28,6 +31,7 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [flyoutState, setFlyoutState] = useState<FlyoutState>('closed');
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  const [flyoutAnchor, setFlyoutAnchor] = useState<FlyoutAnchor>('rail');
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // Clear timeout on unmount
@@ -39,7 +43,7 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
     };
   }, [hoverTimeout]);
 
-  const openFlyout = useCallback((tabId: 'office' | 'tools', lock = false) => {
+  const openFlyout = useCallback((tabId: 'office' | 'action' | 'tools', lock = false, anchor: FlyoutAnchor = 'rail') => {
     // Clear any pending hover timeout
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
@@ -48,6 +52,7 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
 
     setActiveTab(tabId);
     setFlyoutState(lock ? 'locked' : 'hovering');
+    setFlyoutAnchor(anchor);
     
     // Reset highlighted index to first item
     setHighlightedIndex(0);
@@ -66,6 +71,7 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
     setActiveTab(null);
     setFlyoutState('closed');
     setHighlightedIndex(null);
+    setFlyoutAnchor('rail'); // Reset to default
   }, []);
 
   const lockFlyout = useCallback(() => {
@@ -83,8 +89,8 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!activeTab || flyoutState === 'closed') return;
     
-    // Only handle Office and Tools tabs (they have flyouts)
-    if (activeTab !== 'office' && activeTab !== 'tools') return;
+    // Only handle Office, Action, and Tools tabs (they have flyouts)
+    if (activeTab !== 'office' && activeTab !== 'action' && activeTab !== 'tools') return;
 
     const modules = TAB_GROUPS[activeTab].modules;
     const currentIndex = highlightedIndex ?? 0;
@@ -113,20 +119,20 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
         break;
         
       case 'ArrowRight':
-        // Move to next flyout tab (Office -> Tools -> Office)
+        // Move to next flyout tab (Office -> Action -> Tools -> Office)
         e.preventDefault();
-        const nextTab = activeTab === 'office' ? 'tools' : 'office';
-        openFlyout(nextTab, flyoutState === 'locked');
+        const nextTab = activeTab === 'office' ? 'action' : activeTab === 'action' ? 'tools' : 'office';
+        openFlyout(nextTab, flyoutState === 'locked', flyoutAnchor);
         break;
         
       case 'ArrowLeft':
-        // Move to previous flyout tab (Tools -> Office -> Tools)
+        // Move to previous flyout tab (Tools -> Action -> Office -> Tools)
         e.preventDefault();
-        const prevTab = activeTab === 'tools' ? 'office' : 'tools';
-        openFlyout(prevTab, flyoutState === 'locked');
+        const prevTab = activeTab === 'tools' ? 'action' : activeTab === 'action' ? 'office' : 'tools';
+        openFlyout(prevTab, flyoutState === 'locked', flyoutAnchor);
         break;
     }
-  }, [activeTab, flyoutState, highlightedIndex, navigateToModule, forceCloseFlyout, openFlyout]);
+  }, [activeTab, flyoutState, flyoutAnchor, highlightedIndex, navigateToModule, forceCloseFlyout, openFlyout]);
 
   // Global keyboard shortcuts for tab switching
   useEffect(() => {
@@ -170,6 +176,7 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
     activeTab,
     flyoutState,
     highlightedIndex,
+    flyoutAnchor,
     openFlyout,
     closeFlyout,
     lockFlyout,
@@ -180,6 +187,7 @@ export function DesktopNavProvider({ children }: DesktopNavProviderProps) {
     activeTab,
     flyoutState,
     highlightedIndex,
+    flyoutAnchor,
     openFlyout,
     closeFlyout,
     lockFlyout,

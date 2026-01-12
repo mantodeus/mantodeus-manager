@@ -41,7 +41,7 @@ export function ExpenseCard({ expense, onAction, showVoid = false, isMultiSelect
   const statusBadge = () => {
     switch (expense.status) {
       case "needs_review":
-        return <Badge variant="outline" className="text-xs">Needs Review</Badge>;
+        return <Badge variant="outline" className="badge-needs-review text-xs">Needs Review</Badge>;
       case "in_order":
         return <Badge variant="default" className="text-xs">In Order</Badge>;
       case "void":

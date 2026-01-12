@@ -8,8 +8,8 @@ import type { IconComponent } from '@/components/ui/Icon';
 
 /**
  * Tab group IDs
- * Desktop: office, tools, capto, voco, settings (action only exists for mobile)
- * Mobile: office, action, tools
+ * Desktop: office, action, tools (matching mobile mental model)
+ * Legacy: capto, voco, settings (kept for type compatibility, not used in TABS array)
  */
 export type TabId = 'office' | 'action' | 'tools' | 'capto' | 'voco' | 'settings';
 
@@ -40,6 +40,11 @@ export interface TabGroup {
 export type FlyoutState = 'closed' | 'hovering' | 'locked';
 
 /**
+ * Flyout anchor position
+ */
+export type FlyoutAnchor = 'rail' | 'bottom-bar';
+
+/**
  * Desktop nav context value
  */
 export interface DesktopNavContextValue {
@@ -47,9 +52,10 @@ export interface DesktopNavContextValue {
   activeTab: TabId | null;
   flyoutState: FlyoutState;
   highlightedIndex: number | null;
+  flyoutAnchor: FlyoutAnchor;
   
   // Actions
-  openFlyout: (tabId: TabId, lock?: boolean) => void;
+  openFlyout: (tabId: TabId, lock?: boolean, anchor?: FlyoutAnchor) => void;
   closeFlyout: () => void;
   lockFlyout: () => void;
   setHighlightedIndex: (index: number | null) => void;

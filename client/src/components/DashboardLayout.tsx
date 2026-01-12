@@ -16,6 +16,7 @@ import {
   DesktopNavProvider,
   DesktopNavRail,
   DesktopModuleFlyout,
+  DesktopBottomTabBar,
   LAYOUT,
 } from "./desktop-nav";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -86,6 +87,9 @@ function DesktopDashboardLayoutContent({
         open={dataDialogOpen}
         onOpenChange={setDataDialogOpen}
       />
+
+      {/* Desktop Bottom Tab Bar */}
+      <DesktopBottomTabBar />
 
       {/* Manto Assistant Panel - right side on desktop */}
       <MantoAssistantWrapper />
