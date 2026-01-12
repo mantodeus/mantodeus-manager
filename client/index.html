@@ -72,14 +72,14 @@
           root.setProperty('--chart-2', '#FF78C7');
           root.setProperty('--chart-3', '#E83D8C');
         } else {
-          // Dark mode - Green Mantis
-          root.backgroundColor = '#0A0F14';
-          document.body && (document.body.style.backgroundColor = '#0A0F14');
+          // Dark mode - Green Mantis (Superwhisper-inspired deep black)
+          root.backgroundColor = 'oklch(0.10 0 0)';
+          document.body && (document.body.style.backgroundColor = 'oklch(0.10 0 0)');
           
-          // Update theme-color meta tag
+          // Update theme-color meta tag (convert to hex for meta tag)
           var themeColorMeta = document.querySelector('meta[name="theme-color"]');
           if (themeColorMeta) {
-            themeColorMeta.setAttribute('content', '#0A0F14');
+            themeColorMeta.setAttribute('content', '#1A1A1A'); // Approximate hex for oklch(0.10 0 0)
           }
         }
       })();

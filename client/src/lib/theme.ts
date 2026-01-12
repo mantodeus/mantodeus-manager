@@ -65,21 +65,21 @@ export const greenMantisTheme: ThemeConfig = {
   displayName: 'Green Mantis',
   description: 'Optimised for focus and low-light work',
   tokens: {
-    // Backgrounds
-    bgApp: '#06080B',
-    bgPage: '#0A0F14',
-    bgSurface: '#0F1620',
-    bgElevated: '#121C28',
+    // Backgrounds - Superwhisper-inspired deep blacks (matches example)
+    bgApp: 'oklch(0.10 0 0)',
+    bgPage: 'oklch(0.10 0 0)',
+    bgSurface: 'oklch(0.12 0 0)',
+    bgElevated: 'oklch(0.14 0 0)',
     
-    // Typography
-    textPrimary: '#E6EDF3',
-    textSecondary: '#A9B4BF',
-    textMuted: '#7D8A97',
-    textDisabled: '#556070',
+    // Typography - matches example
+    textPrimary: 'oklch(0.95 0 0)',
+    textSecondary: 'oklch(0.70 0 0)',
+    textMuted: 'oklch(0.50 0 0)',
+    textDisabled: 'oklch(0.40 0 0)',
     
-    // Borders
-    borderSubtle: 'rgba(255,255,255,0.06)',
-    borderStrong: 'rgba(12,245,126,0.35)',
+    // Borders - matches example
+    borderSubtle: 'oklch(0.20 0 0)',
+    borderStrong: 'oklch(0.30 0 0)',
     
     // Accent - Mantis Green
     accentStart: '#0CF57E',
@@ -88,11 +88,11 @@ export const greenMantisTheme: ThemeConfig = {
     accentSolid: '#0CF57E',
     accentGradient: 'linear-gradient(135deg, #0CF57E 0%, #2BFFA0 50%, #07C964 100%)',
     
-    // States
-    stateInfo: '#3B82F6',
-    stateWarning: '#F59E0B',
-    stateDanger: '#EF4444',
-    stateSuccess: '#10B981',
+    // States - muted palette (no blue in dark mode)
+    stateInfo: 'oklch(0.70 0.15 200)',  // Muted blue-grey
+    stateWarning: 'oklch(0.75 0.15 60)',
+    stateDanger: 'oklch(0.70 0.15 25)',
+    stateSuccess: 'oklch(0.70 0.15 150)',
     
     // Overlays
     overlayLight: 'rgba(0,0,0,0.4)',
@@ -114,21 +114,21 @@ export const orchidMantisTheme: ThemeConfig = {
   displayName: 'Orchid Mantis',
   description: 'Designed for clarity and daylight use',
   tokens: {
-    // Backgrounds
-    bgApp: '#F7F6F4',
-    bgPage: '#F2F1EE',
-    bgSurface: '#FFFFFF',
-    bgElevated: '#FBFAF8',
+    // Backgrounds - Superwhisper-inspired warm tint (matches example)
+    bgApp: 'oklch(0.98 0.01 85)',
+    bgPage: 'oklch(0.98 0.01 85)',
+    bgSurface: 'oklch(0.96 0.01 85)',
+    bgElevated: 'oklch(0.94 0.01 85)',
     
-    // Typography
-    textPrimary: '#1C1F23',
-    textSecondary: '#4A5058',
-    textMuted: '#7A8087',
-    textDisabled: '#A5ABB2',
+    // Typography - matches example
+    textPrimary: 'oklch(0.20 0.01 85)',
+    textSecondary: 'oklch(0.45 0.01 85)',
+    textMuted: 'oklch(0.60 0.01 85)',
+    textDisabled: 'oklch(0.70 0.01 85)',
     
-    // Borders
-    borderSubtle: 'rgba(28,31,35,0.08)',
-    borderStrong: 'rgba(255,79,163,0.35)',
+    // Borders - matches example
+    borderSubtle: 'oklch(0.88 0.01 85)',
+    borderStrong: 'oklch(0.80 0.01 85)',
     
     // Accent - Orchid Pink (NO GREEN)
     accentStart: '#FF4FA3',
@@ -137,11 +137,11 @@ export const orchidMantisTheme: ThemeConfig = {
     accentSolid: '#FF4FA3',
     accentGradient: 'linear-gradient(135deg, #FF4FA3 0%, #FF78C7 50%, #E83D8C 100%)',
     
-    // States
-    stateInfo: '#3B82F6',
-    stateWarning: '#F59E0B',
-    stateDanger: '#EF4444',
-    stateSuccess: '#10B981',
+    // States - muted palette
+    stateInfo: 'oklch(0.65 0.15 200)',  // Muted blue-grey
+    stateWarning: 'oklch(0.70 0.15 60)',
+    stateDanger: 'oklch(0.65 0.15 25)',
+    stateSuccess: 'oklch(0.65 0.15 150)',
     
     // Overlays
     overlayLight: 'rgba(28,31,35,0.3)',
@@ -215,13 +215,13 @@ export function applyTheme(themeName: ThemeName) {
   root.style.setProperty('--popover', theme.tokens.bgElevated);
   root.style.setProperty('--popover-foreground', theme.tokens.textPrimary);
   root.style.setProperty('--primary', theme.tokens.accentSolid);
-  root.style.setProperty('--primary-foreground', themeName === 'green-mantis' ? '#06080B' : '#FFFFFF');
+  root.style.setProperty('--primary-foreground', themeName === 'green-mantis' ? 'oklch(0.10 0 0)' : 'oklch(0.98 0.01 85)');
   root.style.setProperty('--secondary', theme.tokens.bgElevated);
   root.style.setProperty('--secondary-foreground', theme.tokens.textPrimary);
   root.style.setProperty('--muted', theme.tokens.bgElevated);
   root.style.setProperty('--muted-foreground', theme.tokens.textMuted);
   root.style.setProperty('--accent', theme.tokens.accentSolid);
-  root.style.setProperty('--accent-foreground', themeName === 'green-mantis' ? '#06080B' : '#FFFFFF');
+  root.style.setProperty('--accent-foreground', themeName === 'green-mantis' ? 'oklch(0.10 0 0)' : 'oklch(0.98 0.01 85)');
   root.style.setProperty('--destructive', theme.tokens.stateDanger);
   root.style.setProperty('--destructive-foreground', '#FFFFFF');
   root.style.setProperty('--border', theme.tokens.borderSubtle);
@@ -233,7 +233,7 @@ export function applyTheme(themeName: ThemeName) {
   root.style.setProperty('--sidebar', theme.tokens.bgSurface);
   root.style.setProperty('--sidebar-foreground', theme.tokens.textPrimary);
   root.style.setProperty('--sidebar-primary', theme.tokens.accentSolid);
-  root.style.setProperty('--sidebar-primary-foreground', themeName === 'green-mantis' ? '#06080B' : '#FFFFFF');
+  root.style.setProperty('--sidebar-primary-foreground', themeName === 'green-mantis' ? 'oklch(0.10 0 0)' : 'oklch(0.98 0.01 85)');
   root.style.setProperty('--sidebar-accent', theme.tokens.bgElevated);
   root.style.setProperty('--sidebar-accent-foreground', theme.tokens.textPrimary);
   root.style.setProperty('--sidebar-border', theme.tokens.borderSubtle);
