@@ -1576,7 +1576,7 @@ export default function Invoices() {
       return (
         <Badge 
           variant="outline" 
-          className="text-[11px] uppercase tracking-widest border-foreground text-foreground dark:border-white dark:text-white"
+          className="text-[11px] uppercase tracking-widest font-normal border-foreground text-foreground dark:border-white dark:text-white"
         >
           CANCELLED
         </Badge>
@@ -1585,17 +1585,17 @@ export default function Invoices() {
     
     // Badge priority: OVERDUE > PARTIAL > SENT/PAID
     if (derivedValues.isOverdue) {
-      return <Badge variant="destructive-outline" className="text-[11px] uppercase tracking-widest">OVERDUE</Badge>;
+      return <Badge variant="destructive-outline" className="text-[11px] uppercase tracking-widest font-normal">OVERDUE</Badge>;
     }
     
     if (invoiceState === 'PARTIAL') {
-      return <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-orange-500/50 text-orange-600/80 dark:border-orange-500 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
+      return <Badge variant="outline" className="text-[11px] uppercase tracking-widest font-normal border-orange-500/50 text-orange-600/80 dark:border-orange-500 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
     }
     
     if (invoiceState === 'PAID') {
       return (
         <span 
-          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-[11px] uppercase tracking-widest w-fit whitespace-nowrap shrink-0"
+          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-[11px] uppercase tracking-widest font-normal w-fit whitespace-nowrap shrink-0"
           style={{
             backgroundColor: isDarkMode ? '#00FF88' : 'rgb(236, 72, 153)', // green in dark, pink in light
             color: isDarkMode ? '#000000' : 'white',
@@ -1608,11 +1608,11 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'SENT') {
-      return <Badge variant="blue-outline" className="text-[11px] uppercase tracking-widest">SENT</Badge>;
+      return <Badge variant="blue-outline" className="text-[11px] uppercase tracking-widest font-normal">SENT</Badge>;
     }
     
     if (invoiceState === 'DRAFT') {
-      return <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-yellow-500/50 text-yellow-600/80 dark:border-yellow-500 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
+      return <Badge variant="outline" className="text-[11px] uppercase tracking-widest font-normal border-yellow-500/50 text-yellow-600/80 dark:border-yellow-500 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
     }
     
     return null;
@@ -2053,7 +2053,7 @@ export default function Invoices() {
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <div className="text-base font-normal tabular-nums">{displayTotal}</div>
-                        <Badge variant="outline" className="text-[11px] uppercase tracking-widest">NEEDS REVIEW</Badge>
+                        <Badge variant="outline" className="text-[11px] uppercase tracking-widest font-normal">NEEDS REVIEW</Badge>
                         <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
                         {!isMultiSelectMode && (() => {
                           const availableActions = getInvoiceActions({
@@ -2216,7 +2216,7 @@ export default function Invoices() {
                       <div className="text-base font-normal tabular-nums">{displayTotal}</div>
                       {getStatusBadge(invoice)}
                       {invoice.type === "cancellation" && (
-                        <Badge variant="outline" className="text-[11px] uppercase tracking-widest">STORNO</Badge>
+                        <Badge variant="outline" className="text-[11px] uppercase tracking-widest font-normal">STORNO</Badge>
                       )}
                       {!isMultiSelectMode && (
                         <ItemActionsMenu
