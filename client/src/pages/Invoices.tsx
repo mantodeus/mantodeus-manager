@@ -1947,7 +1947,7 @@ export default function Invoices() {
         subtitle="Create, edit, and manage invoices"
         onSearch={() => setIsSearchOpen(true)}
         onFilter={() => setIsFilterOpen(true)}
-        settingsEnabled={false}
+        onSettings={() => navigate("/settings")}
         primaryActions={
           <>
             <Button

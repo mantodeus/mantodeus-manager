@@ -35,7 +35,7 @@ function HeaderIconCluster({
           size="icon"
           aria-label="Search"
           onClick={onSearch}
-          className="size-9 [&_svg]:size-6"
+          className="size-9 [&_svg]:size-7"
         >
           <Search />
         </Button>
@@ -46,7 +46,7 @@ function HeaderIconCluster({
           size="icon"
           aria-label="Filter"
           onClick={onFilter}
-          className="size-9 [&_svg]:size-6"
+          className="size-9 [&_svg]:size-7"
         >
           <SlidersHorizontal />
         </Button>
@@ -57,7 +57,7 @@ function HeaderIconCluster({
           size="icon"
           aria-label="Page settings"
           onClick={onSettings ?? (() => toast.info("No settings available for this page yet."))}
-          className="size-9 [&_svg]:size-6"
+          className="size-9 [&_svg]:size-7"
         >
           <Settings />
         </Button>
