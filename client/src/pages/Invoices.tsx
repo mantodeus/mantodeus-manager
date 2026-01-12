@@ -204,7 +204,7 @@ function YearTotalCard({
       <Card 
         ref={cardRef}
         className={cn(
-          "p-4 has-context-menu cursor-pointer min-h-[86px]",
+          "p-4 has-context-menu cursor-pointer min-h-[86px] kpi-card-accent",
           popoverOpen && "context-menu-active"
         )}
         {...longPressHandlers}
@@ -470,7 +470,7 @@ function QuarterTotalCard({
       <Card 
         ref={cardRef}
         className={cn(
-          "p-4 has-context-menu cursor-pointer min-h-[86px]",
+          "p-4 has-context-menu cursor-pointer min-h-[86px] kpi-card-accent",
           popoverOpen && "context-menu-active"
         )}
         {...longPressHandlers}
@@ -2038,7 +2038,11 @@ export default function Invoices() {
                   key={`needs-review-${invoice.id}`}
                   onClick={handleNeedsReviewClick}
                   data-item={invoice.id}
-                  className={`card p-3 sm:p-4 hover:shadow-sm transition-shadow md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
+                  className={cn(
+                    "card p-3 sm:p-4 md:min-h-[120px] card-hover-polish",
+                    !isMultiSelectMode && "cursor-pointer",
+                    selectedIds.has(invoice.id) && "item-selected"
+                  )}
                 >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
@@ -2190,7 +2194,11 @@ export default function Invoices() {
                 key={invoice.id}
                 onClick={handleCardClick}
                 data-item={invoice.id}
-                className={`card p-3 sm:p-4 hover:shadow-sm transition-shadow md:min-h-[120px] ${!isMultiSelectMode ? "cursor-pointer" : ""} ${selectedIds.has(invoice.id) ? "item-selected" : ""}`}
+                className={cn(
+                  "card p-3 sm:p-4 md:min-h-[120px] card-hover-polish",
+                  !isMultiSelectMode && "cursor-pointer",
+                  selectedIds.has(invoice.id) && "item-selected"
+                )}
               >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
