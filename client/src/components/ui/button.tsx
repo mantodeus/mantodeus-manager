@@ -9,20 +9,20 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 transition-[background-color,transform] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
+        default: "border border-primary-foreground/30 bg-primary text-primary-foreground hover:bg-primary/90 hover:border-primary-foreground/50 transition-[background-color,border-color,transform] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60 transition-[background-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
+          "border border-white/30 bg-destructive text-white hover:bg-destructive/90 hover:border-white/50 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60 transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
         "destructive-outline":
           "border border-destructive text-destructive bg-transparent hover:bg-destructive/10 dark:hover:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 [&_svg]:transition-colors transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
         outline:
-          "border border-border bg-transparent shadow-xs hover:bg-muted hover:text-foreground hover:border-border/80 dark:bg-transparent dark:border-input dark:hover:bg-muted dark:hover:text-foreground dark:hover:border-border/80 [&_svg]:transition-colors transition-[background-color,border-color,color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
+          "border border-foreground/30 bg-transparent shadow-xs text-foreground hover:bg-muted hover:text-foreground hover:border-foreground/50 dark:bg-transparent dark:border-foreground/30 dark:hover:bg-muted dark:hover:text-foreground dark:hover:border-foreground/50 [&_svg]:transition-colors transition-[background-color,border-color,color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-[background-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
+          "border border-secondary-foreground/30 bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:border-secondary-foreground/50 transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 dark:hover:text-accent-foreground [&_svg]:transition-colors transition-[background-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
-        link: "text-primary underline-offset-4 hover:underline",
+          "border border-transparent hover:border-foreground/20 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 dark:hover:text-accent-foreground dark:hover:border-foreground/20 [&_svg]:transition-colors transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
+        link: "border border-transparent text-primary underline-offset-4 hover:underline",
         // Pill variant - Superwhisper-inspired rounded CTA
-        pill: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-full hover:scale-[1.02] active:scale-[0.98] transition-[background-color,transform] duration-[var(--dur-quick)] ease-[var(--ease-out)] active:duration-[var(--dur-instant)] active:ease-[var(--ease-spring)]",
+        pill: "border border-primary-foreground/30 bg-primary text-primary-foreground hover:bg-primary/90 hover:border-primary-foreground/50 rounded-full hover:scale-[1.02] active:scale-[0.98] transition-[background-color,border-color,transform] duration-[var(--dur-quick)] ease-[var(--ease-out)] active:duration-[var(--dur-instant)] active:ease-[var(--ease-spring)]",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

@@ -251,7 +251,7 @@ export default function InvoicesArchived() {
     if (status === 'paid') {
       return (
         <span 
-          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-semibold w-fit whitespace-nowrap shrink-0"
+          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-bold w-fit whitespace-nowrap shrink-0"
           style={{
             backgroundColor: isDarkMode ? '#00FF88' : 'rgb(236, 72, 153)', // green in dark, pink in light
             color: isDarkMode ? '#000000' : 'white',
