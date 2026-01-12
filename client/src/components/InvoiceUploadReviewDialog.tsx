@@ -742,7 +742,7 @@ export function InvoiceUploadReviewDialog({
           asChild={false}
           variant="outline"
           size="default"
-          className="text-sm font-semibold border-border text-foreground hover:bg-muted cursor-pointer"
+          className="text-sm font-semibold border-[var(--state-info)]/50 text-[var(--state-info)] hover:bg-[var(--state-info)]/10 hover:border-[var(--state-info)]/70 cursor-pointer"
         >
           SENT
         </Button>

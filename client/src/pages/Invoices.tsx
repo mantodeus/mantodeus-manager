@@ -1580,7 +1580,7 @@ export default function Invoices() {
       return (
         <Badge 
           variant="outline" 
-          className="text-xs border-foreground text-foreground dark:border-white dark:text-white"
+          className="text-xs font-semibold border-foreground text-foreground dark:border-white dark:text-white"
         >
           CANCELLED
         </Badge>
@@ -1589,17 +1589,17 @@ export default function Invoices() {
     
     // Badge priority: OVERDUE > PARTIAL > SENT/PAID
     if (derivedValues.isOverdue) {
-      return <Badge variant="destructive-outline" className="text-xs">OVERDUE</Badge>;
+      return <Badge variant="destructive-outline" className="text-xs font-semibold">OVERDUE</Badge>;
     }
     
     if (invoiceState === 'PARTIAL') {
-      return <Badge variant="outline" className="text-xs border-orange-500 text-orange-600 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
+      return <Badge variant="outline" className="text-xs font-semibold border-orange-500 text-orange-600 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
     }
     
     if (invoiceState === 'PAID') {
       return (
         <span 
-          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0"
+          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-semibold w-fit whitespace-nowrap shrink-0"
           style={{
             backgroundColor: isDarkMode ? '#00FF88' : 'rgb(236, 72, 153)', // green in dark, pink in light
             color: isDarkMode ? '#000000' : 'white',

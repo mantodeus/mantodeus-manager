@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow,background-color] duration-[var(--dur-quick)] ease-[var(--ease-out)] overflow-hidden",
+  "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-semibold w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow,background-color] duration-[var(--dur-quick)] ease-[var(--ease-out)] overflow-hidden",
   {
     variants: {
       variant: {
@@ -29,7 +29,7 @@ const badgeVariants = cva(
         info:
           "border-transparent bg-muted text-muted-foreground",
         "blue-outline":
-          "border-border/60 bg-transparent text-foreground [a&]:hover:bg-muted [a&]:hover:border-border",
+          "border-[var(--state-info)]/50 bg-transparent text-[var(--state-info)] [a&]:hover:bg-[var(--state-info)]/10 [a&]:hover:border-[var(--state-info)]/70",
       },
     },
     defaultVariants: {

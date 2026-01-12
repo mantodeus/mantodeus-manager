@@ -15,7 +15,7 @@ const buttonVariants = cva(
         "destructive-outline":
           "border border-destructive text-destructive bg-transparent hover:bg-destructive/10 dark:hover:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 [&_svg]:transition-colors transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
         outline:
-          "border bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-transparent dark:border-input dark:hover:bg-input/50 dark:hover:text-accent-foreground [&_svg]:transition-colors transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
+          "border border-border bg-transparent shadow-xs hover:bg-muted hover:text-foreground hover:border-border/80 dark:bg-transparent dark:border-input dark:hover:bg-muted dark:hover:text-foreground dark:hover:border-border/80 [&_svg]:transition-colors transition-[background-color,border-color,color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-[background-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
         ghost:
