@@ -9,24 +9,8 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
-import { TAB_GROUPS, DEPTH_OFFSET, VISUAL_HIERARCHY, TIMING } from './constants';
+import { TAB_GROUPS, TIMING } from './constants';
 import type { Module } from './types';
-
-/**
- * Calculate depth offset for module item
- */
-function calculateOffset(
-  itemIndex: number,
-  highlightedIndex: number | null
-): number {
-  if (highlightedIndex === null) return 0;
-
-  const distance = Math.abs(itemIndex - highlightedIndex);
-
-  if (distance === 0) return DEPTH_OFFSET.ACTIVE;
-  if (distance === 1) return DEPTH_OFFSET.NEIGHBOR_1;
-  return DEPTH_OFFSET.NEIGHBOR_2;
-}
 
 /**
  * Individual module item
@@ -36,8 +20,6 @@ function ModuleItem({
   index,
   isActive,
   isCurrentPage,
-  isNeighbor,
-  offset,
   onNavigate,
   onHover,
 }: {
@@ -45,47 +27,33 @@ function ModuleItem({
   index: number;
   isActive: boolean;
   isCurrentPage: boolean;
-  isNeighbor: boolean;
-  offset: number;
   onNavigate: () => void;
   onHover: () => void;
 }) {
   const Icon = module.icon;
-
-  const opacity = isActive
-    ? VISUAL_HIERARCHY.ACTIVE.opacity
-    : isNeighbor
-      ? VISUAL_HIERARCHY.NEIGHBOR.opacity
-      : VISUAL_HIERARCHY.DISTANT.opacity;
 
   return (
     <button
       data-desktop-nav="module-menu-item"
       data-module-index={index}
       className={cn(
-        "w-full flex items-center gap-4 px-6 py-4",
-        "rounded-lg transition-all duration-100 ease-out",
+        "w-full flex items-center gap-3 px-4 py-2.5",
+        "rounded-lg transition-all duration-200 ease-out",
         "text-left",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-        "border border-transparent",
-        // Neutral hover (no accent colors)
-        "hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8",
-        "dark:hover:bg-foreground/7 dark:active:bg-foreground/10",
-        // Active state (primary accent for active item only)
-        isActive && "bg-primary/10 border-primary/20",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+        // Active/selected state - subtle highlighted glass pill
+        isActive && "bg-primary/10 backdrop-blur-sm border border-primary/20 scale-[1.03]",
         // Current page state (muted, not active)
-        isCurrentPage && !isActive && "bg-muted/50",
+        isCurrentPage && !isActive && "bg-muted/30",
+        // Hover state - scale and increase opacity
+        !isActive && "hover:scale-[1.03] hover:opacity-100 hover:bg-foreground/5",
       )}
-      style={{
-        transform: `translateX(${offset}px)`,
-        opacity,
-      }}
       onClick={onNavigate}
       onMouseEnter={onHover}
     >
       <Icon
         className={cn(
-          "h-6 w-6 shrink-0 transition-colors duration-100",
+          "h-4 w-4 shrink-0 transition-colors duration-200",
           isActive || isCurrentPage ? "text-primary" : "text-muted-foreground"
         )}
         strokeWidth={isActive ? 2 : 1.5}
@@ -93,17 +61,16 @@ function ModuleItem({
       
       <span
         className={cn(
-          "flex-1 text-base uppercase tracking-[0.1em] transition-colors duration-100",
-          // Font weight: 300 (inactive), 400 (active)
-          isActive ? "text-primary font-normal" : "text-foreground font-light"
+          "flex-1 text-xs uppercase tracking-[0.15em] font-light transition-colors duration-200",
+          isActive || isCurrentPage ? "text-primary" : "text-foreground/80"
         )}
       >
         {module.label}
       </span>
 
       {/* Current page indicator */}
-      {isCurrentPage && (
-        <span className="w-2 h-2 rounded-full bg-primary" />
+      {isCurrentPage && !isActive && (
+        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
       )}
     </button>
   );
@@ -118,9 +85,23 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
   const [location, setLocation] = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(0);
+  const [isVisible, setIsVisible] = useState(false);
 
   const tabGroup = activeTab ? TAB_GROUPS[activeTab] : null;
   const modules = tabGroup?.modules ?? [];
+
+  // Fade + slide up animation
+  useEffect(() => {
+    if (activeTab) {
+      // Trigger animation on mount
+      setIsVisible(false);
+      requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    } else {
+      setIsVisible(false);
+    }
+  }, [activeTab]);
 
   // Close on ESC
   useEffect(() => {
@@ -245,7 +226,7 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
         aria-hidden="true"
       />
 
-      {/* Menu Panel - centered above bottom bar */}
+      {/* Menu Panel - centered above bottom bar, fade + slide up animation */}
       <div
         ref={menuRef}
         data-desktop-nav="module-menu"
@@ -253,29 +234,33 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
         className={cn(
           "fixed z-[49]",
           "flex flex-col",
-          // No max-height constraint - size to content
-          // Glass effect
-          "bg-background/95 backdrop-blur-2xl",
-          "border border-border/50",
-          "shadow-2xl shadow-black/20",
-          "rounded-xl",
-          // Animation
-          "animate-in fade-in zoom-in-95 duration-200",
+          // Subtle glass surface or none - items are primary visual
+          "bg-background/80 backdrop-blur-xl",
+          "border border-border/30",
+          "shadow-lg shadow-black/10",
+          "rounded-2xl",
+          // Fade + slide up animation
+          "transition-all duration-200 ease-out",
+          // Hide scrollbar
+          "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         )}
         style={{
           left: menuPosition.left,
           bottom: menuPosition.bottom,
-          width: '320px',
+          width: '280px',
+          maxHeight: '400px',
+          overflowY: 'auto',
+          opacity: isVisible ? 1 : 0,
+          transform: isVisible ? 'translateY(0)' : 'translateY(10px)',
         }}
         onKeyDown={handleKeyDown}
       >
-        {/* Module List - no header (tab label already in bottom bar), no scroll */}
-        <div className="py-3 px-3">
+
+        {/* Module List - no header, no footer */}
+        <div className="py-2 px-2">
           {modules.map((module, index) => {
             const isActive = index === highlightedIndex;
             const isCurrentPage = location === module.path || location.startsWith(module.path + '/');
-            const isNeighbor = highlightedIndex !== null && Math.abs(index - highlightedIndex) === 1;
-            const offset = calculateOffset(index, highlightedIndex);
 
             return (
               <ModuleItem
@@ -284,20 +269,11 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
                 index={index}
                 isActive={isActive}
                 isCurrentPage={isCurrentPage}
-                isNeighbor={isNeighbor}
-                offset={offset}
                 onNavigate={() => navigateToModule(module.path)}
                 onHover={() => setHighlightedIndex(index)}
               />
             );
           })}
-        </div>
-
-        {/* Footer hint */}
-        <div className="px-6 py-3 border-t border-border/20">
-          <p className="text-[10px] text-muted-foreground/60 text-center">
-            ↑↓ navigate • Enter select • Esc close
-          </p>
         </div>
       </div>
     </>

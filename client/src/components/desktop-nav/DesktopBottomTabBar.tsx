@@ -68,15 +68,16 @@ export function DesktopBottomTabBar() {
     // Clear any existing timeout
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
     }
 
-    // If menu is already open for a different tab, switch immediately
-    if (menuTab && menuTab !== tabId) {
+    // If menu is already open (for any tab), switch instantly
+    if (menuTab !== null) {
       setMenuTab(tabId);
       return;
     }
 
-    // Otherwise, delay before showing (hover-intent pattern)
+    // If menu is closed, delay before showing (hover-intent pattern)
     hoverTimeoutRef.current = setTimeout(() => {
       setMenuTab(tabId);
     }, TIMING.HOVER_DELAY);
@@ -140,6 +141,16 @@ export function DesktopBottomTabBar() {
     return false;
   };
 
+  // Calculate available width for centering tabs
+  // When chat is open: center relative to content column (which shrinks)
+  // When chat is closed: center in full width minus CHAT button area
+  const chatButtonWidth = 100; // CHAT button width + right padding (6*2 + button ~88px)
+  const availableWidth = isChatOpen && contentColumnWidth
+    ? contentColumnWidth // When chat is open, center relative to content column
+    : typeof window !== 'undefined'
+      ? window.innerWidth - chatButtonWidth - 48 // When closed, full width minus CHAT area and padding
+      : null;
+
   return (
     <div
       data-desktop-nav="bottom-tab-bar"
@@ -153,22 +164,22 @@ export function DesktopBottomTabBar() {
       )}
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)', // Safe area for notched devices
-        height: '44px', // Reduced height for dock-like feel
+        height: '56px', // Premium height
       }}
     >
-      <div className="flex h-11 items-center px-6 py-2 w-full relative">
-        {/* Left: Navigation Tabs (Office, Action, Tools) - centered relative to content column */}
+      <div className="flex h-14 items-center px-6 w-full relative">
+        {/* Left: Navigation Tabs (Office, Action, Tools) - centered in available space */}
         <div 
-          className="flex items-center justify-center gap-16 flex-1"
-          style={contentColumnWidth ? {
-            maxWidth: `${contentColumnWidth}px`,
+          className="flex items-center justify-center gap-3 flex-1"
+          style={availableWidth ? {
+            maxWidth: `${availableWidth}px`,
             marginLeft: 'auto',
             marginRight: 'auto',
           } : undefined}
         >
           {NAV_TABS.map((tab) => {
             const isActive = isNavTabActive(tab.id);
-            const isAction = tab.id === 'action';
+            const isMenuOpen = menuTab === tab.id;
 
             return (
               <button
@@ -177,23 +188,24 @@ export function DesktopBottomTabBar() {
                 data-tab-id={tab.id}
                 className={cn(
                   'relative flex items-center justify-center',
-                  'px-4 py-2',
+                  'px-5 py-2.5 rounded-full', // Pill shape
                   'transition-all duration-200 ease-out',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   'select-none',
-                  // Text styling - larger size, better contrast, uppercase, tracking
-                  'text-sm uppercase tracking-[0.15em]',
-                  // Font weight: 300 (inactive), 400 (active)
-                  isActive ? 'font-normal' : 'font-light',
-                  // Hover state - subtle background bloom, opacity shift
-                  'hover:bg-foreground/3 hover:opacity-100',
-                  // Active state - clearer accent
+                  // Text styling - uppercase, wide tracking, font-weight 300, higher contrast
+                  'text-sm uppercase tracking-[0.15em] font-light',
+                  // Active state - filled glass pill background + subtle glow
                   isActive
-                    ? 'text-foreground opacity-100'
-                    : 'text-muted-foreground opacity-70',
-                  // Action tab - slightly stronger presence when not active
-                  isAction && !isActive && 'opacity-80',
+                    ? 'text-foreground bg-primary/10 backdrop-blur-sm border border-primary/20'
+                    : 'text-foreground/80',
+                  // Hover state - subtle background
+                  !isActive && 'hover:bg-foreground/5',
+                  // Menu open state - keep visible
+                  isMenuOpen && 'opacity-100',
                 )}
+                style={isActive ? {
+                  boxShadow: '0 0 16px hsl(var(--primary) / 0.15)',
+                } : undefined}
                 onClick={() => handleNavTabClick(tab.id)}
                 onMouseEnter={() => {
                   // Office, Action, and Tools all support hover menu
@@ -212,58 +224,37 @@ export function DesktopBottomTabBar() {
               >
                 {/* Text label - text-only on desktop, no icons */}
                 <span>{tab.label}</span>
-                
-                {/* Active indicator - clearer underline with glow */}
-                {isActive && (
-                  <span 
-                    className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-primary/50"
-                    style={{
-                      boxShadow: '0 0 12px hsl(var(--primary) / 0.4)',
-                    }}
-                  />
-                )}
               </button>
             );
           })}
         </div>
 
-        {/* Right: Chat Button - anchored to right */}
+        {/* Right: Chat Button - anchored to right, pill style */}
         <div className="flex items-center justify-end flex-shrink-0 absolute right-6">
           <button
             data-desktop-nav="chat-button"
             className={cn(
               'relative flex items-center justify-center',
-              'px-4 py-2',
+              'px-5 py-2.5 rounded-full', // Pill shape
               'transition-all duration-200 ease-out',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               'select-none',
-              // Text styling - matching nav tabs (larger, better contrast)
-              'text-sm uppercase tracking-[0.15em]',
-              // Font weight: 300 (inactive), 400 (active)
-              isChatOpen ? 'font-normal' : 'font-light',
-              // Hover state - subtle background bloom, opacity shift
-              'hover:bg-foreground/3 hover:opacity-100',
-              // Active state - clearer accent when chat is open
+              // Text styling - uppercase, wide tracking, font-weight 300
+              'text-sm uppercase tracking-[0.15em] font-light',
+              // Active state - filled glass pill background + subtle glow
               isChatOpen
-                ? 'text-foreground opacity-100'
-                : 'text-muted-foreground opacity-70',
+                ? 'text-foreground bg-primary/10 backdrop-blur-sm border border-primary/20'
+                : 'text-foreground/80 hover:bg-foreground/5',
             )}
+            style={isChatOpen ? {
+              boxShadow: '0 0 16px hsl(var(--primary) / 0.15)',
+            } : undefined}
             onClick={toggleManto}
             aria-label="Chat"
             aria-pressed={isChatOpen}
           >
             {/* Text label */}
             <span>CHAT</span>
-            
-            {/* Active indicator - clearer underline with glow when chat is open */}
-            {isChatOpen && (
-              <span 
-                className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-primary/50"
-                style={{
-                  boxShadow: '0 0 12px hsl(var(--primary) / 0.4)',
-                }}
-              />
-            )}
           </button>
         </div>
       </div>
