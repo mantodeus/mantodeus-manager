@@ -759,7 +759,7 @@ export function InvoiceForm({
             variant="outline"
             onClick={handleSend}
             disabled={isLoading || !formState.dueDate || totals.total <= 0}
-            className="w-full border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-600 hover:bg-blue-500/10 dark:hover:bg-blue-600/20"
+            className="w-full border-border text-foreground hover:bg-muted"
           >
             <Send className="h-4 w-4 mr-2" />
             Send

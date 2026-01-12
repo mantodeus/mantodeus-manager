@@ -75,7 +75,7 @@ function DesktopDashboardLayoutContent({
 
       {/* Main Content Area */}
       <main 
-        className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4"
+        className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background"
         style={{ marginLeft: LAYOUT.RAIL_WIDTH }}
       >
         {children}
@@ -108,7 +108,7 @@ function MobileDashboardLayoutContent({
     <div className="flex min-h-svh w-full flex-col">
       <div className="h-0" />
 
-      <main className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4">
+      <main className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background">
         {children}
       </main>
 

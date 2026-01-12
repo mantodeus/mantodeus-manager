@@ -52,7 +52,7 @@ export default function InspectionsOverview() {
       case "completed":
         return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case "in_progress":
-        return <Clock className="h-4 w-4 text-blue-500" />;
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
       default:
         return <Circle className="h-4 w-4 text-gray-400" />;
     }

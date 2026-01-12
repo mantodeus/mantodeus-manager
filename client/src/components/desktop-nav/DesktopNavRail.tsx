@@ -3,7 +3,7 @@
  * 
  * 60px vertical strip:
  * - Logo at top (click to open Ask Mantodeus)
- * - Tab icons: Office (flyout), Tools (flyout), Capture (direct), Record (direct)
+ * - Tab icons: Office (flyout), Tools (flyout), Capture (direct), Record (direct), Settings (direct)
  * - User profile at bottom
  */
 
@@ -33,7 +33,7 @@ interface DesktopNavRailProps {
 export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
   const { user, logout } = useAuth();
   const { toggleManto } = useManto();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { activeTab, flyoutState, openFlyout, closeFlyout } = useDesktopNav();
   
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -122,7 +122,11 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
       {/* Tab Icons */}
       <div className="flex-1 flex flex-col items-center gap-1 py-2">
         {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
+          // For direct navigation tabs, check current location
+          // For flyout tabs, check activeTab state
+          const isActive = tab.type === 'direct' 
+            ? location === tab.path || (tab.path && location.startsWith(tab.path + '/'))
+            : activeTab === tab.id;
           const Icon = tab.icon;
 
           return (

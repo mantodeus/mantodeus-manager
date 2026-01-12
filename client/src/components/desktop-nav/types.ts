@@ -8,10 +8,10 @@ import type { IconComponent } from '@/components/ui/Icon';
 
 /**
  * Tab group IDs
- * Desktop: office, tools, capto, voco (action only exists for mobile)
+ * Desktop: office, tools, capto, voco, settings (action only exists for mobile)
  * Mobile: office, action, tools
  */
-export type TabId = 'office' | 'action' | 'tools' | 'capto' | 'voco';
+export type TabId = 'office' | 'action' | 'tools' | 'capto' | 'voco' | 'settings';
 
 /**
  * Module definition

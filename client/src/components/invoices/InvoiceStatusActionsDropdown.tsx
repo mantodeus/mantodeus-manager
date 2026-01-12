@@ -388,7 +388,7 @@ export function InvoiceStatusActionsDropdown({
           asChild={false}
           variant="outline"
           size="default"
-          className="text-sm font-semibold border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-600 hover:bg-blue-500/10 dark:hover:bg-blue-600/20 cursor-pointer"
+          className="text-sm font-semibold border-border text-foreground hover:bg-muted cursor-pointer"
         >
           SENT
         </Button>

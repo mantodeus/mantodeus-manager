@@ -679,7 +679,7 @@ export function AssistantPanel({
             "left-0 right-0",
             "rounded-t-2xl",
             "border-t border-l border-r border-border/50",
-            "bg-[var(--surface-1)]",
+            "bg-card",
             !isDragging && "transition-[height] duration-[var(--dur-standard)] ease-[var(--ease-out)]",
           ] : [
             "z-[100]",
@@ -688,7 +688,7 @@ export function AssistantPanel({
             "right-0 top-0 bottom-0",
             "w-[420px]",
             // Glass effect for premium feel
-            "bg-[var(--surface-overlay)] backdrop-blur-[var(--blur-overlay)]",
+            "bg-card/95 backdrop-blur-[var(--blur-overlay)]",
           ]
         )}
         style={isMobile ? {
@@ -741,7 +741,7 @@ export function AssistantPanel({
         {/* Header - hidden in collapsed */}
         {showHeader && (
           <div className={cn(
-            "flex items-center justify-between px-4 border-b border-border/30 shrink-0 bg-[var(--surface-2)]",
+            "flex items-center justify-between px-4 border-b border-border/30 shrink-0 bg-muted/50",
             isMobile ? "py-2" : "py-3"
           )}>
             <div className="flex items-center gap-2.5">
@@ -926,7 +926,7 @@ export function AssistantPanel({
                           onClick={() => handleQuickPrompt(prompt)}
                           className={cn(
                             "px-2.5 py-1.5 text-xs rounded-lg",
-                            "bg-[var(--surface-2)] hover:bg-[var(--surface-3)]",
+                            "bg-muted hover:bg-muted/80",
                             "text-muted-foreground hover:text-foreground",
                             "border border-border/50 hover:border-border",
                             "transition-[background-color,border-color,color] duration-[var(--dur-quick)] ease-[var(--ease-out)]"
@@ -960,8 +960,8 @@ export function AssistantPanel({
                     message.role === "user"
                       // User bubble: primary color, rounded with flat bottom-right
                       ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
-                      // Assistant bubble: surface-2 color, rounded with flat bottom-left  
-                      : "bg-[var(--surface-2)] rounded-2xl rounded-bl-sm"
+                      // Assistant bubble: muted color, rounded with flat bottom-left  
+                      : "bg-muted rounded-2xl rounded-bl-sm"
                   )}
                 >
                   {message.role === "assistant" ? (
@@ -980,7 +980,7 @@ export function AssistantPanel({
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
                   <BugAnt className="h-3.5 w-3.5 text-primary" />
                 </div>
-                <div className="bg-muted/60 rounded-xl px-4 py-3">
+                <div className="bg-muted rounded-xl px-4 py-3">
                   <div className="flex items-center gap-1">
                     <div className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
                     <div className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
@@ -997,7 +997,7 @@ export function AssistantPanel({
         {/* Input - only in mid/full, not during tour */}
         {showInput && (
           <div className={cn(
-            "px-4 border-t border-border/30 shrink-0 bg-[var(--surface-1)]",
+            "px-4 border-t border-border/30 shrink-0 bg-card",
             isMobile ? "py-3" : "py-3"
           )}>
             <div className="flex gap-2">
@@ -1020,7 +1020,7 @@ export function AssistantPanel({
                 autoCapitalize="off"
                 spellCheck={false}
                 className={cn(
-                  "flex-1 rounded-xl bg-[var(--surface-2)] border-0",
+                  "flex-1 rounded-xl bg-muted border-0",
                   "focus-visible:ring-1 focus-visible:ring-primary/50",
                   "transition-[box-shadow] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
                   // 16px font size prevents iOS zoom on focus (PWA critical)

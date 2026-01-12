@@ -28,7 +28,7 @@ import type { TabGroup, TabId } from './types';
 
 /**
  * Tab definitions with icons
- * Desktop: Office, Tools, Capture, Record (no Actions tab)
+ * Desktop: Office, Tools, Capture, Record, Settings
  */
 export const TABS: { 
   id: TabId; 
@@ -41,6 +41,7 @@ export const TABS: {
   { id: 'tools', icon: WrenchScrewdriver, label: 'Tools', type: 'flyout' },
   { id: 'capto', icon: Camera, label: 'Capture', type: 'direct', path: '/action/capto' },
   { id: 'voco', icon: Microphone, label: 'Record', type: 'direct', path: '/action/voco' },
+  { id: 'settings', icon: SettingsIcon, label: 'Settings', type: 'direct', path: '/settings' },
 ];
 
 /**
@@ -69,7 +70,6 @@ export const TAB_GROUPS: Record<TabId, TabGroup> = {
       { id: 'contacts', label: 'Contacts', path: '/contacts', icon: Users, shortcut: '8' },
       { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image, shortcut: '9' },
       { id: 'map', label: 'Maps', path: '/maps', icon: MapPin, shortcut: '0' },
-      { id: 'settings', label: 'Settings', path: '/settings', icon: SettingsIcon },
     ],
   },
   // Capto and Voco don't have modules - they're direct navigation
