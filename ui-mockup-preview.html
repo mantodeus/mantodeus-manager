@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mantodeus Manager - Superwhisper UI Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@100;200;300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================
+       SUPERWHISPER-INSPIRED DESIGN SYSTEM
+       Mantodeus Manager - UI Mockup
+       ============================================ */
+
+    /* === ROOT TOKENS === */
+    :root {
+      /* Surface Tokens - Light Mode */
+      --surface-0: oklch(0.98 0.01 85);   /* Page background */
+      --surface-1: oklch(0.96 0.01 85);   /* Cards */
+      --surface-2: oklch(0.94 0.01 85);   /* Elevated (popovers) */
+      --surface-3: oklch(0.92 0.01 85);   /* Highest elevation */
+      --surface-overlay: oklch(0.98 0.01 85 / 0.85); /* Overlay headers */
+
+      /* Brand Accents - Light Mode (Orchid Mantis) */
+      --primary: oklch(0.75 0.25 330);
+      --primary-foreground: oklch(0.98 0 0);
+
+      /* Text Colors - Light Mode */
+      --foreground: oklch(0.2 0 0);
+      --muted-foreground: oklch(0.4 0 0);
+
+      /* Borders - Light Mode */
+      --border: oklch(0.88 0.01 85);
+
+      /* Semantic Colors */
+      --success: oklch(0.65 0.15 145);
+      --warning: oklch(0.7 0.15 75);
+      --error: oklch(0.6 0.25 25);
+      --info: oklch(0.6 0.15 240);
+
+      /* Map to shadcn semantics */
+      --background: var(--surface-0);
+      --card: var(--surface-1);
+      --popover: var(--surface-2);
+      --muted: var(--surface-3);
+
+      /* Spacing Tokens */
+      --space-header-subtitle: 12px;
+      --space-header-actions: 16px;
+      --space-header-icons: 8px;
+      --space-page-gap: 24px;
+      --space-section-gap: 24px;
+      --space-card-gap: 16px;
+      --space-card-padding: 16px;
+
+      /* Radius Scale */
+      --radius: 0.5rem;
+      --radius-sm: calc(var(--radius) - 4px);
+      --radius-md: calc(var(--radius) - 2px);
+      --radius-lg: var(--radius);
+      --radius-xl: calc(var(--radius) + 4px);
+      --radius-2xl: calc(var(--radius) + 8px);
+
+      /* Motion Tokens */
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+      --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+      --dur-instant: 50ms;
+      --dur-quick: 150ms;
+      --dur-standard: 250ms;
+      --dur-slow: 400ms;
+      --dur-emphasis: 500ms;
+
+      /* Blur Values */
+      --blur-subtle: 8px;
+      --blur-standard: 16px;
+      --blur-overlay: 24px;
+
+      /* Noise Texture (opt-in) */
+      --noise-opacity: 0;
+
+      /* Shadows */
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    /* === DARK MODE === */
+    .dark {
+      /* Surface Tokens - Dark Mode */
+      --surface-0: oklch(0.10 0 0);
+      --surface-1: oklch(0.12 0 0);
+      --surface-2: oklch(0.14 0 0);
+      --surface-3: oklch(0.16 0 0);
+      --surface-overlay: oklch(0.10 0 0 / 0.85);
+
+      /* Brand Accents - Dark Mode (Green Mantis) */
+      --primary: oklch(0.85 0.25 155);
+      --primary-foreground: oklch(0.1 0 0);
+
+      /* Text Colors - Dark Mode */
+      --foreground: oklch(0.78 0 0);
+      --muted-foreground: oklch(0.6 0 0);
+
+      /* Borders - Dark Mode */
+      --border: oklch(0.15 0 0);
+
+      /* Map to shadcn semantics */
+      --background: var(--surface-0);
+      --card: var(--surface-1);
+      --popover: var(--surface-2);
+      --muted: var(--surface-3);
+
+      /* Shadows for dark mode */
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+    }
+
+    /* === BASE STYLES === */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Kanit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 300;
+      background: var(--background);
+      color: var(--foreground);
+      transition: background-color var(--dur-standard) var(--ease-out),
+                  color var(--dur-standard) var(--ease-out);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* === TYPOGRAPHY === */
+    h1 {
+      font-size: 30px;
+      font-weight: 300;
+      line-height: 1.2;
+      color: var(--foreground);
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1.3;
+      color: var(--foreground);
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.4;
+    }
+
+    p {
+      font-size: 14px;
+      font-weight: 300;
+    }
+
+    .text-muted {
+      color: var(--muted-foreground);
+    }
+
+    .text-sm {
+      font-size: 14px;
+    }
+
+    .text-xs {
+      font-size: 12px;
+    }
+
+    /* === LAYOUT === */
+    .app-container {
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .page-container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    /* === THEME TOGGLE === */
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 12px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--foreground);
+      box-shadow: var(--shadow-md);
+      transition: all var(--dur-quick) var(--ease-out);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theme-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      background: var(--surface-2);
+    }
+
+    .theme-toggle svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* === PAGE HEADER === */
+    .page-header {
+      margin-bottom: var(--space-page-gap);
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .header-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .subtitle-row {
+      margin-top: var(--space-header-subtitle);
+    }
+
+    .action-row {
+      margin-top: var(--space-header-actions);
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .header-icon-cluster {
+      display: flex;
+      gap: var(--space-header-icons);
+      align-items: center;
+    }
+
+    /* === BUTTONS === */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      height: 40px;
+      border-radius: var(--radius-lg);
+      font-size: 14px;
+      font-weight: 400;
+      cursor: pointer;
+      border: none;
+      transition: all var(--dur-quick) var(--ease-out);
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px oklch(from var(--primary) l c h / 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--foreground);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface-3);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--foreground);
+    }
+
+    .btn-ghost:hover {
+      background: var(--surface-2);
+    }
+
+    .btn-icon {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+    }
+
+    .btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .btn-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    /* === CARDS === */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-card-padding);
+      box-shadow: var(--shadow-sm);
+      transition: all var(--dur-standard) var(--ease-out);
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 400;
+      margin-bottom: 8px;
+    }
+
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* === GRID === */
+    .grid {
+      display: grid;
+      gap: var(--space-card-gap);
+    }
+
+    .grid-cols-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-cols-1 {
+      grid-template-columns: 1fr;
+    }
+
+    /* === SUMMARY CARDS === */
+    .summary-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .summary-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--primary);
+      opacity: 0;
+      transition: opacity var(--dur-quick) var(--ease-out);
+    }
+
+    .summary-card:hover::before {
+      opacity: 1;
+    }
+
+    .summary-label {
+      font-size: 12px;
+      color: var(--muted-foreground);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .summary-value {
+      font-size: 28px;
+      font-weight: 300;
+      color: var(--foreground);
+    }
+
+    .summary-sublabel {
+      font-size: 14px;
+      color: var(--muted-foreground);
+      margin-top: 4px;
+    }
+
+    /* === INVOICE CARDS === */
+    .invoice-card {
+      cursor: pointer;
+    }
+
+    .invoice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .invoice-number {
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--foreground);
+    }
+
+    .invoice-amount {
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--primary);
+    }
+
+    .invoice-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 14px;
+      color: var(--muted-foreground);
+    }
+
+    .invoice-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* === BADGES === */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+
+    .badge-paid {
+      background: oklch(from var(--success) l c h / 0.15);
+      color: var(--success);
+    }
+
+    .badge-sent {
+      background: oklch(from var(--info) l c h / 0.15);
+      color: var(--info);
+    }
+
+    .badge-draft {
+      background: oklch(from var(--muted-foreground) l c h / 0.15);
+      color: var(--muted-foreground);
+    }
+
+    .badge-overdue {
+      background: oklch(from var(--error) l c h / 0.15);
+      color: var(--error);
+    }
+
+    /* === SECTIONS === */
+    .section {
+      margin-bottom: var(--space-section-gap);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--foreground);
+    }
+
+    /* === RESPONSIVE === */
+    @media (max-width: 768px) {
+      .app-container {
+        padding: 16px;
+      }
+
+      :root {
+        --space-header-subtitle: 8px;
+        --space-header-actions: 12px;
+        --space-page-gap: 20px;
+        --space-section-gap: 20px;
+        --space-card-gap: 12px;
+      }
+
+      .grid-cols-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .header-row {
+        flex-direction: column;
+      }
+
+      .header-icon-cluster {
+        align-self: flex-end;
+      }
+
+      .action-row {
+        flex-direction: column;
+      }
+
+      .action-row .btn {
+        width: 100%;
+      }
+
+      .summary-value {
+        font-size: 24px;
+      }
+
+      .theme-toggle {
+        top: 10px;
+        right: 10px;
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+    }
+
+    /* === EMPTY STATE === */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted-foreground);
+    }
+
+    .empty-state-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      opacity: 0.5;
+    }
+
+    /* === ANIMATIONS === */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-in {
+      animation: fadeIn var(--dur-standard) var(--ease-out);
+    }
+
+    .animate-delay-1 {
+      animation-delay: 50ms;
+    }
+
+    .animate-delay-2 {
+      animation-delay: 100ms;
+    }
+
+    .animate-delay-3 {
+      animation-delay: 150ms;
+    }
+
+    /* === GLASS EFFECT (Optional) === */
+    .glass {
+      backdrop-filter: blur(var(--blur-standard));
+      -webkit-backdrop-filter: blur(var(--blur-standard));
+    }
+
+    /* === LOGO === */
+    .logo {
+      font-size: 20px;
+      font-weight: 300;
+      color: var(--primary);
+      margin-bottom: 32px;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+  <!-- Theme Toggle -->
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <svg id="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display: none;">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+    </svg>
+    <svg id="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+    </svg>
+    <span id="theme-text">Dark</span>
+  </button>
+
+  <div class="app-container">
+    <div class="page-container">
+      <!-- Logo -->
+      <div class="logo animate-in">MANTODEUS</div>
+
+      <!-- Page Header -->
+      <div class="page-header animate-in animate-delay-1">
+        <div class="header-row">
+          <div class="header-content">
+            <div class="title-row">
+              <h1>Invoices</h1>
+            </div>
+            <div class="subtitle-row">
+              <p class="text-muted text-sm">Manage and track your invoices</p>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                </svg>
+                Upload
+              </button>
+              <button class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Create Invoice
+              </button>
+            </div>
+          </div>
+          <div class="header-icon-cluster">
+            <button class="btn btn-ghost btn-icon" aria-label="Search">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              </svg>
+            </button>
+            <button class="btn btn-ghost btn-icon" aria-label="Filter">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+              </svg>
+            </button>
+            <button class="btn btn-ghost btn-icon" aria-label="Settings">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Cards Section -->
+      <div class="section animate-in animate-delay-2">
+        <div class="grid grid-cols-3">
+          <div class="card summary-card">
+            <div class="summary-label">Total Revenue</div>
+            <div class="summary-value">€45,680</div>
+            <div class="summary-sublabel">2026</div>
+          </div>
+          <div class="card summary-card">
+            <div class="summary-label">Paid</div>
+            <div class="summary-value">€32,150</div>
+            <div class="summary-sublabel">70% collected</div>
+          </div>
+          <div class="card summary-card">
+            <div class="summary-label">Outstanding</div>
+            <div class="summary-value">€13,530</div>
+            <div class="summary-sublabel">8 invoices</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Invoices Section -->
+      <div class="section animate-in animate-delay-3">
+        <div class="section-header">
+          <h2 class="section-title">Recent Invoices</h2>
+        </div>
+
+        <div class="grid grid-cols-1">
+          <!-- Invoice Card 1 -->
+          <div class="card invoice-card">
+            <div class="invoice-header">
+              <div>
+                <div class="invoice-number">INV-2026-001</div>
+                <div class="invoice-meta">
+                  <div>Acme Corporation</div>
+                  <div>Web Development Services</div>
+                </div>
+              </div>
+              <div class="invoice-amount">€5,400</div>
+            </div>
+            <div class="invoice-footer">
+              <span class="text-muted text-sm">Due: Jan 15, 2026</span>
+              <span class="badge badge-sent">Sent</span>
+            </div>
+          </div>
+
+          <!-- Invoice Card 2 -->
+          <div class="card invoice-card">
+            <div class="invoice-header">
+              <div>
+                <div class="invoice-number">INV-2026-002</div>
+                <div class="invoice-meta">
+                  <div>Tech Solutions GmbH</div>
+                  <div>Consulting Services</div>
+                </div>
+              </div>
+              <div class="invoice-amount">€8,200</div>
+            </div>
+            <div class="invoice-footer">
+              <span class="text-muted text-sm">Paid: Jan 8, 2026</span>
+              <span class="badge badge-paid">Paid</span>
+            </div>
+          </div>
+
+          <!-- Invoice Card 3 -->
+          <div class="card invoice-card">
+            <div class="invoice-header">
+              <div>
+                <div class="invoice-number">INV-2025-124</div>
+                <div class="invoice-meta">
+                  <div>Startup Innovations</div>
+                  <div>Design System Implementation</div>
+                </div>
+              </div>
+              <div class="invoice-amount">€12,500</div>
+            </div>
+            <div class="invoice-footer">
+              <span class="text-muted text-sm">Due: Dec 30, 2025</span>
+              <span class="badge badge-overdue">Overdue</span>
+            </div>
+          </div>
+
+          <!-- Invoice Card 4 -->
+          <div class="card invoice-card">
+            <div class="invoice-header">
+              <div>
+                <div class="invoice-number">INV-2026-003</div>
+                <div class="invoice-meta">
+                  <div>Digital Media Co.</div>
+                  <div>Brand Identity Package</div>
+                </div>
+              </div>
+              <div class="invoice-amount">€6,750</div>
+            </div>
+            <div class="invoice-footer">
+              <span class="text-muted text-sm">Draft</span>
+              <span class="badge badge-draft">Draft</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Section - Projects -->
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">Active Projects</h2>
+          <button class="btn btn-ghost text-sm">View All</button>
+        </div>
+
+        <div class="grid grid-cols-3">
+          <div class="card">
+            <h3 class="card-title">E-Commerce Platform</h3>
+            <div class="card-content">
+              <p class="text-muted text-sm">Acme Corporation</p>
+              <div style="display: flex; justify-content: space-between; margin-top: 12px;">
+                <span class="text-xs text-muted">12 invoices</span>
+                <span class="text-xs" style="color: var(--primary);">€45,200</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title">Mobile App Redesign</h3>
+            <div class="card-content">
+              <p class="text-muted text-sm">Tech Solutions GmbH</p>
+              <div style="display: flex; justify-content: space-between; margin-top: 12px;">
+                <span class="text-xs text-muted">8 invoices</span>
+                <span class="text-xs" style="color: var(--primary);">€32,800</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title">Brand Identity</h3>
+            <div class="card-content">
+              <p class="text-muted text-sm">Startup Innovations</p>
+              <div style="display: flex; justify-content: space-between; margin-top: 12px;">
+                <span class="text-xs text-muted">5 invoices</span>
+                <span class="text-xs" style="color: var(--primary);">€18,500</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme Toggle Functionality
+    let isDark = true;
+
+    function toggleTheme() {
+      isDark = !isDark;
+      const body = document.body;
+      const themeText = document.getElementById('theme-text');
+      const sunIcon = document.getElementById('theme-icon-sun');
+      const moonIcon = document.getElementById('theme-icon-moon');
+
+      if (isDark) {
+        body.classList.add('dark');
+        themeText.textContent = 'Dark';
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+      } else {
+        body.classList.remove('dark');
+        themeText.textContent = 'Light';
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+      }
+    }
+
+    // Initialize dark mode
+    document.body.classList.add('dark');
+
+    // Add stagger animation to cards
+    document.addEventListener('DOMContentLoaded', () => {
+      const cards = document.querySelectorAll('.card');
+      cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 50}ms`;
+      });
+    });
+
+    // Demo: Add click handlers to cards for interactivity
+    document.querySelectorAll('.invoice-card').forEach(card => {
+      card.addEventListener('click', () => {
+        console.log('Invoice clicked');
+      });
+    });
+  </script>
+</body>
+</html>
