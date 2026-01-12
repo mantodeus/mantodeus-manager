@@ -655,40 +655,40 @@ export function AssistantPanel({
 
   return (
     <>
-      {/* Overlay - allows tap to close, but scroll blocking handled by document-level handler */}
-      {/* Desktop: visible backdrop; Mobile: invisible */}
-      <div
-        className={cn(
-          "fixed inset-0 z-[499]", // Just below the panel (z-500)
-          // Mobile: don't intercept taps/scrolls; user can interact with the page behind.
-          isMobile
-            ? "bg-transparent pointer-events-none"
-            : "bg-transparent pointer-events-none"
-        )}
-        onClick={undefined}
-        aria-hidden="true"
-      />
+      {/* Overlay - only on mobile (desktop uses dock, no overlay) */}
+      {isMobile && (
+        <div
+          className={cn(
+            "fixed inset-0 z-[499]", // Just below the panel (z-500)
+            "bg-transparent pointer-events-none"
+          )}
+          onClick={undefined}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Chat Panel - Superwhisper-inspired styling */}
       <div
         ref={sheetRef}
         className={cn(
-          "fixed flex flex-col",
+          "flex flex-col",
           isMobile ? [
-            "z-[500]", // Below ModuleScroller (1000) and tab bar (9999)
+            "fixed z-[500]", // Below ModuleScroller (1000) and tab bar (9999)
             "left-0 right-0",
             "rounded-t-2xl",
             "border-t border-l border-r border-border/50",
             "bg-card",
             !isDragging && "transition-[height] duration-[var(--dur-standard)] ease-[var(--ease-out)]",
           ] : [
-            "z-[100]",
-            "shadow-xl border-l border-border/50",
-            "animate-in slide-in-from-right fade-in duration-300",
-            "right-0 top-0 bottom-0",
+            // Desktop: dock layout (not fixed)
+            "flex-shrink-0",
+            "h-full",
             "w-[420px]",
-            // Glass effect for premium feel
+            "border-l border-border/50",
             "bg-card/95 backdrop-blur-[var(--blur-overlay)]",
+            "shadow-xl",
+            // Fade-in animation (no slide, no translate)
+            "animate-in fade-in duration-300",
           ]
         )}
         style={isMobile ? {
@@ -699,7 +699,10 @@ export function AssistantPanel({
           // Note: touchAction is set per-child, not on container, to allow messages scroll
           // Prevent scroll chaining to the page
           overscrollBehavior: 'contain',
-        } : undefined}
+        } : {
+          // Desktop: ensure full height
+          minHeight: '100%',
+        }}
         // Touch events handled via native listeners in useEffect (passive: false required)
       >
         {/* Drag Handle - always visible on mobile */}

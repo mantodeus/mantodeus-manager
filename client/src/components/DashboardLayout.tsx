@@ -14,10 +14,7 @@ import {
 } from "./mobile-nav";
 import {
   DesktopNavProvider,
-  DesktopNavRail,
-  DesktopModuleFlyout,
   DesktopBottomTabBar,
-  LAYOUT,
 } from "./desktop-nav";
 import { useIsMobile } from "@/hooks/useMobile";
 
@@ -57,7 +54,7 @@ export default function DashboardLayout({
 }
 
 /**
- * Desktop Layout with Tab Rail + Flyout navigation
+ * Desktop Layout with Bottom Tab Bar navigation only
  */
 function DesktopDashboardLayoutContent({
   children,
@@ -67,20 +64,19 @@ function DesktopDashboardLayoutContent({
   const [dataDialogOpen, setDataDialogOpen] = useState(false);
 
   return (
-    <div className="flex min-h-svh w-full">
-      {/* Tab Rail - always visible */}
-      <DesktopNavRail onDataExport={() => setDataDialogOpen(true)} />
-      
-      {/* Flyout - appears on hover/click */}
-      <DesktopModuleFlyout />
+    <div className="flex min-h-svh w-full flex-col">
+      {/* Content + Assistant in flex row */}
+      <div className="flex flex-1 min-h-0 w-full">
+        {/* Main Content Area - shrinks when assistant is open */}
+        <main 
+          className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background"
+        >
+          {children}
+        </main>
 
-      {/* Main Content Area */}
-      <main 
-        className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background"
-        style={{ marginLeft: LAYOUT.RAIL_WIDTH }}
-      >
-        {children}
-      </main>
+        {/* Manto Assistant Panel - dock on desktop, not overlay */}
+        <MantoAssistantWrapper />
+      </div>
 
       {/* Data Export/Import Dialog */}
       <DataExportImportDialog
@@ -88,11 +84,8 @@ function DesktopDashboardLayoutContent({
         onOpenChange={setDataDialogOpen}
       />
 
-      {/* Desktop Bottom Tab Bar */}
+      {/* Desktop Bottom Tab Bar - only navigation mechanism */}
       <DesktopBottomTabBar />
-
-      {/* Manto Assistant Panel - right side on desktop */}
-      <MantoAssistantWrapper />
     </div>
   );
 }

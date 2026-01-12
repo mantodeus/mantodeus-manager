@@ -909,9 +909,9 @@
     .app-content {
       /* Allow scrolling past bottom UI on desktop:
          - bottom tab bar (var(--bottom-safe-area))
-         - Manto sheet when open (var(--manto-sheet-height))
+         - Assistant panel is now a dock (no padding needed)
       */
-      padding-bottom: calc(var(--bottom-safe-area) + var(--manto-sheet-height, 0px) + 1rem) !important;
+      padding-bottom: calc(var(--bottom-safe-area) + 1rem) !important;
     }
   }
   
