@@ -260,15 +260,15 @@ export function PDFPreviewModal({
           <div className="flex items-center justify-between gap-3">
             <DialogTitle className="truncate">{fileName}</DialogTitle>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={handleShare}>
+              <Button variant="icon" size="icon" onClick={handleShare}>
                 <Share2 className="w-4 h-4" />
                 <span className="sr-only">Share</span>
               </Button>
-              <Button variant="ghost" size="icon" onClick={handleDownload}>
+              <Button variant="icon" size="icon" onClick={handleDownload}>
                 <Download className="w-4 h-4" />
                 <span className="sr-only">Download</span>
               </Button>
-              <Button variant="ghost" size="icon" onClick={onClose}>
+              <Button variant="icon" size="icon" onClick={onClose}>
                 <X className="w-4 h-4" />
                 <span className="sr-only">Close</span>
               </Button>

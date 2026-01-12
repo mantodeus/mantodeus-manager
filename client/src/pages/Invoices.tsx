@@ -1612,11 +1612,11 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'SENT') {
-      return <Badge variant="blue-outline" className="text-xs">SENT</Badge>;
+      return <Badge variant="blue-outline" className="text-xs font-bold">SENT</Badge>;
     }
     
     if (invoiceState === 'DRAFT') {
-      return <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
+      return <Badge variant="outline" className="text-xs font-bold border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
     }
     
     return null;
@@ -2057,7 +2057,7 @@ export default function Invoices() {
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <div className="text-sm font-light">{displayTotal}</div>
-                        <Badge variant="outline" className="text-xs">NEEDS REVIEW</Badge>
+                        <Badge variant="outline" className="text-xs font-bold">NEEDS REVIEW</Badge>
                         <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
                         {!isMultiSelectMode && (() => {
                           const availableActions = getInvoiceActions({
@@ -2220,7 +2220,7 @@ export default function Invoices() {
                       <div className="text-sm font-light">{displayTotal}</div>
                       {getStatusBadge(invoice)}
                       {invoice.type === "cancellation" && (
-                        <Badge variant="outline" className="text-xs">STORNO</Badge>
+                        <Badge variant="outline" className="text-xs font-bold">STORNO</Badge>
                       )}
                       {!isMultiSelectMode && (
                         <ItemActionsMenu

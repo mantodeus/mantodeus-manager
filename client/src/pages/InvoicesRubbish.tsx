@@ -213,16 +213,16 @@ export default function InvoicesRubbish() {
 
     if (status === 'open' && sentAt) {
       if (dueDate && new Date(dueDate) < new Date() && !paidAt) {
-        return <Badge variant="destructive-outline" className="text-xs">OVERDUE</Badge>;
+        return <Badge variant="destructive-outline" className="text-xs font-bold">OVERDUE</Badge>;
       }
-      return <Badge variant="blue-outline" className="text-xs">SENT</Badge>;
+      return <Badge variant="blue-outline" className="text-xs font-bold">SENT</Badge>;
     }
 
     if (status === 'open' && !sentAt) {
-      return <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600">NOT SENT</Badge>;
+      return <Badge variant="outline" className="text-xs font-bold border-yellow-500 text-yellow-600">NOT SENT</Badge>;
     }
 
-    return <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
+    return <Badge variant="outline" className="text-xs font-bold border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
   };
 
   const handleItemAction = (action: ItemAction, invoiceId: number, status: string) => {

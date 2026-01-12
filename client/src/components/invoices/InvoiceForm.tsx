@@ -666,7 +666,7 @@ export function InvoiceForm({
               <div className="lg:col-span-2 mt-1.5 flex justify-center gap-1 lg:mt-0">
                 {!isReadOnly && (
                   <>
-                    <Button variant="ghost" size="icon" onClick={() => openItemEditor(index)}>
+                    <Button variant="icon" size="icon" onClick={() => openItemEditor(index)}>
                       <PencilLine className="w-4 h-4" />
                     </Button>
                     <Button

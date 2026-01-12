@@ -20,6 +20,8 @@ const buttonVariants = cva(
           "border border-secondary-foreground/30 bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:border-secondary-foreground/50 transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
         ghost:
           "border border-transparent hover:border-foreground/20 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 dark:hover:text-accent-foreground dark:hover:border-foreground/20 [&_svg]:transition-colors transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
+        icon:
+          "border border-transparent bg-transparent text-foreground hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8 dark:hover:bg-foreground/7 dark:active:bg-foreground/10 [&_svg]:transition-colors transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
         link: "border border-transparent text-primary underline-offset-4 hover:underline",
         // Pill variant - Superwhisper-inspired rounded CTA
         pill: "border border-primary-foreground/30 bg-primary text-primary-foreground hover:bg-primary/90 hover:border-primary-foreground/50 rounded-full hover:scale-[1.02] active:scale-[0.98] transition-[background-color,border-color,transform] duration-[var(--dur-quick)] ease-[var(--ease-out)] active:duration-[var(--dur-instant)] active:ease-[var(--ease-spring)]",

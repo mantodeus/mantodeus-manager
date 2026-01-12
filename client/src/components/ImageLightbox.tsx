@@ -643,7 +643,7 @@ export default function ImageLightbox({ images, initialIndex, onClose, jobId }: 
       {/* Header */}
       <div className="flex items-center justify-between p-4 text-white">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="icon" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>
           <span className="text-sm">

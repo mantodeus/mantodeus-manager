@@ -31,7 +31,7 @@ function HeaderIconCluster({
     >
       {searchEnabled && (
         <Button
-          variant="ghost"
+          variant="icon"
           size="icon"
           aria-label="Search"
           onClick={onSearch}
@@ -42,7 +42,7 @@ function HeaderIconCluster({
       )}
       {filterEnabled && (
         <Button
-          variant="ghost"
+          variant="icon"
           size="icon"
           aria-label="Filter"
           onClick={onFilter}
@@ -53,7 +53,7 @@ function HeaderIconCluster({
       )}
       {settingsEnabled && (
         <Button
-          variant="ghost"
+          variant="icon"
           size="icon"
           aria-label="Page settings"
           onClick={onSettings ?? (() => toast.info("No settings available for this page yet."))}
