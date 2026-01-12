@@ -16,9 +16,9 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         "destructive-outline":
-          "border-destructive bg-transparent text-destructive [a&]:hover:bg-destructive/10 dark:[a&]:hover:bg-destructive/20",
+          "border-destructive/60 bg-transparent text-destructive/90 [a&]:hover:bg-destructive/10 dark:border-destructive dark:text-destructive dark:[a&]:hover:bg-destructive/20",
         outline:
-          "text-foreground border-border/70 bg-transparent [a&]:hover:bg-muted/50 [a&]:hover:border-border/80",
+          "text-foreground/90 border-border/80 bg-transparent [a&]:hover:bg-muted/50 [a&]:hover:border-border/90",
         // Muted status badges per design system
         muted:
           "border-transparent bg-muted text-muted-foreground",
@@ -29,7 +29,7 @@ const badgeVariants = cva(
         info:
           "border-transparent bg-muted text-muted-foreground",
         "blue-outline":
-          "border-[var(--state-info)]/50 bg-transparent text-[var(--state-info)] [a&]:hover:bg-[var(--state-info)]/10 [a&]:hover:border-[var(--state-info)]/70",
+          "border-[var(--state-info)]/40 bg-transparent text-[var(--state-info)]/90 [a&]:hover:bg-[var(--state-info)]/10 [a&]:hover:border-[var(--state-info)]/60 dark:border-[var(--state-info)]/50 dark:text-[var(--state-info)] dark:[a&]:hover:border-[var(--state-info)]/70",
         // PAID badge - only filled badge variant
         "paid":
           "border-[var(--primary)]/50 bg-[var(--primary)] text-[var(--primary-foreground)] [a&]:hover:bg-[var(--primary)]/90",

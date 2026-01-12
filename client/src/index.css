@@ -49,12 +49,12 @@
    * Pure monochrome greys + pink accent
    * ============================================ */
   
-  /* Surface hierarchy - subtle warm tint (matches example) */
-  --surface-0: oklch(0.98 0.01 85);   /* Page background - lightest */
-  --surface-1: oklch(0.93 0.01 85);   /* Cards - clear elevation (increased contrast) */
-  --surface-2: oklch(0.89 0.01 85);   /* Popovers, inputs - more elevation (increased contrast) */
-  --surface-3: oklch(0.87 0.01 85);   /* Highest elevation (increased contrast) */
-  --surface-overlay: oklch(0.98 0.01 85 / 0.85);
+  /* Surface hierarchy - clean white ladder (premium 2026 SaaS) */
+  --surface-0: oklch(0.985 0.004 95);   /* Page background - off-white canvas */
+  --surface-1: oklch(0.995 0.002 95);   /* Cards - whiter than canvas */
+  --surface-2: oklch(0.990 0.003 95);   /* Popovers, inputs - elevated white */
+  --surface-3: oklch(0.985 0.004 95);   /* Highest elevation */
+  --surface-overlay: oklch(0.985 0.004 95 / 0.85);
   
   /* Brand accent - Orchid Mantis pink (preserved) */
   --primary: oklch(0.75 0.25 330);
@@ -71,11 +71,11 @@
   --secondary-foreground: oklch(0.20 0.01 85);
   --muted: var(--surface-2);
   --muted-foreground: oklch(0.45 0.01 85);  /* Darker for better contrast in light theme */
-  --accent: oklch(0.75 0.25 330);
-  --accent-foreground: oklch(0.98 0.01 85);
+  --accent: var(--surface-2);  /* Neutral hover surface (no pink wash) */
+  --accent-foreground: var(--foreground);  /* Neutral text on hover */
   --destructive: oklch(0.55 0.25 25);
   --destructive-foreground: oklch(0.98 0.01 85);
-  --border: oklch(0.83 0.01 85);  /* Stronger for better separation */
+  --border: oklch(0.86 0.006 95);  /* Crisp separation without dirt */
   --input: var(--surface-2);
   --ring: oklch(0.75 0.25 330);
   --radius: 0.5rem;
@@ -85,9 +85,9 @@
   --sidebar-foreground: oklch(0.20 0.01 85);
   --sidebar-primary: oklch(0.75 0.25 330);
   --sidebar-primary-foreground: oklch(0.98 0.01 85);
-  --sidebar-accent: var(--surface-2);
-  --sidebar-accent-foreground: oklch(0.75 0.25 330);
-  --sidebar-border: oklch(0.83 0.01 85);
+  --sidebar-accent: var(--surface-2);  /* Neutral hover surface */
+  --sidebar-accent-foreground: var(--foreground);  /* Neutral text */
+  --sidebar-border: oklch(0.86 0.006 95);  /* Match main border */
   --sidebar-ring: oklch(0.75 0.25 330);
   
   /* Charts */
@@ -1145,11 +1145,11 @@
     z-index: 0;
   }
 
-  /* Light mode - Orchid Mantis pink highlight */
+  /* Light mode - Orchid Mantis pink highlight (subtle premium sheen) */
   [data-theme="orchid-mantis"] .kpi-card-accent::after {
     background: linear-gradient(
       to bottom,
-      oklch(0.75 0.25 330 / 0.08) 0%,
+      oklch(0.75 0.25 330 / 0.04) 0%,
       transparent 40%
     );
   }
@@ -1181,6 +1181,17 @@
     .kpi-card-accent:hover {
       transform: none;
     }
+  }
+
+  /* ============================================
+   * LIGHT MODE SHADOW OVERRIDES
+   * Remove grey smudge, use subtle premium shadows
+   * ============================================ */
+  [data-theme="orchid-mantis"] [data-slot="card"] {
+    box-shadow: 0 1px 2px oklch(0 0 0 / 0.06);
+  }
+  [data-theme="orchid-mantis"] [data-slot="card"]:hover {
+    box-shadow: 0 8px 24px oklch(0 0 0 / 0.08);
   }
 }
 

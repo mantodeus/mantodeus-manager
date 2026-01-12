@@ -1593,7 +1593,7 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'PARTIAL') {
-      return <Badge variant="outline" className="text-xs font-bold border-orange-500 text-orange-600 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
+      return <Badge variant="outline" className="text-xs font-bold border-orange-500/50 text-orange-600/80 dark:border-orange-500 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
     }
     
     if (invoiceState === 'PAID') {
@@ -1616,7 +1616,7 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'DRAFT') {
-      return <Badge variant="outline" className="text-xs font-bold border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
+      return <Badge variant="outline" className="text-xs font-bold border-yellow-500/50 text-yellow-600/80 dark:border-yellow-500 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
     }
     
     return null;

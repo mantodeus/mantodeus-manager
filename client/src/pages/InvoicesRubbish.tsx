@@ -219,10 +219,10 @@ export default function InvoicesRubbish() {
     }
 
     if (status === 'open' && !sentAt) {
-      return <Badge variant="outline" className="text-xs font-bold border-yellow-500 text-yellow-600">NOT SENT</Badge>;
+      return <Badge variant="outline" className="text-xs font-bold border-yellow-500/50 text-yellow-600/80 dark:border-yellow-500 dark:text-yellow-400 dark:border-yellow-600">NOT SENT</Badge>;
     }
 
-    return <Badge variant="outline" className="text-xs font-bold border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
+    return <Badge variant="outline" className="text-xs font-bold border-yellow-500/50 text-yellow-600/80 dark:border-yellow-500 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
   };
 
   const handleItemAction = (action: ItemAction, invoiceId: number, status: string) => {
