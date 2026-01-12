@@ -219,12 +219,11 @@ function YearTotalCard({
         >
           {viewMode === 'total' ? (
             <div className="flex items-center justify-between">
-              <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+              <span className="text-xs font-light text-muted-foreground uppercase tracking-wide">
                 Total {selectedYear}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-xl font-semibold">Total</span>
-                <span className="text-xl font-semibold">
+                <span className="text-3xl font-light tabular-nums">
                   {formatCurrency(yearTotal)}
                 </span>
               </div>
@@ -232,19 +231,18 @@ function YearTotalCard({
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+                <span className="text-xs font-light text-muted-foreground uppercase tracking-wide">
                   Total {selectedYear}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xl font-semibold">Paid</span>
-                  <span className="text-xl font-semibold">
+                  <span className="text-3xl font-light tabular-nums">
                     {formatCurrency(yearPaid)}
                   </span>
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2">
                 <span className="text-sm text-muted-foreground">Due</span>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm font-light tabular-nums text-muted-foreground">
                   {formatCurrency(yearDue)}
                 </span>
               </div>
@@ -308,8 +306,8 @@ function YearTotalCard({
                     className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors"
                     style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
                   >
-                    <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Total {year}</span>
-                    <span className="text-sm font-semibold" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{formatCurrency(total)}</span>
+                    <span className="text-sm font-light" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Total {year}</span>
+                    <span className="text-sm font-light tabular-nums" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{formatCurrency(total)}</span>
                   </button>
                 ))
               ) : (
@@ -488,12 +486,11 @@ function QuarterTotalCard({
         >
           {viewMode === 'total' ? (
             <div className="flex items-center justify-between">
-              <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+              <span className="text-xs font-light text-muted-foreground uppercase tracking-wide">
                 Q{selectedQuarter.quarter} {selectedQuarter.year}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-xl font-semibold">Total</span>
-                <span className="text-xl font-semibold">
+                <span className="text-3xl font-light tabular-nums">
                   {formatCurrency(quarterTotal)}
                 </span>
               </div>
@@ -501,19 +498,18 @@ function QuarterTotalCard({
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <span className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">
+                <span className="text-xs font-light text-muted-foreground uppercase tracking-wide">
                   Q{selectedQuarter.quarter} {selectedQuarter.year}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xl font-semibold">Paid</span>
-                  <span className="text-xl font-semibold">
+                  <span className="text-3xl font-light tabular-nums">
                     {formatCurrency(quarterPaid)}
                   </span>
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2">
                 <span className="text-sm text-muted-foreground">Due</span>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm font-light tabular-nums text-muted-foreground">
                   {formatCurrency(quarterDue)}
                 </span>
               </div>
@@ -577,8 +573,8 @@ function QuarterTotalCard({
                     className="glass-menu-item w-full text-left flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors"
                     style={{ border: 'none', color: 'rgba(255, 255, 255, 0.9)' }}
                   >
-                    <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{key}</span>
-                    <span className="text-sm font-semibold" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{formatCurrency(total)}</span>
+                    <span className="text-sm font-light" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{key}</span>
+                    <span className="text-sm font-light tabular-nums" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{formatCurrency(total)}</span>
                   </button>
                 ))
               ) : (
@@ -1580,7 +1576,7 @@ export default function Invoices() {
       return (
         <Badge 
           variant="outline" 
-          className="text-xs font-bold border-foreground text-foreground dark:border-white dark:text-white"
+          className="text-[11px] uppercase tracking-widest border-foreground text-foreground dark:border-white dark:text-white"
         >
           CANCELLED
         </Badge>
@@ -1589,17 +1585,17 @@ export default function Invoices() {
     
     // Badge priority: OVERDUE > PARTIAL > SENT/PAID
     if (derivedValues.isOverdue) {
-      return <Badge variant="destructive-outline" className="text-xs font-bold">OVERDUE</Badge>;
+      return <Badge variant="destructive-outline" className="text-[11px] uppercase tracking-widest">OVERDUE</Badge>;
     }
     
     if (invoiceState === 'PARTIAL') {
-      return <Badge variant="outline" className="text-xs font-bold border-orange-500/50 text-orange-600/80 dark:border-orange-500 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
+      return <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-orange-500/50 text-orange-600/80 dark:border-orange-500 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
     }
     
     if (invoiceState === 'PAID') {
       return (
         <span 
-          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-bold w-fit whitespace-nowrap shrink-0"
+          className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-[11px] uppercase tracking-widest w-fit whitespace-nowrap shrink-0"
           style={{
             backgroundColor: isDarkMode ? '#00FF88' : 'rgb(236, 72, 153)', // green in dark, pink in light
             color: isDarkMode ? '#000000' : 'white',
@@ -1612,11 +1608,11 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'SENT') {
-      return <Badge variant="blue-outline" className="text-xs font-bold">SENT</Badge>;
+      return <Badge variant="blue-outline" className="text-[11px] uppercase tracking-widest">SENT</Badge>;
     }
     
     if (invoiceState === 'DRAFT') {
-      return <Badge variant="outline" className="text-xs font-bold border-yellow-500/50 text-yellow-600/80 dark:border-yellow-500 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
+      return <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-yellow-500/50 text-yellow-600/80 dark:border-yellow-500 dark:text-yellow-400 dark:border-yellow-600">DRAFT</Badge>;
     }
     
     return null;
@@ -1724,7 +1720,7 @@ export default function Invoices() {
                           setIsSearchOpen(false);
                         }}
                       >
-                        <div className="font-medium">{displayName}</div>
+                        <div className="text-base">{displayName}</div>
                         {clientName && (
                           <div className="text-sm text-muted-foreground">{clientName}</div>
                         )}
@@ -1754,7 +1750,7 @@ export default function Invoices() {
         <div className="px-4 pb-4 overflow-y-auto space-y-4 pt-4">
           {/* Project Filter */}
           <div className="space-y-2">
-            <div className="text-sm font-medium">Project</div>
+            <div className="text-sm">Project</div>
             <Select
               value={filters.project}
               onValueChange={(value) =>
@@ -1784,7 +1780,7 @@ export default function Invoices() {
 
           {/* Client Filter */}
           <div className="space-y-2">
-            <div className="text-sm font-medium">Client</div>
+            <div className="text-sm">Client</div>
             <Select
               value={filters.client}
               onValueChange={(value) =>
@@ -1814,7 +1810,7 @@ export default function Invoices() {
 
           {/* Time Filter (Issue Date) */}
           <div className="space-y-2">
-            <div className="text-sm font-medium">Time</div>
+            <div className="text-sm">Time</div>
             <Select
               value={filters.time}
               onValueChange={(value) =>
@@ -1858,7 +1854,7 @@ export default function Invoices() {
 
           {/* Status Buttons */}
           <div className="space-y-2">
-            <div className="text-sm font-medium">Status</div>
+            <div className="text-sm">Status</div>
             <div className="flex flex-col gap-2">
               <Button
                 variant="outline"
@@ -2007,7 +2003,7 @@ export default function Invoices() {
       {needsReviewInvoices.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Needs Review</h2>
+            <h2 className="text-sm font-light uppercase tracking-wide text-muted-foreground">Needs Review</h2>
             <Badge variant="secondary" className="text-xs">
               {needsReviewInvoices.length}
             </Badge>
@@ -2051,13 +2047,13 @@ export default function Invoices() {
                           return <InvoiceIcon className="w-5 h-5 text-accent mt-0.5 shrink-0" />;
                         })()}
                         <div className="min-w-0">
-                          <div className="font-light text-base leading-tight break-words">{displayName}</div>
+                          <div className="text-base leading-tight break-words">{displayName}</div>
                           <div className="text-xs text-muted-foreground">Uploaded {uploadDateLabel}</div>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <div className="text-sm font-light">{displayTotal}</div>
-                        <Badge variant="outline" className="text-xs font-bold">NEEDS REVIEW</Badge>
+                        <div className="text-base font-normal tabular-nums">{displayTotal}</div>
+                        <Badge variant="outline" className="text-[11px] uppercase tracking-widest">NEEDS REVIEW</Badge>
                         <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
                         {!isMultiSelectMode && (() => {
                           const availableActions = getInvoiceActions({
@@ -2207,7 +2203,7 @@ export default function Invoices() {
                         return <InvoiceIcon className="w-5 h-5 text-accent mt-0.5 shrink-0" />;
                       })()}
                       <div className="min-w-0">
-                        <div className="font-light text-base leading-tight break-words">{displayName}</div>
+                        <div className="text-base leading-tight break-words">{displayName}</div>
                         {linkedContact && (
                           <div className="text-xs text-muted-foreground truncate">{linkedContact.name}</div>
                         )}
@@ -2217,10 +2213,10 @@ export default function Invoices() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
-                      <div className="text-sm font-light">{displayTotal}</div>
+                      <div className="text-base font-normal tabular-nums">{displayTotal}</div>
                       {getStatusBadge(invoice)}
                       {invoice.type === "cancellation" && (
-                        <Badge variant="outline" className="text-xs font-bold">STORNO</Badge>
+                        <Badge variant="outline" className="text-[11px] uppercase tracking-widest">STORNO</Badge>
                       )}
                       {!isMultiSelectMode && (
                         <ItemActionsMenu

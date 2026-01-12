@@ -177,7 +177,7 @@ export function MultiSelectBar({
         {/* Left side: Selection count + Select all */}
         <div className="flex items-center justify-center sm:justify-start gap-3 min-h-[44px]">
           <span
-            className="text-sm sm:text-base font-medium text-center sm:text-left"
+            className="text-sm text-center sm:text-left"
             style={{ fontFamily: "Kanit, sans-serif", color: "rgba(255, 255, 255, 0.9)" }}
           >
             {selectedCount} selected
