@@ -9,5 +9,6 @@ export { DesktopNavProvider, useDesktopNav } from './DesktopNavProvider';
 export { DesktopNavRail } from './DesktopNavRail';
 export { DesktopModuleFlyout } from './DesktopModuleFlyout';
 export { DesktopBottomTabBar } from './DesktopBottomTabBar';
+export { DesktopModuleMenu } from './DesktopModuleMenu';
 export { TAB_GROUPS, ALL_MODULES, TABS, LAYOUT } from './constants';
 export type { TabId, Module, TabGroup, FlyoutState } from './types';

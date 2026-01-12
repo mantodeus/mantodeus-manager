@@ -6,10 +6,13 @@
  * - Right: Chat (assistant toggle)
  */
 
+import { useRef, useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useManto } from '@/contexts/MantoContext';
 import { BugAnt, PencilSquareIcon, WrenchScrewdriver } from '@/components/ui/Icon';
+import { DesktopModuleMenu } from './DesktopModuleMenu';
+import { TIMING } from './constants';
 
 /**
  * Navigation tabs (left side)
@@ -23,16 +26,59 @@ const NAV_TABS = [
 export function DesktopBottomTabBar() {
   const [location, setLocation] = useLocation();
   const { isOpen: isChatOpen, toggleManto } = useManto();
+  const [menuTab, setMenuTab] = useState<'office' | 'tools' | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleNavTabMouseEnter = useCallback((tabId: 'office' | 'tools') => {
+    // Clear any existing timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+
+    // If menu is already open for a different tab, switch immediately
+    if (menuTab && menuTab !== tabId) {
+      setMenuTab(tabId);
+      return;
+    }
+
+    // Otherwise, delay before showing (hover-intent pattern)
+    hoverTimeoutRef.current = setTimeout(() => {
+      setMenuTab(tabId);
+    }, TIMING.HOVER_DELAY);
+  }, [menuTab]);
+
+  const handleNavTabMouseLeave = useCallback(() => {
+    // Clear pending hover timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    // Don't close menu on mouse leave - let click outside handle it
+  }, []);
 
   const handleNavTabClick = (tabId: typeof NAV_TABS[number]['id']) => {
-    // Office and Tools tabs - navigate to first module in group
-    // This will be replaced with proper navigation logic in future phases
-    if (tabId === 'office') {
-      // Navigate to first Office module (Projects)
-      setLocation('/projects');
-    } else if (tabId === 'tools') {
-      // Navigate to first Tools module (Calendar)
-      setLocation('/calendar');
+    // Clear any pending hover timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+
+    if (tabId === 'office' || tabId === 'tools') {
+      // Toggle menu: if already open for this tab, close it; otherwise open it
+      if (menuTab === tabId) {
+        setMenuTab(null);
+      } else {
+        setMenuTab(tabId);
+      }
     }
     // Action tab - reserved for future actions (capture/record)
     // No action for now
@@ -84,9 +130,12 @@ export function DesktopBottomTabBar() {
         height: '44px', // Reduced height for dock-like feel
       }}
     >
-      <div className="flex h-11 items-center justify-between px-6 py-2 w-full">
-        {/* Left: Navigation Tabs (Office, Action, Tools) */}
-        <div className="flex items-center justify-start gap-16">
+      <div className="flex h-11 items-center px-6 py-2 w-full relative">
+        {/* Left spacer - balances with right CHAT button */}
+        <div className="flex-shrink-0" style={{ width: '120px' }} />
+        
+        {/* Center: Navigation Tabs (Office, Action, Tools) - visually centered */}
+        <div className="flex items-center justify-center gap-16 flex-1">
           {NAV_TABS.map((tab) => {
             const isActive = isNavTabActive(tab.id);
             const isAction = tab.id === 'action';
@@ -102,30 +151,44 @@ export function DesktopBottomTabBar() {
                   'transition-all duration-200 ease-out',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   'select-none',
-                  // Text styling - uppercase, light weight, tracking
-                  'text-xs uppercase tracking-[0.15em] font-extralight',
+                  // Text styling - larger size, better contrast, uppercase, tracking
+                  'text-sm uppercase tracking-[0.15em]',
+                  // Font weight: 300 (inactive), 400 (active)
+                  isActive ? 'font-normal' : 'font-light',
                   // Hover state - subtle background bloom, opacity shift
                   'hover:bg-foreground/3 hover:opacity-100',
-                  // Active state
+                  // Active state - clearer accent
                   isActive
                     ? 'text-foreground opacity-100'
-                    : 'text-muted-foreground opacity-60',
+                    : 'text-muted-foreground opacity-70',
                   // Action tab - slightly stronger presence when not active
-                  isAction && !isActive && 'opacity-75',
+                  isAction && !isActive && 'opacity-80',
                 )}
                 onClick={() => handleNavTabClick(tab.id)}
+                onMouseEnter={() => {
+                  // Only Office and Tools support hover menu
+                  if (tab.id === 'office' || tab.id === 'tools') {
+                    handleNavTabMouseEnter(tab.id);
+                  }
+                }}
+                onMouseLeave={() => {
+                  // Only Office and Tools support hover menu
+                  if (tab.id === 'office' || tab.id === 'tools') {
+                    handleNavTabMouseLeave();
+                  }
+                }}
                 aria-label={`${tab.label} tab`}
                 aria-current={isActive ? 'page' : undefined}
               >
                 {/* Text label - text-only on desktop, no icons */}
                 <span>{tab.label}</span>
                 
-                {/* Active indicator - subtle underline with glow */}
+                {/* Active indicator - clearer underline with glow */}
                 {isActive && (
                   <span 
-                    className="absolute bottom-0 left-0 right-0 h-px bg-primary/40"
+                    className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-primary/50"
                     style={{
-                      boxShadow: '0 0 8px hsl(var(--primary) / 0.3)',
+                      boxShadow: '0 0 12px hsl(var(--primary) / 0.4)',
                     }}
                   />
                 )}
@@ -134,8 +197,8 @@ export function DesktopBottomTabBar() {
           })}
         </div>
 
-        {/* Right: Chat Button */}
-        <div className="flex items-center justify-end">
+        {/* Right: Chat Button - anchored to right */}
+        <div className="flex items-center justify-end flex-shrink-0" style={{ width: '120px' }}>
           <button
             data-desktop-nav="chat-button"
             className={cn(
@@ -144,14 +207,16 @@ export function DesktopBottomTabBar() {
               'transition-all duration-200 ease-out',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               'select-none',
-              // Text styling - uppercase, light weight, tracking (matching nav tabs)
-              'text-xs uppercase tracking-[0.15em] font-extralight',
+              // Text styling - matching nav tabs (larger, better contrast)
+              'text-sm uppercase tracking-[0.15em]',
+              // Font weight: 300 (inactive), 400 (active)
+              isChatOpen ? 'font-normal' : 'font-light',
               // Hover state - subtle background bloom, opacity shift
               'hover:bg-foreground/3 hover:opacity-100',
-              // Active state - subtle accent when chat is open
+              // Active state - clearer accent when chat is open
               isChatOpen
                 ? 'text-foreground opacity-100'
-                : 'text-muted-foreground opacity-60',
+                : 'text-muted-foreground opacity-70',
             )}
             onClick={toggleManto}
             aria-label="Chat"
@@ -160,18 +225,24 @@ export function DesktopBottomTabBar() {
             {/* Text label */}
             <span>CHAT</span>
             
-            {/* Active indicator - subtle underline with glow when chat is open */}
+            {/* Active indicator - clearer underline with glow when chat is open */}
             {isChatOpen && (
               <span 
-                className="absolute bottom-0 left-0 right-0 h-px bg-primary/40"
+                className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-primary/50"
                 style={{
-                  boxShadow: '0 0 8px hsl(var(--primary) / 0.3)',
+                  boxShadow: '0 0 12px hsl(var(--primary) / 0.4)',
                 }}
               />
             )}
           </button>
         </div>
       </div>
+
+      {/* Module Menu - appears on hover/click of Office or Tools */}
+      <DesktopModuleMenu
+        activeTab={menuTab}
+        onClose={() => setMenuTab(null)}
+      />
     </div>
   );
 }

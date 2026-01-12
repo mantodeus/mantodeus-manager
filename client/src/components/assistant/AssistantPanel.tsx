@@ -682,7 +682,7 @@ export function AssistantPanel({
           ] : [
             // Desktop: dock layout (not fixed)
             "flex-shrink-0",
-            "h-full",
+            "flex flex-col", // Ensure flex column layout
             "w-[420px]",
             "border-l border-border/50",
             "bg-card/95 backdrop-blur-[var(--blur-overlay)]",
@@ -700,8 +700,8 @@ export function AssistantPanel({
           // Prevent scroll chaining to the page
           overscrollBehavior: 'contain',
         } : {
-          // Desktop: ensure full height
-          minHeight: '100%',
+          // Desktop: no min-height, let content determine height
+          // Container will fit content exactly
         }}
         // Touch events handled via native listeners in useEffect (passive: false required)
       >
