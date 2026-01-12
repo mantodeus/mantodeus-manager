@@ -1593,7 +1593,7 @@ export default function Invoices() {
     }
     
     if (invoiceState === 'PARTIAL') {
-      return <Badge variant="outline" className="text-xs font-semibold border-orange-500 text-orange-600 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
+      return <Badge variant="outline" className="text-xs font-bold border-orange-500 text-orange-600 dark:text-orange-400 dark:border-orange-600">PARTIAL</Badge>;
     }
     
     if (invoiceState === 'PAID') {

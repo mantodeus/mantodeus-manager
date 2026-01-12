@@ -51,9 +51,9 @@
   
   /* Surface hierarchy - subtle warm tint (matches example) */
   --surface-0: oklch(0.98 0.01 85);   /* Page background - lightest */
-  --surface-1: oklch(0.96 0.01 85);   /* Cards - clear elevation */
-  --surface-2: oklch(0.94 0.01 85);   /* Popovers, inputs - more elevation */
-  --surface-3: oklch(0.92 0.01 85);   /* Highest elevation */
+  --surface-1: oklch(0.95 0.01 85);   /* Cards - clear elevation (increased contrast) */
+  --surface-2: oklch(0.92 0.01 85);   /* Popovers, inputs - more elevation (increased contrast) */
+  --surface-3: oklch(0.90 0.01 85);   /* Highest elevation (increased contrast) */
   --surface-overlay: oklch(0.98 0.01 85 / 0.85);
   
   /* Brand accent - Orchid Mantis pink (preserved) */
@@ -75,7 +75,7 @@
   --accent-foreground: oklch(0.98 0.01 85);
   --destructive: oklch(0.55 0.25 25);
   --destructive-foreground: oklch(0.98 0.01 85);
-  --border: oklch(0.88 0.01 85);  /* Matches example */
+  --border: oklch(0.86 0.01 85);  /* Slightly stronger for better separation */
   --input: var(--surface-2);
   --ring: oklch(0.75 0.25 330);
   --radius: 0.5rem;
@@ -87,7 +87,7 @@
   --sidebar-primary-foreground: oklch(0.98 0.01 85);
   --sidebar-accent: var(--surface-2);
   --sidebar-accent-foreground: oklch(0.75 0.25 330);
-  --sidebar-border: oklch(0.88 0.01 85);
+  --sidebar-border: oklch(0.86 0.01 85);
   --sidebar-ring: oklch(0.75 0.25 330);
   
   /* Charts */
@@ -153,9 +153,9 @@
   
   /* Surface hierarchy - deep blacks (matches example) */
   --surface-0: oklch(0.10 0 0);   /* Page background - deepest black */
-  --surface-1: oklch(0.12 0 0);   /* Cards - clear elevation */
-  --surface-2: oklch(0.14 0 0);   /* Popovers, inputs */
-  --surface-3: oklch(0.16 0 0);   /* Highest elevation */
+  --surface-1: oklch(0.13 0 0);   /* Cards - clear elevation (increased contrast) */
+  --surface-2: oklch(0.16 0 0);   /* Popovers, inputs (increased contrast) */
+  --surface-3: oklch(0.19 0 0);   /* Highest elevation (increased contrast) */
   --surface-overlay: oklch(0.10 0 0 / 0.85);
   
   /* Brand accent - Green Mantis neon (preserved) */
@@ -177,7 +177,7 @@
   --accent-foreground: oklch(0.10 0 0);
   --destructive: oklch(0.55 0.25 25);
   --destructive-foreground: oklch(0.95 0 0);
-  --border: oklch(0.20 0 0);  /* Matches example */
+  --border: oklch(0.22 0 0);  /* Slightly stronger for better separation */
   --input: var(--surface-2);
   --ring: oklch(0.85 0.25 155);
   
@@ -188,7 +188,7 @@
   --sidebar-primary-foreground: oklch(0.10 0 0);
   --sidebar-accent: var(--surface-2);
   --sidebar-accent-foreground: oklch(0.85 0.25 155);
-  --sidebar-border: oklch(0.20 0 0);
+  --sidebar-border: oklch(0.22 0 0);
   --sidebar-ring: oklch(0.85 0.25 155);
   
   /* Charts */
@@ -378,6 +378,14 @@
   .font-extrabold,
   .font-black {
     font-weight: 400 !important;
+  }
+  /* Status badges use heavier weight for better visibility and consistency */
+  [data-slot="badge"].font-bold {
+    font-weight: 500 !important;
+  }
+  /* PAID badge (custom span) */
+  span.font-bold.inline-flex.items-center.justify-center.rounded-md.border {
+    font-weight: 500 !important;
   }
   .font-medium {
     font-weight: 400 !important;
