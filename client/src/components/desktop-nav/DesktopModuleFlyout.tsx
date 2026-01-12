@@ -89,7 +89,7 @@ function ModuleItem({
       
       <span
         className={cn(
-          "flex-1 text-sm transition-colors duration-100",
+          "flex-1 text-sm font-medium transition-colors duration-100",
           isActive ? "text-primary" : "text-foreground"
         )}
       >
