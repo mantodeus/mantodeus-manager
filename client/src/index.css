@@ -49,33 +49,34 @@
    * Pure monochrome greys + pink accent
    * ============================================ */
   
-  /* Surface hierarchy - pure grey, no warm tint */
-  --surface-0: oklch(0.98 0 0);   /* Page background - lightest */
-  --surface-1: oklch(0.94 0 0);   /* Cards - slight elevation */
-  --surface-2: oklch(0.90 0 0);   /* Popovers, inputs - more elevation */
-  --surface-3: oklch(0.86 0 0);   /* Highest elevation */
-  --surface-overlay: oklch(0.98 0 0 / 0.90);
+  /* Surface hierarchy - pure grey, no warm tint
+   * Increased contrast for more visible elevation */
+  --surface-0: oklch(0.99 0 0);   /* Page background - lightest (almost white) */
+  --surface-1: oklch(0.96 0 0);   /* Cards - clear elevation */
+  --surface-2: oklch(0.92 0 0);   /* Popovers, inputs - more elevation */
+  --surface-3: oklch(0.88 0 0);   /* Highest elevation */
+  --surface-overlay: oklch(0.99 0 0 / 0.90);
   
   /* Brand accent - Orchid Mantis pink (preserved) */
   --primary: oklch(0.75 0.25 330);
-  --primary-foreground: oklch(0.98 0 0);
+  --primary-foreground: oklch(0.99 0 0);
   
   /* Map surfaces to shadcn semantic tokens */
   --background: var(--surface-0);
-  --foreground: oklch(0.15 0 0);
+  --foreground: oklch(0.12 0 0);  /* Darker text for better contrast */
   --card: var(--surface-1);
-  --card-foreground: oklch(0.15 0 0);
+  --card-foreground: oklch(0.12 0 0);
   --popover: var(--surface-1);
-  --popover-foreground: oklch(0.15 0 0);
+  --popover-foreground: oklch(0.12 0 0);
   --secondary: var(--surface-2);
-  --secondary-foreground: oklch(0.15 0 0);
+  --secondary-foreground: oklch(0.12 0 0);
   --muted: var(--surface-2);
-  --muted-foreground: oklch(0.45 0 0);
+  --muted-foreground: oklch(0.50 0 0);  /* More visible muted text */
   --accent: oklch(0.75 0.25 330);
-  --accent-foreground: oklch(0.98 0 0);
+  --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.55 0.25 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.82 0 0);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.85 0 0);  /* More visible borders */
   --input: var(--surface-2);
   --ring: oklch(0.75 0.25 330);
   --radius: 0.5rem;
@@ -148,33 +149,34 @@
    * Deep blacks + neon green accent
    * ============================================ */
   
-  /* Surface hierarchy - deep blacks */
-  --surface-0: oklch(0.08 0 0);   /* Page background - deepest black */
-  --surface-1: oklch(0.12 0 0);   /* Cards - slight lift */
-  --surface-2: oklch(0.16 0 0);   /* Popovers, inputs */
-  --surface-3: oklch(0.20 0 0);   /* Highest elevation */
-  --surface-overlay: oklch(0.08 0 0 / 0.90);
+  /* Surface hierarchy - deep blacks
+   * Increased contrast for more visible elevation */
+  --surface-0: oklch(0.06 0 0);   /* Page background - deepest black */
+  --surface-1: oklch(0.10 0 0);   /* Cards - clear elevation */
+  --surface-2: oklch(0.14 0 0);   /* Popovers, inputs */
+  --surface-3: oklch(0.18 0 0);   /* Highest elevation */
+  --surface-overlay: oklch(0.06 0 0 / 0.90);
   
   /* Brand accent - Green Mantis neon (preserved) */
   --primary: oklch(0.85 0.25 155);
-  --primary-foreground: oklch(0.08 0 0);
+  --primary-foreground: oklch(0.06 0 0);
   
   /* Map surfaces to shadcn semantic tokens */
   --background: var(--surface-0);
-  --foreground: oklch(0.85 0 0);
+  --foreground: oklch(0.90 0 0);  /* Brighter text for better contrast */
   --card: var(--surface-1);
-  --card-foreground: oklch(0.85 0 0);
+  --card-foreground: oklch(0.90 0 0);
   --popover: var(--surface-1);
-  --popover-foreground: oklch(0.85 0 0);
+  --popover-foreground: oklch(0.90 0 0);
   --secondary: var(--surface-2);
-  --secondary-foreground: oklch(0.85 0 0);
+  --secondary-foreground: oklch(0.90 0 0);
   --muted: var(--surface-2);
-  --muted-foreground: oklch(0.55 0 0);
+  --muted-foreground: oklch(0.60 0 0);  /* More visible muted text */
   --accent: oklch(0.85 0.25 155);
-  --accent-foreground: oklch(0.08 0 0);
+  --accent-foreground: oklch(0.06 0 0);
   --destructive: oklch(0.55 0.25 25);
   --destructive-foreground: oklch(0.95 0 0);
-  --border: oklch(0.22 0 0);
+  --border: oklch(0.20 0 0);  /* More visible borders */
   --input: var(--surface-2);
   --ring: oklch(0.85 0.25 155);
   
