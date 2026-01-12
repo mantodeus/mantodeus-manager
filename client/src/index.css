@@ -70,7 +70,7 @@
   --secondary: var(--surface-2);
   --secondary-foreground: oklch(0.20 0.01 85);
   --muted: var(--surface-2);
-  --muted-foreground: oklch(0.60 0.01 85);  /* Matches example */
+  --muted-foreground: oklch(0.45 0.01 85);  /* Darker for better contrast in light theme */
   --accent: oklch(0.75 0.25 330);
   --accent-foreground: oklch(0.98 0.01 85);
   --destructive: oklch(0.55 0.25 25);
@@ -684,30 +684,45 @@
     border-radius: 10px !important;
     font-size: 12px;
     font-weight: 300;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--foreground);
     transition: all 120ms ease-out;
   }
 
   /* Glass menu item hover state */
   .glass-menu-item:hover,
   .glass-menu-item[data-highlighted] {
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.95);
+    background: var(--muted);
+    color: var(--foreground);
   }
 
   /* Destructive action styling (Delete) */
   .glass-menu-item.delete,
   .glass-menu-item[data-variant="destructive"] {
-    color: #ff5a5a;
+    color: var(--destructive);
   }
 
   .glass-menu-item.delete:hover,
   .glass-menu-item.delete[data-highlighted],
   .glass-menu-item[data-variant="destructive"]:hover,
   .glass-menu-item[data-variant="destructive"][data-highlighted] {
-    background: rgba(255, 90, 90, 0.08);
-    box-shadow: inset 0 0 0 1px rgba(255, 90, 90, 0.3);
-    color: #ff5a5a;
+    color: var(--destructive);
+  }
+
+  /* Theme-aware destructive hover backgrounds */
+  [data-theme="orchid-mantis"] .glass-menu-item.delete:hover,
+  [data-theme="orchid-mantis"] .glass-menu-item.delete[data-highlighted],
+  [data-theme="orchid-mantis"] .glass-menu-item[data-variant="destructive"]:hover,
+  [data-theme="orchid-mantis"] .glass-menu-item[data-variant="destructive"][data-highlighted] {
+    background: oklch(0.65 0.15 25 / 0.1);
+    box-shadow: inset 0 0 0 1px oklch(0.65 0.15 25 / 0.3);
+  }
+
+  [data-theme="green-mantis"] .glass-menu-item.delete:hover,
+  [data-theme="green-mantis"] .glass-menu-item.delete[data-highlighted],
+  [data-theme="green-mantis"] .glass-menu-item[data-variant="destructive"]:hover,
+  [data-theme="green-mantis"] .glass-menu-item[data-variant="destructive"][data-highlighted] {
+    background: oklch(0.70 0.15 25 / 0.1);
+    box-shadow: inset 0 0 0 1px oklch(0.70 0.15 25 / 0.3);
   }
 
   @media (hover: none) and (pointer: coarse) {
@@ -1092,7 +1107,7 @@
     will-change: transform;
   }
 
-  /* Top 3px accent strip */
+  /* Top 3px accent strip - visible on hover/tap only */
   .kpi-card-accent::before {
     content: "";
     position: absolute;
@@ -1102,6 +1117,14 @@
     height: 3px;
     background: var(--primary);
     z-index: 1;
+    opacity: 0;
+    transition: opacity var(--dur-quick, 150ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  }
+
+  .kpi-card-accent:hover::before,
+  .kpi-card-accent:active::before,
+  .kpi-card-accent:focus-visible::before {
+    opacity: 1;
   }
 
   /* Inner highlight (subtle gradient from top) */
