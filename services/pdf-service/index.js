@@ -111,10 +111,10 @@ app.post("/render", internalAuthMiddleware, async (req, res) => {
       headerTemplate: options.headerTemplate || '<div></div>',
       footerTemplate: options.footerTemplate || '<div></div>',
       margin: options.margin || {
-        top: "16mm",
-        right: "16mm",
-        bottom: "24mm",
-        left: "16mm",
+        top: "6mm",      // Safety margin (prevents top clipping)
+        right: "6mm",    // Safety margin (prevents side clipping)
+        bottom: "24mm",  // Footer reserve
+        left: "6mm",     // Safety margin (prevents side clipping)
       },
     };
 

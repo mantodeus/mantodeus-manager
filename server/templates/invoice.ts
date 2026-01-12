@@ -250,16 +250,16 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
           <div style="font-weight: 400; font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #7A8087; margin-bottom: 4px;">Kontakt</div>
           <div style="font-size: 10px; line-height: 1.4;">${company.email ? escapeHtml(company.email) : ''}${company.phone ? `<br>${escapeHtml(company.phone)}` : ''}</div>
         </div>
-        <div style="flex: 1; text-align: center;">
+        <div style="flex: 1;">
           <div style="font-weight: 400; font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #7A8087; margin-bottom: 4px;">Adresse</div>
           <div style="font-size: 10px; line-height: 1.4;">${companyAddressParts.join('<br>')}</div>
         </div>
-        <div style="flex: 1.2; text-align: right;">
+        <div style="flex: 1.2;">
           <div style="font-weight: 400; font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #7A8087; margin-bottom: 4px;">Bankverbindung</div>
           <div style="font-size: 10px; line-height: 1.4;">${accountHolderName ? `${escapeHtml(accountHolderName)}<br>` : ''}${company.iban ? `IBAN: ${escapeHtml(company.iban)}<br>` : ''}Ref: ${escapeHtml(invoiceNumber)}</div>
         </div>
       </div>
-      <div style="margin-top: 6px; display: flex; justify-content: flex-end; color: #7A8087; font-size: 9px;">
+      <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #e8e8e8; display: flex; justify-content: flex-end; color: #7A8087; font-size: 9px;">
         Seite&nbsp;<span class="pageNumber"></span>&nbsp;von&nbsp;<span class="totalPages"></span>
       </div>
     </div>
@@ -310,7 +310,7 @@ export function generateInvoiceHTML(data: InvoiceData): { html: string; footerTe
 
     /* GLOBAL ALIGNMENT GRID - add padding to work with Puppeteer margins */
     .content-grid {
-      padding: 0 8mm;
+      padding: 14mm 10mm 8mm 10mm;  /* Top Right Bottom Left */
       width: 100%;
       box-sizing: border-box;
     }
