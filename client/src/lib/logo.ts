@@ -92,8 +92,11 @@ function updatePwaManifest(): void {
   const isOrchidMantis = theme === "orchid-mantis";
   
   // Theme colors: Green Mantis (dark) or Orchid Mantis (light)
-  const backgroundColor = isOrchidMantis ? "#F2F1EE" : "#0A0F14";
-  const themeColor = isOrchidMantis ? "#F2F1EE" : "#0A0F14";
+  // Use neutral monochrome backgrounds (no blue tint)
+  // Dark mode: neutral black/grey matching surface-0 from index.css (oklch(0.10 0 0) ≈ #1A1A1A)
+  // Light mode: warm white matching surface-0 from index.css (oklch(0.98 0.01 85) ≈ #FAFAF8)
+  const backgroundColor = isOrchidMantis ? "#FAFAF8" : "#1A1A1A";
+  const themeColor = isOrchidMantis ? "#FAFAF8" : "#1A1A1A";
   
   // Base manifest structure
   const manifest = {

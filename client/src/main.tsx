@@ -53,7 +53,6 @@ import { getAuthToken, setAuthToken } from "./lib/authToken";
 import { supabase } from "./lib/supabase";
 import { initializeLogos } from "./lib/logo";
 import "./index.css";
-import "./theme-fixes.css";
 
 // Don't auto-sync auth on state changes - let Login component handle it
 // This prevents duplicate calls and race conditions

@@ -97,6 +97,9 @@
   --chart-4: oklch(0.4 0.1 200);
   --chart-5: oklch(0.3 0.05 200);
   
+  /* State colors - functional UI elements */
+  --state-info: #3B82F6;  /* Blue for functional buttons (Mark as Sent, form submissions, etc.) */
+  
   /* Header spacing tokens */
   --space-header-subtitle: 12px;
   --space-header-actions: 16px;
@@ -194,6 +197,9 @@
   --chart-3: oklch(0.5 0.15 155);
   --chart-4: oklch(0.4 0.1 200);
   --chart-5: oklch(0.3 0.05 200);
+  
+  /* State colors - functional UI elements */
+  --state-info: #3B82F6;  /* Blue for functional buttons (Mark as Sent, form submissions, etc.) */
 }
 
 /* Mobile spacing overrides */
@@ -733,21 +739,21 @@
 
   /* Multi-select bar - glass container (tool tray, not warning panel) */
   .multi-select-bar {
-    background: rgba(15, 18, 25, 0.85);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--surface-overlay);
+    backdrop-filter: blur(var(--blur-overlay));
+    -webkit-backdrop-filter: blur(var(--blur-overlay));
+    border: 1px solid var(--border);
     border-radius: 16px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--shadow-elevated);
     padding: 14px;
   }
 
   /* Increase opacity and blur on desktop for better readability */
   @media (min-width: 768px) {
     .multi-select-bar {
-      background: rgba(15, 18, 25, 1);
-      backdrop-filter: blur(32px);
-      -webkit-backdrop-filter: blur(32px);
+      background: var(--surface-2);
+      backdrop-filter: blur(var(--blur-overlay));
+      -webkit-backdrop-filter: blur(var(--blur-overlay));
     }
   }
 

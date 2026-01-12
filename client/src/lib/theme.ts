@@ -88,8 +88,8 @@ export const greenMantisTheme: ThemeConfig = {
     accentSolid: '#0CF57E',
     accentGradient: 'linear-gradient(135deg, #0CF57E 0%, #2BFFA0 50%, #07C964 100%)',
     
-    // States - muted palette (no blue in dark mode)
-    stateInfo: 'oklch(0.70 0.15 200)',  // Muted blue-grey
+    // States - functional colors (blue for info/buttons, muted for others)
+    stateInfo: '#3B82F6',  // Blue for functional buttons (Mark as Sent, form submissions, etc.)
     stateWarning: 'oklch(0.75 0.15 60)',
     stateDanger: 'oklch(0.70 0.15 25)',
     stateSuccess: 'oklch(0.70 0.15 150)',
@@ -137,8 +137,8 @@ export const orchidMantisTheme: ThemeConfig = {
     accentSolid: '#FF4FA3',
     accentGradient: 'linear-gradient(135deg, #FF4FA3 0%, #FF78C7 50%, #E83D8C 100%)',
     
-    // States - muted palette
-    stateInfo: 'oklch(0.65 0.15 200)',  // Muted blue-grey
+    // States - functional colors (blue for info/buttons, muted for others)
+    stateInfo: '#3B82F6',  // Blue for functional buttons (Mark as Sent, form submissions, etc.)
     stateWarning: 'oklch(0.70 0.15 60)',
     stateDanger: 'oklch(0.65 0.15 25)',
     stateSuccess: 'oklch(0.65 0.15 150)',
@@ -160,101 +160,35 @@ export const themes: Record<ThemeName, ThemeConfig> = {
 };
 
 /**
- * Apply theme tokens to CSS variables on :root
+ * Apply theme - sets data-theme attribute only
+ * All CSS variables are defined in index.css using [data-theme] selectors
  */
 export function applyTheme(themeName: ThemeName) {
-  const theme = themes[themeName];
   const root = document.documentElement;
   
-  // Set data attribute for CSS selectors
+  // Set data attribute for CSS selectors - this is the ONLY way themes are applied
   root.setAttribute('data-theme', themeName);
-  
-  // Background layers
-  root.style.setProperty('--bg-app', theme.tokens.bgApp);
-  root.style.setProperty('--bg-page', theme.tokens.bgPage);
-  root.style.setProperty('--bg-surface', theme.tokens.bgSurface);
-  root.style.setProperty('--bg-elevated', theme.tokens.bgElevated);
-  
-  // Typography
-  root.style.setProperty('--text-primary', theme.tokens.textPrimary);
-  root.style.setProperty('--text-secondary', theme.tokens.textSecondary);
-  root.style.setProperty('--text-muted', theme.tokens.textMuted);
-  root.style.setProperty('--text-disabled', theme.tokens.textDisabled);
-  
-  // Borders
-  root.style.setProperty('--border-subtle', theme.tokens.borderSubtle);
-  root.style.setProperty('--border-strong', theme.tokens.borderStrong);
-  
-  // Accent system
-  root.style.setProperty('--accent-start', theme.tokens.accentStart);
-  root.style.setProperty('--accent-mid', theme.tokens.accentMid);
-  root.style.setProperty('--accent-end', theme.tokens.accentEnd);
-  root.style.setProperty('--accent-solid', theme.tokens.accentSolid);
-  root.style.setProperty('--accent-gradient', theme.tokens.accentGradient);
-  
-  // States
-  root.style.setProperty('--state-info', theme.tokens.stateInfo);
-  root.style.setProperty('--state-warning', theme.tokens.stateWarning);
-  root.style.setProperty('--state-danger', theme.tokens.stateDanger);
-  root.style.setProperty('--state-success', theme.tokens.stateSuccess);
-  
-  // Overlays
-  root.style.setProperty('--overlay-light', theme.tokens.overlayLight);
-  root.style.setProperty('--overlay-medium', theme.tokens.overlayMedium);
-  root.style.setProperty('--overlay-heavy', theme.tokens.overlayHeavy);
-  
-  // Shadows
-  root.style.setProperty('--shadow-soft', theme.tokens.shadowSoft);
-  root.style.setProperty('--shadow-elevated', theme.tokens.shadowElevated);
-  
-  // Map to existing Tailwind/shadcn tokens for compatibility
-  root.style.setProperty('--background', theme.tokens.bgPage);
-  root.style.setProperty('--foreground', theme.tokens.textPrimary);
-  root.style.setProperty('--card', theme.tokens.bgSurface);
-  root.style.setProperty('--card-foreground', theme.tokens.textPrimary);
-  root.style.setProperty('--popover', theme.tokens.bgElevated);
-  root.style.setProperty('--popover-foreground', theme.tokens.textPrimary);
-  root.style.setProperty('--primary', theme.tokens.accentSolid);
-  root.style.setProperty('--primary-foreground', themeName === 'green-mantis' ? 'oklch(0.10 0 0)' : 'oklch(0.98 0.01 85)');
-  root.style.setProperty('--secondary', theme.tokens.bgElevated);
-  root.style.setProperty('--secondary-foreground', theme.tokens.textPrimary);
-  root.style.setProperty('--muted', theme.tokens.bgElevated);
-  root.style.setProperty('--muted-foreground', theme.tokens.textMuted);
-  root.style.setProperty('--accent', theme.tokens.accentSolid);
-  root.style.setProperty('--accent-foreground', themeName === 'green-mantis' ? 'oklch(0.10 0 0)' : 'oklch(0.98 0.01 85)');
-  root.style.setProperty('--destructive', theme.tokens.stateDanger);
-  root.style.setProperty('--destructive-foreground', '#FFFFFF');
-  root.style.setProperty('--border', theme.tokens.borderSubtle);
-  root.style.setProperty('--input', theme.tokens.bgSurface);
-  root.style.setProperty('--ring', theme.tokens.accentSolid);
-  root.style.setProperty('--radius', '0.5rem');
-  
-  // Sidebar tokens
-  root.style.setProperty('--sidebar', theme.tokens.bgSurface);
-  root.style.setProperty('--sidebar-foreground', theme.tokens.textPrimary);
-  root.style.setProperty('--sidebar-primary', theme.tokens.accentSolid);
-  root.style.setProperty('--sidebar-primary-foreground', themeName === 'green-mantis' ? 'oklch(0.10 0 0)' : 'oklch(0.98 0.01 85)');
-  root.style.setProperty('--sidebar-accent', theme.tokens.bgElevated);
-  root.style.setProperty('--sidebar-accent-foreground', theme.tokens.textPrimary);
-  root.style.setProperty('--sidebar-border', theme.tokens.borderSubtle);
-  root.style.setProperty('--sidebar-ring', theme.tokens.accentSolid);
   
   // Store preference
   localStorage.setItem('mantodeus.theme', themeName);
   
   // Update theme-color meta tag for browser UI (mobile pull-to-refresh background)
+  // Use neutral hex values that approximate the theme backgrounds
   let themeColorMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (!themeColorMeta) {
     themeColorMeta = document.createElement('meta');
     themeColorMeta.name = 'theme-color';
     document.head.appendChild(themeColorMeta);
   }
-  themeColorMeta.content = theme.tokens.bgPage;
+  // Approximate hex values for oklch backgrounds (for meta tag compatibility)
+  themeColorMeta.content = themeName === 'green-mantis' ? '#1A1A1A' : '#FAFAF8';
   
-  // Set HTML and body background colors to match theme (for off-screen areas)
-  root.style.backgroundColor = theme.tokens.bgPage;
+  // Set HTML and body background colors for off-screen areas (browser chrome)
+  // Use neutral hex values that approximate the theme backgrounds
+  const bgColor = themeName === 'green-mantis' ? '#1A1A1A' : '#FAFAF8';
+  root.style.backgroundColor = bgColor;
   if (document.body) {
-    document.body.style.backgroundColor = theme.tokens.bgPage;
+    document.body.style.backgroundColor = bgColor;
   }
 }
 

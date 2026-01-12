@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-
-type Theme = "light" | "dark";
+import { ThemeName, getCurrentTheme, applyTheme } from "@/lib/theme";
 
 interface ThemeContextType {
-  theme: Theme;
+  theme: ThemeName;
   toggleTheme?: () => void;
   switchable: boolean;
 }
@@ -12,43 +11,37 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 interface ThemeProviderProps {
   children: React.ReactNode;
-  defaultTheme?: Theme;
+  defaultTheme?: ThemeName;
   switchable?: boolean;
 }
 
 export function ThemeProvider({
   children,
-  defaultTheme = "light",
+  defaultTheme,
   switchable = false,
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  // Use unified theme system - read from mantodeus.theme key
+  const [theme, setTheme] = useState<ThemeName>(() => {
     if (switchable) {
-      const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
+      // Use the same key as theme.ts
+      return getCurrentTheme();
     }
-    return defaultTheme;
+    // If not switchable, use default or get current theme
+    return defaultTheme || getCurrentTheme();
   });
 
   useEffect(() => {
-    // DISABLED: Old light/dark theme system
-    // Now using data-theme attribute with green-mantis/orchid-mantis
-    // DO NOT add .dark class as it conflicts with new theme system
-    
-    // const root = document.documentElement;
-    // if (theme === "dark") {
-    //   root.classList.add("dark");
-    // } else {
-    //   root.classList.remove("dark");
-    // }
-
+    // Apply theme when it changes (only if switchable)
     if (switchable) {
-      localStorage.setItem("theme", theme);
+      applyTheme(theme);
     }
   }, [theme, switchable]);
 
   const toggleTheme = switchable
     ? () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
+        const newTheme: ThemeName = theme === 'green-mantis' ? 'orchid-mantis' : 'green-mantis';
+        setTheme(newTheme);
+        applyTheme(newTheme);
       }
     : undefined;
 

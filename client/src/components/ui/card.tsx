@@ -7,10 +7,10 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        // Superwhisper-inspired premium surface - HIGHLY VISIBLE
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-2xl border border-border/70 shadow-lg",
-        // Dramatic hover lift effect
-        "hover:shadow-xl hover:border-border/90 hover:-translate-y-0.5 transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
+        // Superwhisper-inspired premium surface
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-2xl border border-border/70 shadow-sm",
+        // Subtle hover lift effect
+        "hover:shadow-md hover:border-border/80 transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
         className
       )}
       style={{ padding: 'var(--space-card-padding, 16px)' }}
