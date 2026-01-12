@@ -42,6 +42,7 @@ if (typeof window !== "undefined") {
 }
 
 import { trpc } from "@/lib/trpc";
+import { trpcPreview } from "@/lib/trpcPreview";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
@@ -254,6 +255,23 @@ const restoreBackendSession = async (): Promise<void> => {
 // Start session restoration immediately, but don't block if there's no session
 sessionRestorePromise = restoreBackendSession();
 
+// Preview tRPC client (no authentication)
+const trpcPreviewClient = trpcPreview.createClient({
+  links: [
+    httpBatchLink({
+      url: "/api/trpc/preview",
+      transformer: superjson,
+      fetch(input, init) {
+        // No auth headers needed for preview
+        return globalThis.fetch(input, {
+          ...(init ?? {}),
+          credentials: "include",
+        });
+      },
+    }),
+  ],
+});
+
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
@@ -347,9 +365,11 @@ const initializeApp = () => {
     const root = createRoot(rootElement);
     root.render(
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <App />
-        </QueryClientProvider>
+        <trpcPreview.Provider client={trpcPreviewClient} queryClient={queryClient}>
+          <QueryClientProvider client={queryClient}>
+            <App />
+          </QueryClientProvider>
+        </trpcPreview.Provider>
       </trpc.Provider>
     );
   } catch (error) {

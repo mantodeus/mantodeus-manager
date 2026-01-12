@@ -62,12 +62,229 @@ const isCursorBrowser = typeof navigator !== "undefined" &&
   (navigator.userAgent.includes("Cursor") || 
    navigator.userAgent.includes("cursor"));
 
+// Preview Router - bypasses all authentication
+function PreviewRouter() {
+  const [location] = useLocation();
+  
+  // Remove /preview prefix from location for route matching
+  const previewPath = location.startsWith("/preview") 
+    ? location.replace(/^\/preview/, "") || "/" 
+    : location;
+
+  return (
+    <Switch>
+      <Route path="/preview">
+        <DashboardLayout>
+          <Projects />
+        </DashboardLayout>
+      </Route>
+      
+      {/* New project-based routes */}
+      <Route path="/preview/projects">
+        <DashboardLayout>
+          <Projects />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/projects/archived">
+        <DashboardLayout>
+          <ProjectsArchived />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/projects/rubbish">
+        <DashboardLayout>
+          <ProjectsRubbish />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/projects/new">
+        <DashboardLayout>
+          <ProjectNew />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/projects/:id">
+        <DashboardLayout>
+          <ProjectDetail />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/projects/:projectId/jobs/:jobId">
+        <DashboardLayout>
+          <ProjectJobDetail />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/inspections">
+        <DashboardLayout>
+          <InspectionsOverview />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/projects/:projectId/inspections">
+        <DashboardLayout>
+          <Inspections />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/projects/:projectId/inspections/units/:unitId">
+        <DashboardLayout>
+          <InspectionUnitDetail />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/reports">
+        <DashboardLayout>
+          <Reports />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/reports/archived">
+        <DashboardLayout>
+          <ReportsArchived />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/reports/rubbish">
+        <DashboardLayout>
+          <ReportsRubbish />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/statements">
+        <DashboardLayout>
+          <Statements />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/calendar">
+        <DashboardLayout>
+          <Calendar />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/contacts">
+        <DashboardLayout>
+          <Contacts />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/contacts/archived">
+        <DashboardLayout>
+          <ContactsArchived />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/contacts/rubbish">
+        <DashboardLayout>
+          <ContactsRubbish />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/invoices/upload">
+        <DashboardLayout>
+          <DocumentUpload />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/invoices/new">
+        <DashboardLayout>
+          <InvoiceCreate />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/invoices/archived">
+        <DashboardLayout>
+          <InvoicesArchived />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/invoices/rubbish">
+        <DashboardLayout>
+          <InvoicesRubbish />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/invoices/:id">
+        <DashboardLayout>
+          <InvoiceDetail />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/invoices">
+        <DashboardLayout>
+          <Invoices />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/notes">
+        <DashboardLayout>
+          <Notes />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/notes/new">
+        <DashboardLayout>
+          <NoteNew />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/notes/archived">
+        <DashboardLayout>
+          <NotesArchived />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/notes/rubbish">
+        <DashboardLayout>
+          <NotesRubbish />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/notes/:id">
+        <DashboardLayout>
+          <NoteDetail />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/action/manto">
+        <DashboardLayout>
+          <MantoPage />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/action/capto">
+        <DashboardLayout>
+          <Capture />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/action/voco">
+        <DashboardLayout>
+          <Record />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/gallery">
+        <DashboardLayout>
+          <Gallery />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/maps">
+        <DashboardLayout>
+          <Maps />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/weather">
+        <DashboardLayout>
+          <Weather />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/expenses">
+        <DashboardLayout>
+          <Expenses />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/expenses/scan">
+        <DashboardLayout>
+          <ScanReceipt />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/expenses/:id">
+        <DashboardLayout>
+          <ExpenseDetail />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/settings">
+        <DashboardLayout>
+          <Settings />
+        </DashboardLayout>
+      </Route>
+      <Route path="/preview/404" component={NotFound} />
+      <Route path="/preview/*" component={NotFound} />
+    </Switch>
+  );
+}
+
 function Router() {
   const { user, loading, queryStatus, isQueryComplete } = useAuth();
   const [location, setLocation] = useLocation();
   const [hasRestoredRoute, setHasRestoredRoute] = useState(false);
   // For Cursor browser, add a manual bypass after 3 seconds
   const [cursorBypass, setCursorBypass] = useState(false);
+  
+  // Check if we're in preview mode
+  const isPreviewMode = location.startsWith("/preview");
 
   // Cursor browser workaround: allow bypass after 3 seconds
   useEffect(() => {
@@ -160,6 +377,11 @@ function Router() {
       queryStatus,
       hasUser: !!user,
     });
+  }
+
+  // If in preview mode, bypass authentication
+  if (isPreviewMode) {
+    return <PreviewRouter />;
   }
 
   // If not authenticated and the auth query is complete, go to login immediately.

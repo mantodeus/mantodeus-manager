@@ -24,11 +24,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const isMobile = useIsMobile();
+  const [location] = useLocation();
+  const isPreview = location.startsWith("/preview");
   const { loading, user } = useAuth();
 
-  // Show loading screen during auth check or if not authenticated
-  // Routing is handled by App.tsx, so we just show loading here
-  if (loading || !user) {
+  // In preview mode, skip auth check
+  // Show loading screen during auth check or if not authenticated (only in non-preview mode)
+  if (!isPreview && (loading || !user)) {
     return <AppLoadingScreen />
   }
 
