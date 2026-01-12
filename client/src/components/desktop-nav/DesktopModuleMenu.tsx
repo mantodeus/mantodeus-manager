@@ -37,16 +37,18 @@ function ModuleItem({
       data-desktop-nav="module-menu-item"
       data-module-index={index}
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-2.5",
-        "rounded-lg transition-all duration-200 ease-out",
+        "w-full flex items-center gap-3 px-4 py-3",
+        "rounded-lg",
+        // Transitions: opacity and background-color only (no scale/transform)
+        "transition-[opacity,background-color] duration-200 ease-out",
         "text-left",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-        // Active/selected state - subtle highlighted glass pill
-        isActive && "bg-primary/10 backdrop-blur-sm border border-primary/20 scale-[1.03]",
+        // Active/selected state - subtle highlighted glass pill (no scale)
+        isActive && "bg-primary/10 backdrop-blur-sm border border-primary/20 opacity-100",
         // Current page state (muted, not active)
-        isCurrentPage && !isActive && "bg-muted/30",
-        // Hover state - scale and increase opacity
-        !isActive && "hover:scale-[1.03] hover:opacity-100 hover:bg-foreground/5",
+        isCurrentPage && !isActive && "bg-muted/30 opacity-100",
+        // Hover state - opacity increase + soft background highlight (no scale, no transform)
+        !isActive && "opacity-80 hover:opacity-100 hover:bg-foreground/5",
       )}
       onClick={onNavigate}
       onMouseEnter={onHover}
@@ -219,9 +221,9 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
 
   return (
     <>
-      {/* Backdrop - dimmed background with blur */}
+      {/* Backdrop - darkened overlay with strong blur (blur applies to page behind) */}
       <div
-        className="fixed inset-0 z-[48] bg-black/20 backdrop-blur-sm"
+        className="fixed inset-0 z-[48] bg-black/60 backdrop-blur-xl"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -234,13 +236,13 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
         className={cn(
           "fixed z-[49]",
           "flex flex-col",
-          // Subtle glass surface or none - items are primary visual
-          "bg-background/80 backdrop-blur-xl",
+          // Solid background - blur is on backdrop scrim, not menu items
+          "bg-background",
           "border border-border/30",
           "shadow-lg shadow-black/10",
           "rounded-2xl",
-          // Fade + slide up animation
-          "transition-all duration-200 ease-out",
+          // Fade + slide up animation (opacity and translateY only, no scale)
+          "transition-[opacity,transform] duration-200 ease-out",
           // Hide scrollbar
           "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         )}
@@ -251,13 +253,13 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
           maxHeight: '400px',
           overflowY: 'auto',
           opacity: isVisible ? 1 : 0,
-          transform: isVisible ? 'translateY(0)' : 'translateY(10px)',
+          transform: isVisible ? 'translateY(0)' : 'translateY(8px)', // Slight upward motion, no zoom
         }}
         onKeyDown={handleKeyDown}
       >
 
-        {/* Module List - no header, no footer */}
-        <div className="py-2 px-2">
+        {/* Module List - increased vertical spacing for calm, floating feel */}
+        <div className="py-3 px-3 space-y-1">
           {modules.map((module, index) => {
             const isActive = index === highlightedIndex;
             const isCurrentPage = location === module.path || location.startsWith(module.path + '/');

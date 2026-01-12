@@ -156,7 +156,7 @@ export function DesktopBottomTabBar() {
       data-desktop-nav="bottom-tab-bar"
       className={cn(
         'fixed bottom-0 left-0 right-0 z-[50]', // Above content
-        'bg-background/95 backdrop-blur-md', // Glass effect matching Mantodeus style
+        'bg-background', // Solid dark surface matching app background
         'border-t border-border',
         'hidden md:flex', // Desktop only (opposite of mobile)
         'select-none', // Prevent text selection
@@ -192,12 +192,12 @@ export function DesktopBottomTabBar() {
                   'transition-all duration-200 ease-out',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   'select-none',
-                  // Text styling - uppercase, wide tracking, font-weight 300, higher contrast
+                  // Text styling - uppercase, wide tracking, font-weight 300, fully readable
                   'text-sm uppercase tracking-[0.15em] font-light',
-                  // Active state - filled glass pill background + subtle glow
+                  // Active state - subtle glass pill background + glow (only active tab)
                   isActive
                     ? 'text-foreground bg-primary/10 backdrop-blur-sm border border-primary/20'
-                    : 'text-foreground/80',
+                    : 'text-foreground', // Fully readable, no transparency
                   // Hover state - subtle background
                   !isActive && 'hover:bg-foreground/5',
                   // Menu open state - keep visible
@@ -241,10 +241,10 @@ export function DesktopBottomTabBar() {
               'select-none',
               // Text styling - uppercase, wide tracking, font-weight 300
               'text-sm uppercase tracking-[0.15em] font-light',
-              // Active state - filled glass pill background + subtle glow
+              // Active state - subtle glass pill background + glow (only when active)
               isChatOpen
                 ? 'text-foreground bg-primary/10 backdrop-blur-sm border border-primary/20'
-                : 'text-foreground/80 hover:bg-foreground/5',
+                : 'text-foreground hover:bg-foreground/5', // Fully readable, no transparency
             )}
             style={isChatOpen ? {
               boxShadow: '0 0 16px hsl(var(--primary) / 0.15)',
