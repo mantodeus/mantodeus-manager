@@ -143,7 +143,8 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
                   "shadow-[0_0_16px_-4px_hsl(var(--primary)/0.4)]",
                 ] : [
                   "text-muted-foreground hover:text-foreground",
-                  "hover:bg-muted/50",
+                  "hover:bg-foreground/5 active:bg-foreground/8",
+                  "dark:hover:bg-foreground/7 dark:active:bg-foreground/10",
                 ]
               )}
               onMouseEnter={() => handleTabMouseEnter(tab)}

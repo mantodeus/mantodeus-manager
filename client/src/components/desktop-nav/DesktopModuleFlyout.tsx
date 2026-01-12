@@ -69,7 +69,13 @@ function ModuleItem({
         "rounded-lg transition-all duration-100 ease-out",
         "text-left",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-        isActive && "bg-primary/10",
+        "border border-transparent",
+        // Neutral hover (no accent colors)
+        "hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8",
+        "dark:hover:bg-foreground/7 dark:active:bg-foreground/10",
+        // Active state (primary accent for active item only)
+        isActive && "bg-primary/10 border-primary/20",
+        // Current page state (muted, not active)
         isCurrentPage && !isActive && "bg-muted/50",
       )}
       style={{
