@@ -69,6 +69,7 @@ function DesktopDashboardLayoutContent({
       <div className="flex flex-1 min-h-0 w-full">
         {/* Main Content Area - shrinks when assistant is open */}
         <main 
+          data-layout="content-column"
           className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background"
         >
           {children}

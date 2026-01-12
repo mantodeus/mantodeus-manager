@@ -26,8 +26,34 @@ const NAV_TABS = [
 export function DesktopBottomTabBar() {
   const [location, setLocation] = useLocation();
   const { isOpen: isChatOpen, toggleManto } = useManto();
-  const [menuTab, setMenuTab] = useState<'office' | 'tools' | null>(null);
+  const [menuTab, setMenuTab] = useState<'office' | 'action' | 'tools' | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [contentColumnWidth, setContentColumnWidth] = useState<number | null>(null);
+  const contentColumnRef = useRef<HTMLDivElement | null>(null);
+
+  // Measure content column width for centering
+  useEffect(() => {
+    const contentColumn = document.querySelector('[data-layout="content-column"]') as HTMLElement;
+    if (!contentColumn) return;
+
+    contentColumnRef.current = contentColumn;
+
+    const updateWidth = () => {
+      const rect = contentColumn.getBoundingClientRect();
+      setContentColumnWidth(rect.width);
+    };
+
+    // Initial measurement
+    updateWidth();
+
+    // Observe resize
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(contentColumn);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -38,7 +64,7 @@ export function DesktopBottomTabBar() {
     };
   }, []);
 
-  const handleNavTabMouseEnter = useCallback((tabId: 'office' | 'tools') => {
+  const handleNavTabMouseEnter = useCallback((tabId: 'office' | 'action' | 'tools') => {
     // Clear any existing timeout
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
@@ -72,25 +98,19 @@ export function DesktopBottomTabBar() {
       hoverTimeoutRef.current = null;
     }
 
-    if (tabId === 'office' || tabId === 'tools') {
-      // Toggle menu: if already open for this tab, close it; otherwise open it
+    if (tabId === 'office' || tabId === 'action' || tabId === 'tools') {
+      // If clicking the same tab while menu is open, close it
       if (menuTab === tabId) {
         setMenuTab(null);
       } else {
+        // Otherwise, open menu for this tab (switches instantly if different tab)
         setMenuTab(tabId);
       }
     }
-    // Action tab - reserved for future actions (capture/record)
-    // No action for now
   };
 
   // Determine if a nav tab is active based on current route
   const isNavTabActive = (tabId: typeof NAV_TABS[number]['id']): boolean => {
-    // Action tab is never "active" (reserved for future actions)
-    if (tabId === 'action') {
-      return false;
-    }
-    
     // Office tab active for: /projects, /invoices, /expenses, /reports, /notes, /inspections
     if (tabId === 'office') {
       return location.startsWith('/projects') ||
@@ -99,6 +119,12 @@ export function DesktopBottomTabBar() {
              location.startsWith('/reports') ||
              location.startsWith('/notes') ||
              location.startsWith('/inspections');
+    }
+    
+    // Action tab active for: /action/capto, /action/voco
+    if (tabId === 'action') {
+      return location.startsWith('/action/capto') ||
+             location.startsWith('/action/voco');
     }
     
     // Tools tab active for: /calendar, /contacts, /gallery, /maps, /settings, /weather
@@ -131,11 +157,15 @@ export function DesktopBottomTabBar() {
       }}
     >
       <div className="flex h-11 items-center px-6 py-2 w-full relative">
-        {/* Left spacer - balances with right CHAT button */}
-        <div className="flex-shrink-0" style={{ width: '120px' }} />
-        
-        {/* Center: Navigation Tabs (Office, Action, Tools) - visually centered */}
-        <div className="flex items-center justify-center gap-16 flex-1">
+        {/* Left: Navigation Tabs (Office, Action, Tools) - centered relative to content column */}
+        <div 
+          className="flex items-center justify-center gap-16 flex-1"
+          style={contentColumnWidth ? {
+            maxWidth: `${contentColumnWidth}px`,
+            marginLeft: 'auto',
+            marginRight: 'auto',
+          } : undefined}
+        >
           {NAV_TABS.map((tab) => {
             const isActive = isNavTabActive(tab.id);
             const isAction = tab.id === 'action';
@@ -166,14 +196,14 @@ export function DesktopBottomTabBar() {
                 )}
                 onClick={() => handleNavTabClick(tab.id)}
                 onMouseEnter={() => {
-                  // Only Office and Tools support hover menu
-                  if (tab.id === 'office' || tab.id === 'tools') {
+                  // Office, Action, and Tools all support hover menu
+                  if (tab.id === 'office' || tab.id === 'action' || tab.id === 'tools') {
                     handleNavTabMouseEnter(tab.id);
                   }
                 }}
                 onMouseLeave={() => {
-                  // Only Office and Tools support hover menu
-                  if (tab.id === 'office' || tab.id === 'tools') {
+                  // Office, Action, and Tools all support hover menu
+                  if (tab.id === 'office' || tab.id === 'action' || tab.id === 'tools') {
                     handleNavTabMouseLeave();
                   }
                 }}
@@ -198,7 +228,7 @@ export function DesktopBottomTabBar() {
         </div>
 
         {/* Right: Chat Button - anchored to right */}
-        <div className="flex items-center justify-end flex-shrink-0" style={{ width: '120px' }}>
+        <div className="flex items-center justify-end flex-shrink-0 absolute right-6">
           <button
             data-desktop-nav="chat-button"
             className={cn(
@@ -238,7 +268,7 @@ export function DesktopBottomTabBar() {
         </div>
       </div>
 
-      {/* Module Menu - appears on hover/click of Office or Tools */}
+      {/* Module Menu - appears on hover/click of Office, Action, or Tools */}
       <DesktopModuleMenu
         activeTab={menuTab}
         onClose={() => setMenuTab(null)}

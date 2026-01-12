@@ -110,7 +110,7 @@ function ModuleItem({
 }
 
 interface DesktopModuleMenuProps {
-  activeTab: 'office' | 'tools' | null;
+  activeTab: 'office' | 'action' | 'tools' | null;
   onClose: () => void;
 }
 
@@ -148,17 +148,15 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
         if (clickedTab && clickedTab.getAttribute('data-tab-id') === activeTab) {
           return;
         }
+        // Close immediately on click outside
         onClose();
       }
     };
 
-    // Small delay to avoid immediate close on click
-    const timeout = setTimeout(() => {
-      document.addEventListener('click', handleClickOutside);
-    }, 100);
+    // Attach immediately (no delay needed)
+    document.addEventListener('click', handleClickOutside);
 
     return () => {
-      clearTimeout(timeout);
       document.removeEventListener('click', handleClickOutside);
     };
   }, [activeTab, onClose]);
@@ -255,7 +253,7 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
         className={cn(
           "fixed z-[49]",
           "flex flex-col",
-          "max-h-[60vh]",
+          // No max-height constraint - size to content
           // Glass effect
           "bg-background/95 backdrop-blur-2xl",
           "border border-border/50",
@@ -271,15 +269,8 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
         }}
         onKeyDown={handleKeyDown}
       >
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-border/20">
-          <h2 className="text-sm uppercase tracking-[0.15em] font-light text-foreground/80">
-            {tabGroup.label}
-          </h2>
-        </div>
-
-        {/* Module List */}
-        <div className="flex-1 overflow-y-auto py-3 px-3 scrollbar-hide">
+        {/* Module List - no header (tab label already in bottom bar), no scroll */}
+        <div className="py-3 px-3">
           {modules.map((module, index) => {
             const isActive = index === highlightedIndex;
             const isCurrentPage = location === module.path || location.startsWith(module.path + '/');
