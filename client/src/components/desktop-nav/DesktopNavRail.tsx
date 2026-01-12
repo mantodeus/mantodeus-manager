@@ -145,6 +145,7 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
                   "text-muted-foreground hover:text-foreground",
                   "hover:bg-foreground/5 active:bg-foreground/8",
                   "dark:hover:bg-foreground/7 dark:active:bg-foreground/10",
+                  "border border-transparent hover:border-border/70",
                 ]
               )}
               onMouseEnter={() => handleTabMouseEnter(tab)}
