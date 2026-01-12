@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
+import { PageContainer } from "@/components/PageContainer";
 import { MapPin, Search, X, Users } from "@/components/ui/Icon";
 import { MapView } from "@/components/Map";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
@@ -662,34 +663,35 @@ export default function Maps() {
     return contact?.name;
   };
 
+  const handleSearchClick = () => setIsSearchOpen(true);
+
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Please log in to view maps.</p>
-      </div>
+      <PageContainer>
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-muted-foreground">Please log in to view maps.</p>
+        </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant="fullscreen">
       <PageHeader
         title="Maps"
         subtitle="View and manage job locations on the map"
-        searchSlot={
-          <Dialog
-            open={isSearchOpen}
-            onOpenChange={(open) => {
-              setIsSearchOpen(open);
-              if (!open) {
-                setShowSearchResults(false);
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Search maps">
-                <Search className="size-6" />
-              </Button>
-            </DialogTrigger>
+        variant="fullscreen"
+        onSearch={handleSearchClick}
+      />
+      <Dialog
+        open={isSearchOpen}
+        onOpenChange={(open) => {
+          setIsSearchOpen(open);
+          if (!open) {
+            setShowSearchResults(false);
+          }
+        }}
+      >
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Search maps</DialogTitle>
@@ -822,8 +824,6 @@ export default function Maps() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        }
-      />
 
       {/* Map and Locations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1143,6 +1143,6 @@ export default function Maps() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }

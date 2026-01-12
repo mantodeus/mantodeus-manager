@@ -6,6 +6,7 @@ import { FileText, Download, Loader2, SlidersHorizontal, CheckCircle2, Archive, 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/PageHeader";
+import { PageContainer } from "@/components/PageContainer";
 import { useLocation } from "wouter";
 import { useState } from "react";
 import {
@@ -14,7 +15,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 
 export default function Reports() {
@@ -27,13 +27,10 @@ export default function Reports() {
     toast.info("Report generation feature coming soon");
   };
 
-  const filterSlot = (
+  const handleFilterClick = () => setIsFilterOpen(true);
+
+  const filterSheet = (
     <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Filter reports">
-          <SlidersHorizontal className="size-6" />
-        </Button>
-      </SheetTrigger>
       <SheetContent side="right" className="p-0">
         <SheetHeader>
           <SheetTitle>Filters</SheetTitle>
@@ -100,19 +97,22 @@ export default function Reports() {
 
   if (projectsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <PageContainer>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <PageHeader
         title="Reports"
         subtitle="Generate and download project reports"
-        filterSlot={filterSlot}
+        onFilter={handleFilterClick}
       />
+      {filterSheet}
 
       <div className="grid gap-4">
         <Card>
@@ -191,6 +191,6 @@ export default function Reports() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   );
 }

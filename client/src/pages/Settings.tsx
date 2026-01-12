@@ -22,6 +22,7 @@ import { trpc } from "@/lib/trpc";
 import { Loader2, Save, Building2, Receipt, CreditCard, Info, Palette, ImageIcon, User } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
+import { PageContainer } from "@/components/PageContainer";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemeName } from "@/lib/theme";
 import { LogoUploadSection } from "@/components/LogoUploadSection";
@@ -157,26 +158,30 @@ export default function Settings() {
     setPreferencesData((prev) => ({ ...prev, [field]: value }));
   };
 
-  if (isLoading) {
+  if (isLoading || preferencesLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <PageContainer>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <div className="text-destructive">Error loading settings</div>
-        <div className="text-sm text-muted-foreground">{error.message}</div>
-        <Button onClick={() => window.location.reload()}>Reload Page</Button>
-      </div>
+      <PageContainer>
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+          <div className="text-destructive">Error loading settings</div>
+          <div className="text-sm text-muted-foreground">{error.message}</div>
+          <Button onClick={() => window.location.reload()}>Reload Page</Button>
+        </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant="narrow">
       <PageHeader
         title="Settings"
         subtitle="Configure your company information and invoice settings"
@@ -780,7 +785,7 @@ export default function Settings() {
           </Button>
         </div>
       </form>
-    </div>
+    </PageContainer>
   );
 }
 
