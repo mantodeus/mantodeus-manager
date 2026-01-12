@@ -669,25 +669,26 @@ export function AssistantPanel({
         aria-hidden="true"
       />
 
-      {/* Chat Panel */}
+      {/* Chat Panel - Superwhisper-inspired styling */}
       <div
         ref={sheetRef}
         className={cn(
-          "fixed flex flex-col bg-background",
+          "fixed flex flex-col",
           isMobile ? [
             "z-[500]", // Below ModuleScroller (1000) and tab bar (9999)
             "left-0 right-0",
             "rounded-t-2xl",
             "border-t border-l border-r border-border/50",
-            !isDragging && "transition-[height] duration-200 ease-out",
+            "bg-[var(--surface-1)]",
+            !isDragging && "transition-[height] duration-[var(--dur-standard)] ease-[var(--ease-out)]",
           ] : [
             "z-[100]",
-            "shadow-xl border-l border-border",
+            "shadow-xl border-l border-border/50",
             "animate-in slide-in-from-right fade-in duration-300",
             "right-0 top-0 bottom-0",
             "w-[420px]",
             // Glass effect for premium feel
-            "bg-background/95 backdrop-blur-xl",
+            "bg-[var(--surface-overlay)] backdrop-blur-[var(--blur-overlay)]",
           ]
         )}
         style={isMobile ? {
@@ -740,7 +741,7 @@ export function AssistantPanel({
         {/* Header - hidden in collapsed */}
         {showHeader && (
           <div className={cn(
-            "flex items-center justify-between px-4 border-b border-border/30 shrink-0",
+            "flex items-center justify-between px-4 border-b border-border/30 shrink-0 bg-[var(--surface-2)]",
             isMobile ? "py-2" : "py-3"
           )}>
             <div className="flex items-center gap-2.5">
@@ -925,10 +926,10 @@ export function AssistantPanel({
                           onClick={() => handleQuickPrompt(prompt)}
                           className={cn(
                             "px-2.5 py-1.5 text-xs rounded-lg",
-                            "bg-muted/50 hover:bg-muted",
+                            "bg-[var(--surface-2)] hover:bg-[var(--surface-3)]",
                             "text-muted-foreground hover:text-foreground",
                             "border border-border/50 hover:border-border",
-                            "transition-all duration-150"
+                            "transition-[background-color,border-color,color] duration-[var(--dur-quick)] ease-[var(--ease-out)]"
                           )}
                         >
                           {prompt}
@@ -955,10 +956,12 @@ export function AssistantPanel({
                 )}
                 <div
                   className={cn(
-                    "max-w-[85%] rounded-xl px-3 py-2",
+                    "max-w-[85%] px-3 py-2",
                     message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted/60"
+                      // User bubble: primary color, rounded with flat bottom-right
+                      ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
+                      // Assistant bubble: surface-2 color, rounded with flat bottom-left  
+                      : "bg-[var(--surface-2)] rounded-2xl rounded-bl-sm"
                   )}
                 >
                   {message.role === "assistant" ? (
@@ -994,7 +997,7 @@ export function AssistantPanel({
         {/* Input - only in mid/full, not during tour */}
         {showInput && (
           <div className={cn(
-            "px-4 border-t border-border/30 shrink-0",
+            "px-4 border-t border-border/30 shrink-0 bg-[var(--surface-1)]",
             isMobile ? "py-3" : "py-3"
           )}>
             <div className="flex gap-2">
@@ -1017,7 +1020,9 @@ export function AssistantPanel({
                 autoCapitalize="off"
                 spellCheck={false}
                 className={cn(
-                  "flex-1 rounded-xl bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/50",
+                  "flex-1 rounded-xl bg-[var(--surface-2)] border-0",
+                  "focus-visible:ring-1 focus-visible:ring-primary/50",
+                  "transition-[box-shadow] duration-[var(--dur-quick)] ease-[var(--ease-out)]",
                   // 16px font size prevents iOS zoom on focus (PWA critical)
                   isMobile ? "h-11 text-[16px] leading-normal" : "h-9 text-sm"
                 )}
@@ -1032,7 +1037,8 @@ export function AssistantPanel({
                 disabled={!inputValue.trim() || isLoading}
                 size="icon"
                 className={cn(
-                  "rounded-xl shrink-0",
+                  "rounded-xl shrink-0 transition-transform duration-[var(--dur-quick)] ease-[var(--ease-out)]",
+                  "hover:scale-105 active:scale-95",
                   isMobile ? "h-11 w-11" : "h-9 w-9"
                 )}
               >

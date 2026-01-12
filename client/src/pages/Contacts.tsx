@@ -575,13 +575,9 @@ export default function Contacts() {
     );
   }
 
-  const searchSlot = (
+  // Search dialog - triggered by PageHeader's onSearch handler
+  const searchDialog = (
     <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Search contacts">
-          <Search className="size-6" />
-        </Button>
-      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Search contacts</DialogTitle>
@@ -608,15 +604,11 @@ export default function Contacts() {
     </Dialog>
   );
 
-  const filterSlot = (
+  // Filter sheet - triggered by PageHeader's onFilter handler
+  const filterSheet = (
     <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Filter contacts">
-          <SlidersHorizontal className="size-6" />
-        </Button>
-      </SheetTrigger>
       <SheetContent side="right" className="p-0">
-        <SheetHeader>
+        <SheetHeader className="px-4 pt-4">
           <SheetTitle>Filters</SheetTitle>
         </SheetHeader>
         <div className="px-4 pb-4 overflow-y-auto space-y-4 pt-4">
@@ -728,11 +720,19 @@ export default function Contacts() {
 
   return (
     <div className="space-y-6">
+      {/* Search dialog - controlled by PageHeader's onSearch handler */}
+      {searchDialog}
+      
+      {/* Filter sheet - controlled by PageHeader's onFilter handler */}
+      {filterSheet}
+      
       <PageHeader
         title="Contacts"
         subtitle="Manage your clients and contacts"
-        actionsPlacement="right"
-        actions={
+        onSearch={() => setIsSearchOpen(true)}
+        onFilter={() => setIsFilterOpen(true)}
+        settingsEnabled={false}
+        primaryActions={
           <>
             {isFormOpen && (
               <Button variant="ghost" onClick={handleCloseForm} className="h-10 whitespace-nowrap">
@@ -751,8 +751,6 @@ export default function Contacts() {
             </Button>
           </>
         }
-        searchSlot={searchSlot}
-        filterSlot={filterSlot}
       />
 
       {isFormOpen && (

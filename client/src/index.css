@@ -77,6 +77,59 @@
   --sidebar-accent-foreground: oklch(0.75 0.25 330);
   --sidebar-border: oklch(0.88 0.01 85);
   --sidebar-ring: oklch(0.75 0.25 330);
+  
+  /* ============================================
+   * SUPERWHISPER-INSPIRED DESIGN SYSTEM TOKENS
+   * ============================================ */
+  
+  /* Surface hierarchy - light mode */
+  --surface-0: oklch(0.98 0.01 85);
+  --surface-1: oklch(0.96 0.01 85);
+  --surface-2: oklch(0.94 0.01 85);
+  --surface-3: oklch(0.92 0.01 85);
+  --surface-overlay: oklch(0.98 0.01 85 / 0.85);
+  
+  /* Header spacing tokens */
+  --space-header-subtitle: 12px;
+  --space-header-actions: 16px;
+  --space-header-icons: 8px;
+  
+  /* Page layout spacing tokens */
+  --space-page-gap: 24px;
+  --space-section-gap: 24px;
+  
+  /* Card spacing tokens */
+  --space-card-gap: 16px;
+  --space-card-padding: 16px;
+  
+  /* Safe area tokens */
+  --tab-bar-height: 56px;
+  --multi-select-bar-height: 72px;
+  --bottom-safe-area-with-select: calc(var(--bottom-safe-area) + var(--multi-select-bar-height));
+  
+  /* Motion tokens - easing curves */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  /* Motion tokens - durations */
+  --dur-instant: 50ms;
+  --dur-quick: 150ms;
+  --dur-standard: 250ms;
+  --dur-slow: 400ms;
+  --dur-emphasis: 500ms;
+  
+  /* Blur tokens */
+  --blur-subtle: 8px;
+  --blur-standard: 16px;
+  --blur-overlay: 24px;
+  
+  /* Noise texture (opt-in, default off) */
+  --noise-opacity: 0;
+  
+  /* Z-index tokens */
+  --z-header-overlay: 100;
 }
 
 .dark {
@@ -113,6 +166,51 @@
   --sidebar-accent-foreground: oklch(0.85 0.25 155);
   --sidebar-border: oklch(0.15 0 0);
   --sidebar-ring: oklch(0.85 0.25 155);
+  
+  /* Surface hierarchy - dark mode */
+  --surface-0: oklch(0.10 0 0);
+  --surface-1: oklch(0.12 0 0);
+  --surface-2: oklch(0.14 0 0);
+  --surface-3: oklch(0.16 0 0);
+  --surface-overlay: oklch(0.10 0 0 / 0.85);
+}
+
+/* Mobile spacing overrides */
+@media (max-width: 767px) {
+  :root {
+    --space-header-subtitle: 8px;
+    --space-header-actions: 12px;
+    --space-page-gap: 20px;
+    --space-section-gap: 20px;
+    --space-card-gap: 12px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Noise texture utility (opt-in) */
+.surface-textured {
+  position: relative;
+}
+
+.surface-textured::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url('/noise.svg');
+  opacity: var(--noise-opacity, 0);
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  border-radius: inherit;
 }
 
 /* App loading screen animations - defined globally */
@@ -154,7 +252,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Kanit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-    font-weight: 100;
+    font-weight: 300; /* Readable body weight per design system */
     overflow-wrap: anywhere;
     word-break: break-word;
     padding-left: env(safe-area-inset-left);
@@ -166,15 +264,29 @@
     /* Ensure body background matches theme for off-screen areas */
     background-color: var(--bg-page, var(--background));
   }
-  h1, h2, h3, h4, h5, h6 {
-    font-weight: 200;
+  
+  /* Typography weights per design system:
+   * h1: 300 (page titles, 30px)
+   * h2-h6: 400 (section titles, cards)
+   * body: 300 (readable text)
+   * Never use 100 for text < 24px */
+  h1 {
+    font-weight: 300;
   }
-  .font-bold, .font-semibold, .font-extrabold, .font-medium {
-    font-weight: 200;
+  h2, h3, h4, h5, h6 {
+    font-weight: 400;
   }
-  .font-normal,
+  .font-bold, .font-semibold, .font-extrabold {
+    font-weight: 400;
+  }
+  .font-medium {
+    font-weight: 400;
+  }
+  .font-normal {
+    font-weight: 300;
+  }
   .font-light {
-    font-weight: 100;
+    font-weight: 300;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -230,17 +342,30 @@
 }
 
 @layer utilities {
-  /* Override Tailwind font-weight utilities to keep typography thin everywhere. */
+  /* Override Tailwind font-weight utilities per design system.
+   * Body/normal: 300 (readable)
+   * Bold/medium: 400 (emphasis)
+   * Never use 100 for text < 24px */
   .font-bold,
   .font-semibold,
   .font-extrabold,
-  .font-black,
+  .font-black {
+    font-weight: 400 !important;
+  }
   .font-medium {
-    font-weight: 200 !important;
+    font-weight: 400 !important;
   }
   .font-normal,
   .font-light {
-    font-weight: 100 !important;
+    font-weight: 300 !important;
+  }
+  /* Display text (48px+) can use thin weight */
+  .text-5xl,
+  .text-6xl,
+  .text-7xl,
+  .text-8xl,
+  .text-9xl {
+    font-weight: 200;
   }
 }
 

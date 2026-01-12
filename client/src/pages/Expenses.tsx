@@ -460,8 +460,10 @@ export default function Expenses() {
       <PageHeader
         title="Expenses"
         subtitle="Track and manage your business expenses"
-        actionsPlacement="right"
-        actions={
+        searchEnabled={false}
+        filterEnabled={false}
+        settingsEnabled={false}
+        primaryActions={
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -438,114 +438,98 @@ export default function Notes() {
     filters.time !== "all" ||
     filters.status !== "active";
 
-  // Search overlay - full screen at top on mobile
-  const searchSlot = (
-    <>
-      {isSearchOpen && (
-        <div className="fixed inset-0 z-50 bg-background">
-          <div className="flex flex-col h-full">
-            {/* Search input at top */}
-            <div className="flex items-center gap-2 p-4 border-b">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Search title, body, project name, client..."
-                  value={searchDraft}
-                  onChange={(e) => setSearchDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      applySearch();
-                    }
-                    if (e.key === "Escape") {
-                      setIsSearchOpen(false);
-                    }
-                  }}
-                  className="pl-10 pr-10"
-                  autoFocus
-                />
-                {searchDraft && (
-                  <button
-                    onClick={() => setSearchDraft("")}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsSearchOpen(false)}
+  // Search overlay - triggered by PageHeader's onSearch handler
+  const searchOverlay = isSearchOpen && (
+    <div className="fixed inset-0 z-50 bg-background">
+      <div className="flex flex-col h-full">
+        {/* Search input at top */}
+        <div className="flex items-center gap-2 p-4 border-b">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              ref={searchInputRef}
+              placeholder="Search title, body, project name, client..."
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  applySearch();
+                }
+                if (e.key === "Escape") {
+                  setIsSearchOpen(false);
+                }
+              }}
+              className="pl-10 pr-10"
+              autoFocus
+            />
+            {searchDraft && (
+              <button
+                onClick={() => setSearchDraft("")}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {/* Search suggestions/results preview */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {searchDraft && (
-                <div className="space-y-2">
-                  {(() => {
-                    // Filter notes using searchDraft for preview
-                    const searchLower = searchDraft.toLowerCase();
-                    return activeNotes
-                      .filter((note) => {
-                        const project = getNoteProject(note);
-                        const projectName = project?.name || "";
-                        const clientName = getNoteClient(note) || "";
-                        return (
-                          note.title.toLowerCase().includes(searchLower) ||
-                          note.content?.toLowerCase().includes(searchLower) ||
-                          projectName.toLowerCase().includes(searchLower) ||
-                          clientName.toLowerCase().includes(searchLower)
-                        );
-                      })
-                      .slice(0, 10)
-                      .map((note) => (
-                        <Card
-                          key={note.id}
-                          className="p-3 cursor-pointer hover:bg-accent"
-                          onClick={() => {
-                            navigate(`/notes/${note.id}`);
-                            setIsSearchOpen(false);
-                          }}
-                        >
-                          <div className="font-medium">{note.title}</div>
-                          {note.content && (
-                            <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                              {note.content}
-                            </div>
-                          )}
-                        </Card>
-                      ));
-                  })()}
-                </div>
-              )}
-            </div>
+              </button>
+            )}
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSearchOpen(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-      )}
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label="Search notes"
-        onClick={() => setIsSearchOpen(true)}
-      >
-        <Search className="size-6" />
-      </Button>
-    </>
+        
+        {/* Search suggestions/results preview */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {searchDraft && (
+            <div className="space-y-2">
+              {(() => {
+                // Filter notes using searchDraft for preview
+                const searchLower = searchDraft.toLowerCase();
+                return activeNotes
+                  .filter((note) => {
+                    const project = getNoteProject(note);
+                    const projectName = project?.name || "";
+                    const clientName = getNoteClient(note) || "";
+                    return (
+                      note.title.toLowerCase().includes(searchLower) ||
+                      note.content?.toLowerCase().includes(searchLower) ||
+                      projectName.toLowerCase().includes(searchLower) ||
+                      clientName.toLowerCase().includes(searchLower)
+                    );
+                  })
+                  .slice(0, 10)
+                  .map((note) => (
+                    <Card
+                      key={note.id}
+                      className="p-3 cursor-pointer hover:bg-accent"
+                      onClick={() => {
+                        navigate(`/notes/${note.id}`);
+                        setIsSearchOpen(false);
+                      }}
+                    >
+                      <div className="font-medium">{note.title}</div>
+                      {note.content && (
+                        <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                          {note.content}
+                        </div>
+                      )}
+                    </Card>
+                  ));
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 
-  const filterSlot = (
+  // Filter sheet - triggered by PageHeader's onFilter handler
+  const filterSheet = (
     <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Filter notes">
-          <SlidersHorizontal className="size-6" />
-        </Button>
-      </SheetTrigger>
       <SheetContent side="right" className="p-0">
-        <SheetHeader>
+        <SheetHeader className="px-4 pt-4">
           <SheetTitle>Filters</SheetTitle>
         </SheetHeader>
         <div className="px-4 pb-4 overflow-y-auto space-y-4 pt-4">
@@ -717,11 +701,19 @@ export default function Notes() {
 
   return (
     <div className="space-y-6">
+      {/* Search overlay - controlled by PageHeader's onSearch handler */}
+      {searchOverlay}
+      
+      {/* Filter sheet - controlled by PageHeader's onFilter handler */}
+      {filterSheet}
+      
       <PageHeader
         title="Notes"
         subtitle="Create and manage your notes"
-        actionsPlacement="right"
-        actions={
+        onSearch={() => setIsSearchOpen(true)}
+        onFilter={() => setIsFilterOpen(true)}
+        settingsEnabled={false}
+        primaryActions={
           <Button 
             onClick={() => navigate("/notes/new")} 
             className="h-10 whitespace-nowrap"
@@ -733,8 +725,6 @@ export default function Notes() {
             New
           </Button>
         }
-        searchSlot={searchSlot}
-        filterSlot={filterSlot}
       />
 
       {/* Active Notes Grid */}

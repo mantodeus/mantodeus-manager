@@ -442,15 +442,11 @@ export default function Projects() {
     );
   };
 
-  const filterSlot = (
+  // Filter sheet - controlled by PageHeader's onFilter handler
+  const filterSheet = (
     <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Filter projects">
-          <SlidersHorizontal className="size-6" />
-        </Button>
-      </SheetTrigger>
       <SheetContent side="right" className="p-0">
-        <SheetHeader>
+        <SheetHeader className="px-4 pt-4">
           <SheetTitle>Filters</SheetTitle>
         </SheetHeader>
         <div className="px-4 pb-4 overflow-y-auto space-y-4 pt-4">
@@ -592,11 +588,16 @@ export default function Projects() {
 
   return (
     <div className="space-y-6">
+      {/* Filter sheet - controlled by PageHeader's onFilter handler */}
+      {filterSheet}
+      
       <PageHeader
         title="Projects"
         subtitle="Manage your client projects and work"
-        actionsPlacement="right"
-        actions={
+        searchEnabled={false}
+        onFilter={() => setIsFilterOpen(true)}
+        settingsEnabled={false}
+        primaryActions={
           <Button 
             asChild 
             className="h-10 whitespace-nowrap"
@@ -610,7 +611,6 @@ export default function Projects() {
             </Link>
           </Button>
         }
-        filterSlot={filterSlot}
       />
 
       {/* Projects Grid */}
