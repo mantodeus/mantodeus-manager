@@ -1018,7 +1018,7 @@ export function InvoiceUploadReviewDialog({
       {!isMobile && previewOpen && previewUrl && (
         <div
           data-preview-panel
-          className="fixed z-[60] bg-background rounded-lg"
+          className="fixed z-[70] bg-background rounded-lg"
           style={{
             top: '1.5rem',
             left: '1.5rem',
@@ -1081,23 +1081,24 @@ export function InvoiceUploadReviewDialog({
             "flex flex-col p-0",
             // Desktop: right side with margins, showing blurred background border
             "sm:!top-[1.5rem] sm:!bottom-[1.5rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!h-auto sm:max-h-[calc(100vh-3rem)]",
-            // Mobile: fullscreen with safe areas - CSS will handle the positioning
-            isMobile && "invoice-dialog-fullscreen"
+            // Mobile: fullscreen with safe areas - override all default positioning
+            isMobile && [
+              "invoice-dialog-fullscreen",
+              "!left-0",
+              "!translate-x-0",
+              "!translate-y-0",
+              "!top-[env(safe-area-inset-top,0px)]",
+              "!bottom-[env(safe-area-inset-bottom,0px)]",
+              "!w-full",
+              "!h-[calc(100vh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))]",
+              "!max-h-[calc(100vh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))]",
+              "!rounded-none",
+              "!m-0",
+              "!max-w-none"
+            ]
           )}
           style={isMobile ? {
-            // Use CSS custom property approach - the CSS rule will override this
-            top: 'env(safe-area-inset-top, 0px)',
-            bottom: 'env(safe-area-inset-bottom, 0px)',
-            left: 0,
-            right: 0,
-            height: 'calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
-            maxHeight: 'calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
-            margin: 0,
-            borderRadius: 0,
             transform: 'none',
-            maxWidth: 'none',
-            width: '100%',
-            inset: 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) 0',
           } : {
             // Desktop: right side, 60% width with margins for blurred border
             left: "calc(40vw + 0.5rem)", // Start after preview + small gap
@@ -1213,6 +1214,28 @@ export function InvoiceUploadReviewDialog({
           </div>
         </div>
 
+        {/* Warning banners - above separator */}
+        {invoice && !isReview && (
+          <div className="px-4 pb-4">
+            {!invoice.sentAt && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This invoice has not been sent yet.
+                </AlertDescription>
+              </Alert>
+            )}
+            {invoice.sentAt && !invoice.paidAt && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This invoice has been sent but not paid yet.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+
         {/* Fade-out separator */}
         <div className="separator-fade" />
 
@@ -1220,27 +1243,6 @@ export function InvoiceUploadReviewDialog({
           "space-y-4 px-6 pt-4 overflow-y-auto flex-1 min-h-0",
           isMobile ? "pb-4" : "pb-6"
         )}>
-          {/* Warning banners */}
-          {invoice && !isReview && (
-            <>
-              {!invoice.sentAt && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    This invoice has not been sent yet.
-                  </AlertDescription>
-                </Alert>
-              )}
-              {invoice.sentAt && !invoice.paidAt && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    This invoice has been sent but not paid yet.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </>
-          )}
 
 
           <div className="space-y-2">

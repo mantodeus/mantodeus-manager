@@ -156,9 +156,19 @@
     margin: 0 !important;
     border-radius: 0 !important;
     transform: none !important;
+    translate: none !important;
     max-width: none !important;
     width: 100% !important;
     inset: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) 0 !important;
+  }
+  
+  /* Hide backdrop overlay for fullscreen dialogs on mobile - no blur, simple page */
+  /* Overlay comes before content in DOM, so we target the portal that contains fullscreen dialog */
+  [data-slot="dialog-portal"]:has([data-slot="dialog-content"].invoice-dialog-fullscreen) > [data-slot="dialog-overlay"] {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
   }
 }
 
