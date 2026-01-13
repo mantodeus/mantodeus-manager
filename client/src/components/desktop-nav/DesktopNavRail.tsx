@@ -138,15 +138,14 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
                 "relative w-11 h-11 flex items-center justify-center",
                 "rounded-xl transition-all duration-150",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "text-muted-foreground hover:text-foreground",
                 isActive ? [
-                  "bg-primary/15 text-primary",
-                  "shadow-[0_0_16px_-4px_hsl(var(--primary)/0.4)]",
+                  "bg-foreground/5 dark:bg-foreground/7",
                 ] : [
-                  "text-muted-foreground hover:text-foreground",
                   "hover:bg-foreground/5 active:bg-foreground/8",
                   "dark:hover:bg-foreground/7 dark:active:bg-foreground/10",
-                  "border border-transparent hover:border-border/70",
-                ]
+                ],
+                "border border-transparent hover:border-border/70",
               )}
               onMouseEnter={() => handleTabMouseEnter(tab)}
               onClick={() => handleTabClick(tab)}
@@ -154,16 +153,11 @@ export function DesktopNavRail({ onDataExport }: DesktopNavRailProps) {
             >
               <Icon
                 className={cn(
-                  "h-5 w-5 transition-transform duration-150",
-                  isActive && "scale-110"
+                  "h-5 w-5 transition-colors duration-150",
+                  isActive ? "text-foreground" : "text-muted-foreground"
                 )}
                 strokeWidth={isActive ? 2 : 1.5}
               />
-              
-              {/* Active indicator dot */}
-              {isActive && (
-                <span className="absolute -right-0.5 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-l-full" />
-              )}
             </button>
           );
         })}

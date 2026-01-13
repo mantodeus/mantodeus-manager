@@ -71,11 +71,14 @@ function ModuleItem({
         "text-left",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         "border border-transparent",
-        // Neutral hover (no accent colors)
-        "hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8",
-        "dark:hover:bg-foreground/7 dark:active:bg-foreground/10",
-        // Active state (primary accent for active item only)
-        isActive && "bg-primary/10 border-primary/20",
+        // Surface changes only (no primary colors)
+        isActive ? [
+          "bg-foreground/5 dark:bg-foreground/7",
+          "hover:bg-foreground/5 dark:hover:bg-foreground/7",
+        ] : [
+          "hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8",
+          "dark:hover:bg-foreground/7 dark:active:bg-foreground/10",
+        ],
         // Current page state (muted, not active)
         isCurrentPage && !isActive && "bg-muted/50",
       )}
@@ -89,7 +92,7 @@ function ModuleItem({
       <Icon
         className={cn(
           "h-5 w-5 shrink-0 transition-colors duration-100",
-          isActive || isCurrentPage ? "text-primary" : "text-muted-foreground"
+          isActive || isCurrentPage ? "text-foreground" : "text-muted-foreground"
         )}
         strokeWidth={isActive ? 2 : 1.5}
       />
@@ -97,16 +100,11 @@ function ModuleItem({
       <span
         className={cn(
           "flex-1 text-sm font-medium transition-colors duration-100",
-          isActive ? "text-primary" : "text-foreground"
+          "text-foreground"
         )}
       >
         {module.label}
       </span>
-
-      {/* Current page indicator */}
-      {isCurrentPage && (
-        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-      )}
     </button>
   );
 }
