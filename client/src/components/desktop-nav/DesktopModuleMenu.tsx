@@ -37,19 +37,25 @@ function ModuleItem({
       data-desktop-nav="module-menu-item"
       data-module-index={index}
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-3",
+        "w-full flex items-center gap-3 px-4 py-3.5",
         "rounded-lg",
         // Transitions: opacity and background-color only (no scale/transform)
         "transition-[opacity,background-color] duration-200 ease-out",
         "text-left",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-        // Active/selected state - subtle highlighted glass pill (no scale)
-        isActive && "bg-primary/10 backdrop-blur-sm border border-primary/20 opacity-100",
+        // Active/selected state - stronger highlighted glass pill (no scale)
+        isActive && "bg-primary/15 backdrop-blur-sm border border-primary/30 ring-1 ring-primary/10 opacity-100",
         // Current page state (muted, not active)
         isCurrentPage && !isActive && "bg-muted/30 opacity-100",
         // Hover state - opacity increase + soft background highlight (no scale, no transform)
         !isActive && "opacity-80 hover:opacity-100 hover:bg-foreground/5",
       )}
+      style={{
+        cursor: "pointer",
+        ...(isActive && {
+          boxShadow: '0 0 20px hsl(var(--primary) / 0.15)'
+        })
+      }}
       onClick={onNavigate}
       onMouseEnter={onHover}
     >
@@ -64,7 +70,7 @@ function ModuleItem({
       <span
         className={cn(
           "flex-1 text-xs uppercase tracking-[0.15em] font-light transition-colors duration-200",
-          "leading-relaxed", // Increased line-height for calm, floating feel
+          "leading-loose", // Increased line-height for calm, floating feel
           isActive || isCurrentPage ? "text-primary" : "text-foreground/80"
         )}
       >
@@ -223,13 +229,14 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
   return (
     <>
       {/* Backdrop - darkened overlay with strong blur (blur applies to page behind) */}
+      {/* Covers viewport EXCEPT bottom 56px (h-14) where tab bar lives */}
       <div
-        className="fixed inset-0 z-[48] bg-black/80 backdrop-blur-xl"
+        className="fixed inset-x-0 top-0 bottom-14 z-[48] bg-black/90 backdrop-blur-xl"
         onClick={onClose}
         aria-hidden="true"
         style={{
           // Ensure strong darkness - underlying content must NOT be readable
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backgroundColor: 'rgba(0, 0, 0, 0.90)',
         }}
       />
 
@@ -246,8 +253,7 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
           "border border-border/30",
           "shadow-lg shadow-black/10",
           "rounded-2xl",
-          // Fade + slide up animation (opacity and translateY only, no scale)
-          "transition-[opacity,transform] duration-200 ease-out",
+          // Fade + slide up animation (opacity and translateY only, no scale) - handled in inline styles
           // Hide scrollbar
           "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         )}
@@ -258,13 +264,14 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
           maxHeight: '400px',
           overflowY: 'auto',
           opacity: isVisible ? 1 : 0,
-          transform: isVisible ? 'translateY(0)' : 'translateY(8px)', // Slight upward motion, no zoom
+          transform: isVisible ? 'translateY(0)' : 'translateY(12px)', // Slight upward motion, no zoom
+          transition: 'opacity 250ms cubic-bezier(0.4, 0, 0.2, 1), transform 250ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
         onKeyDown={handleKeyDown}
       >
 
         {/* Module List - increased vertical spacing for calm, floating feel */}
-        <div className="py-4 px-3 space-y-2">
+        <div className="py-5 px-3 space-y-3">
           {modules.map((module, index) => {
             const isActive = index === highlightedIndex;
             const isCurrentPage = location === module.path || location.startsWith(module.path + '/');

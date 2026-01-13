@@ -157,7 +157,8 @@ export function DesktopBottomTabBar() {
       className={cn(
         'fixed bottom-0 left-0 right-0 z-[50]', // Above content and scrim
         'bg-background', // Solid opaque background - no transparency
-        'border-t border-border',
+        'border-t transition-colors duration-200',
+        menuTab ? 'border-border/40' : 'border-border', // Lighter border when menu active
         'hidden md:flex', // Desktop only (opposite of mobile)
         'select-none', // Prevent text selection
         'pointer-events-auto', // Ensure tab bar always receives pointer events
@@ -168,6 +169,10 @@ export function DesktopBottomTabBar() {
         height: '56px', // Premium height
         // Ensure solid background, not affected by any backdrop-filter
         backgroundColor: 'hsl(var(--background))',
+        // Add stronger top shadow when menu is active for visual separation
+        ...(menuTab && {
+          boxShadow: '0 -2px 24px rgba(0, 0, 0, 0.3)'
+        })
       }}
     >
       <div className="flex h-14 items-center px-6 w-full relative">
