@@ -39,22 +39,19 @@ function ModuleItem({
       className={cn(
         "w-full flex items-center gap-3 px-4 py-3.5",
         "rounded-lg",
-        // Transitions: opacity and background-color only (no scale/transform)
-        "transition-[opacity,background-color] duration-200 ease-out",
+        // Transitions: opacity and background-color only (no scale/transform, no jitter)
+        "transition-[opacity,background-color] duration-120 ease-out",
         "text-left",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-        // Active/selected state - more prominent highlighted glass pill (no scale)
+        // Active/selected state - subtle highlighted glass pill (no scale, no dramatic glow)
         isActive && "bg-primary/15 backdrop-blur-sm border border-primary/30 ring-1 ring-primary/10 opacity-100",
         // Current page state (muted, not active)
         isCurrentPage && !isActive && "bg-muted/30 opacity-100",
-        // Hover state - opacity increase + soft background highlight (no scale, no transform)
+        // Hover state - opacity increase + soft background highlight (no scale, no transform, no jitter)
         !isActive && "opacity-80 hover:opacity-100 hover:bg-foreground/5",
       )}
       style={{
         cursor: "pointer",
-        ...(isActive && {
-          boxShadow: '0 0 20px hsl(var(--primary) / 0.15)',
-        }),
       }}
       onClick={onNavigate}
       onMouseEnter={onHover}
@@ -228,19 +225,18 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
 
   return (
     <>
-      {/* Backdrop - darkened overlay with strong blur (blur applies to page behind) */}
-      {/* Stops 56px from bottom to leave tab bar area uncovered */}
+      {/* Click-outside handler - invisible, no page darkening */}
       <div
-        className="fixed inset-x-0 top-0 bottom-14 z-[48] bg-black/90 backdrop-blur-xl"
+        className="fixed inset-0 z-[48]"
         onClick={onClose}
         aria-hidden="true"
         style={{
-          // Ensure strong darkness - underlying content must NOT be readable
-          backgroundColor: 'rgba(0, 0, 0, 0.90)',
+          backgroundColor: 'transparent',
+          pointerEvents: 'auto',
         }}
       />
 
-      {/* Menu Panel - centered above bottom bar, fade + slide up animation */}
+      {/* Menu Panel - pure elevation, calm and restrained */}
       <div
         ref={menuRef}
         data-desktop-nav="module-menu"
@@ -248,11 +244,9 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
         className={cn(
           "fixed z-[49]",
           "flex flex-col",
-          // Solid background - blur is on backdrop scrim, not menu items
-          "bg-background",
-          "border border-border/30",
-          "shadow-lg shadow-black/10",
           "rounded-2xl",
+          "border border-border/40",
+          "bg-background",
           // Hide scrollbar
           "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         )}
@@ -262,9 +256,16 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
           width: '280px',
           maxHeight: '400px',
           overflowY: 'auto',
+          // Motion: calm, vertical only
           opacity: isVisible ? 1 : 0,
-          transform: isVisible ? 'translateY(0)' : 'translateY(12px)', // More noticeable, intentional motion
-          transition: 'opacity 250ms cubic-bezier(0.4, 0, 0.2, 1), transform 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: isVisible ? 'translateY(0)' : 'translateY(10px)',
+          transition: 'opacity 220ms cubic-bezier(0.4, 0, 0.2, 1), transform 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+          // Elevation: restrained, wide, soft
+          boxShadow: `
+            0 1px 0 rgba(0,0,0,0.06),
+            0 8px 24px rgba(0,0,0,0.18),
+            0 16px 40px rgba(0,0,0,0.16)
+          `,
         }}
         onKeyDown={handleKeyDown}
       >
