@@ -57,7 +57,7 @@
   --surface-overlay: oklch(0.985 0.004 95 / 0.85);
   
   /* Brand accent - Orchid Mantis pink (preserved) */
-  --primary: oklch(0.75 0.25 330);
+  --primary: #ec4899; /* rgb(236, 72, 153) - correct pink */
   --primary-foreground: oklch(0.98 0.01 85);
   
   /* Map surfaces to shadcn semantic tokens */
@@ -77,21 +77,21 @@
   --destructive-foreground: oklch(0.98 0.01 85);
   --border: oklch(0.86 0.006 95);  /* Crisp separation without dirt */
   --input: var(--surface-2);
-  --ring: oklch(0.75 0.25 330);
+  --ring: #ec4899; /* rgb(236, 72, 153) - correct pink */
   --radius: 0.5rem;
   
   /* Sidebar - uses surface tokens */
   --sidebar: var(--surface-1);
   --sidebar-foreground: oklch(0.20 0.01 85);
-  --sidebar-primary: oklch(0.75 0.25 330);
+  --sidebar-primary: #ec4899; /* rgb(236, 72, 153) - correct pink */
   --sidebar-primary-foreground: oklch(0.98 0.01 85);
   --sidebar-accent: var(--surface-2);  /* Neutral hover surface */
   --sidebar-accent-foreground: var(--foreground);  /* Neutral text */
   --sidebar-border: oklch(0.86 0.006 95);  /* Match main border */
-  --sidebar-ring: oklch(0.75 0.25 330);
+  --sidebar-ring: #ec4899; /* rgb(236, 72, 153) - correct pink */
   
   /* Charts */
-  --chart-1: oklch(0.75 0.25 330);
+  --chart-1: #ec4899; /* rgb(236, 72, 153) - correct pink */
   --chart-2: oklch(0.7 0.2 330);
   --chart-3: oklch(0.5 0.15 330);
   --chart-4: oklch(0.4 0.1 200);
@@ -1278,7 +1278,7 @@
   [data-theme="orchid-mantis"] .kpi-card-accent::after {
     background: linear-gradient(
       to bottom,
-      oklch(0.75 0.25 330 / 0.04) 0%,
+      rgba(236, 72, 153, 0.04) 0%,
       transparent 40%
     );
   }
