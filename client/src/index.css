@@ -1246,6 +1246,32 @@
     }
   }
 
+  /* Header accent strip - always visible */
+  .invoices-header-accent::before {
+    opacity: 1 !important;
+  }
+
+  /* Summary cards - apply hover effects as default state */
+  .summary-card-permanent-hover {
+    box-shadow: 0 8px 24px oklch(0 0 0 / 0.08);
+    border-color: var(--border-strong, var(--border));
+  }
+
+  .summary-card-permanent-hover::after {
+    opacity: 1;
+  }
+
+  /* Summary cards - intensify on hover (same as invoice cards) */
+  .summary-card-permanent-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px oklch(0 0 0 / 0.08);
+    border-color: var(--border-strong, var(--border));
+  }
+
+  .summary-card-permanent-hover:hover::after {
+    opacity: 1;
+  }
+
   /* ============================================
    * INVOICES PAGE - OS-GRADE STYLING UTILITIES
    * Minimal CSS helpers for calm, desktop reference alignment

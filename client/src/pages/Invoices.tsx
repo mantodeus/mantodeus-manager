@@ -204,7 +204,7 @@ function YearTotalCard({
       <Card 
         ref={cardRef}
         className={cn(
-          "p-4 has-context-menu cursor-pointer min-h-[86px] kpi-card-accent",
+          "p-4 has-context-menu cursor-pointer min-h-[86px] card-hover-polish summary-card-permanent-hover",
           popoverOpen && "context-menu-active"
         )}
         {...longPressHandlers}
@@ -468,7 +468,7 @@ function QuarterTotalCard({
       <Card 
         ref={cardRef}
         className={cn(
-          "p-4 has-context-menu cursor-pointer min-h-[86px] kpi-card-accent",
+          "p-4 has-context-menu cursor-pointer min-h-[86px] card-hover-polish summary-card-permanent-hover",
           popoverOpen && "context-menu-active"
         )}
         {...longPressHandlers}
@@ -1969,7 +1969,8 @@ export default function Invoices() {
           <div 
             className={cn(
               "bg-card border border-border/70 rounded-2xl shadow-sm",
-              "transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]"
+              "transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
+              "kpi-card-accent invoices-header-accent"
             )}
             style={{
               padding: 'var(--space-card-padding, 16px)',
