@@ -147,6 +147,43 @@ export function InvoiceUploadReviewDialog({
     };
   }, [open, isMobile]);
   // #endregion
+  // Prevent background scrolling on mobile while fullscreen dialog is open
+  useEffect(() => {
+    if (!isMobile || !open) return;
+
+    const appContent = document.querySelector(".app-content") as HTMLElement | null;
+    const originalOverflow = appContent?.style.overflow ?? "";
+    const originalOverscroll = appContent?.style.overscrollBehavior ?? "";
+    const originalTouchAction = appContent?.style.touchAction ?? "";
+
+    if (appContent) {
+      appContent.style.overflow = "hidden";
+      appContent.style.overscrollBehavior = "contain";
+      appContent.style.touchAction = "none";
+    }
+
+    const preventScroll = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      const dialogContent = document.querySelector('[data-slot="dialog-content"].invoice-dialog-fullscreen');
+      if (dialogContent && target && dialogContent.contains(target)) {
+        return;
+      }
+      e.preventDefault();
+    };
+
+    window.addEventListener("wheel", preventScroll, { passive: false, capture: true });
+    window.addEventListener("touchmove", preventScroll, { passive: false, capture: true });
+
+    return () => {
+      window.removeEventListener("wheel", preventScroll, { capture: true } as EventListenerOptions);
+      window.removeEventListener("touchmove", preventScroll, { capture: true } as EventListenerOptions);
+      if (appContent) {
+        appContent.style.overflow = originalOverflow;
+        appContent.style.overscrollBehavior = originalOverscroll;
+        appContent.style.touchAction = originalTouchAction;
+      }
+    };
+  }, [isMobile, open]);
   const { theme } = useTheme();
   const isDarkMode = theme === 'green-mantis';
   // Get sidebar state to adjust dialog position
