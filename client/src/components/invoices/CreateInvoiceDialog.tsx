@@ -317,8 +317,20 @@ export function CreateInvoiceDialog({
       <DialogContent 
         className={cn(
           "flex flex-col p-0",
-          "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+          // Mobile: fullscreen with no margins
+          isMobile && "!top-0 !left-0 !right-0 !bottom-0 !translate-x-0 !translate-y-0 !max-w-none !w-full !h-full !max-h-none !mb-0 !rounded-none"
         )}
+        style={isMobile ? {
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
+          maxHeight: '100%',
+          margin: 0,
+          borderRadius: 0,
+        } : undefined}
         showCloseButton={false}
         onInteractOutside={(e) => {
           if (previewDialogOpen) {
@@ -331,29 +343,29 @@ export function CreateInvoiceDialog({
           }
         }}
       >
-        {/* PageHeader-like structure */}
-        <div className="flex-shrink-0 p-6 pb-2 space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4 min-w-0 flex-1">
-              <div className="flex-1 min-w-0 flex flex-col">
-                <h1 className="text-3xl font-regular flex items-center gap-2">
+        {/* PageHeader-like structure matching Invoices page */}
+        <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
+          {/* TitleRow */}
+          <div className="flex items-start justify-between gap-4 px-4 pt-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-2">
+                <h1 className="text-4xl md:text-3xl font-light flex items-center gap-2">
                   <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
                   Create Invoice
                 </h1>
-                <p className="text-muted-foreground text-sm mt-3">
-                  Create a new invoice
-                </p>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-3 shrink-0">
+            
+            {/* Icon Cluster - X button where settings would be */}
+            <div className="flex items-center shrink-0 gap-3 sm:gap-2">
               <Button
-                variant="ghost"
+                variant="icon"
                 size="icon"
                 onClick={() => onOpenChange(false)}
-                className="h-10 w-10"
+                className="size-9 [&_svg]:size-8 hover:bg-muted/50"
                 aria-label="Close"
               >
-                <X className="h-6 w-6" />
+                <X />
               </Button>
             </div>
           </div>

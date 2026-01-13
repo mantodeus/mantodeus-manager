@@ -433,82 +433,65 @@ export default function InvoiceDetail() {
     <div className="space-y-6">
       <PageHeader />
       
-      {/* PageHeader-like structure matching invoices page */}
-      <div className="space-y-4">
+      {/* PageHeader-like structure matching Invoices page */}
+      <div style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
+        {/* TitleRow */}
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4 min-w-0 flex-1">
-            <div className="flex-1 min-w-0 flex flex-col">
-              <h1 className="text-3xl font-regular flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start gap-2">
+              <h1 className="text-4xl md:text-3xl font-light flex items-center gap-2">
                 <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
                 {title}
               </h1>
-              <p className="text-muted-foreground text-sm mt-3">
-                View and edit invoice details
-              </p>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-3 shrink-0">
+          
+          {/* Icon Cluster - Status badge where Create would be, X button where settings would be */}
+          <div className="flex items-center shrink-0 gap-3 sm:gap-2">
+            {/* Status badge */}
+            {invoice && invoice.source === "created" && (
+              <InvoiceStatusActionsDropdown
+                invoice={{
+                  id: invoice.id,
+                  invoiceNumber: invoice.invoiceNumber || "",
+                  needsReview: invoice.needsReview || false,
+                  sentAt: invoice.sentAt,
+                  paidAt: invoice.paidAt,
+                  amountPaid: invoice.amountPaid,
+                  total: invoice.total,
+                  dueDate: invoice.dueDate,
+                  cancelledAt: invoice.cancelledAt,
+                  source: invoice.source,
+                  type: invoice.type,
+                }}
+                onActionComplete={async () => {
+                  await utils.invoices.get.invalidate({ id: invoiceId! });
+                  await utils.invoices.list.invalidate();
+                }}
+                onSend={() => {
+                  setShareDialogOpen(true);
+                }}
+                onAddPayment={() => {
+                  toast.info("Add Payment - use the Payments section in the form");
+                }}
+              />
+            )}
             <Link href="/invoices">
               <Button
-                variant="ghost"
+                variant="icon"
                 size="icon"
-                className="h-10 w-10"
+                className="size-9 [&_svg]:size-8 hover:bg-muted/50"
                 aria-label="Close"
               >
-                <X className="h-6 w-6" />
+                <X />
               </Button>
             </Link>
           </div>
         </div>
-        
-        {/* Action buttons below header - Preview and Status Badge Dropdown */}
-        {invoice && invoice.source === "created" && (
-          <div className="flex items-center justify-end gap-2 pb-2 border-b">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handlePreviewPDF}
-              className="gap-2"
-              data-guide-id="invoices.preview"
-              data-guide-type="button"
-              data-guide-label="Preview Invoice PDF"
-            >
-              <Eye className="h-4 w-4" />
-              Preview
-            </Button>
-            {/* Status badge with dropdown - single control surface for all lifecycle actions */}
-            <InvoiceStatusActionsDropdown
-              invoice={{
-                id: invoice.id,
-                invoiceNumber: invoice.invoiceNumber || "",
-                needsReview: invoice.needsReview || false,
-                sentAt: invoice.sentAt,
-                paidAt: invoice.paidAt,
-                amountPaid: invoice.amountPaid,
-                total: invoice.total,
-                dueDate: invoice.dueDate,
-                cancelledAt: invoice.cancelledAt,
-                source: invoice.source,
-                type: invoice.type,
-              }}
-              onActionComplete={async () => {
-                await utils.invoices.get.invalidate({ id: invoiceId! });
-                await utils.invoices.list.invalidate();
-              }}
-              onSend={() => {
-                // Open ShareInvoiceDialog when "send" action is triggered
-                setShareDialogOpen(true);
-              }}
-              onAddPayment={() => {
-                // This will be handled by InvoiceForm's payment dialog
-                // For now, we'll need to expose this from InvoiceForm
-                toast.info("Add Payment - use the Payments section in the form");
-              }}
-            />
-          </div>
-        )}
       </div>
+      
+      {/* Fade-out separator */}
+      <div className="separator-fade" />
 
       <Card className="w-full border-0 shadow-none">
         <CardContent className="pt-6">
