@@ -87,7 +87,7 @@ export function BottomTabBar() {
 
   const gesture = useGestureRecognition();
   const [location, setLocation] = useLocation();
-  const { toggleManto } = useManto();
+  const { toggleManto, isOpen: isMantoOpen } = useManto();
 
   const handleTabClick = (tabId: TabId) => {
     // Always navigate when tab is clicked, even if it's already active
@@ -204,6 +204,8 @@ export function BottomTabBar() {
             {TABS.map((tab) => {
               const isActive = tab.id === activeTab;
               const Icon = tab.icon;
+              const isActionTab = tab.id === 'action';
+              const showChatIndicator = isActionTab && isMantoOpen;
 
               return (
                 <button
@@ -261,13 +263,19 @@ export function BottomTabBar() {
                   aria-label={`${tab.label} tab`}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  <Icon
-                    className={cn(
-                      'h-6 w-6',
-                      isActive && 'text-primary'
+                  <div className="relative flex items-center justify-center w-8 h-8">
+                    {showChatIndicator && (
+                      <div className="absolute inset-0 rounded-lg bg-primary transition-all duration-150" />
                     )}
-                    strokeWidth={isActive ? 1.5 : 1.2}
-                  />
+                    <Icon
+                      className={cn(
+                        'h-6 w-6 relative z-10',
+                        isActive && 'text-primary',
+                        showChatIndicator && 'text-primary-foreground'
+                      )}
+                      strokeWidth={isActive ? 1.5 : 1.2}
+                    />
+                  </div>
                 </button>
               );
             })}

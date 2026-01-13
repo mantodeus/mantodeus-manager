@@ -26,13 +26,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, CurrencyEuro, ArrowLeft, RotateCcw, Info as HelpCircle, Sparkles } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, CurrencyEuro, ArrowLeft, RotateCcw, Info as HelpCircle, Sparkles, MoreVertical, Edit, Copy, Trash2, Archive, XCircle, X } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
+import { getInvoiceActions, type InvoiceAction } from "@/lib/invoiceActions";
 import { ShareInvoiceDialog } from "./invoices/ShareInvoiceDialog";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { MarkAsSentAndPaidDialog } from "./invoices/MarkAsSentAndPaidDialog";
@@ -211,8 +212,6 @@ export function InvoiceUploadReviewDialog({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
-  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
-  const statusButtonRef = useRef<HTMLDivElement>(null);
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
@@ -423,6 +422,27 @@ export function InvoiceUploadReviewDialog({
     },
     onError: (error) => {
       toast.error("Failed to delete invoice: " + error.message);
+    },
+  });
+  const duplicateInvoiceMutation = trpc.invoices.duplicate.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice duplicated");
+      utils.invoices.list.invalidate();
+      utils.invoices.listNeedsReview.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Failed to duplicate invoice: " + error.message);
+    },
+  });
+  const archiveMutation = trpc.invoices.archive.useMutation({
+    onSuccess: () => {
+      toast.success("Invoice archived");
+      utils.invoices.get.invalidate({ id: invoiceId! });
+      utils.invoices.list.invalidate();
+      utils.invoices.listArchived.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Failed to archive invoice: " + error.message);
     },
   });
 
@@ -724,110 +744,6 @@ export function InvoiceUploadReviewDialog({
     }
   };
 
-  type StatusAction = {
-    action: string;
-    label: string;
-    icon?: ReactNode;
-    disabled?: boolean;
-    disabledReason?: string;
-    onClick: () => void;
-  };
-
-  function getStatusActions(invoice: any): StatusAction[] {
-    if (!invoice) return [];
-
-    const actions: StatusAction[] = [];
-    const invoiceState = getInvoiceState(invoice);
-    const derivedValues = getDerivedValues(invoice);
-    const isCancelled = Boolean(invoice.cancelledAt);
-    const isReview = invoiceState === "REVIEW";
-    const isDraft = invoiceState === "DRAFT" || (invoice.source === "uploaded" && !invoice.needsReview && !invoice.sentAt);
-    const isSent = invoiceState === "SENT" || invoiceState === "PARTIAL";
-    const isPaid = invoiceState === "PAID";
-
-    if (isDraft || isReview) {
-      if (isCancelled) {
-        actions.push({
-          action: "markAsNotCancelled",
-          label: "Mark as Not Cancelled",
-          icon: <X className="h-4 w-4" />,
-          onClick: () => markAsNotCancelledMutation.mutate({ id: invoiceId! }),
-        });
-      } else {
-        if (!invoice.sentAt) {
-          actions.push({
-            action: "markAsSent",
-            label: "Mark as Sent",
-            icon: <Send className="h-4 w-4" />,
-            onClick: handleMarkAsSent,
-          });
-        }
-        actions.push({
-          action: "markAsPaid",
-          label: "Mark as Paid",
-          icon: <CurrencyEuro className="h-4 w-4" />,
-          onClick: handleMarkAsPaid,
-        });
-        actions.push({
-          action: "cancel",
-          label: "Cancel (Void draft)",
-          icon: <X className="h-4 w-4" />,
-          onClick: () => markAsCancelledMutation.mutate({ id: invoiceId! }),
-        });
-      }
-    }
-
-    if (isSent) {
-      actions.push({
-        action: "markAsPaid",
-        label: "Mark as Paid",
-        icon: <CurrencyEuro className="h-4 w-4" />,
-        onClick: handleMarkAsPaid,
-      });
-      // Always show "Revert to Draft" for SENT/OVERDUE invoices
-      // Enabled if no payments, disabled if payments exist (to preserve payment data)
-      const amountPaid = Number(invoice.amountPaid || 0);
-      const hasPayments = amountPaid > 0;
-      if (!hasPayments) {
-        actions.push({
-          action: "revertToDraft",
-          label: "Revert to Draft",
-          icon: <RotateCcw className="h-4 w-4" />,
-          onClick: handleRevertToDraft,
-        });
-      } else {
-        actions.push({
-          action: "revertToDraft",
-          label: "Revert to Draft",
-          icon: <RotateCcw className="h-4 w-4" />,
-          disabled: true,
-          disabledReason: "Cannot revert to draft: invoice has received payments",
-          onClick: () => {},
-        });
-      }
-    }
-
-    if (isPaid) {
-      actions.push({
-        action: "markAsNotPaid",
-        label: "Mark as Not Paid",
-        icon: <CheckCircle2 className="h-4 w-4" />,
-        onClick: handleMarkAsNotPaid,
-      });
-    }
-
-    if (isCancelled && !actions.some((action) => action.action === "markAsNotCancelled")) {
-      actions.push({
-        action: "markAsNotCancelled",
-        label: "Mark as Not Cancelled",
-        icon: <RotateCcw className="h-4 w-4" />,
-        onClick: () => markAsNotCancelledMutation.mutate({ id: invoiceId! }),
-      });
-    }
-
-    return actions;
-  }
-
   function renderStatusButton(invoice: any) {
     if (!invoice) return null;
     
@@ -912,16 +828,75 @@ export function InvoiceUploadReviewDialog({
     return null;
   }
 
-  const statusActions = invoice ? getStatusActions(invoice) : [];
-  const { longPressHandlers } = useLongPress({
-    onLongPress: () => {
-      if (statusActions.length > 0) {
-        setStatusMenuOpen(true);
-      }
-    },
-    duration: 500,
-    hapticFeedback: true,
-  });
+  // Get available invoice actions for the three-dot menu
+  const availableInvoiceActions = invoice ? getInvoiceActions({ invoice, selectionMode: false }) : [];
+  
+  // Action config mapping (matching CenteredContextMenu)
+  const actionConfig: Record<InvoiceAction, { icon: React.ComponentType<{ className?: string }>; label: string; variant: "default" | "destructive" }> = {
+    view: { icon: Eye, label: "View", variant: "default" },
+    edit: { icon: Edit, label: "Edit", variant: "default" },
+    delete: { icon: Trash2, label: "Delete", variant: "destructive" },
+    duplicate: { icon: Copy, label: "Duplicate", variant: "default" },
+    select: { icon: CheckCircle2, label: "Select", variant: "default" },
+    archive: { icon: Archive, label: "Archive", variant: "default" },
+    restore: { icon: RotateCcw, label: "Restore", variant: "default" },
+    deletePermanently: { icon: Trash2, label: "Delete permanently", variant: "destructive" },
+    revertToDraft: { icon: RotateCcw, label: "Revert to draft", variant: "destructive" },
+    revertToSent: { icon: RotateCcw, label: "Mark as not paid", variant: "destructive" },
+    markAsSent: { icon: Send, label: "Mark as sent", variant: "default" },
+    markAsPaid: { icon: CurrencyEuro, label: "Mark as paid", variant: "default" },
+    markAsCancelled: { icon: XCircle, label: "Mark as cancelled", variant: "destructive" },
+    markAsNotCancelled: { icon: RotateCcw, label: "Mark as not cancelled", variant: "default" },
+    markAsInOrder: { icon: CheckCircle2, label: "Mark as In Order", variant: "default" },
+    void: { icon: XCircle, label: "Void", variant: "destructive" },
+  };
+  
+  // Handle invoice actions from three-dot menu
+  const handleInvoiceAction = (action: InvoiceAction) => {
+    if (!invoice) return;
+    
+    switch (action) {
+      case "edit":
+        // Already in edit dialog, do nothing
+        break;
+      case "duplicate":
+        duplicateInvoiceMutation.mutate({ id: invoice.id });
+        break;
+      case "select":
+        // Not applicable in dialog context
+        break;
+      case "archive":
+        archiveMutation.mutate({ id: invoice.id });
+        break;
+      case "delete":
+        handleDelete();
+        break;
+      case "markAsSent":
+        handleMarkAsSent();
+        break;
+      case "markAsPaid":
+        handleMarkAsPaid();
+        break;
+      case "revertToDraft":
+        setRevertTarget({ id: invoice.id, targetStatus: "draft", currentStatus: "open" });
+        setRevertDialogOpen(true);
+        break;
+      case "revertToSent":
+        setRevertTarget({ id: invoice.id, targetStatus: "open", currentStatus: "paid" });
+        setRevertDialogOpen(true);
+        break;
+      case "markAsCancelled":
+        markAsCancelledMutation.mutate({ id: invoice.id });
+        break;
+      case "markAsNotCancelled":
+        markAsNotCancelledMutation.mutate({ id: invoice.id });
+        break;
+      default:
+        console.warn("Unknown action:", action);
+    }
+  };
+  
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
 
   // Auto-open preview on desktop when dialog opens
   useEffect(() => {
@@ -1314,56 +1289,71 @@ export function InvoiceUploadReviewDialog({
               </h1>
             </div>
             
-            {/* Status badge on right (where X was) */}
+            {/* Status badge and three-dot menu on right */}
             {invoice && (
-              <div className="flex items-center shrink-0">
-                {statusActions.length === 0 ? (
-                  <div className="flex items-center gap-2">
-                    {renderStatusButton(invoice)}
-                  </div>
-                ) : (
-                  <DropdownMenu open={statusMenuOpen} onOpenChange={setStatusMenuOpen}>
-                    <div
-                      ref={statusButtonRef}
-                      className="inline-block"
-                      {...longPressHandlers}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        if (statusActions.length > 0) {
-                          setStatusMenuOpen(true);
-                        }
-                      }}
-                    >
-                      <DropdownMenuTrigger asChild>
-                        {renderStatusButton(invoice)}
-                      </DropdownMenuTrigger>
-                    </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Status badge - display only, no dropdown */}
+                <div className="flex items-center gap-2">
+                  {renderStatusButton(invoice)}
+                </div>
+                
+                {/* Three-dot menu for invoice actions */}
+                {availableInvoiceActions.length > 0 && (
+                  <DropdownMenu open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="icon"
+                        size="icon"
+                        className="size-9 [&_svg]:size-5 border border-transparent bg-transparent text-foreground hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8 dark:hover:bg-foreground/7 dark:active:bg-foreground/10 transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]"
+                        aria-label="More actions"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-64">
                       <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      {statusActions.map((actionItem) => (
-                        <DropdownMenuItem
-                          key={actionItem.action}
-                          onClick={() => !actionItem.disabled && actionItem.onClick()}
-                          disabled={actionItem.disabled}
-                          className={cn("flex items-center gap-2", actionItem.disabled && "opacity-50")}
-                        >
-                          {actionItem.icon}
-                          <div className="flex-1">
-                            <div>{actionItem.label}</div>
-                            {actionItem.disabled && actionItem.disabledReason && (
-                              <div className="text-xs text-muted-foreground">{actionItem.disabledReason}</div>
+                      {availableInvoiceActions.map((action) => {
+                        const config = actionConfig[action];
+                        if (!config) return null;
+                        const Icon = config.icon;
+                        const isDestructive = config.variant === "destructive";
+                        
+                        // Skip "edit" and "select" actions in dialog context
+                        if (action === "edit" || action === "select") return null;
+                        
+                        return (
+                          <DropdownMenuItem
+                            key={action}
+                            onClick={() => handleInvoiceAction(action)}
+                            className={cn(
+                              "flex items-center gap-2",
+                              isDestructive && "text-destructive focus:text-destructive"
                             )}
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span>{config.label}</span>
+                          </DropdownMenuItem>
+                        );
+                      })}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
               </div>
             )}
           </div>
+          
+          {/* Invoice Number Row - aligned below arrow */}
+          {invoice?.invoiceNumber && (
+            <div className="flex items-center gap-3 px-4 pt-2">
+              {/* Spacer to align with arrow button */}
+              <div className="size-9 shrink-0" />
+              {/* Invoice number */}
+              <p className="text-sm text-muted-foreground">
+                {invoice.invoiceNumber}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Fade-out separator */}

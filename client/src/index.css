@@ -506,9 +506,8 @@
   }
 
   .module-item.is-active {
-    color: var(--accent);
+    /* Removed color and text-shadow - only icons should be highlighted, not text */
     font-weight: 300;
-    text-shadow: 0 0 6px rgba(12, 245, 126, 0.25);
   }
 
   .module-item span {
@@ -516,14 +515,22 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-weight: 300;
+    /* Ensure text always uses foreground color, never primary/accent */
+    color: hsl(var(--foreground));
   }
 
   .module-item.is-active span {
     font-weight: 300;
+    /* Explicitly set to foreground color to prevent inheritance of accent color */
+    color: hsl(var(--foreground));
   }
 
   .module-item:not(.is-active) {
     color: var(--muted-foreground);
+  }
+
+  .module-item:not(.is-active) span {
+    color: hsl(var(--muted-foreground));
   }
 
   .scroller--left .module-item {
