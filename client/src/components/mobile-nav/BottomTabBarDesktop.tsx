@@ -193,6 +193,7 @@ export function BottomTabBarDesktop() {
 
   return (
     <div
+      data-desktop-nav="bottom-tab-bar"
       className={cn(
         'fixed bottom-0 left-0 right-0 z-[9999]',
         'bg-background',
@@ -205,7 +206,9 @@ export function BottomTabBarDesktop() {
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         height: '56px',
-        backgroundColor: 'hsl(var(--background))',
+        backgroundColor: 'hsl(var(--background)) !important',
+        backdropFilter: 'none !important',
+        WebkitBackdropFilter: 'none !important',
         ...(scrollerVisible && {
           boxShadow: '0 -2px 24px rgba(0, 0, 0, 0.3)',
         }),

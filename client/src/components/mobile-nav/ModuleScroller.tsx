@@ -186,11 +186,18 @@ export function ModuleScroller() {
     updatePosition();
 
     const contentColumn = document.querySelector('[data-layout="content-column"]') as HTMLElement;
-    if (contentColumn) {
-      const resizeObserver = new ResizeObserver(updatePosition);
-      resizeObserver.observe(contentColumn);
-      return () => resizeObserver.disconnect();
-    }
+    if (!contentColumn) return;
+
+    const resizeObserver = new ResizeObserver(updatePosition);
+    resizeObserver.observe(contentColumn);
+
+    // Also update on window resize
+    window.addEventListener('resize', updatePosition);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updatePosition);
+    };
   }, [scrollerVisible]);
 
   // Desktop: handle click on module items
@@ -379,24 +386,22 @@ export function ModuleScroller() {
             : scrollerSide === 'left'
               ? 'scroller--left'
               : 'scroller--center',
-          // Mobile: center vertically, position by side
-          'md:hidden',
-          'top-1/2 -translate-y-1/2',
+          // Mobile: center vertically, position by side (desktop positioning handled via style)
+          'top-1/2 -translate-y-1/2 md:top-auto',
           scrollerSide === 'right'
-            ? 'right-0'
+            ? 'right-0 md:right-auto'
             : scrollerSide === 'left'
-              ? 'left-0'
-              : 'left-1/2 -translate-x-1/2',
+              ? 'left-0 md:left-auto'
+              : 'left-1/2 -translate-x-1/2 md:left-auto',
         )}
         style={{
           // Desktop positioning: above tab bar, centered relative to content column
-          ...(typeof window !== 'undefined' && window.innerWidth >= 768 && desktopPosition ? {
-            left: `${desktopPosition.left}px`,
+          ...(typeof window !== 'undefined' && window.innerWidth >= 768 ? {
+            ...(desktopPosition ? {
+              left: `${desktopPosition.left}px`,
+              transform: 'translateX(-50%)',
+            } : {}),
             bottom: '76px', // Above 56px tab bar + 20px gap
-            transform: 'translateX(-50%)',
-            top: 'auto',
-          } : typeof window !== 'undefined' && window.innerWidth >= 768 ? {
-            bottom: '76px',
             top: 'auto',
           } : {}),
         }}
