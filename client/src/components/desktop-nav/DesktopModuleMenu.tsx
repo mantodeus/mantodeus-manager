@@ -6,10 +6,10 @@
  * Replaces the old left-anchored flyout.
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, forwardRef } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
-import { TAB_GROUPS, TIMING } from './constants';
+import { TAB_GROUPS } from './constants';
 import type { Module } from './types';
 
 /**
@@ -87,11 +87,22 @@ interface DesktopModuleMenuProps {
   onClose: () => void;
 }
 
-export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps) {
+export const DesktopModuleMenu = forwardRef<HTMLDivElement, DesktopModuleMenuProps>(function DesktopModuleMenu(
+  { activeTab, onClose },
+  forwardedRef
+) {
   const [location, setLocation] = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(0);
   const [isVisible, setIsVisible] = useState(false);
+  const setMenuRef = useCallback((node: HTMLDivElement | null) => {
+    menuRef.current = node;
+    if (typeof forwardedRef === 'function') {
+      forwardedRef(node);
+    } else if (forwardedRef) {
+      forwardedRef.current = node;
+    }
+  }, [forwardedRef]);
 
   const tabGroup = activeTab ? TAB_GROUPS[activeTab] : null;
   const modules = tabGroup?.modules ?? [];
@@ -164,7 +175,7 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
       
       if (tabElement && menuRef.current) {
         const tabRect = tabElement.getBoundingClientRect();
-        const menuWidth = menuRef.current.offsetWidth || 320;
+        const menuWidth = menuRef.current.getBoundingClientRect().width || 280;
         const tabCenterX = tabRect.left + tabRect.width / 2;
         
         // Center menu on tab, but keep within viewport
@@ -178,7 +189,7 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
 
         setMenuPosition({
           left,
-          bottom: window.innerHeight - tabRect.top + 12, // 12px gap above tab bar
+          bottom: window.innerHeight - tabRect.top + 8, // 8px gap above tab bar
         });
       }
     };
@@ -238,7 +249,7 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
 
       {/* Menu Panel - pure elevation, calm and restrained */}
       <div
-        ref={menuRef}
+        ref={setMenuRef}
         data-desktop-nav="module-menu"
         tabIndex={0}
         className={cn(
@@ -268,6 +279,13 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
           `,
         }}
         onKeyDown={handleKeyDown}
+        onMouseLeave={(event) => {
+          const relatedTarget = event.relatedTarget as HTMLElement | null;
+          if (relatedTarget?.closest('[data-desktop-nav="nav-tab"]')) {
+            return;
+          }
+          onClose();
+        }}
       >
 
         {/* Module List - increased vertical spacing for calm, floating feel */}
@@ -292,4 +310,4 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
       </div>
     </>
   );
-}
+});
