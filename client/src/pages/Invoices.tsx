@@ -1934,7 +1934,7 @@ export default function Invoices() {
       {filterSheet}
       
       {/* Sticky Header with Command-Style Search */}
-      <div className="sticky top-0 z-40 bg-[var(--surface-overlay)] backdrop-blur-[var(--blur-overlay)] border-b border-border/50 -mx-4 px-4 py-4">
+      <div className="invoices-header-sticky -mx-4 px-4 py-4">
         <div className="flex items-center justify-between gap-4">
           {/* Left: Title + Command Search */}
           <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -1942,7 +1942,7 @@ export default function Invoices() {
             {/* Command-style search input */}
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border/50 bg-background/50 hover:bg-background/80 text-sm text-muted-foreground font-light transition-colors flex-1 max-w-md"
+              className="command-search flex items-center gap-2 px-3 flex-1 max-w-md"
             >
               <Search className="w-4 h-4 shrink-0 opacity-50" />
               <span className="flex-1 text-left truncate">
@@ -2059,8 +2059,8 @@ export default function Invoices() {
       {needsReviewInvoices.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extralight uppercase tracking-wide text-muted-foreground">Needs Review</h2>
-            <span className="text-sm font-light text-muted-foreground">{needsReviewInvoices.length}</span>
+            <h2 className="section-label text-sm">Needs Review</h2>
+            <span className="section-count text-sm">{needsReviewInvoices.length}</span>
           </div>
           <div className="space-y-2">
             {needsReviewInvoices.map((invoice) => {
@@ -2093,7 +2093,7 @@ export default function Invoices() {
                   onClick={handleNeedsReviewClick}
                   data-item={invoice.id}
                   className={cn(
-                    "card p-4 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 border-2 border-orange-500/20 bg-orange-500/5",
+                    "invoice-card review p-4",
                     !isMultiSelectMode && "cursor-pointer",
                     selectedIds.has(invoice.id) && "item-selected"
                   )}
@@ -2204,8 +2204,8 @@ export default function Invoices() {
         <>
           {/* All Invoices Section Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extralight uppercase tracking-wide text-muted-foreground">All Invoices</h2>
-            <span className="text-sm font-light text-muted-foreground">{filteredInvoices.length}</span>
+            <h2 className="section-label text-sm">All Invoices</h2>
+            <span className="section-count text-sm">{filteredInvoices.length}</span>
           </div>
           
           {/* Vertical List of Invoice Cards */}
@@ -2255,7 +2255,7 @@ export default function Invoices() {
                 onClick={handleCardClick}
                 data-item={invoice.id}
                 className={cn(
-                  "card p-4 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200",
+                  "invoice-card p-4",
                   !isMultiSelectMode && "cursor-pointer",
                   selectedIds.has(invoice.id) && "item-selected"
                 )}

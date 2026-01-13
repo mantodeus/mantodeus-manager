@@ -1233,6 +1233,144 @@
   }
 
   /* ============================================
+   * INVOICES PAGE - OS-GRADE STYLING UTILITIES
+   * Minimal CSS helpers for calm, desktop reference alignment
+   * ============================================ */
+
+  /* Sticky Header Surface (Invoices only) */
+  .invoices-header-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--surface-overlay);
+    backdrop-filter: blur(var(--blur-overlay));
+    -webkit-backdrop-filter: blur(var(--blur-overlay));
+    border-bottom: 1px solid var(--border);
+    /* Keep height stable; no animations */
+  }
+
+  /* Command-Style Search Input */
+  .command-search {
+    height: 40px;
+    border-radius: calc(var(--radius) - 2px);
+    border: 1px solid var(--border);
+    background: var(--background);
+    font-weight: 300;
+    color: var(--muted-foreground);
+    transition: background-color var(--dur-quick) ease-out, border-color var(--dur-quick) ease-out;
+  }
+
+  .command-search:hover {
+    background: var(--surface-2);
+    border-color: var(--border);
+  }
+
+  .command-search kbd {
+    font-weight: 400;
+    opacity: 0.6;
+  }
+
+  /* Section Headers */
+  .section-label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 200;
+    color: var(--muted-foreground);
+  }
+
+  .section-count {
+    font-weight: 300;
+    color: var(--muted-foreground);
+    text-align: right;
+  }
+
+  /* Invoice Card Visuals */
+  .invoice-card {
+    border-radius: calc(var(--radius) - 2px);
+    border: 1px solid var(--border);
+    background: var(--card);
+    transition: transform var(--dur-quick) ease-out, box-shadow var(--dur-quick) ease-out;
+  }
+
+  .invoice-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px oklch(0 0 0 / 0.06);
+  }
+
+  /* Needs Review Invoice Cards - warm tint + stronger border */
+  .invoice-card.review {
+    border-width: 2px;
+    border-color: oklch(0.65 0.15 60 / 0.3);
+    background: oklch(0.65 0.15 60 / 0.05);
+  }
+
+  [data-theme="green-mantis"] .invoice-card.review {
+    border-color: oklch(0.70 0.15 60 / 0.3);
+    background: oklch(0.70 0.15 60 / 0.05);
+  }
+
+  /* Status Chips - static, no animations */
+  .invoice-status-chip {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 400;
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid;
+  }
+
+  /* Status chip variants */
+  .invoice-status-chip.draft {
+    color: var(--muted-foreground);
+    border-color: var(--border);
+    background: var(--muted);
+  }
+
+  .invoice-status-chip.sent {
+    color: oklch(0.50 0.15 240);
+    border-color: oklch(0.50 0.15 240 / 0.3);
+    background: oklch(0.50 0.15 240 / 0.1);
+  }
+
+  [data-theme="green-mantis"] .invoice-status-chip.sent {
+    color: oklch(0.60 0.15 240);
+    border-color: oklch(0.60 0.15 240 / 0.3);
+    background: oklch(0.60 0.15 240 / 0.1);
+  }
+
+  .invoice-status-chip.paid {
+    color: oklch(0.50 0.15 155);
+    border-color: oklch(0.50 0.15 155 / 0.3);
+    background: oklch(0.50 0.15 155 / 0.1);
+  }
+
+  [data-theme="green-mantis"] .invoice-status-chip.paid {
+    color: oklch(0.70 0.15 155);
+    border-color: oklch(0.70 0.15 155 / 0.3);
+    background: oklch(0.70 0.15 155 / 0.1);
+  }
+
+  .invoice-status-chip.needs-review {
+    color: oklch(0.60 0.15 60);
+    border-color: oklch(0.60 0.15 60 / 0.3);
+    background: oklch(0.60 0.15 60 / 0.1);
+  }
+
+  [data-theme="green-mantis"] .invoice-status-chip.needs-review {
+    color: oklch(0.70 0.15 60);
+    border-color: oklch(0.70 0.15 60 / 0.3);
+    background: oklch(0.70 0.15 60 / 0.1);
+  }
+
+  /* Reduced motion support for invoice cards */
+  @media (prefers-reduced-motion: reduce) {
+    .invoice-card:hover {
+      transform: none;
+    }
+  }
+
+  /* ============================================
    * LIGHT MODE SHADOW OVERRIDES
    * Remove grey smudge, use subtle premium shadows
    * ============================================ */
