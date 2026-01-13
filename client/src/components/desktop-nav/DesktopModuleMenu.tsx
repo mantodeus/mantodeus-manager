@@ -37,7 +37,7 @@ function ModuleItem({
       data-desktop-nav="module-menu-item"
       data-module-index={index}
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-3",
+        "w-full flex items-center gap-3 px-4 py-3.5",
         "rounded-lg",
         // Transitions: opacity and background-color only (no scale/transform)
         "transition-[opacity,background-color] duration-200 ease-out",
@@ -224,12 +224,12 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
     <>
       {/* Backdrop - darkened overlay with strong blur (blur applies to page behind) */}
       <div
-        className="fixed inset-0 z-[48] bg-black/80 backdrop-blur-xl"
+        className="fixed inset-0 z-[48] bg-black/90 backdrop-blur-xl"
         onClick={onClose}
         aria-hidden="true"
         style={{
           // Ensure strong darkness - underlying content must NOT be readable
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backgroundColor: 'rgba(0, 0, 0, 0.90)',
         }}
       />
 
@@ -264,7 +264,7 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
       >
 
         {/* Module List - increased vertical spacing for calm, floating feel */}
-        <div className="py-4 px-3 space-y-2">
+        <div className="py-5 px-3 space-y-3">
           {modules.map((module, index) => {
             const isActive = index === highlightedIndex;
             const isCurrentPage = location === module.path || location.startsWith(module.path + '/');
