@@ -221,6 +221,7 @@ export default function InvoiceDetail() {
   }
 
   const title = invoice?.invoiceName || invoice?.invoiceNumber || "Invoice";
+  const headerSubtitle = invoice?.invoiceNumber || invoice?.invoiceName || "";
   const invoiceState = invoice ? getInvoiceState(invoice) : null;
   const isDraft = invoiceState === 'DRAFT';
 
@@ -439,17 +440,30 @@ export default function InvoiceDetail() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-2">
-              <h1 className="text-4xl md:text-3xl font-light flex items-center gap-2">
-                <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
-                {title}
-              </h1>
+              {isMobile ? (
+                <>
+                  <DocumentCurrencyEuro className="h-6 w-6 text-primary mt-1" />
+                  <div className="flex min-w-0 flex-col">
+                    <h1 className="text-2xl md:text-3xl font-light">Edit</h1>
+                    {headerSubtitle && (
+                      <p className="text-muted-foreground text-sm mt-2 truncate">
+                        {headerSubtitle}
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <h1 className="text-4xl md:text-3xl font-light flex items-center gap-2">
+                  <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
+                  {title}
+                </h1>
+              )}
             </div>
           </div>
           
-          {/* Icon Cluster - Status badge where Create would be, X button where settings would be */}
+          {/* Icon Cluster - X button where settings would be */}
           <div className="flex items-center shrink-0 gap-3 sm:gap-2">
-            {/* Status badge */}
-            {invoice && invoice.source === "created" && (
+            {!isMobile && invoice && invoice.source === "created" && (
               <InvoiceStatusActionsDropdown
                 invoice={{
                   id: invoice.id,
@@ -488,6 +502,40 @@ export default function InvoiceDetail() {
             </Link>
           </div>
         </div>
+
+        {/* ActionRow - Status badge */}
+        {isMobile && invoice && invoice.source === "created" && (
+          <div
+            className="flex items-center justify-end"
+            style={{ marginTop: 'var(--space-header-actions, 16px)' }}
+          >
+            <InvoiceStatusActionsDropdown
+              invoice={{
+                id: invoice.id,
+                invoiceNumber: invoice.invoiceNumber || "",
+                needsReview: invoice.needsReview || false,
+                sentAt: invoice.sentAt,
+                paidAt: invoice.paidAt,
+                amountPaid: invoice.amountPaid,
+                total: invoice.total,
+                dueDate: invoice.dueDate,
+                cancelledAt: invoice.cancelledAt,
+                source: invoice.source,
+                type: invoice.type,
+              }}
+              onActionComplete={async () => {
+                await utils.invoices.get.invalidate({ id: invoiceId! });
+                await utils.invoices.list.invalidate();
+              }}
+              onSend={() => {
+                setShareDialogOpen(true);
+              }}
+              onAddPayment={() => {
+                toast.info("Add Payment - use the Payments section in the form");
+              }}
+            />
+          </div>
+        )}
       </div>
       
       {/* Fade-out separator */}

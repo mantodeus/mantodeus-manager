@@ -534,6 +534,7 @@ export function InvoiceUploadReviewDialog({
   const isPaid = invoiceState === 'PAID';
   const isCancelled = invoice?.cancelledAt !== null && invoice?.cancelledAt !== undefined;
   const isReadOnly = isSent || isPaid || isCancelled; // Disable when sent/paid or cancelled
+  const headerSubtitle = invoice?.invoiceNumber || invoice?.invoiceName || "";
 
   const handleSend = () => {
     if (!invoice) return;
@@ -1189,7 +1190,7 @@ export function InvoiceUploadReviewDialog({
         />
       )}
 
-      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+      <Dialog open={open} onOpenChange={handleDialogOpenChange} modal={!isMobile}>
         <DialogContent 
           className={cn(
             "flex flex-col p-0",
@@ -1255,66 +1256,26 @@ export function InvoiceUploadReviewDialog({
           <div className="flex items-start justify-between gap-4 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
             <div className="flex-1 min-w-0">
               <div className="flex items-start gap-2">
-                <h1 className="text-2xl md:text-3xl font-light flex items-center gap-2">
-                  {isReview ? (
-                    <FileText className="h-6 w-6 text-primary" />
-                  ) : (
-                    <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
+                {isReview ? (
+                  <FileText className="h-6 w-6 text-primary mt-1" />
+                ) : (
+                  <DocumentCurrencyEuro className="h-6 w-6 text-primary mt-1" />
+                )}
+                <div className="flex min-w-0 flex-col">
+                  <h1 className="text-2xl md:text-3xl font-light">
+                    {isReview ? "Review" : "Edit"}
+                  </h1>
+                  {headerSubtitle && (
+                    <p className="text-muted-foreground text-sm mt-2 truncate">
+                      {headerSubtitle}
+                    </p>
                   )}
-                  {isReview ? "Review Invoice" : "Edit Invoice"}
-                </h1>
+                </div>
               </div>
             </div>
             
-            {/* Icon Cluster - X button where settings would be, Status badge where Create would be */}
+            {/* Icon Cluster - X button where settings would be */}
             <div className="flex items-center shrink-0 gap-3 sm:gap-2">
-              {/* Status badge */}
-              {invoice && (
-                statusActions.length === 0 ? (
-                  <div className="flex items-center gap-2">
-                    {renderStatusButton(invoice)}
-                  </div>
-                ) : (
-                  <DropdownMenu open={statusMenuOpen} onOpenChange={setStatusMenuOpen}>
-                    <div
-                      ref={statusButtonRef}
-                      className="inline-block"
-                      {...longPressHandlers}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        if (statusActions.length > 0) {
-                          setStatusMenuOpen(true);
-                        }
-                      }}
-                    >
-                      <DropdownMenuTrigger asChild>
-                        {renderStatusButton(invoice)}
-                      </DropdownMenuTrigger>
-                    </div>
-                    <DropdownMenuContent align="end" className="w-64">
-                      <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {statusActions.map((actionItem) => (
-                        <DropdownMenuItem
-                          key={actionItem.action}
-                          onClick={() => !actionItem.disabled && actionItem.onClick()}
-                          disabled={actionItem.disabled}
-                          className={cn("flex items-center gap-2", actionItem.disabled && "opacity-50")}
-                        >
-                          {actionItem.icon}
-                          <div className="flex-1">
-                            <div>{actionItem.label}</div>
-                            {actionItem.disabled && actionItem.disabledReason && (
-                              <div className="text-xs text-muted-foreground">{actionItem.disabledReason}</div>
-                            )}
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )
-              )}
               <Button
                 variant="icon"
                 size="icon"
@@ -1326,6 +1287,59 @@ export function InvoiceUploadReviewDialog({
               </Button>
             </div>
           </div>
+
+          {/* ActionRow - Status badge */}
+          {invoice && (
+            <div
+              className="flex items-center justify-end px-4"
+              style={{ marginTop: 'var(--space-header-actions, 16px)' }}
+            >
+              {statusActions.length === 0 ? (
+                <div className="flex items-center gap-2">
+                  {renderStatusButton(invoice)}
+                </div>
+              ) : (
+                <DropdownMenu open={statusMenuOpen} onOpenChange={setStatusMenuOpen}>
+                  <div
+                    ref={statusButtonRef}
+                    className="inline-block"
+                    {...longPressHandlers}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (statusActions.length > 0) {
+                        setStatusMenuOpen(true);
+                      }
+                    }}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      {renderStatusButton(invoice)}
+                    </DropdownMenuTrigger>
+                  </div>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {statusActions.map((actionItem) => (
+                      <DropdownMenuItem
+                        key={actionItem.action}
+                        onClick={() => !actionItem.disabled && actionItem.onClick()}
+                        disabled={actionItem.disabled}
+                        className={cn("flex items-center gap-2", actionItem.disabled && "opacity-50")}
+                      >
+                        {actionItem.icon}
+                        <div className="flex-1">
+                          <div>{actionItem.label}</div>
+                          {actionItem.disabled && actionItem.disabledReason && (
+                            <div className="text-xs text-muted-foreground">{actionItem.disabledReason}</div>
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Fade-out separator */}

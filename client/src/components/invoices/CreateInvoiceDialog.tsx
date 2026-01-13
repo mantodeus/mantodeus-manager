@@ -313,7 +313,7 @@ export function CreateInvoiceDialog({
           onSuccess={onSuccess}
         />
       ) : (
-        <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+        <Dialog open={open} onOpenChange={handleDialogOpenChange} modal={!isMobile}>
       <DialogContent 
         className={cn(
           "flex flex-col p-0",
@@ -354,10 +354,11 @@ export function CreateInvoiceDialog({
           <div className="flex items-start justify-between gap-4 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
             <div className="flex-1 min-w-0">
               <div className="flex items-start gap-2">
-                <h1 className="text-2xl md:text-3xl font-light flex items-center gap-2">
-                  <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
-                  Create Invoice
-                </h1>
+                <DocumentCurrencyEuro className="h-6 w-6 text-primary mt-1" />
+                <div className="flex min-w-0 flex-col">
+                  <h1 className="text-2xl md:text-3xl font-light">Create</h1>
+                  <p className="text-muted-foreground text-sm mt-2">New invoice</p>
+                </div>
               </div>
             </div>
             
