@@ -192,7 +192,7 @@ export function PageHeader({
       {subtitle && (
         <p 
           className="text-muted-foreground text-sm w-full"
-          style={{ marginTop: 'var(--space-header-subtitle, 12px)' }}
+          style={{ marginTop: 'var(--space-header-subtitle, 4px)' }}
         >
           {subtitle}
         </p>
