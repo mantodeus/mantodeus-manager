@@ -175,6 +175,15 @@ export function ModuleScroller() {
   const [desktopPosition, setDesktopPosition] = useState<{ left: number; bottom: number } | null>(null);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+  const CLOSE_DELAY = 150; // ms
+
+  const closeScroller = useCallback(() => {
+    setHighlightedIndex(null);
+    setGestureState('idle');
+    if (gestureTab !== null) {
+      setGestureTab(null);
+    }
+  }, [gestureTab, setGestureTab, setGestureState, setHighlightedIndex]);
 
   // Desktop: Update position above the active tab button with viewport clamping
   useEffect(() => {
@@ -240,58 +249,47 @@ export function ModuleScroller() {
     };
   }, [scrollerVisible, currentTab, isDesktop]);
 
-  // Desktop: Handle mouse enter/leave on scroller to keep it open
-  useEffect(() => {
-    if (!isDesktop || !scrollerRef.current) return;
+  const handleDesktopScrollerMouseEnter = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
 
-    const scroller = scrollerRef.current;
-    const CLOSE_DELAY = 150; // ms
+  const handleDesktopScrollerMouseLeave = useCallback(() => {
+    if (!scrollerVisible) return;
 
-    const handleMouseEnter = () => {
-      // Cancel any pending close timeout
-      if (closeTimeoutRef.current) {
-        clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = setTimeout(() => {
+      const tabBarHovered = document
+        .querySelector('[data-desktop-nav="bottom-tab-bar"]')
+        ?.matches(':hover');
+      const scrollerHovered = document
+        .querySelector('[data-desktop-nav="module-scroller"]')
+        ?.matches(':hover');
+      if (tabBarHovered || scrollerHovered) {
         closeTimeoutRef.current = null;
+        return;
       }
-    };
+      closeScroller();
+      closeTimeoutRef.current = null;
+    }, CLOSE_DELAY);
+  }, [closeScroller, scrollerVisible]);
 
-    const handleMouseLeave = () => {
-      // Start close timer when leaving scroller
-      if (scrollerVisible) {
-        closeTimeoutRef.current = setTimeout(() => {
-          setHighlightedIndex(null);
-          setGestureState('idle');
-          if (gestureTab !== null) {
-            setGestureTab(null);
-          }
-          closeTimeoutRef.current = null;
-        }, CLOSE_DELAY);
-      }
-    };
-
-    scroller.addEventListener('mouseenter', handleMouseEnter);
-    scroller.addEventListener('mouseleave', handleMouseLeave);
-
+  useEffect(() => {
     return () => {
-      scroller.removeEventListener('mouseenter', handleMouseEnter);
-      scroller.removeEventListener('mouseleave', handleMouseLeave);
       if (closeTimeoutRef.current) {
         clearTimeout(closeTimeoutRef.current);
       }
     };
-  }, [isDesktop, scrollerVisible, setHighlightedIndex, setGestureState, gestureTab, setGestureTab]);
+  }, []);
 
   // Desktop: handle click on module items
   const handleModuleClick = useCallback((module: Module) => {
     setLastUsedModule(currentTab, module.path);
     setLocation(module.path);
     // Close scroller
-    setHighlightedIndex(null);
-    setGestureState('idle');
-    if (gestureTab !== null) {
-      setGestureTab(null);
-    }
-  }, [currentTab, setLastUsedModule, setLocation, setHighlightedIndex, setGestureState, setGestureTab, gestureTab]);
+    closeScroller();
+  }, [closeScroller, currentTab, setLastUsedModule, setLocation]);
 
   // Desktop: close on click outside or ESC
   useEffect(() => {
@@ -306,21 +304,13 @@ export function ModuleScroller() {
           return;
         }
         // Close scroller
-        setHighlightedIndex(null);
-        setGestureState('idle');
-        if (gestureTab !== null) {
-          setGestureTab(null);
-        }
+        closeScroller();
       }
     };
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setHighlightedIndex(null);
-        setGestureState('idle');
-        if (gestureTab !== null) {
-          setGestureTab(null);
-        }
+        closeScroller();
       }
     };
 
@@ -330,7 +320,7 @@ export function ModuleScroller() {
       document.removeEventListener('click', handleClickOutside);
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [scrollerVisible, setHighlightedIndex, setGestureState, gestureTab, setGestureTab]);
+  }, [closeScroller, scrollerVisible]);
 
   useEffect(() => {
     if (
@@ -451,6 +441,7 @@ export function ModuleScroller() {
 
       <div
         ref={scrollerRef}
+        data-desktop-nav="module-scroller"
         className={cn(
           'fixed z-[1000]',
           'w-64', // Fixed width
@@ -484,6 +475,8 @@ export function ModuleScroller() {
         }}
         aria-label={`Module selector for ${activeTab}`}
         role="menu"
+        onMouseEnter={isDesktop ? handleDesktopScrollerMouseEnter : undefined}
+        onMouseLeave={isDesktop ? handleDesktopScrollerMouseLeave : undefined}
       >
         {/* Â§ 10.2: Prohibition - Tab labels must never appear inside scroller */}
         <div className="py-4" data-module-list ref={listRef}>
@@ -522,8 +515,6 @@ export function ModuleScroller() {
     </>
   );
 }
-
-
 
 
 
