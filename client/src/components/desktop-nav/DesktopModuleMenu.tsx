@@ -228,8 +228,9 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
   return (
     <>
       {/* Backdrop - darkened overlay with strong blur (blur applies to page behind) */}
+      {/* Stops 56px from bottom to leave tab bar area uncovered */}
       <div
-        className="fixed inset-0 z-[48] bg-black/90 backdrop-blur-xl"
+        className="fixed inset-x-0 top-0 bottom-14 z-[48] bg-black/90 backdrop-blur-xl"
         onClick={onClose}
         aria-hidden="true"
         style={{
