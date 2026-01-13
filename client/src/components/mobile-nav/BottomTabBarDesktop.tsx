@@ -71,6 +71,12 @@ export function BottomTabBarDesktop() {
     };
   }, []);
 
+  const closeScroller = useCallback(() => {
+    setHighlightedIndex(null);
+    setGestureState('idle');
+    setGestureTab(null);
+  }, [setHighlightedIndex, setGestureState, setGestureTab]);
+
   const handleTabHover = useCallback((tabId: TabId) => {
     // Cancel any pending close timeout
     if (closeTimeoutRef.current) {
@@ -120,13 +126,21 @@ export function BottomTabBarDesktop() {
     // Start close timer if scroller is visible
     if (scrollerVisible) {
       closeTimeoutRef.current = setTimeout(() => {
-        setHighlightedIndex(null);
-        setGestureState('idle');
-        setGestureTab(null);
+        const scrollerHovered = document
+          .querySelector('[data-desktop-nav="module-scroller"]')
+          ?.matches(':hover');
+        const tabBarHovered = document
+          .querySelector('[data-desktop-nav="bottom-tab-bar"]')
+          ?.matches(':hover');
+        if (scrollerHovered || tabBarHovered) {
+          closeTimeoutRef.current = null;
+          return;
+        }
+        closeScroller();
         closeTimeoutRef.current = null;
       }, CLOSE_DELAY);
     }
-  }, [scrollerVisible, setHighlightedIndex, setGestureState, setGestureTab]);
+  }, [scrollerVisible, closeScroller]);
 
   const handleTabClick = (tabId: TabId) => {
     // Clear any pending timeouts
@@ -147,9 +161,7 @@ export function BottomTabBarDesktop() {
     
     // Close scroller if open
     if (scrollerVisible) {
-      setGestureState('idle');
-      setGestureTab(null);
-      setHighlightedIndex(null);
+      closeScroller();
     }
     
     // Navigate to last used module for this tab, or first module if none exists
@@ -219,7 +231,6 @@ export function BottomTabBarDesktop() {
       data-desktop-nav="bottom-tab-bar"
       className={cn(
         'fixed bottom-0 left-0 right-0 z-[9999]',
-        'bg-background',
         'border-t border-border',
         'hidden md:flex', // Desktop only
         'select-none',
@@ -229,9 +240,9 @@ export function BottomTabBarDesktop() {
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         height: '56px',
-        backgroundColor: 'hsl(var(--background)) !important',
-        backdropFilter: 'none !important',
-        WebkitBackdropFilter: 'none !important',
+        backgroundColor: 'rgba(0, 0, 0, 0.92)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         ...(scrollerVisible && {
           boxShadow: '0 -2px 24px rgba(0, 0, 0, 0.3)',
         }),
