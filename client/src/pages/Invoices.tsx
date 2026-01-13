@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, X, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
+import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, Settings, X, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "@/hooks/useTheme";
@@ -1938,43 +1938,159 @@ export default function Invoices() {
       {/* Filter sheet - controlled by PageHeader's onFilter handler */}
       {filterSheet}
       
-      <PageHeader
-        title="Invoices"
-        subtitle="Create, edit, and manage invoices"
-        onSearch={() => setIsSearchOpen(true)}
-        onFilter={() => setIsFilterOpen(true)}
-        onSettings={() => navigate("/settings")}
-        primaryActions={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => setBulkUploadOpen(true)}
-              disabled={bulkUploadMutation.isPending}
-              className="h-10 whitespace-nowrap"
-              data-guide-id="invoices.upload"
-              data-guide-type="button"
-              data-guide-label="Upload Invoice PDFs"
-            >
-              {bulkUploadMutation.isPending ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Upload className="w-4 h-4 mr-2" />
-              )}
-              Upload
-            </Button>
-            <Button 
-              onClick={() => setCreateDialogOpen(true)}
-              className="h-10 whitespace-nowrap"
-              data-guide-id="invoices.create"
-              data-guide-type="button"
-              data-guide-label="Create New Invoice"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Create
-            </Button>
-          </>
-        }
-      />
+      {/* Desktop: Glass control surface header */}
+      {!isMobile ? (() => {
+        // Calculate contextual subtitle
+        const activeInvoices = filteredInvoices.filter(inv => inv._status === 'active');
+        const invoiceCount = activeInvoices.length;
+        
+        // Calculate outstanding amount (sent but not paid)
+        const outstandingAmount = activeInvoices.reduce((sum, inv) => {
+          if (inv.sentAt && !inv.paidAt && !inv.cancelledAt) {
+            const total = parseFloat(inv.total?.toString() || '0');
+            const paid = parseFloat(inv.amountPaid?.toString() || '0');
+            return sum + (total - paid);
+          }
+          return sum;
+        }, 0);
+        
+        // Get current quarter label
+        const currentQuarter = `Q${selectedQuarter.quarter} ${selectedQuarter.year}`;
+        
+        const subtitleParts = [
+          `${invoiceCount} ${invoiceCount === 1 ? 'invoice' : 'invoices'}`,
+          outstandingAmount > 0 ? `${formatCurrency(outstandingAmount)} outstanding` : null,
+          currentQuarter
+        ].filter(Boolean);
+        
+        const contextualSubtitle = subtitleParts.join(' · ');
+        
+        return (
+          <div 
+            className={cn(
+              "bg-card border border-border/70 rounded-2xl shadow-sm",
+              "transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]"
+            )}
+            style={{
+              padding: 'var(--space-card-padding, 16px)',
+              marginBottom: '24px',
+            }}
+          >
+            <div className="flex items-center justify-between gap-4">
+              {/* Left block: Title + Subtitle */}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-light mb-1">Invoices</h1>
+                <p className="text-sm text-muted-foreground/70 leading-tight">
+                  {contextualSubtitle}
+                </p>
+              </div>
+              
+              {/* Right block: Icon buttons + Primary actions */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Icon buttons cluster */}
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="icon"
+                    size="icon"
+                    aria-label="Search"
+                    onClick={() => setIsSearchOpen(true)}
+                    className="size-9 [&_svg]:size-4 hover:bg-muted/50"
+                  >
+                    <Search />
+                  </Button>
+                  <Button
+                    variant="icon"
+                    size="icon"
+                    aria-label="Filter"
+                    onClick={() => setIsFilterOpen(true)}
+                    className="size-9 [&_svg]:size-4 hover:bg-muted/50"
+                  >
+                    <SlidersHorizontal />
+                  </Button>
+                  <Button
+                    variant="icon"
+                    size="icon"
+                    aria-label="Settings"
+                    onClick={() => navigate("/settings")}
+                    className="size-9 [&_svg]:size-4 hover:bg-muted/50"
+                  >
+                    <Settings />
+                  </Button>
+                </div>
+                
+                {/* Primary actions */}
+                <div className="flex items-center gap-2 ml-1">
+                  <Button
+                    variant="outline"
+                    onClick={() => setBulkUploadOpen(true)}
+                    disabled={bulkUploadMutation.isPending}
+                    className="h-9 whitespace-nowrap text-sm"
+                    data-guide-id="invoices.upload"
+                    data-guide-type="button"
+                    data-guide-label="Upload Invoice PDFs"
+                  >
+                    {bulkUploadMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-1.5" />
+                    )}
+                    Upload
+                  </Button>
+                  <Button 
+                    onClick={() => setCreateDialogOpen(true)}
+                    className="h-9 whitespace-nowrap text-sm"
+                    data-guide-id="invoices.create"
+                    data-guide-type="button"
+                    data-guide-label="Create New Invoice"
+                  >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Create
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })() : (
+        // Mobile: Keep existing PageHeader
+        <PageHeader
+          title="Invoices"
+          subtitle="Create, edit, and manage invoices"
+          onSearch={() => setIsSearchOpen(true)}
+          onFilter={() => setIsFilterOpen(true)}
+          onSettings={() => navigate("/settings")}
+          primaryActions={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setBulkUploadOpen(true)}
+                disabled={bulkUploadMutation.isPending}
+                className="h-10 whitespace-nowrap"
+                data-guide-id="invoices.upload"
+                data-guide-type="button"
+                data-guide-label="Upload Invoice PDFs"
+              >
+                {bulkUploadMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4 mr-2" />
+                )}
+                Upload
+              </Button>
+              <Button 
+                onClick={() => setCreateDialogOpen(true)}
+                className="h-10 whitespace-nowrap"
+                data-guide-id="invoices.create"
+                data-guide-type="button"
+                data-guide-label="Create New Invoice"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Create
+              </Button>
+            </>
+          }
+        />
+      )}
 
       {/* Total Cards */}
       <div className="space-y-3">
