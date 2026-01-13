@@ -29,7 +29,7 @@ import type { TabGroup, TabId } from './types';
 
 /**
  * Tab definitions with icons
- * Desktop: Office, Capture, Record, Action, Tools, Settings
+ * Desktop: Office, Tools, Capture, Record, Settings
  */
 export const TABS: { 
   id: TabId; 
@@ -39,10 +39,9 @@ export const TABS: {
   path?: string; // for direct navigation
 }[] = [
   { id: 'office', icon: PencilSquareIcon, label: 'Office', type: 'flyout' },
+  { id: 'tools', icon: WrenchScrewdriver, label: 'Tools', type: 'flyout' },
   { id: 'capto', icon: Camera, label: 'Capture', type: 'direct', path: '/action/capto' },
   { id: 'voco', icon: Microphone, label: 'Record', type: 'direct', path: '/action/voco' },
-  { id: 'action', icon: BugAnt, label: 'Action', type: 'flyout' },
-  { id: 'tools', icon: WrenchScrewdriver, label: 'Tools', type: 'flyout' },
   { id: 'settings', icon: SettingsIcon, label: 'Settings', type: 'direct', path: '/settings' },
 ];
 

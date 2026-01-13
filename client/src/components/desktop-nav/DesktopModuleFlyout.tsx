@@ -197,7 +197,6 @@ export function DesktopModuleFlyout() {
       className={cn(
         "fixed z-[49]",
         "flex flex-col",
-        "max-h-[60vh]", // Limit height when bottom-anchored
         // Glass effect
         "bg-background/90 backdrop-blur-2xl",
         "border border-border/50",
@@ -224,7 +223,7 @@ export function DesktopModuleFlyout() {
       </div>
 
       {/* Module List */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden py-2 pl-2 pr-3 scrollbar-hide">
+      <div className="overflow-x-hidden py-2 pl-2 pr-3 space-y-1">
         {modules.map((module, index) => {
           const isActive = index === highlightedIndex;
           const isCurrentPage = location === module.path || location.startsWith(module.path + '/');
