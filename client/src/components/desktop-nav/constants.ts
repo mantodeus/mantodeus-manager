@@ -29,7 +29,7 @@ import type { TabGroup, TabId } from './types';
 
 /**
  * Tab definitions with icons
- * Desktop: Office, Action, Tools (matching mobile mental model)
+ * Desktop: Office, Capture, Record, Action, Tools, Settings
  */
 export const TABS: { 
   id: TabId; 
@@ -39,8 +39,11 @@ export const TABS: {
   path?: string; // for direct navigation
 }[] = [
   { id: 'office', icon: PencilSquareIcon, label: 'Office', type: 'flyout' },
+  { id: 'capto', icon: Camera, label: 'Capture', type: 'direct', path: '/action/capto' },
+  { id: 'voco', icon: Microphone, label: 'Record', type: 'direct', path: '/action/voco' },
   { id: 'action', icon: BugAnt, label: 'Action', type: 'flyout' },
   { id: 'tools', icon: WrenchScrewdriver, label: 'Tools', type: 'flyout' },
+  { id: 'settings', icon: SettingsIcon, label: 'Settings', type: 'direct', path: '/settings' },
 ];
 
 /**
@@ -64,10 +67,7 @@ export const TAB_GROUPS: Record<TabId, TabGroup> = {
     id: 'action',
     label: 'Action',
     icon: BugAnt,
-    modules: [
-      { id: 'capto', label: 'Capture', path: '/action/capto', icon: Camera },
-      { id: 'voco', label: 'Record', path: '/action/voco', icon: Microphone },
-    ],
+    modules: [],
   },
   tools: {
     id: 'tools',
@@ -78,7 +78,6 @@ export const TAB_GROUPS: Record<TabId, TabGroup> = {
       { id: 'contacts', label: 'Contacts', path: '/contacts', icon: Users, shortcut: '8' },
       { id: 'gallery', label: 'Gallery', path: '/gallery', icon: Image, shortcut: '9' },
       { id: 'map', label: 'Maps', path: '/maps', icon: MapPin, shortcut: '0' },
-      { id: 'settings', label: 'Settings', path: '/settings', icon: SettingsIcon },
       { id: 'weather', label: 'Weather', path: '/weather', icon: CloudSun },
     ],
   },
@@ -151,5 +150,5 @@ export const TIMING = {
  */
 export const LAYOUT = {
   RAIL_WIDTH: 60,
-  FLYOUT_WIDTH: 240,
+  FLYOUT_WIDTH: 280,
 } as const;

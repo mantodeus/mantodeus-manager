@@ -217,14 +217,14 @@ export function DesktopModuleFlyout() {
       onKeyDown={handleKeyDown}
     >
       {/* Header - Section Title */}
-      <div className="px-4 py-5 border-b border-border/20">
-        <h2 className="text-xs uppercase tracking-[0.15em] font-extralight text-foreground/80">
+      <div className="px-4 py-4 border-b border-border/20">
+        <h2 className="text-sm font-bold tracking-wide text-foreground uppercase">
           {tabGroup.label}
         </h2>
       </div>
 
       {/* Module List */}
-      <div className="flex-1 overflow-y-auto py-2 px-2 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden py-2 pl-2 pr-3 scrollbar-hide">
         {modules.map((module, index) => {
           const isActive = index === highlightedIndex;
           const isCurrentPage = location === module.path || location.startsWith(module.path + '/');
