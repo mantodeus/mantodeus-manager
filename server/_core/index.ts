@@ -7,7 +7,8 @@ import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
-import { previewRouter } from "../previewRouter";
+// TEMPORARILY DISABLED - investigating invoice issue
+// import { previewRouter } from "../previewRouter";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { storageGet } from "../storage";
@@ -842,37 +843,38 @@ async function startServer() {
   });
 
   // tRPC API - Preview mode (no authentication)
-  app.use(
-    "/api/trpc/preview",
-    (req, res, next) => {
-      // Normalize trailing slash so tRPC can resolve the procedure path.
-      if (req.url) {
-        const [pathPart, queryPart] = req.url.split("?");
-        if (pathPart.length > 1 && pathPart.endsWith("/")) {
-          const normalizedPath = pathPart.slice(0, -1);
-          req.url = queryPart ? `${normalizedPath}?${queryPart}` : normalizedPath;
-        }
-      }
-      next();
-    },
-    createExpressMiddleware({
-      router: previewRouter,
-      createContext,
-      onError: ({ error, path, type, ctx }) => {
-        logger.error(
-          {
-            path,
-            type,
-            code: error.code,
-            message: error.message,
-            stack: error.stack,
-            mode: "preview",
-          },
-          'tRPC preview error'
-        );
-      },
-    })
-  );
+  // TEMPORARILY DISABLED - investigating invoice issue
+  // app.use(
+  //   "/api/trpc/preview",
+  //   (req, res, next) => {
+  //     // Normalize trailing slash so tRPC can resolve the procedure path.
+  //     if (req.url) {
+  //       const [pathPart, queryPart] = req.url.split("?");
+  //       if (pathPart.length > 1 && pathPart.endsWith("/")) {
+  //         const normalizedPath = pathPart.slice(0, -1);
+  //         req.url = queryPart ? `${normalizedPath}?${queryPart}` : normalizedPath;
+  //       }
+  //     }
+  //     next();
+  //   },
+  //   createExpressMiddleware({
+  //     router: previewRouter,
+  //     createContext,
+  //     onError: ({ error, path, type, ctx }) => {
+  //       logger.error(
+  //         {
+  //           path,
+  //           type,
+  //           code: error.code,
+  //           message: error.message,
+  //           stack: error.stack,
+  //           mode: "preview",
+  //         },
+  //         'tRPC preview error'
+  //       );
+  //     },
+  //   })
+  // );
 
   // tRPC API - Main app (requires authentication)
   // CRITICAL: This middleware MUST log to verify deployment
