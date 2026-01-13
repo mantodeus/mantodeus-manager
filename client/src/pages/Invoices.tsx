@@ -979,6 +979,90 @@ export default function Invoices() {
     return [...filtered, ...additionalSelected];
   }, [allInvoices, selectedIds, searchQuery, filters]);
 
+  // Compute multi-select bar props using useMemo to avoid TDZ issues
+  const multiSelectBarProps = useMemo(() => {
+    if (!isMultiSelectMode) return null;
+    
+    // Get all selected invoices
+    const selectedInvoices = Array.from(selectedIds)
+      .map(id => [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id))
+      .filter(Boolean) as typeof filteredInvoices;
+    
+    // Use shared action model to determine available actions
+    // For multi-select, we show actions that are valid for at least one selected invoice
+    const allActions = new Set<ItemAction>();
+    selectedInvoices.forEach((invoice) => {
+      const actions = getInvoiceActions({ invoice, selectionMode: true });
+      actions.forEach(action => allActions.add(action));
+    });
+    
+    // Determine which handlers to provide based on available actions
+    const hasMarkAsSent = allActions.has("markAsSent");
+    const hasMarkAsPaid = allActions.has("markAsPaid");
+    const hasMarkAsCancelled = allActions.has("markAsCancelled");
+    const hasMarkAsNotCancelled = allActions.has("markAsNotCancelled");
+    const hasRevertToDraft = allActions.has("revertToDraft");
+    const hasRevertToSent = allActions.has("revertToSent");
+    const hasArchive = allActions.has("archive");
+    const hasDuplicate = allActions.has("duplicate");
+    const hasDelete = allActions.has("delete");
+
+    return {
+      selectedCount: selectedIds.size,
+      totalCount: filteredInvoices.length + needsReviewInvoices.length,
+      onSelectAll: handleSelectAll,
+      onDuplicate: hasDuplicate ? handleBatchDuplicate : undefined,
+      onMarkAsSent: hasMarkAsSent ? handleBatchMarkAsSent : undefined,
+      onRevertToDraft: hasRevertToDraft ? handleBatchRevertToDraft : undefined,
+      onRevertToSent: hasRevertToSent ? handleBatchRevertToSent : undefined,
+      onMarkAsPaid: hasMarkAsPaid ? handleBatchMarkAsPaid : undefined,
+      onMarkAsCancelled: hasMarkAsCancelled ? handleBatchMarkAsCancelled : undefined,
+      onMarkAsNotCancelled: hasMarkAsNotCancelled ? handleBatchMarkAsNotCancelled : undefined,
+      onArchive: hasArchive ? handleBatchArchive : undefined,
+      onDelete: hasDelete ? handleBatchDelete : undefined,
+      onCancel: () => {
+        // Clear selection and exit multi-select mode
+        setSelectedIds(new Set());
+        setIsMultiSelectMode(false);
+        
+        // Clean up any lingering context menu transforms on all invoice items
+        // This ensures items slide back down to their original position after canceling multi-select
+        // Use requestAnimationFrame to ensure DOM updates happen after React's render
+        requestAnimationFrame(() => {
+          // Find all invoice cards in the invoices page and remove context menu classes/transforms
+          const invoiceCards = document.querySelectorAll('[data-item]');
+          invoiceCards.forEach((card) => {
+            const element = card as HTMLElement;
+            // Remove context menu classes
+            element.classList.remove("context-menu-active");
+            element.classList.remove("context-menu-shifted");
+            element.classList.remove("context-menu-pressing");
+            // Remove CSS custom properties that control the transform
+            element.style.removeProperty("--context-menu-shift");
+            element.style.removeProperty("--context-menu-scale");
+            // Force reset transform to ensure item returns to original position
+            element.style.transform = "";
+          });
+        });
+      },
+    };
+  }, [
+    isMultiSelectMode,
+    selectedIds,
+    filteredInvoices,
+    needsReviewInvoices,
+    handleSelectAll,
+    handleBatchDuplicate,
+    handleBatchMarkAsSent,
+    handleBatchRevertToDraft,
+    handleBatchRevertToSent,
+    handleBatchMarkAsPaid,
+    handleBatchMarkAsCancelled,
+    handleBatchMarkAsNotCancelled,
+    handleBatchArchive,
+    handleBatchDelete,
+  ]);
+
   // Calculate invoice totals for all years and quarters
   const { yearPaid, yearDue, quarterPaid, quarterDue, allYearTotals, allQuarterTotals } = useMemo(() => {
     // Use selected year/quarter for display
@@ -2360,73 +2444,7 @@ export default function Invoices() {
       </>)}
 
       {/* Multi-select bar */}
-      {isMultiSelectMode && (() => {
-        // Get all selected invoices
-        const selectedInvoices = Array.from(selectedIds)
-          .map(id => [...filteredInvoices, ...needsReviewInvoices].find(inv => inv.id === id))
-          .filter(Boolean) as typeof filteredInvoices;
-        
-        // Use shared action model to determine available actions
-        // For multi-select, we show actions that are valid for at least one selected invoice
-        const allActions = new Set<ItemAction>();
-        selectedInvoices.forEach((invoice) => {
-          const actions = getInvoiceActions({ invoice, selectionMode: true });
-          actions.forEach(action => allActions.add(action));
-        });
-        
-        // Determine which handlers to provide based on available actions
-        const hasMarkAsSent = allActions.has("markAsSent");
-        const hasMarkAsPaid = allActions.has("markAsPaid");
-        const hasMarkAsCancelled = allActions.has("markAsCancelled");
-        const hasMarkAsNotCancelled = allActions.has("markAsNotCancelled");
-        const hasRevertToDraft = allActions.has("revertToDraft");
-        const hasRevertToSent = allActions.has("revertToSent");
-        const hasArchive = allActions.has("archive");
-        const hasDuplicate = allActions.has("duplicate");
-        const hasDelete = allActions.has("delete");
-
-        return (
-          <MultiSelectBar
-            selectedCount={selectedIds.size}
-            totalCount={filteredInvoices.length + needsReviewInvoices.length}
-            onSelectAll={handleSelectAll}
-            onDuplicate={hasDuplicate ? handleBatchDuplicate : undefined}
-            onMarkAsSent={hasMarkAsSent ? handleBatchMarkAsSent : undefined}
-            onRevertToDraft={hasRevertToDraft ? handleBatchRevertToDraft : undefined}
-            onRevertToSent={hasRevertToSent ? handleBatchRevertToSent : undefined}
-            onMarkAsPaid={hasMarkAsPaid ? handleBatchMarkAsPaid : undefined}
-            onMarkAsCancelled={hasMarkAsCancelled ? handleBatchMarkAsCancelled : undefined}
-            onMarkAsNotCancelled={hasMarkAsNotCancelled ? handleBatchMarkAsNotCancelled : undefined}
-            onArchive={hasArchive ? handleBatchArchive : undefined}
-            onDelete={hasDelete ? handleBatchDelete : undefined}
-          onCancel={() => {
-            // Clear selection and exit multi-select mode
-            setSelectedIds(new Set());
-            setIsMultiSelectMode(false);
-            
-            // Clean up any lingering context menu transforms on all invoice items
-            // This ensures items slide back down to their original position after canceling multi-select
-            // Use requestAnimationFrame to ensure DOM updates happen after React's render
-            requestAnimationFrame(() => {
-              // Find all invoice cards in the invoices page and remove context menu classes/transforms
-              const invoiceCards = document.querySelectorAll('[data-item]');
-              invoiceCards.forEach((card) => {
-                const element = card as HTMLElement;
-                // Remove context menu classes
-                element.classList.remove("context-menu-active");
-                element.classList.remove("context-menu-shifted");
-                element.classList.remove("context-menu-pressing");
-                // Remove CSS custom properties that control the transform
-                element.style.removeProperty("--context-menu-shift");
-                element.style.removeProperty("--context-menu-scale");
-                // Force reset transform to ensure item returns to original position
-                element.style.transform = "";
-              });
-            });
-          }}
-          />
-        );
-      })()}
+      {multiSelectBarProps && <MultiSelectBar {...multiSelectBarProps} />}
 
       <InvoiceUploadReviewDialog
         open={uploadReviewDialogOpen}
