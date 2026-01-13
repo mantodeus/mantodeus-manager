@@ -223,7 +223,7 @@ function YearTotalCard({
                 Total {selectedYear}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-3xl font-light tabular-nums">
+                <span className="text-2xl font-light tabular-nums">
                   {formatCurrency(yearTotal)}
                 </span>
               </div>
@@ -235,7 +235,7 @@ function YearTotalCard({
                   Total {selectedYear}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-3xl font-light tabular-nums">
+                  <span className="text-2xl font-light tabular-nums">
                     {formatCurrency(yearPaid)}
                   </span>
                 </div>
@@ -696,6 +696,27 @@ export default function Invoices() {
   }, [invoices, archivedInvoices, trashedInvoices]);
   const { data: companySettings } = trpc.settings.get.useQuery();
   const utils = trpc.useUtils();
+  
+  // Calculate invoice stats for this year (for subtitle)
+  const invoiceStats = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const yearInvoices = invoices.filter((invoice) => {
+      if (invoice.cancelledAt) return false;
+      const invoiceDate = invoice.invoiceDate ? new Date(invoice.invoiceDate) : null;
+      return invoiceDate && invoiceDate.getFullYear() === currentYear;
+    });
+    
+    const total = yearInvoices.length;
+    const paid = yearInvoices.filter(inv => {
+      if (inv.paidAt) return true;
+      const total = parseFloat(inv.total?.toString() || '0');
+      const amountPaid = parseFloat(inv.amountPaid?.toString() || '0');
+      return amountPaid >= total && total > 0;
+    }).length;
+    const due = total - paid;
+    
+    return { total, paid, due };
+  }, [invoices]);
   const issueMutation = trpc.invoices.issue.useMutation({
     onSuccess: () => {
       toast.success("Invoice sent");
@@ -2097,6 +2118,7 @@ export default function Invoices() {
         // Mobile: Keep existing PageHeader
         <PageHeader
           title="Invoices"
+          subtitle={`${invoiceStats.total} this year · ${invoiceStats.paid} paid · ${invoiceStats.due} due`}
           onSearch={() => setIsSearchOpen(true)}
           onFilter={() => setIsFilterOpen(true)}
           onSettings={() => navigate("/settings")}

@@ -183,12 +183,21 @@ export function applyTheme(themeName: ThemeName) {
   // Approximate hex values for oklch backgrounds (for meta tag compatibility)
   themeColorMeta.content = themeName === 'green-mantis' ? '#1A1A1A' : '#FAFAF8';
   
-  // Set HTML and body background colors for off-screen areas (browser chrome)
-  // Use neutral hex values that approximate the theme backgrounds
+  // Set HTML and body background colors for off-screen areas (browser chrome, mobile pull-to-refresh, iOS status bar)
+  // Use neutral hex values that match the oklch background colors exactly
+  // Light: oklch(0.985 0.004 95) ≈ #FAFAF8
+  // Dark: oklch(0.10 0 0) ≈ #1A1A1A
   const bgColor = themeName === 'green-mantis' ? '#1A1A1A' : '#FAFAF8';
-  root.style.backgroundColor = bgColor;
+  // Set on html element for off-screen scroll areas (works in both web and PWA)
+  root.style.setProperty('background-color', bgColor, 'important');
+  // Set on body element as well
   if (document.body) {
-    document.body.style.backgroundColor = bgColor;
+    document.body.style.setProperty('background-color', bgColor, 'important');
+  }
+  // Also set on #root to ensure consistency
+  const rootElement = document.getElementById('root');
+  if (rootElement) {
+    rootElement.style.setProperty('background-color', bgColor, 'important');
   }
 }
 

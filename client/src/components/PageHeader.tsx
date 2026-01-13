@@ -172,18 +172,8 @@ export function PageHeader({
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-2">
             {leading}
-            <h1 className="text-4xl md:text-3xl font-light uppercase">{title}</h1>
+            <h1 className="text-4xl md:text-3xl font-light">{title}</h1>
           </div>
-          
-          {/* SubtitleRow */}
-          {subtitle && (
-            <p 
-              className="text-muted-foreground text-sm"
-              style={{ marginTop: 'var(--space-header-subtitle, 12px)' }}
-            >
-              {subtitle}
-            </p>
-          )}
         </div>
         
         {/* Icon Cluster - right side */}
@@ -197,6 +187,16 @@ export function PageHeader({
           extraActions={extraActions}
         />
       </div>
+      
+      {/* SubtitleRow - Full width */}
+      {subtitle && (
+        <p 
+          className="text-muted-foreground text-sm w-full"
+          style={{ marginTop: 'var(--space-header-subtitle, 12px)' }}
+        >
+          {subtitle}
+        </p>
+      )}
       
       {/* ActionRow - Primary actions */}
       {primaryActions && (

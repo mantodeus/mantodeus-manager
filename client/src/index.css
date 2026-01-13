@@ -267,14 +267,40 @@
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
-    /* Set background color to match theme for off-screen areas */
-    background-color: var(--bg-page, var(--background));
+    /* Set background color to match theme for off-screen areas (mobile pull-to-refresh, iOS status bar) */
+    /* Use hex fallback for browsers that don't support oklch in off-screen areas */
+    background-color: #FAFAF8; /* Light mode fallback - matches oklch(0.985 0.004 95) */
+    background-color: var(--background);
+    /* Ensure it works in both web and PWA */
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+  
+  /* Dark mode background for off-screen areas */
+  [data-theme="green-mantis"] html {
+    background-color: #1A1A1A; /* Dark mode fallback - matches oklch(0.10 0 0) */
+    background-color: var(--background);
   }
   body,
   #root {
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
+  }
+  
+  /* Ensure #root has background color for off-screen areas */
+  #root {
+    /* Use hex fallback for browsers that don't support oklch in off-screen areas */
+    background-color: #FAFAF8; /* Light mode fallback - matches oklch(0.985 0.004 95) */
+    background-color: var(--background);
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+  
+  /* Dark mode background for #root off-screen areas */
+  [data-theme="green-mantis"] #root {
+    background-color: #1A1A1A; /* Dark mode fallback - matches oklch(0.10 0 0) */
+    background-color: var(--background);
   }
   body {
     @apply bg-background text-foreground;
@@ -288,8 +314,19 @@
     padding-top: env(safe-area-inset-top);
     /* Avoid double-counting bottom safe area; tabs/panels handle bottom spacing */
     padding-bottom: 0;
-    /* Ensure body background matches theme for off-screen areas */
-    background-color: var(--bg-page, var(--background));
+    /* Ensure body background matches theme for off-screen areas (mobile pull-to-refresh, iOS status bar) */
+    /* Use hex fallback for browsers that don't support oklch in off-screen areas */
+    background-color: #FAFAF8; /* Light mode fallback - matches oklch(0.985 0.004 95) */
+    background-color: var(--background);
+    /* Ensure it works in both web and PWA */
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+  
+  /* Dark mode background for off-screen areas */
+  [data-theme="green-mantis"] body {
+    background-color: #1A1A1A; /* Dark mode fallback - matches oklch(0.10 0 0) */
+    background-color: var(--background);
   }
   
   /* Typography weights per design system:

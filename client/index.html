@@ -50,24 +50,38 @@
         
         var root = document.documentElement.style;
         
-        // Set background colors immediately for browser off-screen areas (meta tag only)
-        // All CSS variables are defined in index.css - do NOT set them here
+        // Set background colors immediately for browser off-screen areas (mobile pull-to-refresh, iOS status bar)
+        // Use hex values that match oklch backgrounds exactly
+        // Light: oklch(0.985 0.004 95) ≈ #FAFAF8
+        // Dark: oklch(0.10 0 0) ≈ #1A1A1A
         if (theme === 'orchid-mantis') {
           // Light mode - Orchid Mantis (neutral warm white)
-          root.backgroundColor = '#FAFAF8';
-          document.body && (document.body.style.backgroundColor = '#FAFAF8');
+          root.style.setProperty('background-color', '#FAFAF8', 'important');
+          if (document.body) {
+            document.body.style.setProperty('background-color', '#FAFAF8', 'important');
+          }
+          var rootEl = document.getElementById('root');
+          if (rootEl) {
+            rootEl.style.setProperty('background-color', '#FAFAF8', 'important');
+          }
           
-          // Update theme-color meta tag
+          // Update theme-color meta tag for browser UI
           var themeColorMeta = document.querySelector('meta[name="theme-color"]');
           if (themeColorMeta) {
             themeColorMeta.setAttribute('content', '#FAFAF8');
           }
         } else {
           // Dark mode - Green Mantis (neutral deep black, no blue tint)
-          root.backgroundColor = '#1A1A1A';
-          document.body && (document.body.style.backgroundColor = '#1A1A1A');
+          root.style.setProperty('background-color', '#1A1A1A', 'important');
+          if (document.body) {
+            document.body.style.setProperty('background-color', '#1A1A1A', 'important');
+          }
+          var rootEl = document.getElementById('root');
+          if (rootEl) {
+            rootEl.style.setProperty('background-color', '#1A1A1A', 'important');
+          }
           
-          // Update theme-color meta tag
+          // Update theme-color meta tag for browser UI
           var themeColorMeta = document.querySelector('meta[name="theme-color"]');
           if (themeColorMeta) {
             themeColorMeta.setAttribute('content', '#1A1A1A');
