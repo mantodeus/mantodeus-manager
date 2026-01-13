@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils';
 import { useManto } from '@/contexts/MantoContext';
 import { BugAnt, PencilSquareIcon, WrenchScrewdriver } from '@/components/ui/Icon';
 import { DesktopModuleMenu } from './DesktopModuleMenu';
-import { TIMING } from './constants';
 
 /**
  * Navigation tabs (left side)
@@ -27,7 +26,7 @@ export function DesktopBottomTabBar() {
   const [location, setLocation] = useLocation();
   const { isOpen: isChatOpen, toggleManto } = useManto();
   const [menuTab, setMenuTab] = useState<'office' | 'action' | 'tools' | null>(null);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const [contentColumnWidth, setContentColumnWidth] = useState<number | null>(null);
   const contentColumnRef = useRef<HTMLDivElement | null>(null);
 
@@ -55,50 +54,26 @@ export function DesktopBottomTabBar() {
     };
   }, []);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
+  const handleNavTabMouseEnter = useCallback((tabId: 'office' | 'action' | 'tools') => {
+    setMenuTab(tabId);
   }, []);
 
-  const handleNavTabMouseEnter = useCallback((tabId: 'office' | 'action' | 'tools') => {
-    // Clear any existing timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
+  const handleNavTabMouseLeave = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    const relatedTarget = event.relatedTarget as HTMLElement | null;
+
+    if (relatedTarget) {
+      if (menuRef.current?.contains(relatedTarget)) {
+        return;
+      }
+      if (relatedTarget.closest('[data-desktop-nav="nav-tab"]')) {
+        return;
+      }
     }
 
-    // If menu is already open (for any tab), switch instantly
-    if (menuTab !== null) {
-      setMenuTab(tabId);
-      return;
-    }
-
-    // If menu is closed, delay before showing (hover-intent pattern)
-    hoverTimeoutRef.current = setTimeout(() => {
-      setMenuTab(tabId);
-    }, TIMING.HOVER_DELAY);
-  }, [menuTab]);
-
-  const handleNavTabMouseLeave = useCallback(() => {
-    // Clear pending hover timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-    // Don't close menu on mouse leave - let click outside handle it
+    setMenuTab(null);
   }, []);
 
   const handleNavTabClick = (tabId: typeof NAV_TABS[number]['id']) => {
-    // Clear any pending hover timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-
     if (tabId === 'office' || tabId === 'action' || tabId === 'tools') {
       // If clicking the same tab while menu is open, close it
       if (menuTab === tabId) {
@@ -221,10 +196,10 @@ export function DesktopBottomTabBar() {
                     handleNavTabMouseEnter(tab.id);
                   }
                 }}
-                onMouseLeave={() => {
+                onMouseLeave={(event) => {
                   // Office, Action, and Tools all support hover menu
                   if (tab.id === 'office' || tab.id === 'action' || tab.id === 'tools') {
-                    handleNavTabMouseLeave();
+                    handleNavTabMouseLeave(event);
                   }
                 }}
                 aria-label={`${tab.label} tab`}
@@ -269,6 +244,7 @@ export function DesktopBottomTabBar() {
 
       {/* Module Menu - appears on hover/click of Office, Action, or Tools */}
       <DesktopModuleMenu
+        ref={menuRef}
         activeTab={menuTab}
         onClose={() => setMenuTab(null)}
       />
