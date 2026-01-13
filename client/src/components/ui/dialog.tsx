@@ -56,7 +56,8 @@ function Dialog({
       runId: 'run1',
       hypothesisId: 'A',
     };
-    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+    console.log('[DEBUG] Dialog opening:', logData);
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log fetch failed:', e));
   }, [props.open]);
   // #endregion
 
@@ -170,7 +171,8 @@ function DialogContent({
         runId: 'run1',
         hypothesisId: 'B',
       };
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+      console.log('[DEBUG] DialogContent state:', logData);
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log fetch failed:', e));
     };
     
     // Check immediately and after a short delay (Radix applies styles asynchronously)

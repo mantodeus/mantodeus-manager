@@ -94,7 +94,8 @@ export function InvoiceUploadReviewDialog({
         runId: 'run1',
         hypothesisId: 'D',
       };
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+      console.log('[DEBUG] InvoiceUploadReviewDialog mutation:', logData);
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log fetch failed:', e));
     });
     
     observer.observe(document.body, {
@@ -138,7 +139,8 @@ export function InvoiceUploadReviewDialog({
       runId: 'run1',
       hypothesisId: 'E',
     };
-    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+    console.log('[DEBUG] InvoiceUploadReviewDialog open state:', logData);
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log fetch failed:', e));
     
     return () => {
       observer.disconnect();
@@ -208,7 +210,8 @@ export function InvoiceUploadReviewDialog({
         runId: 'run1',
         hypothesisId: 'C',
       };
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+      console.log('[DEBUG] InvoiceUploadReviewDialog openChange:', logData);
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log fetch failed:', e));
     }
     // #endregion
     
@@ -1325,8 +1328,8 @@ export function InvoiceUploadReviewDialog({
           </div>
         </div>
 
-        {/* Fade-out separator - hidden on mobile for seamless status bar blending */}
-        {!isMobile && <div className="separator-fade" />}
+        {/* Fade-out separator */}
+        <div className="separator-fade" />
 
         <div className={cn(
           "space-y-4 px-6 pt-4 overflow-y-auto flex-1 min-h-0",
