@@ -155,16 +155,19 @@ export function DesktopBottomTabBar() {
     <div
       data-desktop-nav="bottom-tab-bar"
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-[50]', // Above content
-        'bg-background', // Solid dark surface matching app background
+        'fixed bottom-0 left-0 right-0 z-[50]', // Above content and scrim
+        'bg-background', // Solid opaque background - no transparency
         'border-t border-border',
         'hidden md:flex', // Desktop only (opposite of mobile)
         'select-none', // Prevent text selection
-        'pointer-events-auto' // Ensure tab bar always receives pointer events
+        'pointer-events-auto', // Ensure tab bar always receives pointer events
+        'isolate' // Create own stacking context, isolate from backdrop-filter
       )}
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)', // Safe area for notched devices
         height: '56px', // Premium height
+        // Ensure solid background, not affected by any backdrop-filter
+        backgroundColor: 'hsl(var(--background))',
       }}
     >
       <div className="flex h-14 items-center px-6 w-full relative">

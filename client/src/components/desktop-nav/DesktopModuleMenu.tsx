@@ -64,6 +64,7 @@ function ModuleItem({
       <span
         className={cn(
           "flex-1 text-xs uppercase tracking-[0.15em] font-light transition-colors duration-200",
+          "leading-relaxed", // Increased line-height for calm, floating feel
           isActive || isCurrentPage ? "text-primary" : "text-foreground/80"
         )}
       >
@@ -223,9 +224,13 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
     <>
       {/* Backdrop - darkened overlay with strong blur (blur applies to page behind) */}
       <div
-        className="fixed inset-0 z-[48] bg-black/60 backdrop-blur-xl"
+        className="fixed inset-0 z-[48] bg-black/80 backdrop-blur-xl"
         onClick={onClose}
         aria-hidden="true"
+        style={{
+          // Ensure strong darkness - underlying content must NOT be readable
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        }}
       />
 
       {/* Menu Panel - centered above bottom bar, fade + slide up animation */}
@@ -259,7 +264,7 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
       >
 
         {/* Module List - increased vertical spacing for calm, floating feel */}
-        <div className="py-3 px-3 space-y-1">
+        <div className="py-4 px-3 space-y-2">
           {modules.map((module, index) => {
             const isActive = index === highlightedIndex;
             const isCurrentPage = location === module.path || location.startsWith(module.path + '/');
