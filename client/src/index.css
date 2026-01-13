@@ -914,26 +914,25 @@
       padding-bottom: calc(var(--bottom-safe-area) + 1rem) !important;
     }
 
-    /* Desktop bottom tab bar - ensure solid, opaque background with dark blur behind */
-    [data-desktop-nav="bottom-tab-bar"],
-    [data-desktop-nav="bottom-tab-bar"]::before {
-      background-color: hsl(var(--background)) !important;
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
+    /* Desktop bottom tab bar - fully opaque with strong dark blur */
+    [data-desktop-nav="bottom-tab-bar"] {
+      background-color: rgba(0, 0, 0, 0.92) !important;
+      backdrop-filter: blur(20px) !important;
+      -webkit-backdrop-filter: blur(20px) !important;
       opacity: 1 !important;
     }
 
-    /* Dark blur backdrop behind tab bar */
+    /* Strong dark blur backdrop behind tab bar */
     [data-desktop-nav="bottom-tab-bar"]::before {
       content: '';
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      height: 80px;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.3) 50%, transparent 100%);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      height: 100px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.5) 50%, transparent 100%);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       z-index: -1;
       pointer-events: none;
     }
@@ -1105,6 +1104,14 @@
                 box-shadow var(--dur-quick, 150ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
                 border-color var(--dur-quick, 150ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
     will-change: transform;
+    /* Prevent backdrop-filter blur from affecting cards */
+    isolation: isolate;
+    position: relative;
+    z-index: 1;
+    /* Explicitly ensure no blur filters */
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .card-hover-polish:hover:not(.item-selected) {
@@ -1162,6 +1169,13 @@
                 box-shadow var(--dur-quick, 150ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
                 border-color var(--dur-quick, 150ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
     will-change: transform;
+    /* Prevent backdrop-filter blur from affecting cards */
+    isolation: isolate;
+    z-index: 1;
+    /* Explicitly ensure no blur filters */
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   /* Top 3px accent strip - visible on hover/tap only */
@@ -1290,6 +1304,14 @@
     border: 1px solid var(--border);
     background: var(--card);
     transition: transform var(--dur-quick) ease-out, box-shadow var(--dur-quick) ease-out;
+    /* Prevent backdrop-filter blur from affecting cards */
+    isolation: isolate;
+    position: relative;
+    z-index: 1;
+    /* Explicitly ensure no blur filters */
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .invoice-card:hover {
@@ -1379,6 +1401,22 @@
   }
   [data-theme="orchid-mantis"] [data-slot="card"]:hover {
     box-shadow: 0 8px 24px oklch(0 0 0 / 0.08);
+  }
+
+  /* ============================================
+   * PREVENT BACKDROP-FILTER BLUR ON CARDS
+   * Ensure cards are never affected by backdrop-filter
+   * from parent or sibling elements (e.g., AssistantPanel)
+   * ============================================ */
+  [data-slot="card"] {
+    /* Create stacking context to isolate from backdrop-filter */
+    isolation: isolate;
+    position: relative;
+    z-index: 1;
+    /* Explicitly prevent any blur filters */
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
 

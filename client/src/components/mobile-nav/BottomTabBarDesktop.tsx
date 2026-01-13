@@ -11,9 +11,11 @@ import { useMobileNav } from './MobileNavProvider';
 import { useLocation } from 'wouter';
 import { TABS } from './constants';
 
-const HOVER_DELAY = 150; // ms
+const HOVER_DELAY = 200; // ms - hover intent delay
+const CLOSE_DELAY = 150; // ms - close delay when leaving
 import type { TabId } from './types';
 import { useManto } from '@/contexts/MantoContext';
+import { MODULE_REGISTRY } from './constants';
 
 export function BottomTabBarDesktop() {
   const {
@@ -28,6 +30,7 @@ export function BottomTabBarDesktop() {
   } = useMobileNav();
   
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [location, setLocation] = useLocation();
   const { isOpen: isChatOpen, toggleManto } = useManto();
@@ -56,17 +59,26 @@ export function BottomTabBarDesktop() {
     };
   }, []);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
     };
   }, []);
 
   const handleTabHover = useCallback((tabId: TabId) => {
-    // Clear any existing timeout
+    // Cancel any pending close timeout
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+
+    // Clear any existing hover timeout
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
@@ -78,7 +90,6 @@ export function BottomTabBarDesktop() {
       setGestureTab(tabId);
       setGestureState('hold_active');
       // Initialize highlighted index
-      const { MODULE_REGISTRY } = require('./constants');
       const modules = MODULE_REGISTRY[tabId] || [];
       if (modules.length > 0) {
         setHighlightedIndex(modules.length - 1);
@@ -92,7 +103,6 @@ export function BottomTabBarDesktop() {
       setGestureTab(tabId);
       setGestureState('hold_active');
       // Initialize highlighted index
-      const { MODULE_REGISTRY } = require('./constants');
       const modules = MODULE_REGISTRY[tabId] || [];
       if (modules.length > 0) {
         setHighlightedIndex(modules.length - 1);
@@ -106,14 +116,27 @@ export function BottomTabBarDesktop() {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
-    // Don't close scroller on mouse leave - let click outside handle it
-  }, []);
+    
+    // Start close timer if scroller is visible
+    if (scrollerVisible) {
+      closeTimeoutRef.current = setTimeout(() => {
+        setHighlightedIndex(null);
+        setGestureState('idle');
+        setGestureTab(null);
+        closeTimeoutRef.current = null;
+      }, CLOSE_DELAY);
+    }
+  }, [scrollerVisible, setHighlightedIndex, setGestureState, setGestureTab]);
 
   const handleTabClick = (tabId: TabId) => {
-    // Clear any pending hover timeout
+    // Clear any pending timeouts
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
+    }
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
     }
     
     // CHAT tab - toggle assistant panel only
@@ -122,29 +145,23 @@ export function BottomTabBarDesktop() {
       return;
     }
     
-    // If scroller is open for this tab, close it and navigate to last used module
-    if (scrollerVisible && activeTab === tabId) {
+    // Close scroller if open
+    if (scrollerVisible) {
       setGestureState('idle');
       setGestureTab(null);
       setHighlightedIndex(null);
-      
-      // Navigate to last used module for this tab
-      const lastUsedPath = lastUsedModuleByTab[tabId];
-      if (lastUsedPath) {
-        setLocation(lastUsedPath);
-      }
-      return;
     }
     
-    // Otherwise, open scroller for this tab
-    setActiveTab(tabId);
-    setGestureTab(tabId);
-    setGestureState('hold_active');
-    // Initialize highlighted index
-    const { MODULE_REGISTRY } = require('./constants');
-    const modules = MODULE_REGISTRY[tabId] || [];
-    if (modules.length > 0) {
-      setHighlightedIndex(modules.length - 1);
+    // Navigate to last used module for this tab, or first module if none exists
+    const lastUsedPath = lastUsedModuleByTab[tabId];
+    if (lastUsedPath) {
+      setLocation(lastUsedPath);
+    } else {
+      // Fallback to first module in registry
+      const modules = MODULE_REGISTRY[tabId] || [];
+      if (modules.length > 0) {
+        setLocation(modules[0].path);
+      }
     }
   };
 

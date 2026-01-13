@@ -684,11 +684,13 @@ export function AssistantPanel({
             "flex-shrink-0",
             "flex flex-col", // Ensure flex column layout
             "w-[420px]",
+            "h-full", // Full height of parent
             "border-l border-border/50",
             "bg-card/95 backdrop-blur-[var(--blur-overlay)]",
             "shadow-xl",
             // Fade-in animation (no slide, no translate)
             "animate-in fade-in duration-300",
+            "overflow-hidden", // Prevent entire panel from scrolling
           ]
         )}
         style={isMobile ? {
@@ -700,10 +702,7 @@ export function AssistantPanel({
           // Prevent scroll chaining to the page
           overscrollBehavior: 'contain',
         } : {
-          // Desktop: fixed viewport height, account for bottom tab bar
-          height: 'calc(100vh - var(--bottom-safe-area))',
-          maxHeight: 'calc(100vh - var(--bottom-safe-area))',
-          overflow: 'hidden', // Prevent entire panel from scrolling
+          // Desktop: no additional styles needed, classes handle it
         }}
         // Touch events handled via native listeners in useEffect (passive: false required)
       >

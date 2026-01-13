@@ -173,22 +173,36 @@ export function ModuleScroller() {
   const listRef = useRef<HTMLDivElement>(null);
   const capabilities = useDeviceCapabilities(); // Phase 2: Device capability detection
   const [desktopPosition, setDesktopPosition] = useState<{ left: number; bottom: number } | null>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
 
-  // Desktop: Update position above the active tab button
+  // Desktop: Update position above the active tab button with viewport clamping
   useEffect(() => {
-    if (typeof window === 'undefined' || window.innerWidth < 768) return;
-    if (!scrollerVisible) return;
+    if (!isDesktop || !scrollerVisible) {
+      setDesktopPosition(null);
+      return;
+    }
 
     const updatePosition = () => {
       // Find the active tab button
       const activeTabButton = document.querySelector(`[data-tab-id="${currentTab}"]`) as HTMLElement;
       if (activeTabButton) {
         const rect = activeTabButton.getBoundingClientRect();
-        // Position above the tab button, centered horizontally
-        setDesktopPosition({ 
-          left: rect.left + rect.width / 2,
-          bottom: window.innerHeight - rect.top + 12, // 12px gap above tab
-        });
+        const scrollerWidth = 256; // w-64 = 256px
+        const padding = 24; // Viewport edge padding
+        
+        // Calculate center position of tab button
+        let left = rect.left + rect.width / 2;
+        
+        // Clamp to viewport edges
+        const minLeft = padding + scrollerWidth / 2;
+        const maxLeft = window.innerWidth - padding - scrollerWidth / 2;
+        left = Math.max(minLeft, Math.min(maxLeft, left));
+        
+        // Position above the tab button (8-12px gap)
+        const bottom = window.innerHeight - rect.top + 10; // 10px gap above tab
+        
+        setDesktopPosition({ left, bottom });
       } else {
         // Fallback: center relative to content column
         const contentColumn = document.querySelector('[data-layout="content-column"]') as HTMLElement;
@@ -224,7 +238,48 @@ export function ModuleScroller() {
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [scrollerVisible, currentTab]);
+  }, [scrollerVisible, currentTab, isDesktop]);
+
+  // Desktop: Handle mouse enter/leave on scroller to keep it open
+  useEffect(() => {
+    if (!isDesktop || !scrollerRef.current) return;
+
+    const scroller = scrollerRef.current;
+    const CLOSE_DELAY = 150; // ms
+
+    const handleMouseEnter = () => {
+      // Cancel any pending close timeout
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    };
+
+    const handleMouseLeave = () => {
+      // Start close timer when leaving scroller
+      if (scrollerVisible) {
+        closeTimeoutRef.current = setTimeout(() => {
+          setHighlightedIndex(null);
+          setGestureState('idle');
+          if (gestureTab !== null) {
+            setGestureTab(null);
+          }
+          closeTimeoutRef.current = null;
+        }, CLOSE_DELAY);
+      }
+    };
+
+    scroller.addEventListener('mouseenter', handleMouseEnter);
+    scroller.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      scroller.removeEventListener('mouseenter', handleMouseEnter);
+      scroller.removeEventListener('mouseleave', handleMouseLeave);
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, [isDesktop, scrollerVisible, setHighlightedIndex, setGestureState, gestureTab, setGestureTab]);
 
   // Desktop: handle click on module items
   const handleModuleClick = useCallback((module: Module) => {

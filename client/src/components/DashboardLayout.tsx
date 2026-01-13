@@ -59,11 +59,14 @@ function DesktopDashboardLayoutContent({
   children: React.ReactNode;
 }) {
   const [dataDialogOpen, setDataDialogOpen] = useState(false);
+  
+  // Track route changes to update active tab and last used module (same as mobile)
+  useRouteTracking();
 
   return (
-    <div className="flex min-h-svh w-full flex-col">
+    <div className="flex h-screen w-full flex-col">
       {/* Content + Assistant in flex row */}
-      <div className="flex flex-1 min-h-0 w-full">
+      <div className="flex flex-1 min-h-0 w-full" style={{ height: 'calc(100vh - var(--bottom-safe-area))' }}>
         {/* Main Content Area - shrinks when assistant is open */}
         <main 
           data-layout="content-column"
