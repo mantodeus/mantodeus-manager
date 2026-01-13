@@ -172,7 +172,7 @@ export function PageHeader({
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-2">
             {leading}
-            <h1 className="text-3xl font-light">{title}</h1>
+            <h1 className="text-4xl md:text-3xl font-light uppercase">{title}</h1>
           </div>
           
           {/* SubtitleRow */}
