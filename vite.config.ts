@@ -91,7 +91,7 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 1000, // 1MB
       // esbuild options for better stability
       esbuild: {
-        target: 'es2020',
+        target: 'es2022', // Updated to support top-level await
         // Reduce memory pressure by limiting concurrent operations
         keepNames: false,
       },
