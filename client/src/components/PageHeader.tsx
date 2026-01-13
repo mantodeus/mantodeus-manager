@@ -26,8 +26,7 @@ function HeaderIconCluster({
 }) {
   return (
     <div 
-      className="flex items-center shrink-0"
-      style={{ gap: 'var(--space-header-icons, 8px)' }}
+      className="flex items-center shrink-0 gap-3 sm:gap-2"
     >
       {searchEnabled && (
         <Button
@@ -35,7 +34,7 @@ function HeaderIconCluster({
           size="icon"
           aria-label="Search"
           onClick={onSearch}
-          className="size-9 [&_svg]:size-7"
+          className="size-12 sm:size-9 [&_svg]:h-6 [&_svg]:w-6 sm:[&_svg]:size-7"
         >
           <Search />
         </Button>
@@ -46,7 +45,7 @@ function HeaderIconCluster({
           size="icon"
           aria-label="Filter"
           onClick={onFilter}
-          className="size-9 [&_svg]:size-7"
+          className="size-12 sm:size-9 [&_svg]:h-6 [&_svg]:w-6 sm:[&_svg]:size-7"
         >
           <SlidersHorizontal />
         </Button>
@@ -57,7 +56,7 @@ function HeaderIconCluster({
           size="icon"
           aria-label="Page settings"
           onClick={onSettings ?? (() => toast.info("No settings available for this page yet."))}
-          className="size-9 [&_svg]:size-7"
+          className="size-12 sm:size-9 [&_svg]:h-6 [&_svg]:w-6 sm:[&_svg]:size-7"
         >
           <Settings />
         </Button>

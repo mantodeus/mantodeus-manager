@@ -2102,12 +2102,12 @@ export default function Invoices() {
           onFilter={() => setIsFilterOpen(true)}
           onSettings={() => navigate("/settings")}
           primaryActions={
-            <div className="flex flex-row justify-between sm:contents gap-2 w-full sm:w-auto">
+            <div className="flex flex-row sm:contents gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={() => setBulkUploadOpen(true)}
                 disabled={bulkUploadMutation.isPending}
-                className="h-10 whitespace-nowrap"
+                className="h-10 whitespace-nowrap flex-1 sm:flex-initial"
                 data-guide-id="invoices.upload"
                 data-guide-type="button"
                 data-guide-label="Upload Invoice PDFs"
@@ -2121,7 +2121,7 @@ export default function Invoices() {
               </Button>
               <Button 
                 onClick={() => setCreateDialogOpen(true)}
-                className="h-10 whitespace-nowrap"
+                className="h-10 whitespace-nowrap flex-1 sm:flex-initial"
                 data-guide-id="invoices.create"
                 data-guide-type="button"
                 data-guide-label="Create New Invoice"
