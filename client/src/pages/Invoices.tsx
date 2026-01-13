@@ -593,6 +593,38 @@ export default function Invoices() {
   const isMobile = useIsMobile();
   const { theme } = useTheme();
   const isDarkMode = theme === 'green-mantis';
+  
+  // Scroll state for compact header (desktop only)
+  const [isScrolled, setIsScrolled] = useState(false);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
+  
+  useEffect(() => {
+    if (isMobile) return;
+    
+    // Find the scroll container (main element with app-content class)
+    const findScrollContainer = () => {
+      const main = document.querySelector('main.app-content[data-layout="content-column"]');
+      return main as HTMLElement | null;
+    };
+    
+    const container = findScrollContainer();
+    if (!container) return;
+    
+    scrollContainerRef.current = container;
+    
+    const handleScroll = () => {
+      const threshold = 60; // Small threshold for compact mode
+      setIsScrolled(container.scrollTop > threshold);
+    };
+    
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    // Check initial state
+    handleScroll();
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, [isMobile]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedQuarter, setSelectedQuarter] = useState<{ quarter: number; year: number }>(() => {
     const now = new Date();
@@ -1970,18 +2002,27 @@ export default function Invoices() {
             className={cn(
               "bg-card border border-border/70 rounded-2xl shadow-sm",
               "transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
-              "kpi-card-accent invoices-header-accent"
+              "kpi-card-accent invoices-header-accent",
+              isScrolled && "invoices-header-compact"
             )}
             style={{
-              padding: 'var(--space-card-padding, 16px)',
+              padding: isScrolled ? '12px var(--space-card-padding, 16px)' : 'var(--space-card-padding, 16px)',
               marginBottom: '24px',
             }}
           >
             <div className="flex items-center justify-between gap-4">
               {/* Left block: Title + Subtitle */}
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-light mb-1">Invoices</h1>
-                <p className="text-sm text-muted-foreground/70 leading-tight">
+                <h1 className={cn(
+                  "font-normal mb-1 transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
+                  isScrolled ? "text-2xl" : "text-3xl"
+                )}>
+                  Invoices
+                </h1>
+                <p className={cn(
+                  "text-sm text-muted-foreground/70 leading-tight transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
+                  isScrolled && "opacity-0 -translate-y-1 pointer-events-none"
+                )}>
                   {contextualSubtitle}
                 </p>
               </div>

@@ -1251,6 +1251,11 @@
     opacity: 1 !important;
   }
 
+  /* Compact header state - smooth transitions */
+  .invoices-header-compact {
+    /* Height reduction handled via padding in component */
+  }
+
   /* Summary cards - apply hover effects as default state */
   .summary-card-permanent-hover {
     box-shadow: 0 8px 24px oklch(0 0 0 / 0.08);
