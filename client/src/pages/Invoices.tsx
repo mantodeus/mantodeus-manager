@@ -2180,7 +2180,7 @@ export default function Invoices() {
               );
             })}
           </div>
-        </>
+        </div>
       )}
 
       {filteredInvoices.length === 0 ? (
@@ -2357,7 +2357,7 @@ export default function Invoices() {
             );
           })}
         </div>
-      )}
+      </>)}
 
       {/* Multi-select bar */}
       {isMultiSelectMode && (() => {
