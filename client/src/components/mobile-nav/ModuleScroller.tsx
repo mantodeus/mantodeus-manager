@@ -208,8 +208,13 @@ export function ModuleScroller() {
         const maxLeft = window.innerWidth - padding - scrollerWidth / 2;
         left = Math.max(minLeft, Math.min(maxLeft, left));
         
-        // Position above the tab button (8-12px gap)
-        const bottom = window.innerHeight - rect.top + 10; // 10px gap above tab
+        // Position above the tab button (10px gap)
+        // rect.top is the distance from top of viewport to top of tab button
+        // We want scroller bottom to be 10px above the tab button top
+        // So: bottom = window.innerHeight - rect.top - 10
+        // But we also need to account for the tab bar height (56px)
+        // Actually simpler: bottom = distance from viewport bottom to tab button top + gap
+        const bottom = window.innerHeight - rect.top + 10; // 10px gap above tab button
         
         setDesktopPosition({ left, bottom });
       } else {
@@ -454,7 +459,7 @@ export function ModuleScroller() {
               ? 'scroller--left'
               : 'scroller--center',
           // Mobile: center vertically, position by side (desktop positioning handled via style)
-          'top-1/2 -translate-y-1/2 md:top-auto',
+          'top-1/2 -translate-y-1/2 md:top-auto md:translate-y-0',
           scrollerSide === 'right'
             ? 'right-0 md:right-auto'
             : scrollerSide === 'left'
@@ -463,14 +468,19 @@ export function ModuleScroller() {
         )}
         style={{
           // Desktop positioning: above the active tab button
-          ...(typeof window !== 'undefined' && window.innerWidth >= 768 && desktopPosition ? {
+          ...(isDesktop && desktopPosition ? {
             left: `${desktopPosition.left}px`,
             bottom: `${desktopPosition.bottom}px`,
             transform: 'translateX(-50%)',
             top: 'auto',
-          } : typeof window !== 'undefined' && window.innerWidth >= 768 ? {
-            bottom: '76px', // Fallback: above 56px tab bar + 20px gap
+            right: 'auto',
+          } : isDesktop ? {
+            // Fallback: center above tab bar if position not calculated yet
+            left: '50%',
+            bottom: '76px', // Above 56px tab bar + 20px gap
+            transform: 'translateX(-50%)',
             top: 'auto',
+            right: 'auto',
           } : {}),
         }}
         aria-label={`Module selector for ${activeTab}`}

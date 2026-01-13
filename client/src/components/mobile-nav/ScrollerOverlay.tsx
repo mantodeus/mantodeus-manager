@@ -29,14 +29,25 @@ export function ScrollerOverlay() {
   // Phase 2: Apply backdrop blur only if device is capable
   const hasBackdropBlur = FEATURES.PHASE_2_BLUR && capabilities.hasBlur;
 
-  // Desktop: close scroller when mouse leaves overlay
-  const handleMouseLeave = () => {
-    if (isDesktop) {
-      setHighlightedIndex(null);
-      setGestureState('idle');
-      if (gestureTab !== null) {
-        setGestureTab(null);
+  // Desktop: close scroller when mouse leaves overlay (but not when moving to scroller or tab bar)
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    if (!isDesktop) return;
+    
+    // Check if mouse is moving to scroller or tab bar
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget) {
+      const isMovingToScroller = relatedTarget.closest('[data-desktop-nav="module-scroller"]');
+      const isMovingToTabBar = relatedTarget.closest('[data-desktop-nav="bottom-tab-bar"]');
+      if (isMovingToScroller || isMovingToTabBar) {
+        return; // Don't close if moving to scroller or tab bar
       }
+    }
+    
+    // Only close if truly leaving to the page background
+    setHighlightedIndex(null);
+    setGestureState('idle');
+    if (gestureTab !== null) {
+      setGestureTab(null);
     }
   };
 
