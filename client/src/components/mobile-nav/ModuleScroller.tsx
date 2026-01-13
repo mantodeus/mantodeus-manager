@@ -164,6 +164,10 @@ export function ModuleScroller() {
     setLastUsedModule,
     setGestureTab,
   } = useMobileNav();
+  // Section 6.1: Scope - use gestureTab if set (the tab being gestured), otherwise activeTab.
+  // This allows gestures to work on any tab, not just the currently active one.
+  const currentTab = gestureTab ?? activeTab;
+  const modules = MODULE_REGISTRY[currentTab] || [];
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -224,7 +228,6 @@ export function ModuleScroller() {
 
   // Desktop: handle click on module items
   const handleModuleClick = useCallback((module: Module) => {
-    const currentTab = gestureTab ?? activeTab;
     setLastUsedModule(currentTab, module.path);
     setLocation(module.path);
     // Close scroller
@@ -233,7 +236,7 @@ export function ModuleScroller() {
     if (gestureTab !== null) {
       setGestureTab(null);
     }
-  }, [activeTab, gestureTab, setLastUsedModule, setLocation, setHighlightedIndex, setGestureState, setGestureTab]);
+  }, [currentTab, setLastUsedModule, setLocation, setHighlightedIndex, setGestureState, setGestureTab, gestureTab]);
 
   // Desktop: close on click outside or ESC
   useEffect(() => {
@@ -274,10 +277,6 @@ export function ModuleScroller() {
     };
   }, [scrollerVisible, setHighlightedIndex, setGestureState, gestureTab, setGestureTab]);
 
-  // Â§ 6.1: Scope - use gestureTab if set (the tab being gestured), otherwise activeTab
-  // This allows gestures to work on any tab, not just the currently active one
-  const currentTab = gestureTab ?? activeTab;
-  const modules = MODULE_REGISTRY[currentTab] || [];
   useEffect(() => {
     if (
       !scrollerVisible ||
@@ -468,8 +467,6 @@ export function ModuleScroller() {
     </>
   );
 }
-
-
 
 
 

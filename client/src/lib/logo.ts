@@ -86,6 +86,8 @@ function updatePwaManifest(): void {
   if (typeof window === "undefined") return;
 
   const appIconPath = getAppIconPath();
+  const origin = window.location.origin;
+  const resolveUrl = (path: string) => new URL(path, origin).toString();
   
   // Get current theme to set appropriate colors
   const theme = document.documentElement.getAttribute("data-theme");
@@ -103,20 +105,20 @@ function updatePwaManifest(): void {
     name: "Mantodeus Manager",
     short_name: "Mantodeus",
     description: "Job management system for construction teams to log jobs, create reports, and manage tasks",
-    start_url: "/",
+    start_url: resolveUrl("/"),
     display: "standalone",
     background_color: backgroundColor,
     theme_color: themeColor,
     orientation: "portrait-primary",
     icons: [
       {
-        src: appIconPath,
+        src: resolveUrl(appIconPath),
         sizes: "192x192",
         type: "image/png",
         purpose: "any maskable"
       },
       {
-        src: appIconPath,
+        src: resolveUrl(appIconPath),
         sizes: "512x512",
         type: "image/png",
         purpose: "any maskable"
@@ -125,7 +127,7 @@ function updatePwaManifest(): void {
     categories: ["productivity", "business"],
     screenshots: [
       {
-        src: "/screenshot-mobile.png",
+        src: resolveUrl("/screenshot-mobile.png"),
         sizes: "390x844",
         type: "image/png",
         form_factor: "narrow"
@@ -203,4 +205,3 @@ export function initializeLogos(): void {
   
   return () => observer.disconnect();
 }
-
