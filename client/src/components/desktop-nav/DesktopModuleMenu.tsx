@@ -43,13 +43,18 @@ function ModuleItem({
         "transition-[opacity,background-color] duration-200 ease-out",
         "text-left",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-        // Active/selected state - subtle highlighted glass pill (no scale)
-        isActive && "bg-primary/10 backdrop-blur-sm border border-primary/20 opacity-100",
+        // Active/selected state - more prominent highlighted glass pill (no scale)
+        isActive && "bg-primary/15 backdrop-blur-sm border border-primary/30 ring-1 ring-primary/10 opacity-100",
         // Current page state (muted, not active)
         isCurrentPage && !isActive && "bg-muted/30 opacity-100",
         // Hover state - opacity increase + soft background highlight (no scale, no transform)
         !isActive && "opacity-80 hover:opacity-100 hover:bg-foreground/5",
       )}
+      style={{
+        ...(isActive && {
+          boxShadow: '0 0 20px hsl(var(--primary) / 0.15)',
+        }),
+      }}
       onClick={onNavigate}
       onMouseEnter={onHover}
     >
@@ -64,7 +69,7 @@ function ModuleItem({
       <span
         className={cn(
           "flex-1 text-xs uppercase tracking-[0.15em] font-light transition-colors duration-200",
-          "leading-relaxed", // Increased line-height for calm, floating feel
+          "leading-loose", // Increased line-height for better vertical breathing room
           isActive || isCurrentPage ? "text-primary" : "text-foreground/80"
         )}
       >
@@ -246,8 +251,6 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
           "border border-border/30",
           "shadow-lg shadow-black/10",
           "rounded-2xl",
-          // Fade + slide up animation (opacity and translateY only, no scale)
-          "transition-[opacity,transform] duration-200 ease-out",
           // Hide scrollbar
           "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         )}
@@ -258,7 +261,8 @@ export function DesktopModuleMenu({ activeTab, onClose }: DesktopModuleMenuProps
           maxHeight: '400px',
           overflowY: 'auto',
           opacity: isVisible ? 1 : 0,
-          transform: isVisible ? 'translateY(0)' : 'translateY(8px)', // Slight upward motion, no zoom
+          transform: isVisible ? 'translateY(0)' : 'translateY(12px)', // More noticeable, intentional motion
+          transition: 'opacity 250ms cubic-bezier(0.4, 0, 0.2, 1), transform 250ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
         onKeyDown={handleKeyDown}
       >
