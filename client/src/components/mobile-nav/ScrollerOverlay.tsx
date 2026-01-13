@@ -28,7 +28,7 @@ export function ScrollerOverlay() {
         'fixed inset-0 z-[999]',
         'bg-background/10', // § 9.3: Subtle dim (10-12%)
         'animate-overlay-fade-in',
-        'md:hidden', // § 1.1: Mobile only
+        // Shared on mobile and desktop - same overlay
         // Phase 2: Device-gated backdrop blur
         hasBackdropBlur && 'backdrop-blur-sm'
       )}

@@ -7,7 +7,7 @@
  * Section 8: Depth displacement (readability law)
  * Section 9: Visual hierarchy
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useMobileNav } from './MobileNavProvider';
@@ -77,6 +77,7 @@ function ModuleItem({
   blur,
   scrollerSide,
   showLabel,
+  onModuleClick,
 }: {
   module: Module;
   index: number;
@@ -86,6 +87,7 @@ function ModuleItem({
   blur: number;
   scrollerSide: 'left' | 'right' | 'center';
   showLabel: boolean;
+  onModuleClick?: (module: Module) => void;
 }) {
   const Icon = module.icon;
 
@@ -121,6 +123,14 @@ function ModuleItem({
         transform: `translateX(${offset}px) scale(${scale})`,
         opacity,
         filter: blur > 0 ? `blur(${blur}px)` : undefined,
+      }}
+      onClick={(e) => {
+        // Desktop: handle click to navigate
+        if (typeof window !== 'undefined' && window.innerWidth >= 768 && onModuleClick) {
+          e.preventDefault();
+          e.stopPropagation();
+          onModuleClick(module);
+        }
       }}
     >
       <Icon
@@ -158,6 +168,82 @@ export function ModuleScroller() {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const capabilities = useDeviceCapabilities(); // Phase 2: Device capability detection
+  const [desktopPosition, setDesktopPosition] = useState<{ left: number } | null>(null);
+
+  // Desktop: Update position when content column resizes (e.g., when chat opens/closes)
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.innerWidth < 768) return;
+
+    const updatePosition = () => {
+      const contentColumn = document.querySelector('[data-layout="content-column"]') as HTMLElement;
+      if (contentColumn) {
+        const rect = contentColumn.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        setDesktopPosition({ left: centerX });
+      }
+    };
+
+    updatePosition();
+
+    const contentColumn = document.querySelector('[data-layout="content-column"]') as HTMLElement;
+    if (contentColumn) {
+      const resizeObserver = new ResizeObserver(updatePosition);
+      resizeObserver.observe(contentColumn);
+      return () => resizeObserver.disconnect();
+    }
+  }, [scrollerVisible]);
+
+  // Desktop: handle click on module items
+  const handleModuleClick = useCallback((module: Module) => {
+    const currentTab = gestureTab ?? activeTab;
+    setLastUsedModule(currentTab, module.path);
+    setLocation(module.path);
+    // Close scroller
+    setHighlightedIndex(null);
+    setGestureState('idle');
+    if (gestureTab !== null) {
+      setGestureTab(null);
+    }
+  }, [activeTab, gestureTab, setLastUsedModule, setLocation, setHighlightedIndex, setGestureState, setGestureTab]);
+
+  // Desktop: close on click outside or ESC
+  useEffect(() => {
+    if (!scrollerVisible || typeof window === 'undefined' || window.innerWidth < 768) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (scrollerRef.current && !scrollerRef.current.contains(target)) {
+        // Don't close if clicking on a tab
+        const clickedTab = target.closest('[data-tab-trigger]');
+        if (clickedTab) {
+          return;
+        }
+        // Close scroller
+        setHighlightedIndex(null);
+        setGestureState('idle');
+        if (gestureTab !== null) {
+          setGestureTab(null);
+        }
+      }
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setHighlightedIndex(null);
+        setGestureState('idle');
+        if (gestureTab !== null) {
+          setGestureTab(null);
+        }
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [scrollerVisible, setHighlightedIndex, setGestureState, gestureTab, setGestureTab]);
 
   // Â§ 6.1: Scope - use gestureTab if set (the tab being gestured), otherwise activeTab
   // This allows gestures to work on any tab, not just the currently active one
@@ -283,9 +369,8 @@ export function ModuleScroller() {
       <div
         ref={scrollerRef}
         className={cn(
-          'fixed top-1/2 -translate-y-1/2 z-[1000]',
+          'fixed z-[1000]',
           'w-64', // Fixed width
-          'md:hidden', // Â§ 1.1: Mobile only
           'module-scroller',
           'gesture-surface',
           'animate-scroller-slide-in',
@@ -294,13 +379,27 @@ export function ModuleScroller() {
             : scrollerSide === 'left'
               ? 'scroller--left'
               : 'scroller--center',
-          // Position based on active tab (Ergonomic Law)
+          // Mobile: center vertically, position by side
+          'md:hidden',
+          'top-1/2 -translate-y-1/2',
           scrollerSide === 'right'
             ? 'right-0'
             : scrollerSide === 'left'
               ? 'left-0'
               : 'left-1/2 -translate-x-1/2',
         )}
+        style={{
+          // Desktop positioning: above tab bar, centered relative to content column
+          ...(typeof window !== 'undefined' && window.innerWidth >= 768 && desktopPosition ? {
+            left: `${desktopPosition.left}px`,
+            bottom: '76px', // Above 56px tab bar + 20px gap
+            transform: 'translateX(-50%)',
+            top: 'auto',
+          } : typeof window !== 'undefined' && window.innerWidth >= 768 ? {
+            bottom: '76px',
+            top: 'auto',
+          } : {}),
+        }}
         aria-label={`Module selector for ${activeTab}`}
         role="menu"
       >
@@ -332,6 +431,7 @@ export function ModuleScroller() {
                 blur={blur}
                 scrollerSide={scrollerSide}
                 showLabel={showLabel}
+                onModuleClick={handleModuleClick}
               />
             );
           })}

@@ -6,6 +6,7 @@
 
 export { MobileNavProvider, useMobileNav } from './MobileNavProvider';
 export { BottomTabBar } from './BottomTabBar';
+export { BottomTabBarDesktop } from './BottomTabBarDesktop';
 export { ModuleScroller } from './ModuleScroller';
 export { ScrollerOverlay } from './ScrollerOverlay';
 export { useGestureRecognition } from './useGestureRecognition';

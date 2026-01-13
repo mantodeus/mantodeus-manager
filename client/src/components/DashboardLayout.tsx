@@ -8,14 +8,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   MobileNavProvider,
   BottomTabBar,
+  BottomTabBarDesktop,
   ModuleScroller,
   ScrollerOverlay,
   useRouteTracking,
 } from "./mobile-nav";
-import {
-  DesktopNavProvider,
-  DesktopBottomTabBar,
-} from "./desktop-nav";
 import { useIsMobile } from "@/hooks/useMobile";
 
 export default function DashboardLayout({
@@ -44,11 +41,11 @@ export default function DashboardLayout({
 
   return (
     <TooltipProvider delayDuration={0}>
-      <DesktopNavProvider>
+      <MobileNavProvider>
         <DesktopDashboardLayoutContent>
           {children}
         </DesktopDashboardLayoutContent>
-      </DesktopNavProvider>
+      </MobileNavProvider>
     </TooltipProvider>
   );
 }
@@ -85,8 +82,10 @@ function DesktopDashboardLayoutContent({
         onOpenChange={setDataDialogOpen}
       />
 
-      {/* Desktop Bottom Tab Bar - only navigation mechanism */}
-      <DesktopBottomTabBar />
+      {/* Desktop Navigation - shared with mobile */}
+      <ScrollerOverlay />
+      <ModuleScroller />
+      <BottomTabBarDesktop />
     </div>
   );
 }
