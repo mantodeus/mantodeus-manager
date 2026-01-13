@@ -150,34 +150,50 @@ export function BulkInvoiceUploadDialog({
       <DialogContent 
         className={cn(
           "flex flex-col p-0",
-          "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+          // Mobile: fullscreen with safe areas - CSS will handle the positioning
+          isMobile && "invoice-dialog-fullscreen"
         )}
+        style={isMobile ? {
+          // Use CSS custom property approach - the CSS rule will override this
+          top: 'env(safe-area-inset-top, 0px)',
+          bottom: 'env(safe-area-inset-bottom, 0px)',
+          left: 0,
+          right: 0,
+          height: 'calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
+          maxHeight: 'calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
+          margin: 0,
+          borderRadius: 0,
+          transform: 'none',
+          maxWidth: 'none',
+          width: '100%',
+          inset: 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) 0',
+        } : undefined}
         showCloseButton={false}
       >
-        {/* PageHeader-like structure */}
-        <div className="flex-shrink-0 p-6 pb-2 space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4 min-w-0 flex-1">
-              <div className="flex-1 min-w-0 flex flex-col">
-                <h1 className="text-2xl md:text-3xl font-regular flex items-center gap-2 whitespace-nowrap">
+        {/* PageHeader-like structure matching Invoices page */}
+        <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
+          {/* TitleRow */}
+          <div className="flex items-start justify-between gap-4 px-4 pt-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-2">
+                <h1 className="text-4xl md:text-3xl font-light flex items-center gap-2">
                   <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
                   Upload Invoices
                 </h1>
-                <p className="text-muted-foreground text-sm mt-3">
-                  Upload multiple invoice PDF files at once. Maximum {MAX_FILES} files, {MAX_FILE_SIZE / 1024 / 1024}MB per file.
-                </p>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-3 shrink-0">
+            
+            {/* Icon Cluster - X button where settings would be */}
+            <div className="flex items-center shrink-0 gap-3 sm:gap-2">
               <Button
-                variant="ghost"
+                variant="icon"
                 size="icon"
                 onClick={handleClose}
-                className="h-10 w-10"
+                className="size-9 [&_svg]:size-8 hover:bg-muted/50"
                 aria-label="Close"
                 disabled={isUploading}
               >
-                <X className="h-6 w-6" />
+                <X />
               </Button>
             </div>
           </div>
@@ -188,7 +204,7 @@ export function BulkInvoiceUploadDialog({
 
         <div className={cn(
           "px-6 pt-4 overflow-y-auto flex-1 min-h-0",
-          "pb-[calc(var(--bottom-safe-area,0px)+1rem)]"
+          "pb-4"
         )}>
           <div className="space-y-4">
           <InvoiceUploadZone

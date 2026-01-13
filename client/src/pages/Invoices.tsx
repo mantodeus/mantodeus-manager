@@ -490,7 +490,7 @@ function QuarterTotalCard({
                 Q{selectedQuarter.quarter} {selectedQuarter.year}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-3xl font-light tabular-nums">
+                <span className="text-2xl font-light tabular-nums">
                   {formatCurrency(quarterTotal)}
                 </span>
               </div>
@@ -502,7 +502,7 @@ function QuarterTotalCard({
                   Q{selectedQuarter.quarter} {selectedQuarter.year}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-3xl font-light tabular-nums">
+                  <span className="text-2xl font-light tabular-nums">
                     {formatCurrency(quarterPaid)}
                   </span>
                 </div>
@@ -2057,7 +2057,7 @@ export default function Invoices() {
                     size="icon"
                     aria-label="Search"
                     onClick={() => setIsSearchOpen(true)}
-                    className="size-9 [&_svg]:!size-8 hover:bg-muted/50"
+                    className="size-9 [&_svg]:!size-8 sm:[&_svg]:!size-5 hover:bg-muted/50"
                   >
                     <Search />
                   </Button>
@@ -2066,7 +2066,7 @@ export default function Invoices() {
                     size="icon"
                     aria-label="Filter"
                     onClick={() => setIsFilterOpen(true)}
-                    className="size-9 [&_svg]:!size-8 hover:bg-muted/50"
+                    className="size-9 [&_svg]:!size-8 sm:[&_svg]:!size-5 hover:bg-muted/50"
                   >
                     <SlidersHorizontal />
                   </Button>
@@ -2075,7 +2075,7 @@ export default function Invoices() {
                     size="icon"
                     aria-label="Settings"
                     onClick={() => navigate("/settings")}
-                    className="size-9 [&_svg]:!size-8 hover:bg-muted/50"
+                    className="size-9 [&_svg]:!size-8 sm:[&_svg]:!size-5 hover:bg-muted/50"
                   >
                     <Settings />
                   </Button>

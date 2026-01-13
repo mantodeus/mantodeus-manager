@@ -317,19 +317,23 @@ export function CreateInvoiceDialog({
       <DialogContent 
         className={cn(
           "flex flex-col p-0",
-          // Mobile: fullscreen with no margins
-          isMobile && "!top-0 !left-0 !right-0 !bottom-0 !translate-x-0 !translate-y-0 !max-w-none !w-full !h-full !max-h-none !mb-0 !rounded-none"
+          // Mobile: fullscreen with safe areas - CSS will handle the positioning
+          isMobile && "invoice-dialog-fullscreen"
         )}
         style={isMobile ? {
+          // Use CSS custom property approach - the CSS rule will override this
           top: 'env(safe-area-inset-top, 0px)',
+          bottom: 'env(safe-area-inset-bottom, 0px)',
           left: 0,
           right: 0,
-          bottom: 0,
-          width: '100%',
-          height: 'calc(100% - env(safe-area-inset-top, 0px))',
-          maxHeight: 'calc(100% - env(safe-area-inset-top, 0px))',
+          height: 'calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
+          maxHeight: 'calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
           margin: 0,
           borderRadius: 0,
+          transform: 'none',
+          maxWidth: 'none',
+          width: '100%',
+          inset: 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) 0',
         } : undefined}
         showCloseButton={false}
         onInteractOutside={(e) => {
