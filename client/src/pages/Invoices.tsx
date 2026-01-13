@@ -2102,7 +2102,7 @@ export default function Invoices() {
           onFilter={() => setIsFilterOpen(true)}
           onSettings={() => navigate("/settings")}
           primaryActions={
-            <>
+            <div className="flex flex-row justify-between sm:contents gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={() => setBulkUploadOpen(true)}
@@ -2129,7 +2129,7 @@ export default function Invoices() {
                 <Plus className="w-4 h-4 mr-1" />
                 Create
               </Button>
-            </>
+            </div>
           }
         />
       )}
