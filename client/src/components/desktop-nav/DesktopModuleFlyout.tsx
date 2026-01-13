@@ -244,12 +244,6 @@ export function DesktopModuleFlyout() {
         })}
       </div>
 
-      {/* Footer hint */}
-      <div className="px-4 py-3 border-t border-border/30">
-        <p className="text-[10px] text-muted-foreground/60 text-center">
-          ↑↓ navigate • Enter select • Esc close
-        </p>
-      </div>
     </div>
   );
 }

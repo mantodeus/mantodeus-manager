@@ -76,7 +76,10 @@ function DesktopDashboardLayoutContent({
       {/* Main Content Area */}
       <main 
         className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background"
-        style={{ marginLeft: LAYOUT.RAIL_WIDTH }}
+        style={{ 
+          marginLeft: LAYOUT.RAIL_WIDTH,
+          isolation: 'isolate',
+        }}
       >
         {children}
       </main>

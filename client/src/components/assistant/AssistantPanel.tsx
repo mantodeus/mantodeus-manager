@@ -691,6 +691,7 @@ export function AssistantPanel({
             // Fade-in animation (no slide, no translate)
             "animate-in fade-in duration-300",
             "overflow-hidden", // Prevent entire panel from scrolling
+            "isolation-isolate", // Create stacking context to prevent backdrop-filter from affecting main content
           ]
         )}
         style={isMobile ? {

@@ -1118,6 +1118,7 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 24px oklch(0 0 0 / 0.08);
     border-color: var(--border-strong, var(--border));
+    z-index: 10; /* Ensure cards are above backdrop-filter layers on hover */
   }
 
   /* Hover polish for selected items (no transform, but border/shadow still apply) */
@@ -1231,6 +1232,7 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 24px oklch(0 0 0 / 0.08);
     border-color: var(--border-strong, var(--border));
+    z-index: 10; /* Ensure cards are above backdrop-filter layers on hover */
   }
 
   /* Ensure KPI cards content is above pseudo-elements */
@@ -1271,6 +1273,7 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 24px oklch(0 0 0 / 0.08);
     border-color: var(--border-strong, var(--border));
+    z-index: 10; /* Ensure cards are above backdrop-filter layers on hover */
   }
 
   .summary-card-permanent-hover:hover::after {
@@ -1347,6 +1350,7 @@
 
   .invoice-card:hover {
     transform: translateY(-2px);
+    z-index: 10; /* Ensure cards are above backdrop-filter layers on hover */
     box-shadow: 0 4px 12px oklch(0 0 0 / 0.06);
   }
 
@@ -1448,6 +1452,11 @@
     filter: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+
+  /* Increase z-index on hover to ensure cards are above backdrop-filter layers */
+  [data-slot="card"]:hover {
+    z-index: 10;
   }
 }
 
