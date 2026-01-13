@@ -148,18 +148,18 @@
 @media (max-width: 767px) {
   [data-slot="dialog-content"].invoice-dialog-fullscreen {
     top: 0 !important;
-    bottom: env(safe-area-inset-bottom, 0px) !important;
+    bottom: var(--bottom-safe-area, calc(56px + env(safe-area-inset-bottom, 0px))) !important;
     left: 0 !important;
     right: 0 !important;
-    height: calc(100vh - env(safe-area-inset-bottom, 0px)) !important;
-    max-height: calc(100vh - env(safe-area-inset-bottom, 0px)) !important;
+    height: calc(100vh - var(--bottom-safe-area, calc(56px + env(safe-area-inset-bottom, 0px)))) !important;
+    max-height: calc(100vh - var(--bottom-safe-area, calc(56px + env(safe-area-inset-bottom, 0px)))) !important;
     margin: 0 !important;
     border-radius: 0 !important;
     transform: none !important;
     translate: none !important;
     max-width: none !important;
     width: 100% !important;
-    inset: 0 0 env(safe-area-inset-bottom, 0px) 0 !important;
+    inset: 0 0 var(--bottom-safe-area, calc(56px + env(safe-area-inset-bottom, 0px))) 0 !important;
   }
   
   /* Hide backdrop overlay for fullscreen dialogs on mobile - no blur, simple page */

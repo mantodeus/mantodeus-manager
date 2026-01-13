@@ -63,6 +63,88 @@ export function InvoiceUploadReviewDialog({
   onSuccess,
 }: InvoiceUploadReviewDialogProps) {
   const isMobile = useIsMobile();
+  
+  // #region agent log
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const observer = new MutationObserver(() => {
+      const logData = {
+        location: 'InvoiceUploadReviewDialog.tsx:useEffect:open-change',
+        message: `Dialog open=${open} - body/app-content mutation detected`,
+        data: {
+          open,
+          bodyPosition: document.body.style.position,
+          bodyOverflow: document.body.style.overflow,
+          bodyTop: document.body.style.top,
+          bodyWidth: document.body.style.width,
+          windowScrollY: window.scrollY,
+          viewportHeight: window.innerHeight,
+          appContent: (() => {
+            const el = document.querySelector('.app-content') as HTMLElement | null;
+            return el ? {
+              scrollTop: el.scrollTop,
+              overflowY: el.style.overflowY,
+              overflow: el.style.overflow,
+            } : null;
+          })(),
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'D',
+      };
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+    });
+    
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['style'],
+      subtree: false,
+    });
+    
+    const appContent = document.querySelector('.app-content');
+    if (appContent) {
+      observer.observe(appContent, {
+        attributes: true,
+        attributeFilter: ['style'],
+        subtree: false,
+      });
+    }
+    
+    // Also log on open state change
+    const logData = {
+      location: 'InvoiceUploadReviewDialog.tsx:useEffect:open-state',
+      message: `Dialog open state changed to ${open}`,
+      data: {
+        open,
+        bodyPosition: document.body.style.position,
+        bodyOverflow: document.body.style.overflow,
+        bodyTop: document.body.style.top,
+        bodyWidth: document.body.style.width,
+        windowScrollY: window.scrollY,
+        viewportHeight: window.innerHeight,
+        appContent: (() => {
+          const el = document.querySelector('.app-content') as HTMLElement | null;
+          return el ? {
+            scrollTop: el.scrollTop,
+            overflowY: el.style.overflowY,
+            overflow: el.style.overflow,
+          } : null;
+        })(),
+      },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'run1',
+      hypothesisId: 'E',
+    };
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+    
+    return () => {
+      observer.disconnect();
+    };
+  }, [open, isMobile]);
+  // #endregion
   const { theme } = useTheme();
   const isDarkMode = theme === 'green-mantis';
   // Get sidebar state to adjust dialog position
@@ -99,6 +181,37 @@ export function InvoiceUploadReviewDialog({
   const shouldBlockParentClose = () =>
     previewOpen || Date.now() < blockParentCloseUntilRef.current;
   const handleDialogOpenChange = (nextOpen: boolean) => {
+    // #region agent log
+    if (isMobile) {
+      const logData = {
+        location: 'InvoiceUploadReviewDialog.tsx:handleDialogOpenChange',
+        message: `Dialog ${nextOpen ? 'opening' : 'closing'} - checking state`,
+        data: {
+          nextOpen,
+          bodyPosition: document.body.style.position,
+          bodyOverflow: document.body.style.overflow,
+          bodyTop: document.body.style.top,
+          bodyWidth: document.body.style.width,
+          windowScrollY: window.scrollY,
+          viewportHeight: window.innerHeight,
+          appContent: (() => {
+            const el = document.querySelector('.app-content') as HTMLElement | null;
+            return el ? {
+              scrollTop: el.scrollTop,
+              overflowY: el.style.overflowY,
+              overflow: el.style.overflow,
+            } : null;
+          })(),
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'C',
+      };
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+    }
+    // #endregion
+    
     if (!nextOpen && isMobile && shouldBlockParentClose()) {
       return;
     }
@@ -1086,10 +1199,10 @@ export function InvoiceUploadReviewDialog({
               "!translate-x-0",
               "!translate-y-0",
               "!top-0",
-              "!bottom-[env(safe-area-inset-bottom,0px)]",
+              "!bottom-[var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px)))]",
               "!w-full",
-              "!h-[calc(100vh-env(safe-area-inset-bottom,0px))]",
-              "!max-h-[calc(100vh-env(safe-area-inset-bottom,0px))]",
+              "!h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
+              "!max-h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
               "!rounded-none",
               "!m-0",
               "!max-w-none"

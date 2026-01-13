@@ -324,10 +324,10 @@ export function CreateInvoiceDialog({
             "!translate-x-0",
             "!translate-y-0",
             "!top-0",
-            "!bottom-[env(safe-area-inset-bottom,0px)]",
+            "!bottom-[var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px)))]",
             "!w-full",
-            "!h-[calc(100vh-env(safe-area-inset-bottom,0px))]",
-            "!max-h-[calc(100vh-env(safe-area-inset-bottom,0px))]",
+            "!h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
+            "!max-h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
             "!rounded-none",
             "!m-0",
             "!max-w-none"

@@ -157,10 +157,10 @@ export function BulkInvoiceUploadDialog({
             "!translate-x-0",
             "!translate-y-0",
             "!top-0",
-            "!bottom-[env(safe-area-inset-bottom,0px)]",
+            "!bottom-[var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px)))]",
             "!w-full",
-            "!h-[calc(100vh-env(safe-area-inset-bottom,0px))]",
-            "!max-h-[calc(100vh-env(safe-area-inset-bottom,0px))]",
+            "!h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
+            "!max-h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
             "!rounded-none",
             "!m-0",
             "!max-w-none"
@@ -200,8 +200,8 @@ export function BulkInvoiceUploadDialog({
           </div>
         </div>
 
-        {/* Fade-out separator - hidden on mobile for seamless status bar blending */}
-        {!isMobile && <div className="separator-fade" />}
+        {/* Fade-out separator */}
+        <div className="separator-fade" />
 
         <div className={cn(
           "px-6 pt-4 overflow-y-auto flex-1 min-h-0",
