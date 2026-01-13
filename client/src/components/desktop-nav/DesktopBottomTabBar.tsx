@@ -156,7 +156,6 @@ export function DesktopBottomTabBar() {
       data-desktop-nav="bottom-tab-bar"
       className={cn(
         'fixed bottom-0 left-0 right-0 z-[50]', // Above content and scrim
-        'bg-background', // Solid opaque background - no transparency
         'border-t transition-colors duration-200',
         menuTab ? 'border-border/40' : 'border-border', // Lighter border when menu active
         'hidden md:flex', // Desktop only (opposite of mobile)
@@ -167,8 +166,8 @@ export function DesktopBottomTabBar() {
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)', // Safe area for notched devices
         height: '56px', // Premium height
-        // Ensure solid background, not affected by any backdrop-filter
-        backgroundColor: 'hsl(var(--background))',
+        // CRITICAL: Force explicit solid black background (no CSS variable that might have transparency)
+        backgroundColor: '#000000',
         // Add stronger top shadow when menu is active for visual separation
         ...(menuTab && {
           boxShadow: '0 -2px 24px rgba(0, 0, 0, 0.3)'
