@@ -89,6 +89,12 @@ export default defineConfig(({ mode }) => {
       },
       // Report chunk sizes
       chunkSizeWarningLimit: 1000, // 1MB
+      // esbuild options for better stability
+      esbuild: {
+        target: 'es2020',
+        // Reduce memory pressure by limiting concurrent operations
+        keepNames: false,
+      },
     },
     server: {
       host: true,

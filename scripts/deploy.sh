@@ -257,7 +257,42 @@ echo ""
 echo "==> Build"
 # Increase Node.js memory limit to prevent OOM during Vite build
 export NODE_OPTIONS=--max-old-space-size=4096
-npm run build
+
+# Clear Vite cache to prevent corrupted cache issues
+echo "  → Clearing Vite cache..."
+rm -rf node_modules/.vite .vite client/.vite dist/.vite 2>/dev/null || true
+
+# Try build with retry logic
+BUILD_ATTEMPTS=0
+MAX_BUILD_ATTEMPTS=2
+BUILD_SUCCESS=0
+
+while [ $BUILD_ATTEMPTS -lt $MAX_BUILD_ATTEMPTS ] && [ $BUILD_SUCCESS -eq 0 ]; do
+  BUILD_ATTEMPTS=$((BUILD_ATTEMPTS + 1))
+  echo "  → Build attempt $BUILD_ATTEMPTS/$MAX_BUILD_ATTEMPTS..."
+  
+  if npm run build 2>&1; then
+    BUILD_SUCCESS=1
+    echo "  ✓ Build succeeded"
+  else
+    if [ $BUILD_ATTEMPTS -lt $MAX_BUILD_ATTEMPTS ]; then
+      echo "  ⚠ Build failed, attempting recovery..."
+      echo "  → Clearing all caches and node_modules/.cache..."
+      rm -rf node_modules/.vite .vite client/.vite dist/.vite node_modules/.cache 2>/dev/null || true
+      echo "  → Reinstalling esbuild and vite..."
+      npx pnpm add -D esbuild@^0.25.0 vite@5.4.0 2>&1 || echo "  ⚠ Reinstall failed, continuing..."
+      echo "  → Retrying build..."
+    else
+      echo "  ❌ Build failed after $MAX_BUILD_ATTEMPTS attempts"
+      echo "  → Manual recovery steps:"
+      echo "    1. cd $APP_DIR"
+      echo "    2. rm -rf node_modules .vite node_modules/.vite dist"
+      echo "    3. npx pnpm install"
+      echo "    4. npm run build"
+      exit 1
+    fi
+  fi
+done
 
 echo ""
 echo "==> Verify build output"
