@@ -78,6 +78,8 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: path.resolve(projectRoot, "dist/public"),
       emptyOutDir: true,
+      // Set target to ES2022 to support top-level await
+      target: 'es2022',
       rollupOptions: {
         output: {
           manualChunks: {
