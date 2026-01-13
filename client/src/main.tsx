@@ -442,7 +442,8 @@ if ('serviceWorker' in navigator) {
   
   const registerSW = () => {
     // Add version and timestamp to force fresh fetch of service worker file
-    const swUrl = `/sw.js?v=3.3.0&t=${Date.now()}`;
+    // Bumped version to force cache clear after JSX fixes
+    const swUrl = `/sw.js?v=3.4.0&t=${Date.now()}`;
     
     navigator.serviceWorker.register(swUrl, { 
       updateViaCache: 'none', // Never use cache when checking for updates
