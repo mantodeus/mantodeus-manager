@@ -1085,13 +1085,13 @@ export function InvoiceUploadReviewDialog({
             isMobile && "!top-0 !left-0 !right-0 !bottom-0 !translate-x-0 !translate-y-0 !max-w-none !w-full !h-full !max-h-none !mb-0 !rounded-none"
           )}
           style={isMobile ? {
-            top: 0,
+            top: 'env(safe-area-inset-top, 0px)',
             left: 0,
             right: 0,
             bottom: 0,
             width: '100%',
-            height: '100%',
-            maxHeight: '100%',
+            height: 'calc(100% - env(safe-area-inset-top, 0px))',
+            maxHeight: 'calc(100% - env(safe-area-inset-top, 0px))',
             margin: 0,
             borderRadius: 0,
           } : {
