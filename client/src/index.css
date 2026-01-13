@@ -1066,6 +1066,12 @@
       max-height: calc(100vh - var(--bottom-safe-area, 0px) - 2rem) !important;
       margin-bottom: calc(var(--bottom-safe-area, 0px) + 1rem) !important;
     }
+
+    [data-slot="dialog-content"].invoice-dialog-fullscreen {
+      max-height: 100vh !important;
+      max-height: 100dvh !important;
+      margin-bottom: 0 !important;
+    }
   }
 
   @media (min-width: 640px) {

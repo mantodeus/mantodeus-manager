@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, CurrencyEuro, X, RotateCcw, Info as HelpCircle, Sparkles } from "@/components/ui/Icon";
+import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, CurrencyEuro, ArrowLeft, RotateCcw, Info as HelpCircle, Sparkles } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -1253,93 +1253,80 @@ export function InvoiceUploadReviewDialog({
         {/* PageHeader-like structure matching Invoices page */}
         <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
           {/* TitleRow */}
-          <div className="flex items-start justify-between gap-4 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start gap-2">
-                {isReview ? (
-                  <FileText className="h-6 w-6 text-primary mt-1" />
-                ) : (
-                  <DocumentCurrencyEuro className="h-6 w-6 text-primary mt-1" />
-                )}
-                <div className="flex min-w-0 flex-col">
-                  <h1 className="text-2xl md:text-3xl font-light">
-                    {isReview ? "Review" : "Edit"}
-                  </h1>
-                  {headerSubtitle && (
-                    <p className="text-muted-foreground text-sm mt-2 truncate">
-                      {headerSubtitle}
-                    </p>
-                  )}
-                </div>
-              </div>
+          <div className="flex items-center gap-3 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
+            {/* Arrow button on left */}
+            <Button
+              variant="icon"
+              size="icon"
+              onClick={() => onOpenChange(false)}
+              className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
+              aria-label="Close"
+            >
+              <ArrowLeft />
+            </Button>
+            
+            {/* Title with icon */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              {isReview ? (
+                <FileText className="h-6 w-6 text-primary shrink-0" />
+              ) : (
+                <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
+              )}
+              <h1 className="text-2xl md:text-3xl font-light">
+                {isReview ? "Review Invoice" : "Edit Invoice"}
+              </h1>
             </div>
             
-            {/* Icon Cluster - X button where settings would be */}
-            <div className="flex items-center shrink-0 gap-3 sm:gap-2">
-              <Button
-                variant="icon"
-                size="icon"
-                onClick={() => onOpenChange(false)}
-                className="size-9 [&_svg]:size-8 hover:bg-muted/50"
-                aria-label="Close"
-              >
-                <X />
-              </Button>
-            </div>
-          </div>
-
-          {/* ActionRow - Status badge */}
-          {invoice && (
-            <div
-              className="flex items-center justify-end px-4"
-              style={{ marginTop: 'var(--space-header-actions, 16px)' }}
-            >
-              {statusActions.length === 0 ? (
-                <div className="flex items-center gap-2">
-                  {renderStatusButton(invoice)}
-                </div>
-              ) : (
-                <DropdownMenu open={statusMenuOpen} onOpenChange={setStatusMenuOpen}>
-                  <div
-                    ref={statusButtonRef}
-                    className="inline-block"
-                    {...longPressHandlers}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      if (statusActions.length > 0) {
-                        setStatusMenuOpen(true);
-                      }
-                    }}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      {renderStatusButton(invoice)}
-                    </DropdownMenuTrigger>
+            {/* Status badge on right (where X was) */}
+            {invoice && (
+              <div className="flex items-center shrink-0">
+                {statusActions.length === 0 ? (
+                  <div className="flex items-center gap-2">
+                    {renderStatusButton(invoice)}
                   </div>
-                  <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {statusActions.map((actionItem) => (
-                      <DropdownMenuItem
-                        key={actionItem.action}
-                        onClick={() => !actionItem.disabled && actionItem.onClick()}
-                        disabled={actionItem.disabled}
-                        className={cn("flex items-center gap-2", actionItem.disabled && "opacity-50")}
-                      >
-                        {actionItem.icon}
-                        <div className="flex-1">
-                          <div>{actionItem.label}</div>
-                          {actionItem.disabled && actionItem.disabledReason && (
-                            <div className="text-xs text-muted-foreground">{actionItem.disabledReason}</div>
-                          )}
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          )}
+                ) : (
+                  <DropdownMenu open={statusMenuOpen} onOpenChange={setStatusMenuOpen}>
+                    <div
+                      ref={statusButtonRef}
+                      className="inline-block"
+                      {...longPressHandlers}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (statusActions.length > 0) {
+                          setStatusMenuOpen(true);
+                        }
+                      }}
+                    >
+                      <DropdownMenuTrigger asChild>
+                        {renderStatusButton(invoice)}
+                      </DropdownMenuTrigger>
+                    </div>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {statusActions.map((actionItem) => (
+                        <DropdownMenuItem
+                          key={actionItem.action}
+                          onClick={() => !actionItem.disabled && actionItem.onClick()}
+                          disabled={actionItem.disabled}
+                          className={cn("flex items-center gap-2", actionItem.disabled && "opacity-50")}
+                        >
+                          {actionItem.icon}
+                          <div className="flex-1">
+                            <div>{actionItem.label}</div>
+                            {actionItem.disabled && actionItem.disabledReason && (
+                              <div className="text-xs text-muted-foreground">{actionItem.disabledReason}</div>
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Fade-out separator */}

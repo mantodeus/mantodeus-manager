@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Upload, X, FileText, Loader2, DocumentCurrencyEuro } from "@/components/ui/Icon";
+import { AlertCircle, Upload, ArrowLeft, FileText, Loader2, DocumentCurrencyEuro } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/useMobile";
 import { InvoiceUploadZone } from "./InvoiceUploadZone";
@@ -174,28 +174,23 @@ export function BulkInvoiceUploadDialog({
         {/* PageHeader-like structure matching Invoices page */}
         <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
           {/* TitleRow */}
-          <div className="flex items-start justify-between gap-4 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start gap-2">
-                <h1 className="text-2xl md:text-3xl font-light flex items-center gap-2">
-                  <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
-                  Upload Invoices
-                </h1>
-              </div>
-            </div>
+          <div className="flex items-center gap-3 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
+            {/* Arrow button on left */}
+            <Button
+              variant="icon"
+              size="icon"
+              onClick={handleClose}
+              className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
+              aria-label="Close"
+              disabled={isUploading}
+            >
+              <ArrowLeft />
+            </Button>
             
-            {/* Icon Cluster - X button where settings would be */}
-            <div className="flex items-center shrink-0 gap-3 sm:gap-2">
-              <Button
-                variant="icon"
-                size="icon"
-                onClick={handleClose}
-                className="size-9 [&_svg]:size-8 hover:bg-muted/50"
-                aria-label="Close"
-                disabled={isUploading}
-              >
-                <X />
-              </Button>
+            {/* Title with icon */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
+              <h1 className="text-2xl md:text-3xl font-light">Upload Invoices</h1>
             </div>
           </div>
         </div>
