@@ -2036,7 +2036,7 @@ export default function Invoices() {
                     size="icon"
                     aria-label="Search"
                     onClick={() => setIsSearchOpen(true)}
-                    className="size-9 [&_svg]:size-4 hover:bg-muted/50"
+                    className="size-9 [&_svg]:size-8 hover:bg-muted/50"
                   >
                     <Search />
                   </Button>
@@ -2045,7 +2045,7 @@ export default function Invoices() {
                     size="icon"
                     aria-label="Filter"
                     onClick={() => setIsFilterOpen(true)}
-                    className="size-9 [&_svg]:size-4 hover:bg-muted/50"
+                    className="size-9 [&_svg]:size-8 hover:bg-muted/50"
                   >
                     <SlidersHorizontal />
                   </Button>
@@ -2054,7 +2054,7 @@ export default function Invoices() {
                     size="icon"
                     aria-label="Settings"
                     onClick={() => navigate("/settings")}
-                    className="size-9 [&_svg]:size-4 hover:bg-muted/50"
+                    className="size-9 [&_svg]:size-8 hover:bg-muted/50"
                   >
                     <Settings />
                   </Button>

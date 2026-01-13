@@ -163,10 +163,10 @@ export function DesktopModuleFlyout() {
         });
       }
     } else {
-      // Rail anchor: position at left edge
+      // Rail anchor: position at left edge, start from top with some padding
       setFlyoutPosition({
         left: LAYOUT.RAIL_WIDTH,
-        top: 0,
+        top: 16, // Add some top padding instead of full height
       });
     }
   }, [flyoutAnchor, activeTab, flyoutState]);
@@ -197,7 +197,6 @@ export function DesktopModuleFlyout() {
         "flex flex-col",
         // Glass effect
         "bg-background/90 backdrop-blur-2xl",
-        "border border-border/50",
         "shadow-xl shadow-black/10",
         "rounded-lg",
         // Animation - subtle fade only, no heavy motion
@@ -207,7 +206,7 @@ export function DesktopModuleFlyout() {
         left: flyoutPosition.left,
         ...(flyoutAnchor === 'bottom-bar' 
           ? { bottom: flyoutPosition.bottom, width: LAYOUT.FLYOUT_WIDTH }
-          : { top: 0, bottom: 0, width: LAYOUT.FLYOUT_WIDTH }
+          : { top: flyoutPosition.top || 0, width: LAYOUT.FLYOUT_WIDTH }
         ),
       }}
       onMouseLeave={handleMouseLeave}
