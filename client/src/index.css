@@ -147,19 +147,19 @@
 /* Fullscreen mobile dialogs - override Radix UI inset for PWA safe areas */
 @media (max-width: 767px) {
   [data-slot="dialog-content"].invoice-dialog-fullscreen {
-    top: env(safe-area-inset-top, 0px) !important;
+    top: 0 !important;
     bottom: env(safe-area-inset-bottom, 0px) !important;
     left: 0 !important;
     right: 0 !important;
-    height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
-    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    height: calc(100vh - env(safe-area-inset-bottom, 0px)) !important;
+    max-height: calc(100vh - env(safe-area-inset-bottom, 0px)) !important;
     margin: 0 !important;
     border-radius: 0 !important;
     transform: none !important;
     translate: none !important;
     max-width: none !important;
     width: 100% !important;
-    inset: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) 0 !important;
+    inset: 0 0 env(safe-area-inset-bottom, 0px) 0 !important;
   }
   
   /* Hide backdrop overlay for fullscreen dialogs on mobile - no blur, simple page */

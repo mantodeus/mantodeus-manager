@@ -33,8 +33,6 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "@/components/ui/Icon";
 import { ShareInvoiceDialog } from "./invoices/ShareInvoiceDialog";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { MarkAsSentAndPaidDialog } from "./invoices/MarkAsSentAndPaidDialog";
@@ -1087,11 +1085,11 @@ export function InvoiceUploadReviewDialog({
               "!left-0",
               "!translate-x-0",
               "!translate-y-0",
-              "!top-[env(safe-area-inset-top,0px)]",
+              "!top-0",
               "!bottom-[env(safe-area-inset-bottom,0px)]",
               "!w-full",
-              "!h-[calc(100vh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))]",
-              "!max-h-[calc(100vh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))]",
+              "!h-[calc(100vh-env(safe-area-inset-bottom,0px))]",
+              "!max-h-[calc(100vh-env(safe-area-inset-bottom,0px))]",
               "!rounded-none",
               "!m-0",
               "!max-w-none"
@@ -1138,10 +1136,10 @@ export function InvoiceUploadReviewDialog({
         {/* PageHeader-like structure matching Invoices page */}
         <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
           {/* TitleRow */}
-          <div className="flex items-start justify-between gap-4 px-4 pt-4">
+          <div className="flex items-start justify-between gap-4 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
             <div className="flex-1 min-w-0">
               <div className="flex items-start gap-2">
-                <h1 className="text-4xl md:text-3xl font-light flex items-center gap-2">
+                <h1 className="text-2xl md:text-3xl font-light flex items-center gap-2">
                   {isReview ? (
                     <FileText className="h-6 w-6 text-primary" />
                   ) : (
@@ -1214,30 +1212,8 @@ export function InvoiceUploadReviewDialog({
           </div>
         </div>
 
-        {/* Warning banners - above separator */}
-        {invoice && !isReview && (
-          <div className="px-4 pb-4">
-            {!invoice.sentAt && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  This invoice has not been sent yet.
-                </AlertDescription>
-              </Alert>
-            )}
-            {invoice.sentAt && !invoice.paidAt && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  This invoice has been sent but not paid yet.
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-        )}
-
-        {/* Fade-out separator */}
-        <div className="separator-fade" />
+        {/* Fade-out separator - hidden on mobile for seamless status bar blending */}
+        {!isMobile && <div className="separator-fade" />}
 
         <div className={cn(
           "space-y-4 px-6 pt-4 overflow-y-auto flex-1 min-h-0",

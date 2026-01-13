@@ -156,11 +156,11 @@ export function BulkInvoiceUploadDialog({
             "!left-0",
             "!translate-x-0",
             "!translate-y-0",
-            "!top-[env(safe-area-inset-top,0px)]",
+            "!top-0",
             "!bottom-[env(safe-area-inset-bottom,0px)]",
             "!w-full",
-            "!h-[calc(100vh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))]",
-            "!max-h-[calc(100vh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))]",
+            "!h-[calc(100vh-env(safe-area-inset-bottom,0px))]",
+            "!max-h-[calc(100vh-env(safe-area-inset-bottom,0px))]",
             "!rounded-none",
             "!m-0",
             "!max-w-none"
@@ -174,10 +174,10 @@ export function BulkInvoiceUploadDialog({
         {/* PageHeader-like structure matching Invoices page */}
         <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
           {/* TitleRow */}
-          <div className="flex items-start justify-between gap-4 px-4 pt-4">
+          <div className="flex items-start justify-between gap-4 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
             <div className="flex-1 min-w-0">
               <div className="flex items-start gap-2">
-                <h1 className="text-4xl md:text-3xl font-light flex items-center gap-2">
+                <h1 className="text-2xl md:text-3xl font-light flex items-center gap-2">
                   <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
                   Upload Invoices
                 </h1>
@@ -200,8 +200,8 @@ export function BulkInvoiceUploadDialog({
           </div>
         </div>
 
-        {/* Fade-out separator */}
-        <div className="separator-fade" />
+        {/* Fade-out separator - hidden on mobile for seamless status bar blending */}
+        {!isMobile && <div className="separator-fade" />}
 
         <div className={cn(
           "px-6 pt-4 overflow-y-auto flex-1 min-h-0",
@@ -282,7 +282,10 @@ export function BulkInvoiceUploadDialog({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 pt-4 border-t px-6 pb-6">
+        {/* Fade-out separator */}
+        <div className="separator-fade" />
+
+        <div className="flex flex-col gap-2 pt-4 px-6 pb-6">
           <div className="flex gap-2">
             <Button
               variant="outline"
