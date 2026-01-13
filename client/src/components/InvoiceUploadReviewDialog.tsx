@@ -1271,7 +1271,7 @@ export function InvoiceUploadReviewDialog({
               variant="icon"
               size="icon"
               onClick={() => onOpenChange(false)}
-              className="size-9 [&_svg]:size-8 bg-muted/50 shrink-0"
+              className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
               aria-label="Close"
             >
               <ArrowLeft />
@@ -1304,7 +1304,7 @@ export function InvoiceUploadReviewDialog({
                       <Button
                         variant="icon"
                         size="icon"
-                        className="size-9 [&_svg]:size-5 border border-border/70 bg-foreground/5 text-foreground active:bg-foreground/8 dark:bg-foreground/7 dark:active:bg-foreground/10 transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]"
+                        className="size-9 [&_svg]:size-5 border border-transparent bg-transparent text-foreground hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8 dark:hover:bg-foreground/7 dark:active:bg-foreground/10 transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]"
                         aria-label="More actions"
                       >
                         <MoreVertical />
@@ -1345,10 +1345,8 @@ export function InvoiceUploadReviewDialog({
           
           {/* Invoice Number Row - aligned below arrow */}
           {invoice?.invoiceNumber && (
-            <div className="flex items-start gap-3 px-4 pt-1">
-              {/* Spacer to align with arrow button */}
-              <div className="size-9 shrink-0" />
-              {/* Invoice number */}
+            <div className="px-4 pb-2">
+              {/* Invoice number - aligned left with arrow button */}
               <p className="text-2xl md:text-3xl font-light text-muted-foreground">
                 {invoice.invoiceNumber}
               </p>
