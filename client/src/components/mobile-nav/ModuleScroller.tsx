@@ -168,37 +168,59 @@ export function ModuleScroller() {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const capabilities = useDeviceCapabilities(); // Phase 2: Device capability detection
-  const [desktopPosition, setDesktopPosition] = useState<{ left: number } | null>(null);
+  const [desktopPosition, setDesktopPosition] = useState<{ left: number; bottom: number } | null>(null);
 
-  // Desktop: Update position when content column resizes (e.g., when chat opens/closes)
+  // Desktop: Update position above the active tab button
   useEffect(() => {
     if (typeof window === 'undefined' || window.innerWidth < 768) return;
+    if (!scrollerVisible) return;
 
     const updatePosition = () => {
-      const contentColumn = document.querySelector('[data-layout="content-column"]') as HTMLElement;
-      if (contentColumn) {
-        const rect = contentColumn.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        setDesktopPosition({ left: centerX });
+      // Find the active tab button
+      const activeTabButton = document.querySelector(`[data-tab-id="${currentTab}"]`) as HTMLElement;
+      if (activeTabButton) {
+        const rect = activeTabButton.getBoundingClientRect();
+        // Position above the tab button, centered horizontally
+        setDesktopPosition({ 
+          left: rect.left + rect.width / 2,
+          bottom: window.innerHeight - rect.top + 12, // 12px gap above tab
+        });
+      } else {
+        // Fallback: center relative to content column
+        const contentColumn = document.querySelector('[data-layout="content-column"]') as HTMLElement;
+        if (contentColumn) {
+          const rect = contentColumn.getBoundingClientRect();
+          setDesktopPosition({ 
+            left: rect.left + rect.width / 2,
+            bottom: 76, // Above 56px tab bar + 20px gap
+          });
+        }
       }
     };
 
     updatePosition();
 
-    const contentColumn = document.querySelector('[data-layout="content-column"]') as HTMLElement;
-    if (!contentColumn) return;
-
-    const resizeObserver = new ResizeObserver(updatePosition);
-    resizeObserver.observe(contentColumn);
-
-    // Also update on window resize
+    // Update on window resize and scroll
     window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    // Also observe tab button position changes
+    const activeTabButton = document.querySelector(`[data-tab-id="${currentTab}"]`) as HTMLElement;
+    if (activeTabButton) {
+      const resizeObserver = new ResizeObserver(updatePosition);
+      resizeObserver.observe(activeTabButton);
+      return () => {
+        resizeObserver.disconnect();
+        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', updatePosition, true);
+      };
+    }
 
     return () => {
-      resizeObserver.disconnect();
       window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [scrollerVisible]);
+  }, [scrollerVisible, currentTab]);
 
   // Desktop: handle click on module items
   const handleModuleClick = useCallback((module: Module) => {
@@ -395,13 +417,14 @@ export function ModuleScroller() {
               : 'left-1/2 -translate-x-1/2 md:left-auto',
         )}
         style={{
-          // Desktop positioning: above tab bar, centered relative to content column
-          ...(typeof window !== 'undefined' && window.innerWidth >= 768 ? {
-            ...(desktopPosition ? {
-              left: `${desktopPosition.left}px`,
-              transform: 'translateX(-50%)',
-            } : {}),
-            bottom: '76px', // Above 56px tab bar + 20px gap
+          // Desktop positioning: above the active tab button
+          ...(typeof window !== 'undefined' && window.innerWidth >= 768 && desktopPosition ? {
+            left: `${desktopPosition.left}px`,
+            bottom: `${desktopPosition.bottom}px`,
+            transform: 'translateX(-50%)',
+            top: 'auto',
+          } : typeof window !== 'undefined' && window.innerWidth >= 768 ? {
+            bottom: '76px', // Fallback: above 56px tab bar + 20px gap
             top: 'auto',
           } : {}),
         }}

@@ -122,11 +122,17 @@ export function BottomTabBarDesktop() {
       return;
     }
     
-    // If scroller is open for this tab, close it
+    // If scroller is open for this tab, close it and navigate to last used module
     if (scrollerVisible && activeTab === tabId) {
       setGestureState('idle');
       setGestureTab(null);
       setHighlightedIndex(null);
+      
+      // Navigate to last used module for this tab
+      const lastUsedPath = lastUsedModuleByTab[tabId];
+      if (lastUsedPath) {
+        setLocation(lastUsedPath);
+      }
       return;
     }
     
@@ -232,6 +238,14 @@ export function BottomTabBarDesktop() {
               <button
                 key={tab.id}
                 data-tab-trigger={tab.id}
+                data-tab-id={tab.id}
+                ref={(el) => {
+                  if (el && tab.id === activeTab && scrollerVisible) {
+                    // Store button position for module menu alignment
+                    const rect = el.getBoundingClientRect();
+                    (window as any).__activeTabButtonRect = rect;
+                  }
+                }}
                 className={cn(
                   'relative flex items-center justify-center',
                   'px-5 py-2.5 rounded-full',

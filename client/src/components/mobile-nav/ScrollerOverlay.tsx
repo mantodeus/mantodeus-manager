@@ -12,8 +12,15 @@ import { useDeviceCapabilities } from './useDeviceCapabilities';
 import { FEATURES } from './constants';
 
 export function ScrollerOverlay() {
-  const { scrollerVisible } = useMobileNav();
+  const { 
+    scrollerVisible,
+    setGestureState,
+    setGestureTab,
+    setHighlightedIndex,
+    gestureTab,
+  } = useMobileNav();
   const capabilities = useDeviceCapabilities();
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
 
   if (!scrollerVisible) {
     return null;
@@ -37,6 +44,7 @@ export function ScrollerOverlay() {
         backdropFilter: hasBackdropBlur ? 'blur(8px)' : undefined,
         WebkitBackdropFilter: hasBackdropBlur ? 'blur(8px)' : undefined,
       }}
+      onMouseLeave={isDesktop ? handleMouseLeave : undefined}
       aria-hidden="true"
     />
   );

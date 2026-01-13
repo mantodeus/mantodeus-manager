@@ -700,8 +700,10 @@ export function AssistantPanel({
           // Prevent scroll chaining to the page
           overscrollBehavior: 'contain',
         } : {
-          // Desktop: add bottom padding to prevent covering by fixed bottom bar
-          paddingBottom: 'var(--bottom-safe-area)',
+          // Desktop: fixed viewport height, account for bottom tab bar
+          height: 'calc(100vh - var(--bottom-safe-area))',
+          maxHeight: 'calc(100vh - var(--bottom-safe-area))',
+          overflow: 'hidden', // Prevent entire panel from scrolling
         }}
         // Touch events handled via native listeners in useEffect (passive: false required)
       >
