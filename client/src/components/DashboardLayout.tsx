@@ -1,18 +1,23 @@
 ﻿import { useAuth } from "@/_core/hooks/useAuth";
 import { DataExportImportDialog } from "./DataExportImportDialog";
 import { AssistantPanel } from "./assistant/AssistantPanel";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { AppLoadingScreen } from './AppLoadingScreen';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   MobileNavProvider,
   BottomTabBar,
-  BottomTabBarDesktop,
   ModuleScroller,
   ScrollerOverlay,
   useRouteTracking,
 } from "./mobile-nav";
+import {
+  DesktopNavProvider,
+  DesktopNavRail,
+  DesktopModuleFlyout,
+  LAYOUT,
+} from "./desktop-nav";
 import { useIsMobile } from "@/hooks/useMobile";
 
 export default function DashboardLayout({
@@ -41,17 +46,17 @@ export default function DashboardLayout({
 
   return (
     <TooltipProvider delayDuration={0}>
-      <MobileNavProvider>
+      <DesktopNavProvider>
         <DesktopDashboardLayoutContent>
           {children}
         </DesktopDashboardLayoutContent>
-      </MobileNavProvider>
+      </DesktopNavProvider>
     </TooltipProvider>
   );
 }
 
 /**
- * Desktop Layout with Bottom Tab Bar navigation only
+ * Desktop Layout with Tab Rail + Flyout navigation
  */
 function DesktopDashboardLayoutContent({
   children,
@@ -59,36 +64,31 @@ function DesktopDashboardLayoutContent({
   children: React.ReactNode;
 }) {
   const [dataDialogOpen, setDataDialogOpen] = useState(false);
-  
-  // Track route changes to update active tab and last used module (same as mobile)
-  useRouteTracking();
 
   return (
-    <div className="flex h-screen w-full flex-col">
-      {/* Content + Assistant in flex row */}
-      <div className="flex flex-1 min-h-0 w-full" style={{ height: 'calc(100vh - var(--bottom-safe-area))' }}>
-        {/* Main Content Area - shrinks when assistant is open */}
-        <main 
-          data-layout="content-column"
-          className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background"
-        >
-          {children}
-        </main>
+    <div className="flex h-screen w-full">
+      {/* Tab Rail - always visible */}
+      <DesktopNavRail onDataExport={() => setDataDialogOpen(true)} />
+      
+      {/* Flyout - appears on hover/click */}
+      <DesktopModuleFlyout />
 
-        {/* Manto Assistant Panel - dock on desktop, not overlay */}
-        <MantoAssistantWrapper />
-      </div>
+      {/* Main Content Area */}
+      <main 
+        className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background"
+        style={{ marginLeft: LAYOUT.RAIL_WIDTH }}
+      >
+        {children}
+      </main>
+
+      {/* Manto Assistant Panel - right side on desktop */}
+      <MantoAssistantWrapper />
 
       {/* Data Export/Import Dialog */}
       <DataExportImportDialog
         open={dataDialogOpen}
         onOpenChange={setDataDialogOpen}
       />
-
-      {/* Desktop Navigation - shared with mobile */}
-      <ScrollerOverlay />
-      <ModuleScroller />
-      <BottomTabBarDesktop />
     </div>
   );
 }
