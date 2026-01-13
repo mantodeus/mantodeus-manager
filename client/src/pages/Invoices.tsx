@@ -593,13 +593,11 @@ export default function Invoices() {
   const isMobile = useIsMobile();
   const { theme } = useTheme();
   const isDarkMode = theme === 'green-mantis';
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [selectedQuarter, setSelectedQuarter] = useState<{ quarter: number; year: number }>(() => {
+  const [selectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedQuarter] = useState<{ quarter: number; year: number }>(() => {
     const now = new Date();
     return { quarter: Math.floor(now.getMonth() / 3) + 1, year: now.getFullYear() };
   });
-  const [yearPopoverOpen, setYearPopoverOpen] = useState(false);
-  const [quarterPopoverOpen, setQuarterPopoverOpen] = useState(false);
   const [, navigate] = useLocation();
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -848,6 +846,18 @@ export default function Invoices() {
       }
     };
   }, [previewUrl]);
+
+  // Keyboard shortcut: ⌘K / Ctrl+K to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const applySearch = () => {
     setSearchQuery(searchDraft.trim());
@@ -1911,56 +1921,63 @@ export default function Invoices() {
     </Sheet>
   );
 
-  // Calculate padding for multi-select bar
-  // Bar height: min-h-[44px] + padding (14px * 2) + marginBottom (1rem = 16px) + safe area
-  // Roughly: 44 + 28 + 16 = 88px minimum, but add extra for safety and wrapping
-  const multiSelectPadding = useMemo(() => {
-    if (!isMultiSelectMode) return undefined;
-    // On mobile, account for bottom tab bar + safe area
-    const isMobile = window.innerWidth < 768;
-    if (isMobile) {
-      // Multi-select bar is above tab bar, so we need: bar height + some spacing
-      return '140px'; // Enough to clear both bar and tab bar
-    }
-    return '120px'; // Desktop: just the bar height
-  }, [isMultiSelectMode]);
+  // Calculate KPI values for static cards
+  const yearTotal = yearPaid + yearDue;
+  const quarterTotal = quarterPaid + quarterDue;
 
   return (
-    <div 
-      className="space-y-6"
-      style={{
-        paddingBottom: multiSelectPadding,
-      }}
-    >
-      {/* Search overlay - controlled by PageHeader's onSearch handler */}
+    <div className="space-y-6">
+      {/* Search overlay - controlled by command-style search */}
       {searchOverlay}
       
-      {/* Filter sheet - controlled by PageHeader's onFilter handler */}
+      {/* Filter sheet - controlled by filter button */}
       {filterSheet}
       
-      <PageHeader
-        title="Invoices"
-        subtitle="Create, edit, and manage invoices"
-        onSearch={() => setIsSearchOpen(true)}
-        onFilter={() => setIsFilterOpen(true)}
-        onSettings={() => navigate("/settings")}
-        primaryActions={
-          <>
+      {/* Sticky Header with Command-Style Search */}
+      <div className="sticky top-0 z-40 bg-[var(--surface-overlay)] backdrop-blur-[var(--blur-overlay)] border-b border-border/50 -mx-4 px-4 py-4">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Title + Command Search */}
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <h1 className="text-3xl font-light shrink-0">Invoices</h1>
+            {/* Command-style search input */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border/50 bg-background/50 hover:bg-background/80 text-sm text-muted-foreground font-light transition-colors flex-1 max-w-md"
+            >
+              <Search className="w-4 h-4 shrink-0 opacity-50" />
+              <span className="flex-1 text-left truncate">
+                {searchQuery || "Search invoices..."}
+              </span>
+              <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-60">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+            </button>
+          </div>
+          
+          {/* Right: Icon buttons + Primary actions */}
+          <div className="flex items-center gap-2 shrink-0">
             <Button
-              variant="outline"
+              variant="icon"
+              size="icon"
+              aria-label="Filter"
+              onClick={() => setIsFilterOpen(true)}
+              className="size-9 [&_svg]:size-7"
+            >
+              <SlidersHorizontal />
+            </Button>
+            <Button
+              variant="icon"
+              size="icon"
+              aria-label="Upload"
               onClick={() => setBulkUploadOpen(true)}
               disabled={bulkUploadMutation.isPending}
-              className="h-10 whitespace-nowrap"
-              data-guide-id="invoices.upload"
-              data-guide-type="button"
-              data-guide-label="Upload Invoice PDFs"
+              className="size-9 [&_svg]:size-7"
             >
               {bulkUploadMutation.isPending ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-7 h-7 animate-spin" />
               ) : (
-                <Upload className="w-4 h-4 mr-2" />
+                <Upload />
               )}
-              Upload
             </Button>
             <Button 
               onClick={() => setCreateDialogOpen(true)}
@@ -1972,43 +1989,80 @@ export default function Invoices() {
               <Plus className="w-4 h-4 mr-1" />
               Create
             </Button>
-          </>
-        }
-      />
-
-      {/* Total Cards */}
-      <div className="space-y-3">
-        <div className="grid gap-3 md:grid-cols-2">
-          <YearTotalCard
-            selectedYear={selectedYear}
-            yearPaid={yearPaid}
-            yearDue={yearDue}
-            allYearTotals={allYearTotals}
-            onYearSelect={(year) => setSelectedYear(year)}
-            popoverOpen={yearPopoverOpen}
-            onPopoverOpenChange={setYearPopoverOpen}
-          />
-          <QuarterTotalCard
-            selectedQuarter={selectedQuarter}
-            quarterPaid={quarterPaid}
-            quarterDue={quarterDue}
-            allQuarterTotals={allQuarterTotals}
-            onQuarterSelect={(quarter, year) => setSelectedQuarter({ quarter, year })}
-            popoverOpen={quarterPopoverOpen}
-            onPopoverOpenChange={setQuarterPopoverOpen}
-          />
+          </div>
         </div>
+      </div>
+
+      {/* Static KPI Cards - 2x2 Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Year Total */}
+        <Card className="p-4 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 border-t-0 hover:border-t hover:border-t-primary/20">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-extralight text-muted-foreground uppercase tracking-wide">
+              Total {selectedYear}
+            </span>
+            <span className="text-3xl font-extralight tabular-nums">
+              {formatCurrency(yearTotal)}
+            </span>
+            <span className="text-xs font-light text-muted-foreground">
+              {formatCurrency(yearPaid)} paid, {formatCurrency(yearDue)} due
+            </span>
+          </div>
+        </Card>
+        
+        {/* Year Paid */}
+        <Card className="p-4 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 border-t-0 hover:border-t hover:border-t-primary/20">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-extralight text-muted-foreground uppercase tracking-wide">
+              Paid {selectedYear}
+            </span>
+            <span className="text-3xl font-extralight tabular-nums">
+              {formatCurrency(yearPaid)}
+            </span>
+            <span className="text-xs font-light text-muted-foreground">
+              {yearTotal > 0 ? Math.round((yearPaid / yearTotal) * 100) : 0}% of total
+            </span>
+          </div>
+        </Card>
+        
+        {/* Quarter Total */}
+        <Card className="p-4 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 border-t-0 hover:border-t hover:border-t-primary/20">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-extralight text-muted-foreground uppercase tracking-wide">
+              Q{selectedQuarter.quarter} {selectedQuarter.year}
+            </span>
+            <span className="text-3xl font-extralight tabular-nums">
+              {formatCurrency(quarterTotal)}
+            </span>
+            <span className="text-xs font-light text-muted-foreground">
+              {formatCurrency(quarterPaid)} paid, {formatCurrency(quarterDue)} due
+            </span>
+          </div>
+        </Card>
+        
+        {/* Quarter Paid */}
+        <Card className="p-4 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 border-t-0 hover:border-t hover:border-t-primary/20">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-extralight text-muted-foreground uppercase tracking-wide">
+              Paid Q{selectedQuarter.quarter}
+            </span>
+            <span className="text-3xl font-extralight tabular-nums">
+              {formatCurrency(quarterPaid)}
+            </span>
+            <span className="text-xs font-light text-muted-foreground">
+              {quarterTotal > 0 ? Math.round((quarterPaid / quarterTotal) * 100) : 0}% of total
+            </span>
+          </div>
+        </Card>
       </div>
 
       {needsReviewInvoices.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-light uppercase tracking-wide text-muted-foreground">Needs Review</h2>
-            <Badge variant="secondary" className="text-xs">
-              {needsReviewInvoices.length}
-            </Badge>
+            <h2 className="text-sm font-extralight uppercase tracking-wide text-muted-foreground">Needs Review</h2>
+            <span className="text-sm font-light text-muted-foreground">{needsReviewInvoices.length}</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+          <div className="space-y-2">
             {needsReviewInvoices.map((invoice) => {
               const uploadDate = invoice.uploadedAt || invoice.uploadDate || invoice.createdAt;
               const uploadDateLabel = uploadDate ? new Date(uploadDate).toLocaleDateString("de-DE") : "Unknown date";
@@ -2017,6 +2071,10 @@ export default function Invoices() {
                 (invoice.filename ? invoice.filename.replace(/\.[^/.]+$/, "") : null) ||
                 "Untitled invoice";
               const displayTotal = formatCurrency(invoice.total);
+              const linkedContact = contacts.find(
+                (contact: { id: number }) => contact.id === invoice.clientId || contact.id === invoice.contactId
+              );
+              const clientName = linkedContact?.name || linkedContact?.clientName || "No client";
               
               const handleNeedsReviewClick = () => {
                 if (isMultiSelectMode) {
@@ -2035,100 +2093,94 @@ export default function Invoices() {
                   onClick={handleNeedsReviewClick}
                   data-item={invoice.id}
                   className={cn(
-                    "card p-3 sm:p-4 md:min-h-[120px] card-hover-polish",
+                    "card p-4 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 border-2 border-orange-500/20 bg-orange-500/5",
                     !isMultiSelectMode && "cursor-pointer",
                     selectedIds.has(invoice.id) && "item-selected"
                   )}
                 >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
-                        {(() => {
-                          const InvoiceIcon = getInvoiceIcon();
-                          return <InvoiceIcon className="w-5 h-5 text-accent mt-0.5 shrink-0" />;
-                        })()}
-                        <div className="min-w-0">
-                          <div className="text-base leading-tight break-words">{displayName}</div>
-                          <div className="text-xs text-muted-foreground">Uploaded {uploadDateLabel}</div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <div className="text-base font-normal tabular-nums">{displayTotal}</div>
-                        <Badge variant="outline" className="badge-needs-review text-[11px] uppercase tracking-widest font-normal">NEEDS REVIEW</Badge>
-                        <Badge variant="secondary" className="text-xs">UPLOADED</Badge>
-                        {!isMultiSelectMode && (() => {
-                          const availableActions = getInvoiceActions({
-                            invoice,
-                            selectionMode: false,
-                          });
-                          return (
-                            <ItemActionsMenu
-                              actions={availableActions}
-                              onAction={(action) => {
-                              // Use switch statement to ensure only one action executes
-                              switch (action) {
-                                case "edit":
-                                  // "Edit" maps to "review" for needs-review invoices
-                                  setUploadedInvoiceId(invoice.id);
-                                  setUploadedParsedData(null);
-                                  setUploadReviewDialogOpen(true);
-                                  break;
-                                case "duplicate":
-                                  duplicateInvoiceMutation.mutate({ id: invoice.id });
-                                  break;
-                                case "select":
-                                  setIsMultiSelectMode(true);
-                                  setSelectedIds(new Set([invoice.id]));
-                                  break;
-                                case "archive":
-                                  handleArchiveInvoice(invoice.id);
-                                  break;
-                                case "delete":
-                                  setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName });
-                                  break;
-                                case "markAsSent":
-                                  // Check if invoice is already sent - show warning dialog if so
-                                  if (invoice.sentAt) {
-                                    setMarkAsSentTarget({ 
-                                      id: invoice.id, 
-                                      invoiceNumber: invoice.invoiceNumber,
-                                      alreadySent: true 
-                                    });
-                                    setMarkAsSentDialogOpen(true);
-                                  } else {
-                                    markAsSentMutation.mutate({ id: invoice.id });
-                                  }
-                                  break;
-                                case "markAsPaid":
-                                  // CRITICAL: Only call markAsPaid mutation
-                                  // For uploaded invoices that haven't been sent, mark as sent and paid
-                                  // Show date picker dialog
-                                  setMarkAsPaidTarget({ 
+                  {/* Top row: Client name + Amount */}
+                  <div className="flex items-start justify-between gap-4 mb-2">
+                    <div className="text-base font-normal min-w-0 flex-1">{clientName}</div>
+                    <div className="text-base font-normal tabular-nums shrink-0">{displayTotal}</div>
+                  </div>
+                  
+                  {/* Meta row: Invoice number + dates */}
+                  <div className="text-xs font-light text-muted-foreground mb-2">
+                    {invoice.invoiceNumber || displayName} • Uploaded {uploadDateLabel}
+                  </div>
+                  
+                  {/* Bottom row: Status chip + overflow actions */}
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="outline" className="badge-needs-review text-[11px] uppercase tracking-widest font-normal border-orange-500/30 text-orange-600 dark:text-orange-400">
+                      NEEDS REVIEW
+                    </Badge>
+                    {!isMultiSelectMode && (() => {
+                      const availableActions = getInvoiceActions({
+                        invoice,
+                        selectionMode: false,
+                      });
+                      return (
+                        <ItemActionsMenu
+                          actions={availableActions}
+                          onAction={(action) => {
+                            switch (action) {
+                              case "edit":
+                                setUploadedInvoiceId(invoice.id);
+                                setUploadedParsedData(null);
+                                setUploadReviewDialogOpen(true);
+                                break;
+                              case "duplicate":
+                                duplicateInvoiceMutation.mutate({ id: invoice.id });
+                                break;
+                              case "select":
+                                setIsMultiSelectMode(true);
+                                setSelectedIds(new Set([invoice.id]));
+                                break;
+                              case "archive":
+                                handleArchiveInvoice(invoice.id);
+                                break;
+                              case "delete":
+                                setNeedsReviewDeleteTarget({ id: invoice.id, name: displayName });
+                                break;
+                              case "markAsSent":
+                                if (invoice.sentAt) {
+                                  setMarkAsSentTarget({ 
                                     id: invoice.id, 
                                     invoiceNumber: invoice.invoiceNumber,
-                                    alsoMarkAsSent: true
+                                    alreadySent: true 
                                   });
-                                  setMarkAsPaidDialogOpen(true);
-                                  break;
-                                case "markAsCancelled":
-                                  markAsCancelledMutation.mutate({ id: invoice.id });
-                                  break;
-                                case "markAsNotCancelled":
-                                  markAsNotCancelledMutation.mutate({ id: invoice.id });
-                                  break;
-                                default:
-                                  console.warn("Unknown action:", action);
-                              }
-                            }}
-                          />
-                          );
-                        })()}
-                      </div>
-                    </div>
+                                  setMarkAsSentDialogOpen(true);
+                                } else {
+                                  markAsSentMutation.mutate({ id: invoice.id });
+                                }
+                                break;
+                              case "markAsPaid":
+                                setMarkAsPaidTarget({ 
+                                  id: invoice.id, 
+                                  invoiceNumber: invoice.invoiceNumber,
+                                  alsoMarkAsSent: true
+                                });
+                                setMarkAsPaidDialogOpen(true);
+                                break;
+                              case "markAsCancelled":
+                                markAsCancelledMutation.mutate({ id: invoice.id });
+                                break;
+                              case "markAsNotCancelled":
+                                markAsNotCancelledMutation.mutate({ id: invoice.id });
+                                break;
+                              default:
+                                console.warn("Unknown action:", action);
+                            }
+                          }}
+                        />
+                      );
+                    })()}
+                  </div>
                 </Card>
               );
             })}
           </div>
-        </div>
+        </>
       )}
 
       {filteredInvoices.length === 0 ? (
@@ -2149,7 +2201,15 @@ export default function Invoices() {
           )}
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+        <>
+          {/* All Invoices Section Header */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-extralight uppercase tracking-wide text-muted-foreground">All Invoices</h2>
+            <span className="text-sm font-light text-muted-foreground">{filteredInvoices.length}</span>
+          </div>
+          
+          {/* Vertical List of Invoice Cards */}
+          <div className="space-y-2">
           {filteredInvoices.map((invoice) => {
             const linkedContact = contacts.find(
               (contact: { id: number }) => contact.id === invoice.clientId || contact.id === invoice.contactId
@@ -2185,121 +2245,114 @@ export default function Invoices() {
               }
             };
 
+            const clientName = linkedContact?.name || linkedContact?.clientName || "No client";
+            const dateLabel = issueDate ? issueDate.toLocaleDateString("de-DE") : "No date";
+            const statusContext = isPaid ? "Paid" : isOpen ? "Open" : isDraft ? "Draft" : "";
+            
             return (
               <Card
                 key={invoice.id}
                 onClick={handleCardClick}
                 data-item={invoice.id}
                 className={cn(
-                  "card p-3 sm:p-4 md:min-h-[120px] card-hover-polish",
+                  "card p-4 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200",
                   !isMultiSelectMode && "cursor-pointer",
                   selectedIds.has(invoice.id) && "item-selected"
                 )}
               >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      {(() => {
-                        const InvoiceIcon = getInvoiceIcon();
-                        return <InvoiceIcon className="w-5 h-5 text-accent mt-0.5 shrink-0" />;
-                      })()}
-                      <div className="min-w-0">
-                        <div className="text-base leading-tight break-words">{displayName}</div>
-                        {linkedContact && (
-                          <div className="text-xs text-muted-foreground truncate">{linkedContact.name}</div>
-                        )}
-                        <div className="text-xs text-muted-foreground">
-                          {issueDate ? issueDate.toLocaleDateString("de-DE") : "No date"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <div className="text-base font-normal tabular-nums">{displayTotal}</div>
-                      {getStatusBadge(invoice)}
-                      {invoice.type === "cancellation" && (
-                        <Badge variant="outline" className="text-[11px] uppercase tracking-widest font-normal">STORNO</Badge>
-                      )}
-                      {!isMultiSelectMode && (
-                        <ItemActionsMenu
-                          actions={availableActions}
-                          onAction={(action) => {
-                            // Use switch statement to ensure only one action executes
-                            switch (action) {
-                              case "edit":
-                                // "Edit" navigates to invoice detail page
-                                navigate(`/invoices/${invoice.id}`);
-                                break;
-                              case "duplicate":
-                                duplicateInvoiceMutation.mutate({ id: invoice.id });
-                                break;
-                              case "select":
-                                setIsMultiSelectMode(true);
-                                setSelectedIds(new Set([invoice.id]));
-                                break;
-                              case "archive":
-                                handleArchiveInvoice(invoice.id);
-                                break;
-                              case "delete":
-                                // "Delete" maps to "moveToTrash" for invoices
-                                if (isDraft) {
-                                  handleMoveToRubbish(invoice.id);
-                                } else {
-                                  toast.info("Only draft invoices can be deleted. Use Archive for sent invoices.");
-                                }
-                                break;
-                              case "markAsSent":
-                                // Check if invoice is already sent - show warning dialog if so
-                                if (invoice.sentAt) {
-                                  setMarkAsSentTarget({ 
-                                    id: invoice.id, 
-                                    invoiceNumber: invoice.invoiceNumber,
-                                    alreadySent: true 
-                                  });
-                                  setMarkAsSentDialogOpen(true);
-                                } else {
-                                  markAsSentMutation.mutate({ id: invoice.id });
-                                }
-                                break;
-                              case "markAsPaid":
-                                // Show date picker dialog for payment date
-                                setMarkAsPaidTarget({ 
-                                  id: invoice.id, 
-                                  invoiceNumber: invoice.invoiceNumber,
-                                  alsoMarkAsSent: !invoice.sentAt && invoice.source === "uploaded"
-                                });
-                                setMarkAsPaidDialogOpen(true);
-                                break;
-                              case "revertToDraft":
-                                // Show revert dialog with warning and checkbox requirement
-                                setRevertTarget({ 
-                                  id: invoice.id, 
-                                  targetStatus: "draft", 
-                                  currentStatus: "open" 
-                                });
-                                setRevertDialogOpen(true);
-                                break;
-                              case "revertToSent":
-                                // Show mark as not paid dialog with warning and checkbox requirement
-                                setRevertTarget({ 
-                                  id: invoice.id, 
-                                  targetStatus: "open", 
-                                  currentStatus: "paid" 
-                                });
-                                setRevertDialogOpen(true);
-                                break;
-                              case "markAsCancelled":
-                                markAsCancelledMutation.mutate({ id: invoice.id });
-                                break;
-                              case "markAsNotCancelled":
-                                markAsNotCancelledMutation.mutate({ id: invoice.id });
-                                break;
-                              default:
-                                console.warn("Unknown action:", action);
-                            }
-                          }}
-                        />
-                      )}
-                    </div>
+                {/* Top row: Client name + Amount */}
+                <div className="flex items-start justify-between gap-4 mb-2">
+                  <div className="text-base font-normal min-w-0 flex-1">{clientName}</div>
+                  <div className="text-base font-normal tabular-nums shrink-0">{displayTotal}</div>
+                </div>
+                
+                {/* Meta row: Invoice number + dates/status context */}
+                <div className="text-xs font-light text-muted-foreground mb-2">
+                  {invoice.invoiceNumber || displayName} • {dateLabel}{statusContext ? ` • ${statusContext}` : ""}
+                </div>
+                
+                {/* Bottom row: Status chip + overflow actions */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(invoice)}
+                    {invoice.type === "cancellation" && (
+                      <Badge variant="outline" className="text-[11px] uppercase tracking-widest font-normal">STORNO</Badge>
+                    )}
                   </div>
+                  {!isMultiSelectMode && (
+                    <ItemActionsMenu
+                      actions={availableActions}
+                      onAction={(action) => {
+                        switch (action) {
+                          case "edit":
+                            navigate(`/invoices/${invoice.id}`);
+                            break;
+                          case "duplicate":
+                            duplicateInvoiceMutation.mutate({ id: invoice.id });
+                            break;
+                          case "select":
+                            setIsMultiSelectMode(true);
+                            setSelectedIds(new Set([invoice.id]));
+                            break;
+                          case "archive":
+                            handleArchiveInvoice(invoice.id);
+                            break;
+                          case "delete":
+                            if (isDraft) {
+                              handleMoveToRubbish(invoice.id);
+                            } else {
+                              toast.info("Only draft invoices can be deleted. Use Archive for sent invoices.");
+                            }
+                            break;
+                          case "markAsSent":
+                            if (invoice.sentAt) {
+                              setMarkAsSentTarget({ 
+                                id: invoice.id, 
+                                invoiceNumber: invoice.invoiceNumber,
+                                alreadySent: true 
+                              });
+                              setMarkAsSentDialogOpen(true);
+                            } else {
+                              markAsSentMutation.mutate({ id: invoice.id });
+                            }
+                            break;
+                          case "markAsPaid":
+                            setMarkAsPaidTarget({ 
+                              id: invoice.id, 
+                              invoiceNumber: invoice.invoiceNumber,
+                              alsoMarkAsSent: !invoice.sentAt && invoice.source === "uploaded"
+                            });
+                            setMarkAsPaidDialogOpen(true);
+                            break;
+                          case "revertToDraft":
+                            setRevertTarget({ 
+                              id: invoice.id, 
+                              targetStatus: "draft", 
+                              currentStatus: "open" 
+                            });
+                            setRevertDialogOpen(true);
+                            break;
+                          case "revertToSent":
+                            setRevertTarget({ 
+                              id: invoice.id, 
+                              targetStatus: "open", 
+                              currentStatus: "paid" 
+                            });
+                            setRevertDialogOpen(true);
+                            break;
+                          case "markAsCancelled":
+                            markAsCancelledMutation.mutate({ id: invoice.id });
+                            break;
+                          case "markAsNotCancelled":
+                            markAsNotCancelledMutation.mutate({ id: invoice.id });
+                            break;
+                          default:
+                            console.warn("Unknown action:", action);
+                        }
+                      }}
+                    />
+                  )}
+                </div>
               </Card>
             );
           })}

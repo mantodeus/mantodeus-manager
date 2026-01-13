@@ -29,6 +29,17 @@ export function ScrollerOverlay() {
   // Phase 2: Apply backdrop blur only if device is capable
   const hasBackdropBlur = FEATURES.PHASE_2_BLUR && capabilities.hasBlur;
 
+  // Desktop: close scroller when mouse leaves overlay
+  const handleMouseLeave = () => {
+    if (isDesktop) {
+      setHighlightedIndex(null);
+      setGestureState('idle');
+      if (gestureTab !== null) {
+        setGestureTab(null);
+      }
+    }
+  };
+
   return (
     <div
       className={cn(
