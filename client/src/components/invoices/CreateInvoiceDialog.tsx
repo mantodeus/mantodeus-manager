@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { CreateInvoiceWorkspace } from "./CreateInvoiceWorkspace";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { DocumentPreview } from "@/components/document-preview/DocumentPreview";
 
 interface CreateInvoiceDialogProps {
   open: boolean;
@@ -35,24 +36,11 @@ export function CreateInvoiceDialog({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
-  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [showInlinePreview, setShowInlinePreview] = useState(false);
-  const [previewZoom, setPreviewZoom] = useState(1);
-  const previewContainerRef = useRef<HTMLDivElement>(null);
   const inlinePreviewRef = useRef<HTMLDivElement>(null);
-  const autoFitDoneRef = useRef(false);
   const previewGenerationRef = useRef<AbortController | null>(null);
   const getFormDataRef = useRef<(() => InvoicePreviewData | null) | null>(null);
-  const previewFrameUrl = previewUrl
-    ? previewUrl.includes("#")
-      ? previewUrl
-      : `${previewUrl}#page=1&zoom=page-fit`
-    : null;
   const handleClose = () => {
-    if (previewDialogOpen) {
-      setPreviewDialogOpen(false);
-      return;
-    }
     onOpenChange(false);
   };
 
@@ -166,146 +154,6 @@ export function CreateInvoiceDialog({
     };
   }, [previewUrl]);
 
-  // Reset zoom when preview changes
-  useEffect(() => {
-    if (!previewUrl) {
-      setPreviewZoom(1);
-    }
-  }, [previewUrl]);
-
-  // Calculate initial zoom to fit PDF in viewport on desktop preview panel
-  useEffect(() => {
-    if (isMobile || !previewDialogOpen || !previewUrl) {
-      autoFitDoneRef.current = false;
-      return;
-    }
-
-    autoFitDoneRef.current = false;
-    const container = previewContainerRef.current;
-    if (!container) return;
-
-    const calculateFitZoom = () => {
-      if (autoFitDoneRef.current) return;
-      const containerWidth = container.clientWidth;
-      const containerHeight = container.clientHeight;
-      if (!containerWidth || !containerHeight) return;
-
-      const pdfWidth = 794;
-      const pdfHeight = 1123;
-      const widthZoom = (containerWidth - 20) / pdfWidth;
-      const heightZoom = (containerHeight - 20) / pdfHeight;
-      const fitZoom = Math.min(widthZoom, heightZoom, 1);
-      const calculatedZoom = Math.max(0.3, fitZoom);
-
-      setPreviewZoom(calculatedZoom);
-      autoFitDoneRef.current = true;
-    };
-
-    const rafId = requestAnimationFrame(calculateFitZoom);
-    const resizeObserver = new ResizeObserver(() => calculateFitZoom());
-    resizeObserver.observe(container);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      resizeObserver.disconnect();
-    };
-  }, [isMobile, previewDialogOpen, previewUrl]);
-
-  // Add touch zoom support for preview iframe
-  useEffect(() => {
-    const container = previewContainerRef.current;
-    if (!container || !previewUrl || !previewDialogOpen || isMobile) return;
-
-    // Track initial touch distance for pinch zoom
-    let initialDistance = 0;
-    let initialZoom = 1;
-    let isPinching = false;
-    let lastTouchTime = 0;
-
-    // Touch pinch-to-zoom handler
-    const handleTouchStart = (e: TouchEvent) => {
-      // Only handle pinch zoom (2 touches), allow single touch for scrolling
-      if (e.touches.length === 2) {
-        isPinching = true;
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        initialDistance = Math.hypot(
-          touch2.clientX - touch1.clientX,
-          touch2.clientY - touch1.clientY
-        );
-        initialZoom = previewZoom;
-        lastTouchTime = Date.now();
-      } else {
-        isPinching = false;
-      }
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      // Only prevent default for pinch zoom (2 touches)
-      if (e.touches.length === 2 && isPinching && initialDistance > 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        const currentDistance = Math.hypot(
-          touch2.clientX - touch1.clientX,
-          touch2.clientY - touch1.clientY
-        );
-        
-        const scale = currentDistance / initialDistance;
-        const newZoom = initialZoom * scale;
-        // Allow zoom from 0.3x to 3x
-        setPreviewZoom(Math.max(0.3, Math.min(3, newZoom)));
-      }
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      // Only reset if we're no longer pinching
-      if (e.touches.length < 2) {
-        initialDistance = 0;
-        isPinching = false;
-      }
-    };
-
-    // Use capture phase to ensure we catch events before they bubble
-    // Also use non-passive to allow preventDefault
-    const options = { passive: false, capture: true };
-    
-    container.addEventListener('touchstart', handleTouchStart, options);
-    container.addEventListener('touchmove', handleTouchMove, options);
-    container.addEventListener('touchend', handleTouchEnd, options);
-    container.addEventListener('touchcancel', handleTouchEnd, options);
-    
-    const iframeWrapper = container.querySelector('[data-iframe-wrapper]') as HTMLElement;
-    if (iframeWrapper) {
-      iframeWrapper.addEventListener('touchstart', handleTouchStart, options);
-      iframeWrapper.addEventListener('touchmove', handleTouchMove, options);
-      iframeWrapper.addEventListener('touchend', handleTouchEnd, options);
-      iframeWrapper.addEventListener('touchcancel', handleTouchEnd, options);
-    }
-    
-    // Also listen on document to catch events that might escape
-    document.addEventListener('touchmove', handleTouchMove, options);
-    
-    return () => {
-      container.removeEventListener('touchstart', handleTouchStart, options);
-      container.removeEventListener('touchmove', handleTouchMove, options);
-      container.removeEventListener('touchend', handleTouchEnd, options);
-      container.removeEventListener('touchcancel', handleTouchEnd, options);
-      if (iframeWrapper) {
-        iframeWrapper.removeEventListener('touchstart', handleTouchStart, options);
-        iframeWrapper.removeEventListener('touchmove', handleTouchMove, options);
-        iframeWrapper.removeEventListener('touchend', handleTouchEnd, options);
-        iframeWrapper.removeEventListener('touchcancel', handleTouchEnd, options);
-      }
-      document.removeEventListener('touchmove', handleTouchMove, options);
-    };
-  }, [previewUrl, previewDialogOpen, previewZoom]);
-
   if (!open) return null;
 
   return (
@@ -394,17 +242,11 @@ export function CreateInvoiceDialog({
               <div
                 ref={inlinePreviewRef}
                 className="w-full border-t bg-muted/30 flex-shrink-0"
-                style={{ height: '100dvh' }}
               >
-                <iframe
-                  src={previewFrameUrl || ''}
-                  className="w-full h-full border-0"
-                  title={previewFileName}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    height: '100%',
-                  }}
+                <DocumentPreview
+                  fileUrl={previewUrl}
+                  fileName={previewFileName}
+                  mimeType="application/pdf"
                 />
               </div>
             )}

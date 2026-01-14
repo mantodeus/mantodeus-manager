@@ -34,6 +34,7 @@ import { MarkAsSentAndPaidDialog } from "./invoices/MarkAsSentAndPaidDialog";
 import { MarkAsPaidDialog } from "./invoices/MarkAsPaidDialog";
 import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
 import { useLongPress } from "@/hooks/useLongPress";
+import { DocumentPreview } from "@/components/document-preview/DocumentPreview";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -79,6 +80,7 @@ export function InvoiceUploadReviewDialog({
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const inlinePreviewRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
+  const previewMimeType = getPreviewMimeType(previewFileName, invoice?.originalFileName);
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
@@ -136,6 +138,22 @@ export function InvoiceUploadReviewDialog({
       toast.error('Failed to open preview');
     }
   };
+
+  function getPreviewMimeType(...fileNames: Array<string | null | undefined>) {
+    const extension = fileNames
+      .map((name) => name?.split(".").pop()?.toLowerCase())
+      .find((value) => value && value.length > 0);
+    if (!extension) return "application/pdf";
+    if (extension === "pdf") return "application/pdf";
+    if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+    if (extension === "png") return "image/png";
+    if (extension === "gif") return "image/gif";
+    if (extension === "webp") return "image/webp";
+    if (extension === "bmp") return "image/bmp";
+    if (extension === "heic") return "image/heic";
+    if (extension === "heif") return "image/heif";
+    return "application/pdf";
+  }
 
   const handlePreviewClose = () => {
     setPreviewOpen(false);
@@ -1377,17 +1395,11 @@ export function InvoiceUploadReviewDialog({
         <div
           ref={inlinePreviewRef}
           className="w-full border-t bg-muted/30"
-          style={{ height: '100dvh' }}
         >
-          <iframe
-            src={`${previewUrl}#page=1&zoom=page-fit`}
-            className="w-full h-full border-0"
-            title={previewFileName}
-            style={{
-              display: 'block',
-              width: '100%',
-              height: '100%',
-            }}
+          <DocumentPreview
+            fileUrl={previewUrl}
+            fileName={previewFileName}
+            mimeType={previewMimeType}
           />
         </div>
       )}

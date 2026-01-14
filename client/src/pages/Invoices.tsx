@@ -1601,6 +1601,17 @@ export default function Invoices() {
     }
   };
 
+  if (isMobile && bulkUploadOpen) {
+    return (
+      <BulkInvoiceUploadDialog
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        onUpload={handleBulkUpload}
+        isUploading={bulkUploadMutation.isPending}
+      />
+    );
+  }
+
   const getStatusBadge = (invoice: any) => {
     const invoiceState = getInvoiceState(invoice);
     const derivedValues = getDerivedValues(invoice);

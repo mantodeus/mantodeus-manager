@@ -11,16 +11,13 @@ import { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Upload, ArrowLeft, FileText, Loader2, DocumentCurrencyEuro } from "@/components/ui/Icon";
+import { AlertCircle, Upload, ArrowLeft, FileText, Loader2, DocumentCurrencyEuro, X } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/useMobile";
 import { InvoiceUploadZone } from "./InvoiceUploadZone";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -145,64 +142,44 @@ export function BulkInvoiceUploadDialog({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent 
-        className={cn(
-          "flex flex-col p-0",
-          // Mobile: fullscreen with safe areas - override all default positioning
-          isMobile && [
-            "invoice-dialog-fullscreen",
-            "!left-0",
-            "!translate-x-0",
-            "!translate-y-0",
-            "!top-0",
-            "!bottom-[var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px)))]",
-            "!w-full",
-            "!h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
-            "!max-h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
-            "!rounded-none",
-            "!m-0",
-            "!max-w-none"
-          ]
-        )}
-        style={isMobile ? {
-          transform: 'none',
-        } : undefined}
-        showCloseButton={false}
-      >
-        {/* PageHeader-like structure matching Invoices page */}
-        <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
-          {/* TitleRow */}
-          <div className="flex items-center gap-3 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
-            {/* Arrow button on left */}
-            <Button
-              variant="icon"
-              size="icon"
-              onClick={handleClose}
-              className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
-              aria-label="Close"
-              disabled={isUploading}
-            >
-              <ArrowLeft />
-            </Button>
-            
-            {/* Title with icon */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
-              <h1 className="text-2xl md:text-3xl font-light">Upload Invoices</h1>
-            </div>
+  const content = (
+    <>
+      {/* PageHeader-like structure matching Invoices page */}
+      <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
+        {/* TitleRow */}
+        <div
+          className={cn("flex items-center gap-3", !isMobile && "px-4")}
+          style={{ paddingTop: isMobile ? '0' : '1rem' }}
+        >
+          {/* Arrow button on left */}
+          <Button
+            variant="icon"
+            size="icon"
+            onClick={handleClose}
+            className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
+            aria-label="Close"
+            disabled={isUploading}
+          >
+            <ArrowLeft />
+          </Button>
+          
+          {/* Title with icon */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
+            <h1 className="text-2xl md:text-3xl font-light">Upload Invoices</h1>
           </div>
         </div>
+      </div>
 
-        {/* Fade-out separator */}
-        <div className="separator-fade" />
+      {/* Fade-out separator */}
+      <div className="separator-fade" />
 
-        <div className={cn(
-          "px-4 pt-4 overflow-y-auto flex-1 min-h-0",
-          "pb-4"
-        )}>
-          <div className="space-y-4">
+      <div className={cn(
+        "pt-2 overflow-y-auto flex-1 min-h-0",
+        !isMobile && "px-4",
+        "pb-4"
+      )}>
+        <div className="space-y-4">
           <InvoiceUploadZone
             onUpload={handleFilesSelected}
             isUploading={isUploading}
@@ -274,45 +251,64 @@ export function BulkInvoiceUploadDialog({
               </div>
             </div>
           )}
-          </div>
         </div>
+      </div>
 
-        {/* Fade-out separator */}
-        <div className="separator-fade" />
+      {/* Fade-out separator */}
+      <div className="separator-fade" />
 
-        <div className="flex flex-col gap-2 pt-4 px-4 pb-4">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              disabled={isUploading}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpload}
-              disabled={
-                isUploading ||
-                selectedFiles.length === 0 ||
-                errors.length > 0
-              }
-              className="flex-1"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""}
-                </>
-              )}
-            </Button>
-          </div>
+      <div className={cn("flex flex-col gap-2 pt-4 pb-4", !isMobile && "px-4")}>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isUploading}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleUpload}
+            disabled={
+              isUploading ||
+              selectedFiles.length === 0 ||
+              errors.length > 0
+            }
+            className="flex-1"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""}
+              </>
+            )}
+          </Button>
         </div>
+      </div>
+    </>
+  );
+
+  if (isMobile) {
+    if (!open) return null;
+    return (
+      <div className="flex min-h-full w-full flex-col">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent 
+        className="flex flex-col p-0"
+        showCloseButton={false}
+      >
+        {content}
       </DialogContent>
     </Dialog>
   );
