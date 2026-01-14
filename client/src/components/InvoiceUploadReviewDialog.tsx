@@ -1023,7 +1023,7 @@ export function InvoiceUploadReviewDialog({
           {/* PageHeader-like structure matching Invoices page */}
           <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
           {/* TitleRow */}
-          <div className="flex items-center gap-3 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
+          <div className="flex items-center gap-3" style={{ paddingTop: isMobile ? '0' : '1rem' }}>
             {/* Arrow button on left */}
             <Button
               variant="icon"
@@ -1103,7 +1103,7 @@ export function InvoiceUploadReviewDialog({
           
           {/* Invoice Number Row - aligned below icon */}
           {invoice?.invoiceNumber && (
-            <div className="flex items-start gap-3 px-4 pb-1">
+            <div className="flex items-start gap-3 pb-1">
               {/* Spacer to align with icon (arrow button width + gap) */}
               <div className="size-9 shrink-0" />
               {/* Invoice number - aligned with icon (gap-3 automatically adds space) */}
@@ -1118,7 +1118,7 @@ export function InvoiceUploadReviewDialog({
         <div className="separator-fade" />
 
         <div className={cn(
-          "space-y-4 px-4 pt-2 sm:px-6",
+          "space-y-4 pt-2 sm:px-6",
           isMobile ? "pb-4" : "pb-6"
         )}>
 

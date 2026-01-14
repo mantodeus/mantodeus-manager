@@ -321,7 +321,7 @@ export function CreateInvoiceDialog({
           {/* PageHeader-like structure matching Invoices page */}
           <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
             {/* TitleRow */}
-            <div className="flex items-center gap-3 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
+          <div className="flex items-center gap-3" style={{ paddingTop: isMobile ? '0' : '1rem' }}>
               {/* Arrow button on left */}
               <Button
                 variant="icon"
@@ -345,7 +345,7 @@ export function CreateInvoiceDialog({
           <div className="separator-fade" />
 
           <div className={cn(
-            "px-4 pt-4 flex-1 min-h-0 flex flex-col overflow-y-auto sm:px-6",
+            "pt-2 flex-1 min-h-0 flex flex-col overflow-y-auto sm:px-6",
             "pb-0"
           )}>
             <InvoiceForm
