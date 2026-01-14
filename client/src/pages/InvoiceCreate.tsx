@@ -17,7 +17,7 @@ export default function InvoiceCreate() {
   };
 
   return (
-    <div className="min-h-screen px-6 py-6">
+    <div className="min-h-screen">
       <CreateInvoiceDialog
         open={dialogOpen}
         onOpenChange={handleDialogChange}

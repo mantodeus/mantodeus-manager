@@ -199,7 +199,7 @@ export function BulkInvoiceUploadDialog({
         <div className="separator-fade" />
 
         <div className={cn(
-          "px-6 pt-4 overflow-y-auto flex-1 min-h-0",
+          "px-4 pt-4 overflow-y-auto flex-1 min-h-0",
           "pb-4"
         )}>
           <div className="space-y-4">
@@ -280,7 +280,7 @@ export function BulkInvoiceUploadDialog({
         {/* Fade-out separator */}
         <div className="separator-fade" />
 
-        <div className="flex flex-col gap-2 pt-4 px-6 pb-6">
+        <div className="flex flex-col gap-2 pt-4 px-4 pb-4">
           <div className="flex gap-2">
             <Button
               variant="outline"
