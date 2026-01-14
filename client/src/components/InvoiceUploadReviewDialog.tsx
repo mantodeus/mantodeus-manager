@@ -1118,7 +1118,7 @@ export function InvoiceUploadReviewDialog({
         <div className="separator-fade" />
 
         <div className={cn(
-          "space-y-4 px-6 pt-2",
+          "space-y-4 px-4 pt-2 sm:px-6",
           isMobile ? "pb-4" : "pb-6"
         )}>
 

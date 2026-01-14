@@ -169,7 +169,7 @@ export default function InvoiceDetail() {
 
   if (isLoading && !invoice) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-full w-full">
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -180,7 +180,7 @@ export default function InvoiceDetail() {
   // For ALL uploaded invoices, show review dialog instead (never show full InvoiceForm)
   if (invoice && invoice.source === "uploaded") {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-full w-full">
         <InvoiceUploadReviewDialog
           open={reviewDialogOpen}
           onOpenChange={(open) => {
@@ -222,7 +222,7 @@ export default function InvoiceDetail() {
   const showDesktopDraftSplit = !isMobile && invoice && invoice.source === "created" && isDraft;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-full w-full">
       {/* PageHeader-like structure matching Invoices page */}
       <div style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
         {/* TitleRow */}

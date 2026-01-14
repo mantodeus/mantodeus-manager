@@ -17,7 +17,7 @@ export default function InvoiceCreate() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-full w-full">
       <CreateInvoiceDialog
         open={dialogOpen}
         onOpenChange={handleDialogChange}

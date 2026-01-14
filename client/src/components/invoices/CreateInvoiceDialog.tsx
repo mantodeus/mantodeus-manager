@@ -317,7 +317,7 @@ export function CreateInvoiceDialog({
           onSuccess={onSuccess}
         />
       ) : (
-        <div className="flex flex-col">
+        <div className="flex min-h-full w-full flex-col">
           {/* PageHeader-like structure matching Invoices page */}
           <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
             {/* TitleRow */}
@@ -345,7 +345,7 @@ export function CreateInvoiceDialog({
           <div className="separator-fade" />
 
           <div className={cn(
-            "px-6 pt-4 flex-1 min-h-0 flex flex-col overflow-y-auto",
+            "px-4 pt-4 flex-1 min-h-0 flex flex-col overflow-y-auto sm:px-6",
             "pb-0"
           )}>
             <InvoiceForm
