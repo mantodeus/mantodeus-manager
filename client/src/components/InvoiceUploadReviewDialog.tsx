@@ -34,7 +34,6 @@ import { MarkAsSentAndPaidDialog } from "./invoices/MarkAsSentAndPaidDialog";
 import { MarkAsPaidDialog } from "./invoices/MarkAsPaidDialog";
 import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
 import { useLongPress } from "@/hooks/useLongPress";
-import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -73,10 +72,12 @@ export function InvoiceUploadReviewDialog({
   const [markAsPaidDialogOpen, setMarkAsPaidDialogOpen] = useState(false);
   const [markAsNotPaidDialogOpen, setMarkAsNotPaidDialogOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [showInlinePreview, setShowInlinePreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const inlinePreviewRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -88,7 +89,7 @@ export function InvoiceUploadReviewDialog({
   const handlePreviewPDF = async () => {
     if (!invoiceId || !invoice) return;
     
-    // On both mobile and desktop, open preview in dialog/panel
+    // Generate preview URL for either mobile or desktop.
     try {
       let url: string;
       let fileName: string;
@@ -122,7 +123,14 @@ export function InvoiceUploadReviewDialog({
       
       setPreviewUrl(url);
       setPreviewFileName(fileName);
-      setPreviewOpen(true);
+      if (isMobile) {
+        setShowInlinePreview(true);
+        requestAnimationFrame(() => {
+          inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
+        });
+      } else {
+        setPreviewOpen(true);
+      }
     } catch (error) {
       console.error('Preview error:', error);
       toast.error('Failed to open preview');
@@ -974,7 +982,7 @@ export function InvoiceUploadReviewDialog({
     <>
       <div className={cn("grid gap-6 min-h-[calc(100vh-12rem)]", !isMobile && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
         {!isMobile && (
-          <div className="w-full bg-background lg:sticky lg:top-6">
+          <div className="w-full bg-background lg:sticky lg:top-6 flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b bg-background">
               <h2 className="text-lg font-semibold">Preview</h2>
             </div>
@@ -1302,13 +1310,26 @@ export function InvoiceUploadReviewDialog({
                 {/* Preview button - only on mobile */}
                 {isMobile && (
                   <Button 
-                    variant="outline" 
-                    onClick={handlePreviewPDF}
+                    variant="outline"
+                    onClick={() => {
+                      if (showInlinePreview) {
+                        setShowInlinePreview(false);
+                        return;
+                      }
+                      if (previewUrl) {
+                        setShowInlinePreview(true);
+                        requestAnimationFrame(() => {
+                          inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
+                        });
+                        return;
+                      }
+                      handlePreviewPDF();
+                    }}
                     disabled={isLoading}
                     className="w-full gap-2"
                   >
                     <Eye className="h-4 w-4" />
-                    Preview
+                    {showInlinePreview ? "Hide Preview" : "Preview"}
                   </Button>
                 )}
               </div>
@@ -1323,13 +1344,26 @@ export function InvoiceUploadReviewDialog({
                 {/* Preview button - only on mobile */}
                 {isMobile && (
                   <Button 
-                    variant="outline" 
-                    onClick={handlePreviewPDF}
+                    variant="outline"
+                    onClick={() => {
+                      if (showInlinePreview) {
+                        setShowInlinePreview(false);
+                        return;
+                      }
+                      if (previewUrl) {
+                        setShowInlinePreview(true);
+                        requestAnimationFrame(() => {
+                          inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
+                        });
+                        return;
+                      }
+                      handlePreviewPDF();
+                    }}
                     disabled={isLoading}
                     className="w-full gap-2"
                   >
                     <Eye className="h-4 w-4" />
-                    Preview
+                    {showInlinePreview ? "Hide Preview" : "Preview"}
                   </Button>
                 )}
             </div>
@@ -1338,15 +1372,24 @@ export function InvoiceUploadReviewDialog({
         </div>
       </div>
 
-      {/* Mobile Preview Dialog - matches invoice dialog size */}
-      {isMobile && previewOpen && previewUrl && (
-        <PDFPreviewModal
-          isOpen={previewOpen}
-          onClose={handlePreviewClose}
-          fileUrl={previewUrl ?? undefined}
-          fileName={previewFileName}
-          fullScreen
-        />
+      {/* Inline Mobile Preview - below form */}
+      {isMobile && showInlinePreview && previewUrl && (
+        <div
+          ref={inlinePreviewRef}
+          className="w-full border-t bg-muted/30"
+          style={{ height: '100dvh' }}
+        >
+          <iframe
+            src={`${previewUrl}#page=1&zoom=page-fit`}
+            className="w-full h-full border-0"
+            title={previewFileName}
+            style={{
+              display: 'block',
+              width: '100%',
+              height: '100%',
+            }}
+          />
+        </div>
       )}
 
       {/* Share Invoice Dialog */}

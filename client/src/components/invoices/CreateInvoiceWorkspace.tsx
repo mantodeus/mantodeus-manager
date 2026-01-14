@@ -360,7 +360,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
     <>
       <div className={cn("grid gap-6 min-h-[calc(100vh-12rem)]", !isMobile && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
         {!isMobile && (
-          <div className="w-full bg-background lg:sticky lg:top-6">
+          <div className="w-full bg-background lg:sticky lg:top-6 flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b">
               <h2 className="text-lg font-semibold">Preview</h2>
               {isGeneratingPreview && (

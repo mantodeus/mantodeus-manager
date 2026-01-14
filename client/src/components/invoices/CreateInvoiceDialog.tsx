@@ -5,10 +5,6 @@
  * Desktop uses CreateInvoiceWorkspace (full-page workspace).
  */
 
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { DocumentCurrencyEuro, ArrowLeft, Eye, Loader2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
@@ -40,8 +36,10 @@ export function CreateInvoiceDialog({
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [showInlinePreview, setShowInlinePreview] = useState(false);
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const inlinePreviewRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
   const previewGenerationRef = useRef<AbortController | null>(null);
   const getFormDataRef = useRef<(() => InvoicePreviewData | null) | null>(null);
@@ -125,7 +123,10 @@ export function CreateInvoiceDialog({
       
       setPreviewUrl(url);
       setPreviewFileName(`INVOICE_PREVIEW_${formData.invoiceNumber}_UNSAVED.pdf`);
-      setPreviewDialogOpen(true);
+      setShowInlinePreview(true);
+      requestAnimationFrame(() => {
+        inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
+      });
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return; // Request was cancelled
@@ -344,7 +345,7 @@ export function CreateInvoiceDialog({
           <div className="separator-fade" />
 
           <div className={cn(
-            "px-6 pt-4 flex-1 min-h-0 flex flex-col",
+            "px-6 pt-4 flex-1 min-h-0 flex flex-col overflow-y-auto",
             "pb-0"
           )}>
             <InvoiceForm
@@ -357,7 +358,20 @@ export function CreateInvoiceDialog({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleUpdatePreview}
+                  onClick={() => {
+                    if (showInlinePreview) {
+                      setShowInlinePreview(false);
+                      return;
+                    }
+                    if (previewUrl) {
+                      setShowInlinePreview(true);
+                      requestAnimationFrame(() => {
+                        inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
+                      });
+                      return;
+                    }
+                    handleUpdatePreview();
+                  }}
                   disabled={isGeneratingPreview}
                   className="w-full"
                 >
@@ -369,94 +383,33 @@ export function CreateInvoiceDialog({
                   ) : (
                     <>
                       <Eye className="mr-2 h-4 w-4" />
-                      Preview
+                      {showInlinePreview ? "Hide Preview" : "Preview"}
                     </>
                   )}
                 </Button>
               }
             />
+            {/* Inline Mobile Preview - below form */}
+            {showInlinePreview && previewUrl && (
+              <div
+                ref={inlinePreviewRef}
+                className="w-full border-t bg-muted/30 flex-shrink-0"
+                style={{ height: '100dvh' }}
+              >
+                <iframe
+                  src={previewFrameUrl || ''}
+                  className="w-full h-full border-0"
+                  title={previewFileName}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    height: '100%',
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      {/* Mobile Preview Dialog - matches invoice dialog size */}
-      {isMobile && (
-        <Dialog 
-          open={previewDialogOpen && !!previewUrl} 
-          onOpenChange={(open) => {
-            // Only close preview dialog, don't affect parent dialog
-            if (!open) {
-              setPreviewDialogOpen(false);
-            }
-          }}
-        >
-          <DialogContent
-            className={cn(
-              "flex flex-col p-0",
-              // Match invoice dialog size on mobile
-              "max-h-[calc(100vh-var(--bottom-safe-area,0px)-2rem)] mb-[calc(var(--bottom-safe-area,0px)+1rem)]",
-              // Ensure dialog has minimum height and appears above overlay
-              "min-h-[400px]",
-              // Ensure content is visible and above overlay
-              "bg-background z-[71]"
-            )}
-            style={{
-              // Match invoice dialog positioning on mobile
-              maxHeight: 'calc(100vh - var(--bottom-safe-area, 0px) - 2rem)',
-              marginBottom: 'calc(var(--bottom-safe-area, 0px) + 1rem)',
-              height: 'calc(100vh - var(--bottom-safe-area, 0px) - 2rem)',
-            } as React.CSSProperties}
-            showCloseButton={true}
-            zIndex={70}
-            onInteractOutside={(e) => {
-              // Prevent closing parent dialog when clicking outside preview
-              e.preventDefault();
-            }}
-            onPointerDownOutside={(e) => {
-              // Prevent closing parent dialog when clicking outside preview
-              e.preventDefault();
-            }}
-            onEscapeKeyDown={(e) => {
-              // Only close preview dialog, not parent
-              setPreviewDialogOpen(false);
-              e.preventDefault();
-            }}
-          >
-            <div className="flex flex-col h-full overflow-hidden min-h-0">
-              {/* Preview Header */}
-              <div className="flex items-center justify-between p-4 border-b flex-shrink-0 bg-background">
-                <h2 className="text-lg font-semibold">Preview</h2>
-              </div>
-              {/* Preview Content - zoomable */}
-              <div 
-                ref={previewContainerRef}
-                data-preview-container
-                className="flex-1 bg-background relative min-h-0 overflow-hidden"
-                style={{ 
-                  touchAction: 'auto',
-                }}
-              >
-                {previewFrameUrl ? (
-                  <iframe
-                    src={previewFrameUrl}
-                    className="w-full h-full border-0"
-                    title={previewFileName}
-                    style={{ 
-                      pointerEvents: 'auto',
-                      display: 'block',
-                      width: '100%',
-                      height: '100%',
-                    }}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <p>Loading preview...</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       )}
     </>
   );
