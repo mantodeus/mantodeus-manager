@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { DocumentCurrencyEuro, X, Eye, Loader2 } from "@/components/ui/Icon";
@@ -32,8 +33,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   
-  // Note: We don't prevent body scrolling - the background page should remain scrollable
-  // The workspace dialog handles its own internal scrolling
+  // Note: Desktop uses a blurred backdrop that blocks background scroll.
   
   // Preview state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -50,6 +50,8 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
       ? previewUrl
       : `${previewUrl}#page=1&zoom=page-fit`
     : null;
+  const formPanelRef = useRef<HTMLDivElement>(null);
+  const previewPanelRef = useRef<HTMLDivElement>(null);
 
   const handleSuccess = useCallback(async () => {
     toast.success("Invoice created");
@@ -358,111 +360,181 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
 
   return (
     <>
-      <div className={cn("grid gap-6 min-h-[calc(100vh-12rem)]", !isMobile && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
-        {!isMobile && (
-          <div className="w-full bg-background lg:sticky lg:top-6 flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b">
-              <h2 className="text-lg font-semibold">Preview</h2>
-              {isGeneratingPreview && (
-                <div className="text-sm text-muted-foreground">Generating...</div>
-              )}
-            </div>
-            <div 
-              ref={previewContainerRef}
-              data-preview-container
-              className="h-[calc(100vh-16rem)] overflow-auto"
-              style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
-            >
-              {previewUrl ? (
-                <div
-                  data-iframe-wrapper
-                  style={{
-                    transform: `scale(${previewZoom})`,
-                    transformOrigin: 'top left',
-                    width: `${100 / previewZoom}%`,
-                    height: `${100 / previewZoom}%`,
-                    transition: 'transform 0.1s ease-out',
-                  }}
-                >
-                  <iframe
-                    src={previewUrl}
-                    className="w-full h-full border-0"
-                    title={previewFileName}
-                    style={{ pointerEvents: 'auto' }}
-                  />
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <p>Preview will appear here when you update it</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+      {!isMobile && (
+        <>
+          {/* Backdrop overlay */}
+          {createPortal(
+            <div
+              className="fixed z-[100] bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+              onClick={(e) => {
+                if (previewDialogOpen) {
+                  e.preventDefault();
+                  return;
+                }
+                onClose();
+              }}
+              onWheel={(e) => {
+                const target = e.target as HTMLElement;
+                if (target?.closest("[data-preview-container]")) {
+                  return;
+                }
+                e.preventDefault();
+              }}
+              onTouchMove={(e) => e.preventDefault()}
+              onScroll={(e) => e.preventDefault()}
+              style={{
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: "100%",
+                height: "100%",
+                minHeight: "100vh",
+                pointerEvents: "auto",
+                overflow: "hidden",
+                touchAction: "none",
+              }}
+              aria-hidden="true"
+            />,
+            document.body
+          )}
 
-        <div className="w-full bg-background">
-          <div className="p-6 space-y-6">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4 min-w-0 flex-1">
-              <div className="flex-1 min-w-0 flex flex-col">
-                <h1 className="text-3xl font-regular flex items-center gap-2">
-                  <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
-                  Create Invoice
-                </h1>
-                <p className="text-muted-foreground text-sm mt-3">
-                  Create a new invoice
-                </p>
+          {/* Preview Panel - Left side */}
+          <div
+            ref={previewPanelRef}
+            className="fixed z-[110] bg-background border-r shadow-lg rounded-lg"
+            style={{
+              top: "1.5rem",
+              left: "1.5rem",
+              width: "calc(40vw - 2rem)",
+              height: "calc(100vh - 3rem)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col h-full overflow-hidden rounded-lg">
+              <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+                <h2 className="text-lg font-semibold">Preview</h2>
+                {isGeneratingPreview && (
+                  <div className="text-sm text-muted-foreground">Generating...</div>
+                )}
+              </div>
+              <div
+                ref={previewContainerRef}
+                data-preview-container
+                className="flex-1 overflow-auto rounded-b-lg"
+                style={{ touchAction: "pan-x pan-y pinch-zoom" }}
+              >
+                {previewUrl ? (
+                  <div
+                    data-iframe-wrapper
+                    style={{
+                      transform: `scale(${previewZoom})`,
+                      transformOrigin: "top left",
+                      width: `${100 / previewZoom}%`,
+                      height: `${100 / previewZoom}%`,
+                      transition: "transform 0.1s ease-out",
+                    }}
+                  >
+                    <iframe
+                      src={previewUrl}
+                      className="w-full h-full border-0"
+                      title={previewFileName}
+                      style={{ pointerEvents: "auto" }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <p>Preview will appear here when you update it</p>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-3 shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                className="h-10 w-10"
-                aria-label="Close"
-              >
-                <X className="h-6 w-6" />
-              </Button>
+          </div>
+
+          {/* Form Panel - Right side */}
+          <div
+            ref={formPanelRef}
+            className="fixed z-[110] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
+            style={{
+              top: "1.5rem",
+              right: "1.5rem",
+              bottom: "1.5rem",
+              left: "calc(0.5rem + 40vw)",
+              width: "calc(60vw - 2rem)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="p-6 space-y-6">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4 min-w-0 flex-1">
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <h1 className="text-3xl font-regular flex items-center gap-2">
+                        <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
+                        Create Invoice
+                      </h1>
+                      <p className="text-muted-foreground text-sm mt-3">
+                        Create a new invoice
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-3 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={onClose}
+                      className="h-10 w-10"
+                      aria-label="Close"
+                    >
+                      <X className="h-6 w-6" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Fade-out separator */}
+                <div className="separator-fade" />
+
+                {/* Form */}
+                <InvoiceForm
+                  mode="create"
+                  contacts={contacts}
+                  onClose={onClose}
+                  onSuccess={handleSuccess}
+                  getFormDataRef={getFormDataRef}
+                  renderBeforeFooter={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleUpdatePreview}
+                      disabled={isGeneratingPreview}
+                      className="w-full"
+                    >
+                      {isGeneratingPreview ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Update Preview
+                        </>
+                      )}
+                    </Button>
+                  }
+                />
+              </div>
             </div>
           </div>
-
-            {/* Fade-out separator */}
-            <div className="separator-fade" />
-
-            {/* Form */}
-            <InvoiceForm
-              mode="create"
-              contacts={contacts}
-              onClose={onClose}
-              onSuccess={handleSuccess}
-              getFormDataRef={getFormDataRef}
-              renderBeforeFooter={
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleUpdatePreview}
-                  disabled={isGeneratingPreview}
-                  className="w-full"
-                >
-                  {isGeneratingPreview ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Update Preview
-                    </>
-                  )}
-                </Button>
-              }
-            />
-          </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* Mobile Preview Dialog - matches invoice dialog size */}
       {isMobile && (
