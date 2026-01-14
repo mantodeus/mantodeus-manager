@@ -1343,10 +1343,13 @@ export function InvoiceUploadReviewDialog({
             )}
           </div>
           
-          {/* Invoice Number Row - aligned below arrow */}
+          {/* Invoice Number Row - aligned below icon */}
           {invoice?.invoiceNumber && (
-            <div className="px-4 pb-2">
-              {/* Invoice number - aligned left with arrow button */}
+            <div className="flex items-start gap-3 px-4 pb-2">
+              {/* Spacer to align with icon (arrow button width + gap) */}
+              <div className="size-9 shrink-0" />
+              <div className="w-6 shrink-0" />
+              {/* Invoice number - aligned with icon */}
               <p className="text-2xl md:text-3xl font-light text-muted-foreground">
                 {invoice.invoiceNumber}
               </p>
