@@ -203,53 +203,54 @@ export function CreateInvoiceDialog({
               onSuccess={handleSuccess}
               getFormDataRef={getFormDataRef}
               renderBeforeFooter={
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    if (showInlinePreview) {
-                      setShowInlinePreview(false);
-                      return;
-                    }
-                    if (previewUrl) {
-                      setShowInlinePreview(true);
-                      requestAnimationFrame(() => {
-                        inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
-                      });
-                      return;
-                    }
-                    handleUpdatePreview();
-                  }}
-                  disabled={isGeneratingPreview}
-                  className="w-full"
-                >
-                  {isGeneratingPreview ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="mr-2 h-4 w-4" />
-                      {showInlinePreview ? "Hide Preview" : "Preview"}
-                    </>
+                <div className="w-full space-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (showInlinePreview) {
+                        setShowInlinePreview(false);
+                        return;
+                      }
+                      if (previewUrl) {
+                        setShowInlinePreview(true);
+                        requestAnimationFrame(() => {
+                          inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
+                        });
+                        return;
+                      }
+                      handleUpdatePreview();
+                    }}
+                    disabled={isGeneratingPreview}
+                    className="w-full"
+                  >
+                    {isGeneratingPreview ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="mr-2 h-4 w-4" />
+                        {showInlinePreview ? "Hide Preview" : "Preview"}
+                      </>
+                    )}
+                  </Button>
+                  {showInlinePreview && previewUrl && (
+                    <div
+                      ref={inlinePreviewRef}
+                      className="w-full border-t bg-muted/30"
+                    >
+                      <DocumentPreview
+                        fileUrl={previewUrl}
+                        fileName={previewFileName}
+                        mimeType="application/pdf"
+                      />
+                    </div>
                   )}
-                </Button>
+                </div>
               }
             />
-            {/* Inline Mobile Preview - below form */}
-            {showInlinePreview && previewUrl && (
-              <div
-                ref={inlinePreviewRef}
-                className="w-full border-t bg-muted/30 flex-shrink-0"
-              >
-                <DocumentPreview
-                  fileUrl={previewUrl}
-                  fileName={previewFileName}
-                  mimeType="application/pdf"
-                />
-              </div>
-            )}
           </div>
         </div>
       )}

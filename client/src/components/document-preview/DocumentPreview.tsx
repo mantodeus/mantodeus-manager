@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -24,9 +24,16 @@ export function DocumentPreview({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [scale, setScale] = useState(1);
-  const lastTapRef = useRef(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const scaleRef = useRef(1);
+  const pageWidth = containerWidth ? Math.floor(containerWidth * scale) : undefined;
+  const documentFile = useMemo(
+    () =>
+      fileUrl.startsWith("blob:")
+        ? fileUrl
+        : { url: fileUrl, withCredentials: true },
+    [fileUrl],
+  );
 
   useEffect(() => {
     setScale(1);
@@ -125,19 +132,6 @@ export function DocumentPreview({
     };
   }, []);
 
-  const handleTap = (e: ReactTouchEvent<HTMLDivElement>) => {
-    if (e.touches.length > 0) return;
-    const now = Date.now();
-    if (now - lastTapRef.current < 300) {
-      const nextScale = scaleRef.current < 2 ? 2 : 1;
-      scaleRef.current = nextScale;
-      setScale(nextScale);
-      lastTapRef.current = 0;
-      return;
-    }
-    lastTapRef.current = now;
-  };
-
   return (
     <div
       ref={containerRef}
@@ -146,22 +140,13 @@ export function DocumentPreview({
         height: "min(100dvh, 100%)",
         touchAction: "pan-x pan-y",
       }}
-      onTouchEnd={handleTap}
     >
       <div
         className="w-full"
-        style={{
-          aspectRatio: "210 / 297",
-          maxHeight: "100dvh",
-        }}
       >
         {isPdf ? (
           <Document
-            file={
-              fileUrl.startsWith("blob:")
-                ? fileUrl
-                : { url: fileUrl, withCredentials: true }
-            }
+            file={documentFile}
             loading={<div className="p-4 text-muted-foreground">Loading preview...</div>}
             error={<div className="p-4 text-destructive">{loadError || "Failed to load preview."}</div>}
             onLoadError={(error) => {
@@ -171,8 +156,8 @@ export function DocumentPreview({
           >
             <Page
               pageNumber={1}
-              width={containerWidth || undefined}
-              scale={scale}
+              width={pageWidth}
+              scale={1}
               renderTextLayer={false}
               renderAnnotationLayer={false}
             />

@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -78,6 +79,7 @@ export function InvoiceUploadReviewDialog({
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const previewPanelRef = useRef<HTMLDivElement>(null);
   const inlinePreviewRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
 
@@ -994,6 +996,434 @@ export function InvoiceUploadReviewDialog({
     };
   }, [previewOpen, previewUrl, previewZoom]);
 
+  const dialogs = (
+    <>
+      {/* Share Invoice Dialog */}
+      {invoiceId && (
+        <ShareInvoiceDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          invoiceId={invoiceId}
+          onSuccess={() => {
+            utils.invoices.get.invalidate({ id: invoiceId });
+            onSuccess?.();
+          }}
+        />
+      )}
+      
+      {/* Revert Status Dialog */}
+      {invoice && (
+        <RevertInvoiceStatusDialog
+          open={revertDialogOpen}
+          onOpenChange={setRevertDialogOpen}
+          currentStatus={isPaid ? "paid" : "open"}
+          targetStatus={revertTarget === "draft" ? "draft" : "open"}
+          invoiceNumber={invoice.invoiceNumber}
+          invoiceAmount={invoice.total}
+          onConfirm={handleRevertConfirm}
+          isReverting={revertToDraftMutation.isPending || revertToSentMutation.isPending}
+        />
+      )}
+
+      {/* Mark as Sent and Paid Dialog */}
+      <MarkAsSentAndPaidDialog
+        open={markAsSentAndPaidDialogOpen}
+        onOpenChange={setMarkAsSentAndPaidDialogOpen}
+        onConfirm={handleConfirmMarkAsSentAndPaid}
+        isProcessing={markAsPaidMutation.isPending}
+      />
+
+      {/* Mark as Not Paid Dialog */}
+      {invoice && (
+        <MarkAsNotPaidDialog
+          open={markAsNotPaidDialogOpen}
+          onOpenChange={setMarkAsNotPaidDialogOpen}
+          onConfirm={handleConfirmMarkAsNotPaid}
+          isProcessing={revertToSentMutation.isPending || revertToDraftMutation.isPending}
+          hasPayments={Number(invoice.amountPaid || 0) > 0}
+        />
+      )}
+    </>
+  );
+
+  const headerAndForm = (
+    <div className="flex h-full w-full flex-col bg-background">
+      {/* PageHeader-like structure matching Invoices page */}
+      <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
+        {/* TitleRow */}
+        <div className="flex items-center gap-3" style={{ paddingTop: isMobile ? '0' : '1rem' }}>
+          {/* Arrow button on left */}
+          <Button
+            variant="icon"
+            size="icon"
+            onClick={handleClose}
+            className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
+            aria-label="Close"
+          >
+            <ArrowLeft />
+          </Button>
+          
+          {/* Title with icon */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {isReview ? (
+              <FileText className="h-6 w-6 text-primary shrink-0" />
+            ) : (
+              <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
+            )}
+            <h1 className="text-2xl md:text-3xl font-light">
+              {isReview ? "Review Invoice" : "Edit Invoice"}
+            </h1>
+          </div>
+          
+          {/* Status badge and three-dot menu on right */}
+          {invoice && (
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Status badge - display only, no dropdown */}
+              <div className="flex items-center gap-2">
+                {renderStatusButton(invoice)}
+              </div>
+              
+              {/* Three-dot menu for invoice actions */}
+              {availableInvoiceActions.length > 0 && (
+                <DropdownMenu open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="icon"
+                      size="icon"
+                      className="size-9 [&_svg]:size-5 border border-transparent bg-transparent text-foreground hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8 dark:hover:bg-foreground/7 dark:active:bg-foreground/10 transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]"
+                      aria-label="More actions"
+                    >
+                      <MoreVertical />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {availableInvoiceActions.map((action) => {
+                      const config = actionConfig[action];
+                      if (!config) return null;
+                      const Icon = config.icon;
+                      const isDestructive = config.variant === "destructive";
+                      
+                      // Skip "edit" and "select" actions in dialog context
+                      if (action === "edit" || action === "select") return null;
+                      
+                      return (
+                        <DropdownMenuItem
+                          key={action}
+                          onClick={() => handleInvoiceAction(action)}
+                          className={cn(
+                            "flex items-center gap-2",
+                            isDestructive && "text-destructive focus:text-destructive"
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span>{config.label}</span>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Invoice Number Row - aligned below icon */}
+        {invoice?.invoiceNumber && (
+          <div className="flex items-start gap-3 pb-1">
+            {/* Spacer to align with icon (arrow button width + gap) */}
+            <div className="size-9 shrink-0" />
+            {/* Invoice number - aligned with icon (gap-3 automatically adds space) */}
+            <p className="text-2xl md:text-3xl font-light text-muted-foreground">
+              {invoice.invoiceNumber}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Fade-out separator */}
+      <div className="separator-fade" />
+
+      <div className={cn(
+        "space-y-4 pt-2 sm:px-6 flex-1 min-h-0 overflow-y-auto",
+        isMobile ? "pb-4" : "pb-6"
+      )}>
+
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="client">Client</Label>
+            {isAutofilled("clientId") && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Sparkles className="h-4 w-4 text-primary" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Autofilled from uploaded invoice</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+          <Select 
+            value={clientId} 
+            onValueChange={(value) => {
+              handleFieldEdit("clientId");
+              setClientId(value);
+            }} 
+            disabled={isReadOnly || isCancelled}
+          >
+            <SelectTrigger id="client">
+              <SelectValue placeholder="Select client" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No client</SelectItem>
+              {contacts.map((contact) => (
+                <SelectItem key={contact.id} value={contact.id.toString()}>
+                  {contact.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Row 1: Invoice Number and Total Amount side by side on desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="invoiceNumber">Invoice Number</Label>
+              {isAutofilled("invoiceNumber") && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Autofilled from uploaded invoice</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            <Input
+              id="invoiceNumber"
+              value={invoiceNumber}
+              onChange={(e) => {
+                handleFieldEdit("invoiceNumber");
+                setInvoiceNumber(e.target.value);
+              }}
+              placeholder="Auto-generated if empty"
+              disabled={isReadOnly || isCancelled}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="totalAmount">Total Amount (ƒ'ª) *</Label>
+              {isAutofilled("totalAmount") && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Autofilled from uploaded invoice</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            <Input
+              id="totalAmount"
+              type="number"
+              step="0.01"
+              min="0"
+              value={totalAmount}
+              onChange={(e) => {
+                handleFieldEdit("totalAmount");
+                setTotalAmount(e.target.value);
+              }}
+              placeholder="0.00"
+              required
+              disabled={isReadOnly || isCancelled}
+            />
+          </div>
+        </div>
+
+        {/* Row 2: Invoice Date and Due Date side by side on all screen sizes */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="issueDate">Invoice Date *</Label>
+              {isAutofilled("issueDate") && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Autofilled from uploaded invoice</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            <Input
+              id="issueDate"
+              type="date"
+              value={issueDate}
+              onChange={(e) => {
+                handleFieldEdit("issueDate");
+                setIssueDate(e.target.value);
+              }}
+              required
+              disabled={isReadOnly || isCancelled}
+            />
+          </div>
+
+          {/* Due Date - shown for both review and draft states, required for sending */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="dueDate">Due Date *</Label>
+              {isAutofilled("dueDate") && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Autofilled from uploaded invoice</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            <Input
+              id="dueDate"
+              type="date"
+              value={dueDate}
+              onChange={(e) => {
+                handleFieldEdit("dueDate");
+                setDueDate(e.target.value);
+              }}
+              required
+              disabled={isReadOnly || isCancelled}
+            />
+          </div>
+        </div>
+
+        {/* Payment Date - shown only when invoice is paid */}
+        {invoice?.paidAt && (
+          <div className="space-y-2">
+            <Label htmlFor="paymentDate">Payment Date</Label>
+            <Input
+              id="paymentDate"
+              type="date"
+              value={paymentDate}
+              disabled
+              readOnly
+              className="bg-muted"
+            />
+          </div>
+        )}
+
+        {/* Footer with Preview button - part of scrollable content */}
+        {(isReview || isDraft) && invoice?.source === "uploaded" && (
+          <div className={cn(
+            "pt-4 border-t",
+            isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
+          )}>
+              {/* Preview button - only on mobile */}
+              {isMobile && (
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    if (showInlinePreview) {
+                      setShowInlinePreview(false);
+                      return;
+                    }
+                    if (previewUrl) {
+                      setShowInlinePreview(true);
+                      requestAnimationFrame(() => {
+                        inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
+                      });
+                      return;
+                    }
+                    handlePreviewPDF();
+                  }}
+                  disabled={isLoading}
+                  className="w-full gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  {showInlinePreview ? "Hide Preview" : "Preview"}
+                </Button>
+              )}
+              {isMobile && showInlinePreview && previewUrl && (
+                <div
+                  ref={inlinePreviewRef}
+                  className="w-full border-t bg-muted/30"
+                >
+                  <DocumentPreview
+                    fileUrl={previewUrl}
+                    fileName={previewFileName}
+                    mimeType={previewMimeType}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+        {/* Footer with Preview button for sent/paid states - part of scrollable content */}
+        {!isReview && !isDraft && invoice?.source === "uploaded" && (
+          <div className={cn(
+            "pt-4 border-t",
+            isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
+          )}>
+              {/* Preview button - only on mobile */}
+              {isMobile && (
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    if (showInlinePreview) {
+                      setShowInlinePreview(false);
+                      return;
+                    }
+                    if (previewUrl) {
+                      setShowInlinePreview(true);
+                      requestAnimationFrame(() => {
+                        inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
+                      });
+                      return;
+                    }
+                    handlePreviewPDF();
+                  }}
+                  disabled={isLoading}
+                  className="w-full gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  {showInlinePreview ? "Hide Preview" : "Preview"}
+                </Button>
+              )}
+              {isMobile && showInlinePreview && previewUrl && (
+                <div
+                  ref={inlinePreviewRef}
+                  className="w-full border-t bg-muted/30"
+                >
+                  <DocumentPreview
+                    fileUrl={previewUrl}
+                    fileName={previewFileName}
+                    mimeType={previewMimeType}
+                  />
+                </div>
+              )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   if (!open) return null;
 
   return (
@@ -1350,6 +1780,18 @@ export function InvoiceUploadReviewDialog({
                     {showInlinePreview ? "Hide Preview" : "Preview"}
                   </Button>
                 )}
+                {isMobile && showInlinePreview && previewUrl && (
+                  <div
+                    ref={inlinePreviewRef}
+                    className="w-full border-t bg-muted/30"
+                  >
+                    <DocumentPreview
+                      fileUrl={previewUrl}
+                      fileName={previewFileName}
+                      mimeType={previewMimeType}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -1384,25 +1826,23 @@ export function InvoiceUploadReviewDialog({
                     {showInlinePreview ? "Hide Preview" : "Preview"}
                   </Button>
                 )}
+                {isMobile && showInlinePreview && previewUrl && (
+                  <div
+                    ref={inlinePreviewRef}
+                    className="w-full border-t bg-muted/30"
+                  >
+                    <DocumentPreview
+                      fileUrl={previewUrl}
+                      fileName={previewFileName}
+                      mimeType={previewMimeType}
+                    />
+                  </div>
+                )}
             </div>
           )}
         </div>
         </div>
       </div>
-
-      {/* Inline Mobile Preview - below form */}
-      {isMobile && showInlinePreview && previewUrl && (
-        <div
-          ref={inlinePreviewRef}
-          className="w-full border-t bg-muted/30"
-        >
-          <DocumentPreview
-            fileUrl={previewUrl}
-            fileName={previewFileName}
-            mimeType={previewMimeType}
-          />
-        </div>
-      )}
 
       {/* Share Invoice Dialog */}
       {invoiceId && (
