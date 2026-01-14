@@ -399,140 +399,145 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
             document.body
           )}
 
-          {/* Preview Panel - Left side */}
-          <div
-            ref={previewPanelRef}
-            className="fixed z-[110] bg-background border-r shadow-lg rounded-lg"
-            style={{
-              top: "1.5rem",
-              left: "1.5rem",
-              width: "calc(40vw - 2rem)",
-              height: "calc(100vh - 3rem)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-col h-full overflow-hidden rounded-lg">
-              <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-                <h2 className="text-lg font-semibold">Preview</h2>
-                {isGeneratingPreview && (
-                  <div className="text-sm text-muted-foreground">Generating...</div>
-                )}
-              </div>
+          {createPortal(
+            <>
+              {/* Preview Panel - Left side */}
               <div
-                ref={previewContainerRef}
-                data-preview-container
-                className="flex-1 overflow-auto rounded-b-lg"
-                style={{ touchAction: "pan-x pan-y pinch-zoom" }}
+                ref={previewPanelRef}
+                className="fixed z-[110] bg-background border-r shadow-lg rounded-lg"
+                style={{
+                  top: "1.5rem",
+                  left: "1.5rem",
+                  width: "calc(40vw - 2rem)",
+                  height: "calc(100vh - 3rem)",
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
               >
-                {previewUrl ? (
+                <div className="flex flex-col h-full overflow-hidden rounded-lg">
+                  <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+                    <h2 className="text-lg font-semibold">Preview</h2>
+                    {isGeneratingPreview && (
+                      <div className="text-sm text-muted-foreground">Generating...</div>
+                    )}
+                  </div>
                   <div
-                    data-iframe-wrapper
-                    style={{
-                      transform: `scale(${previewZoom})`,
-                      transformOrigin: "top left",
-                      width: `${100 / previewZoom}%`,
-                      height: `${100 / previewZoom}%`,
-                      transition: "transform 0.1s ease-out",
-                    }}
+                    ref={previewContainerRef}
+                    data-preview-container
+                    className="flex-1 overflow-auto rounded-b-lg"
+                    style={{ touchAction: "pan-x pan-y pinch-zoom" }}
                   >
-                    <iframe
-                      src={previewUrl}
-                      className="w-full h-full border-0"
-                      title={previewFileName}
-                      style={{ pointerEvents: "auto" }}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <p>Preview will appear here when you update it</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Form Panel - Right side */}
-          <div
-            ref={formPanelRef}
-            className="fixed z-[110] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
-            style={{
-              top: "1.5rem",
-              right: "1.5rem",
-              bottom: "1.5rem",
-              left: "calc(0.5rem + 40vw)",
-              width: "calc(60vw - 2rem)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-          >
-            <div className="flex-1 overflow-y-auto min-h-0">
-              <div className="p-6 space-y-6">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4 min-w-0 flex-1">
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      <h1 className="text-3xl font-regular flex items-center gap-2">
-                        <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
-                        Create Invoice
-                      </h1>
-                      <p className="text-muted-foreground text-sm mt-3">
-                        Create a new invoice
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-3 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={onClose}
-                      className="h-10 w-10"
-                      aria-label="Close"
-                    >
-                      <X className="h-6 w-6" />
-                    </Button>
+                    {previewUrl ? (
+                      <div
+                        data-iframe-wrapper
+                        style={{
+                          transform: `scale(${previewZoom})`,
+                          transformOrigin: "top left",
+                          width: `${100 / previewZoom}%`,
+                          height: `${100 / previewZoom}%`,
+                          transition: "transform 0.1s ease-out",
+                        }}
+                      >
+                        <iframe
+                          src={previewUrl}
+                          className="w-full h-full border-0"
+                          title={previewFileName}
+                          style={{ pointerEvents: "auto" }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <p>Preview will appear here when you update it</p>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Fade-out separator */}
-                <div className="separator-fade" />
-
-                {/* Form */}
-                <InvoiceForm
-                  mode="create"
-                  contacts={contacts}
-                  onClose={onClose}
-                  onSuccess={handleSuccess}
-                  getFormDataRef={getFormDataRef}
-                  renderBeforeFooter={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleUpdatePreview}
-                      disabled={isGeneratingPreview}
-                      className="w-full"
-                    >
-                      {isGeneratingPreview ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Update Preview
-                        </>
-                      )}
-                    </Button>
-                  }
-                />
               </div>
-            </div>
-          </div>
+
+              {/* Form Panel - Right side */}
+              <div
+                ref={formPanelRef}
+                className="fixed z-[110] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
+                style={{
+                  top: "1.5rem",
+                  right: "1.5rem",
+                  bottom: "1.5rem",
+                  left: "calc(0.5rem + 40vw)",
+                  width: "calc(60vw - 2rem)",
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+              >
+                <div className="flex-1 overflow-y-auto min-h-0">
+                  <div className="p-6 space-y-6">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4 min-w-0 flex-1">
+                        <div className="flex-1 min-w-0 flex flex-col">
+                          <h1 className="text-3xl font-regular flex items-center gap-2">
+                            <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
+                            Create Invoice
+                          </h1>
+                          <p className="text-muted-foreground text-sm mt-3">
+                            Create a new invoice
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-3 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={onClose}
+                          className="h-10 w-10"
+                          aria-label="Close"
+                        >
+                          <X className="h-6 w-6" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Fade-out separator */}
+                    <div className="separator-fade" />
+
+                    {/* Form */}
+                    <InvoiceForm
+                      mode="create"
+                      contacts={contacts}
+                      onClose={onClose}
+                      onSuccess={handleSuccess}
+                      getFormDataRef={getFormDataRef}
+                      renderBeforeFooter={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleUpdatePreview}
+                          disabled={isGeneratingPreview}
+                          className="w-full"
+                        >
+                          {isGeneratingPreview ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Update Preview
+                            </>
+                          )}
+                        </Button>
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </>,
+            document.body
+          )}
         </>
       )}
 
