@@ -25,11 +25,13 @@ export function DocumentPreview({
   const [containerWidth, setContainerWidth] = useState(0);
   const [scale, setScale] = useState(1);
   const lastTapRef = useRef(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const scaleRef = useRef(1);
 
   useEffect(() => {
     setScale(1);
     scaleRef.current = 1;
+    setLoadError(null);
   }, [fileUrl]);
 
   useEffect(() => {
@@ -154,13 +156,25 @@ export function DocumentPreview({
         }}
       >
         {isPdf ? (
-          <Document file={fileUrl} loading={<div />} error={<div />}>
+          <Document
+            file={
+              fileUrl.startsWith("blob:")
+                ? fileUrl
+                : { url: fileUrl, withCredentials: true }
+            }
+            loading={<div className="p-4 text-muted-foreground">Loading preview...</div>}
+            error={<div className="p-4 text-destructive">{loadError || "Failed to load preview."}</div>}
+            onLoadError={(error) => {
+              console.error("DocumentPreview PDF load error:", error);
+              setLoadError(error?.message || "Failed to load preview.");
+            }}
+          >
             <Page
               pageNumber={1}
               width={containerWidth || undefined}
               scale={scale}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
             />
           </Document>
         ) : (
@@ -170,7 +184,14 @@ export function DocumentPreview({
             className="h-auto block max-w-none"
             style={{ width: `${scale * 100}%` }}
             draggable={false}
+            onError={(event) => {
+              console.error("DocumentPreview image load error:", event);
+              setLoadError("Failed to load preview.");
+            }}
           />
+        )}
+        {loadError && !isPdf && (
+          <div className="p-4 text-destructive">{loadError}</div>
         )}
       </div>
     </div>
