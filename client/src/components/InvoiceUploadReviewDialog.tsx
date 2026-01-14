@@ -1348,8 +1348,8 @@ export function InvoiceUploadReviewDialog({
             <div className="flex items-start gap-3 px-4 pb-1">
               {/* Spacer to align with icon (arrow button width + gap) */}
               <div className="size-9 shrink-0" />
-              {/* Invoice number - aligned with icon (gap-3 automatically adds space) */}
-              <p className="text-2xl md:text-3xl font-light text-muted-foreground">
+              {/* Invoice number - aligned with icon path (gap-3 + small offset for icon internal padding) */}
+              <p className="text-2xl md:text-3xl font-light text-muted-foreground ml-[5px]">
                 {invoice.invoiceNumber}
               </p>
             </div>
