@@ -1541,29 +1541,13 @@ export function InvoiceUploadReviewDialog({
             </div>
           )}
 
-          {/* Footer with action buttons - part of scrollable content */}
+          {/* Footer with Preview button - part of scrollable content */}
           {(isReview || isDraft) && invoice?.source === "uploaded" && (
             <div className={cn(
               "pt-4 border-t",
               isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
             )}>
-                {/* Send button - only for non-cancelled draft invoices */}
-                {!isReview && isDraft && !isCancelled && (
-                  <Button
-                    variant="outline"
-                    onClick={handleSend}
-                    disabled={isLoading || (!dueDate && !invoice?.dueDate) || Number(totalAmount || 0) <= 0}
-                    className={cn(
-                      isMobile ? "w-full" : "",
-                      "border-border text-foreground hover:bg-muted"
-                    )}
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    Send
-                  </Button>
-                )}
-
-                {/* Preview button - only on mobile, above Delete button */}
+                {/* Preview button - only on mobile */}
                 {isMobile && (
                   <Button 
                     variant="outline" 
@@ -1573,83 +1557,18 @@ export function InvoiceUploadReviewDialog({
                   >
                     <Eye className="h-4 w-4" />
                     Preview
-                  </Button>
-                )}
-
-                {/* Delete and Save buttons on same line - Delete left, Save right */}
-                <div className="flex gap-2">
-                  <Button
-                    variant="destructive-outline"
-                    onClick={handleDelete}
-                    disabled={isLoading || (isReview ? cancelMutation.isPending : moveToTrashMutation.isPending)}
-                    className="flex-1"
-                  >
-                    {(isReview ? cancelMutation.isPending : moveToTrashMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Delete
-                  </Button>
-                  {!isReadOnly && !isCancelled && (
-                    <Button 
-                      onClick={handleSave} 
-                      disabled={isLoading || !isFormValid}
-                      className="flex-1"
-                    >
-                      {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Save
-                    </Button>
-                  )}
-                </div>
-                
-                {/* Revert buttons - only shown when sent/paid (after review) */}
-                {!isReview && isSent && !isPaid && derivedValues.outstanding === 0 && (
-                  <Button
-                    variant="outline"
-                    onClick={handleRevertToDraft}
-                    disabled={isLoading}
-                    className={isMobile ? "w-full" : ""}
-                  >
-                    Revert to Draft
-                  </Button>
-                )}
-                {!isReview && isPaid && (
-                  <Button
-                    variant="outline"
-                    onClick={handleRevertToSent}
-                    disabled={isLoading}
-                    className={cn(
-                      isMobile ? "w-full" : "",
-                      "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
-                    )}
-                  >
-                    Mark as Not Paid
-                  </Button>
-                )}
-
-                {/* Cancel/Uncancel buttons - only for draft/review invoices */}
-                {/* Mark as Not Cancelled - only for cancelled invoices in review state */}
-                {isReview && isCancelled && (
-                  <Button
-                    variant="outline"
-                    onClick={() => markAsNotCancelledMutation.mutate({ id: invoiceId! })}
-                    disabled={isLoading || markAsNotCancelledMutation.isPending}
-                    className={cn(
-                      isMobile ? "w-full" : "",
-                      "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
-                    )}
-                  >
-                    {markAsNotCancelledMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Mark as Not Cancelled
                   </Button>
                 )}
               </div>
             )}
 
-          {/* Footer with action buttons for sent/paid states - part of scrollable content */}
+          {/* Footer with Preview button for sent/paid states - part of scrollable content */}
           {!isReview && !isDraft && invoice?.source === "uploaded" && (
             <div className={cn(
               "pt-4 border-t",
               isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
             )}>
-                {/* Preview button - only on mobile, above Delete button */}
+                {/* Preview button - only on mobile */}
                 {isMobile && (
                   <Button 
                     variant="outline" 
@@ -1659,57 +1578,6 @@ export function InvoiceUploadReviewDialog({
                   >
                     <Eye className="h-4 w-4" />
                     Preview
-                  </Button>
-                )}
-
-                {/* Revert to Draft - shown for sent invoices, above Delete */}
-                {isSent && !isPaid && derivedValues.outstanding === 0 && (
-                  <Button
-                    variant="outline"
-                    onClick={handleRevertToDraft}
-                    disabled={isLoading}
-                    className={cn(
-                      "w-full",
-                      "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
-                    )}
-                  >
-                    Revert to Draft
-                  </Button>
-                )}
-                <div className="flex gap-2">
-                  {/* Delete (replaces Cancel) */}
-                  <Button 
-                    variant="destructive-outline" 
-                    onClick={handleDelete} 
-                    disabled={isLoading || moveToTrashMutation.isPending}
-                    className="flex-1"
-                  >
-                    {moveToTrashMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Delete
-                  </Button>
-                  {!isReadOnly && !isCancelled && (
-                    <Button 
-                      onClick={handleSave} 
-                      disabled={isLoading || !isFormValid}
-                      className="flex-1"
-                    >
-                      {(confirmMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Save
-                    </Button>
-                  )}
-                </div>
-                {/* Mark as Not Paid - only shown when paid, on separate line */}
-                {isPaid && (
-                  <Button
-                    variant="outline"
-                    onClick={handleRevertToSent}
-                    disabled={isLoading}
-                    className={cn(
-                      "w-full",
-                      "bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
-                    )}
-                  >
-                    Mark as Not Paid
                   </Button>
                 )}
             </div>
