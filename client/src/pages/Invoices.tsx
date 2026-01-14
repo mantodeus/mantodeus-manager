@@ -16,8 +16,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { MarkAsSentWarningDialog } from "@/components/MarkAsSentWarningDialog";
 import { MarkAsPaidDialog } from "@/components/invoices/MarkAsPaidDialog";
-import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
-import { CreateInvoiceDialog } from "@/components/invoices/CreateInvoiceDialog";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useLongPress } from "@/hooks/useLongPress";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
@@ -657,16 +655,7 @@ export default function Invoices() {
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [cancellationTarget, setCancellationTarget] = useState<{ id: number; invoiceNumber: string } | null>(null);
   const [needsReviewDeleteTarget, setNeedsReviewDeleteTarget] = useState<{ id: number; name: string } | null>(null);
-  const [uploadReviewDialogOpen, setUploadReviewDialogOpen] = useState(false);
-  const [uploadedInvoiceId, setUploadedInvoiceId] = useState<number | null>(null);
-  const [uploadedParsedData, setUploadedParsedData] = useState<{
-    clientName: string | null;
-    invoiceDate: Date | null;
-    totalAmount: string | null;
-    invoiceNumber: string | null;
-  } | null>(null);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -834,15 +823,7 @@ export default function Invoices() {
   // Use AI OCR (documents.process) instead of simple PDF parser
   const processDocumentMutation = trpc.documents.process.useMutation({
     onSuccess: (data) => {
-      setUploadedInvoiceId(data.invoiceId);
-      // Convert extractedData to parsedData format for the review dialog
-      setUploadedParsedData({
-        clientName: data.extractedData.clientName,
-        invoiceDate: data.extractedData.issueDate ? new Date(data.extractedData.issueDate) : null,
-        totalAmount: data.extractedData.total,
-        invoiceNumber: data.extractedData.invoiceNumber,
-      });
-      setUploadReviewDialogOpen(true);
+      navigate(`/invoices/${data.invoiceId}`);
     },
     onError: (err) => {
       toast.error("Failed to process invoice: " + err.message);
@@ -1761,15 +1742,7 @@ export default function Invoices() {
                         key={invoice.id}
                         className="p-3 cursor-pointer hover:bg-accent"
                         onClick={() => {
-                          // ALL uploaded invoices use review dialog (never full InvoiceForm)
-                          if (invoice.source === "uploaded") {
-                            setUploadedInvoiceId(invoice.id);
-                            setUploadedParsedData(null);
-                            setUploadReviewDialogOpen(true);
-                          } else {
-                            // Created invoices navigate to detail page (full InvoiceForm)
-                            navigate(`/invoices/${invoice.id}`);
-                          }
+                          navigate(`/invoices/${invoice.id}`);
                           setIsSearchOpen(false);
                         }}
                       >
@@ -2100,7 +2073,7 @@ export default function Invoices() {
                     Upload
                   </Button>
                   <Button 
-                    onClick={() => setCreateDialogOpen(true)}
+                    onClick={() => navigate("/invoices/new")}
                     className="h-9 whitespace-nowrap text-sm"
                     data-guide-id="invoices.create"
                     data-guide-type="button"
@@ -2140,8 +2113,8 @@ export default function Invoices() {
                 )}
                 Upload
               </Button>
-              <Button 
-                onClick={() => setCreateDialogOpen(true)}
+              <Button
+                onClick={() => navigate("/invoices/new")}
                 className="h-10 whitespace-nowrap flex-1 sm:flex-initial"
                 data-guide-id="invoices.create"
                 data-guide-type="button"
@@ -2205,10 +2178,7 @@ export default function Invoices() {
                 if (isMultiSelectMode) {
                   toggleSelection(invoice.id);
                 } else {
-                  // Instantly open review dialog for uploaded invoices
-                  setUploadedInvoiceId(invoice.id);
-                  setUploadedParsedData(null);
-                  setUploadReviewDialogOpen(true);
+                  navigate(`/invoices/${invoice.id}`);
                 }
               };
               
@@ -2249,9 +2219,7 @@ export default function Invoices() {
                           onAction={(action) => {
                             switch (action) {
                               case "edit":
-                                setUploadedInvoiceId(invoice.id);
-                                setUploadedParsedData(null);
-                                setUploadReviewDialogOpen(true);
+                                navigate(`/invoices/${invoice.id}`);
                                 break;
                               case "duplicate":
                                 duplicateInvoiceMutation.mutate({ id: invoice.id });
@@ -2317,7 +2285,7 @@ export default function Invoices() {
           </p>
           {!hasActiveFilters && (
             <Button
-              onClick={() => setCreateDialogOpen(true)}
+              onClick={() => navigate("/invoices/new")}
               variant="outline"
               className="mt-4"
             >
@@ -2350,15 +2318,7 @@ export default function Invoices() {
               if (isMultiSelectMode) {
                 toggleSelection(invoice.id);
               } else {
-                // ALL uploaded invoices use review dialog (never full InvoiceForm)
-                if (invoice.source === "uploaded") {
-                  setUploadedInvoiceId(invoice.id);
-                  setUploadedParsedData(null);
-                  setUploadReviewDialogOpen(true);
-                } else {
-                  // Created invoices navigate to detail page (full InvoiceForm)
-                  navigate(`/invoices/${invoice.id}`);
-                }
+                navigate(`/invoices/${invoice.id}`);
               }
             };
 
@@ -2551,32 +2511,6 @@ export default function Invoices() {
           />
         );
       })()}
-
-      <InvoiceUploadReviewDialog
-        open={uploadReviewDialogOpen}
-        onOpenChange={(open) => {
-          setUploadReviewDialogOpen(open);
-          if (!open) {
-            setUploadedInvoiceId(null);
-            setUploadedParsedData(null);
-          }
-        }}
-        invoiceId={uploadedInvoiceId}
-        parsedData={uploadedParsedData}
-        onSuccess={() => {
-          refetch();
-          refetchNeedsReview();
-        }}
-      />
-
-      <CreateInvoiceDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSuccess={() => {
-          refetch();
-          refetchNeedsReview();
-        }}
-      />
 
       <PDFPreviewModal
         isOpen={previewModalOpen}

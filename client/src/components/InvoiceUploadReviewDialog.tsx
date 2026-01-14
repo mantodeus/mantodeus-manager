@@ -8,12 +8,6 @@
 
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,7 +33,6 @@ import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialo
 import { MarkAsSentAndPaidDialog } from "./invoices/MarkAsSentAndPaidDialog";
 import { MarkAsPaidDialog } from "./invoices/MarkAsPaidDialog";
 import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
-import { useSidebar } from "@/components/ui/sidebar";
 import { useLongPress } from "@/hooks/useLongPress";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 
@@ -65,138 +58,8 @@ export function InvoiceUploadReviewDialog({
 }: InvoiceUploadReviewDialogProps) {
   const isMobile = useIsMobile();
   
-  // #region agent log
-  useEffect(() => {
-    if (!isMobile) return;
-    
-    const observer = new MutationObserver(() => {
-      const logData = {
-        location: 'InvoiceUploadReviewDialog.tsx:useEffect:open-change',
-        message: `Dialog open=${open} - body/app-content mutation detected`,
-        data: {
-          open,
-          bodyPosition: document.body.style.position,
-          bodyOverflow: document.body.style.overflow,
-          bodyTop: document.body.style.top,
-          bodyWidth: document.body.style.width,
-          windowScrollY: window.scrollY,
-          viewportHeight: window.innerHeight,
-          appContent: (() => {
-            const el = document.querySelector('.app-content') as HTMLElement | null;
-            return el ? {
-              scrollTop: el.scrollTop,
-              overflowY: el.style.overflowY,
-              overflow: el.style.overflow,
-            } : null;
-          })(),
-        },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'D',
-      };
-      console.log('[DEBUG] InvoiceUploadReviewDialog mutation:', logData);
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log fetch failed:', e));
-    });
-    
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['style'],
-      subtree: false,
-    });
-    
-    const appContent = document.querySelector('.app-content');
-    if (appContent) {
-      observer.observe(appContent, {
-        attributes: true,
-        attributeFilter: ['style'],
-        subtree: false,
-      });
-    }
-    
-    // Also log on open state change
-    const logData = {
-      location: 'InvoiceUploadReviewDialog.tsx:useEffect:open-state',
-      message: `Dialog open state changed to ${open}`,
-      data: {
-        open,
-        bodyPosition: document.body.style.position,
-        bodyOverflow: document.body.style.overflow,
-        bodyTop: document.body.style.top,
-        bodyWidth: document.body.style.width,
-        windowScrollY: window.scrollY,
-        viewportHeight: window.innerHeight,
-        appContent: (() => {
-          const el = document.querySelector('.app-content') as HTMLElement | null;
-          return el ? {
-            scrollTop: el.scrollTop,
-            overflowY: el.style.overflowY,
-            overflow: el.style.overflow,
-          } : null;
-        })(),
-      },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      runId: 'run1',
-      hypothesisId: 'E',
-    };
-    console.log('[DEBUG] InvoiceUploadReviewDialog open state:', logData);
-    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log fetch failed:', e));
-    
-    return () => {
-      observer.disconnect();
-    };
-  }, [open, isMobile]);
-  // #endregion
-  // Prevent background scrolling on mobile while fullscreen dialog is open
-  useEffect(() => {
-    if (!isMobile || !open) return;
-
-    const appContent = document.querySelector(".app-content") as HTMLElement | null;
-    const originalOverflow = appContent?.style.overflow ?? "";
-    const originalOverscroll = appContent?.style.overscrollBehavior ?? "";
-    const originalTouchAction = appContent?.style.touchAction ?? "";
-
-    if (appContent) {
-      appContent.style.overflow = "hidden";
-      appContent.style.overscrollBehavior = "contain";
-      appContent.style.touchAction = "none";
-    }
-
-    const preventScroll = (e: Event) => {
-      const target = e.target as HTMLElement | null;
-      const dialogContent = document.querySelector('[data-slot="dialog-content"].invoice-dialog-fullscreen');
-      if (dialogContent && target && dialogContent.contains(target)) {
-        return;
-      }
-      e.preventDefault();
-    };
-
-    window.addEventListener("wheel", preventScroll, { passive: false, capture: true });
-    window.addEventListener("touchmove", preventScroll, { passive: false, capture: true });
-
-    return () => {
-      window.removeEventListener("wheel", preventScroll, { capture: true } as EventListenerOptions);
-      window.removeEventListener("touchmove", preventScroll, { capture: true } as EventListenerOptions);
-      if (appContent) {
-        appContent.style.overflow = originalOverflow;
-        appContent.style.overscrollBehavior = originalOverscroll;
-        appContent.style.touchAction = originalTouchAction;
-      }
-    };
-  }, [isMobile, open]);
   const { theme } = useTheme();
   const isDarkMode = theme === 'green-mantis';
-  // Get sidebar state to adjust dialog position
-  // The dialog is always used within DashboardLayout which has SidebarProvider
-  let isSidebarCollapsed = false;
-  try {
-    const sidebar = useSidebar();
-    isSidebarCollapsed = sidebar.state === "collapsed";
-  } catch {
-    // useSidebar not available (shouldn't happen in normal usage), assume expanded
-    isSidebarCollapsed = false;
-  }
   const [clientId, setClientId] = useState<string>("none");
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [issueDate, setIssueDate] = useState<string>("");
@@ -215,47 +78,6 @@ export function InvoiceUploadReviewDialog({
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
-  const blockParentCloseUntilRef = useRef(0);
-  const shouldBlockParentClose = () =>
-    previewOpen || Date.now() < blockParentCloseUntilRef.current;
-  const handleDialogOpenChange = (nextOpen: boolean) => {
-    // #region agent log
-    if (isMobile) {
-      const logData = {
-        location: 'InvoiceUploadReviewDialog.tsx:handleDialogOpenChange',
-        message: `Dialog ${nextOpen ? 'opening' : 'closing'} - checking state`,
-        data: {
-          nextOpen,
-          bodyPosition: document.body.style.position,
-          bodyOverflow: document.body.style.overflow,
-          bodyTop: document.body.style.top,
-          bodyWidth: document.body.style.width,
-          windowScrollY: window.scrollY,
-          viewportHeight: window.innerHeight,
-          appContent: (() => {
-            const el = document.querySelector('.app-content') as HTMLElement | null;
-            return el ? {
-              scrollTop: el.scrollTop,
-              overflowY: el.style.overflowY,
-              overflow: el.style.overflow,
-            } : null;
-          })(),
-        },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'C',
-      };
-      console.log('[DEBUG] InvoiceUploadReviewDialog openChange:', logData);
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log fetch failed:', e));
-    }
-    // #endregion
-    
-    if (!nextOpen && isMobile && shouldBlockParentClose()) {
-      return;
-    }
-    onOpenChange(nextOpen);
-  };
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
@@ -308,8 +130,15 @@ export function InvoiceUploadReviewDialog({
   };
 
   const handlePreviewClose = () => {
-    blockParentCloseUntilRef.current = Date.now() + 300;
     setPreviewOpen(false);
+  };
+
+  const handleClose = () => {
+    if (isMobile && previewOpen) {
+      handlePreviewClose();
+      return;
+    }
+    onOpenChange(false);
   };
 
   const utils = trpc.useUtils();
@@ -1139,138 +968,59 @@ export function InvoiceUploadReviewDialog({
     };
   }, [previewOpen, previewUrl, previewZoom]);
 
+  if (!open) return null;
+
   return (
     <>
-      {/* Preview Panel - Left side on desktop - optimized for A4 display */}
-      {!isMobile && previewOpen && previewUrl && (
-        <div
-          data-preview-panel
-          className="fixed z-[70] bg-background rounded-lg"
-          style={{
-            top: '1.5rem',
-            left: '1.5rem',
-            width: 'calc(40vw - 2rem)', // 40% width with margins for blurred border
-            height: 'calc(100vh - 3rem)', // Full height with margins
-          }}
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          <div className="flex flex-col h-full overflow-hidden rounded-lg bg-background">
-            {/* Preview Header */}
+      <div className={cn("grid gap-6", !isMobile && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
+        {!isMobile && (
+          <div className="w-full overflow-hidden rounded-lg border bg-background shadow-sm lg:sticky lg:top-6">
             <div className="flex items-center justify-between p-4 border-b bg-background">
               <h2 className="text-lg font-semibold">Preview</h2>
             </div>
-            {/* Preview Content - full page, no borders - zoomable */}
             <div 
               ref={previewContainerRef}
               data-preview-container
-              className="flex-1 overflow-auto bg-background relative"
+              className="h-[calc(100vh-16rem)] overflow-auto bg-background relative"
               style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
             >
-              <div
-                data-iframe-wrapper
-                style={{
-                  transform: `scale(${previewZoom})`,
-                  transformOrigin: 'top left',
-                  width: `${100 / previewZoom}%`,
-                  height: `${100 / previewZoom}%`,
-                  transition: 'transform 0.1s ease-out',
-                }}
-              >
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-full border-0"
-                  title={previewFileName}
-                  style={{ pointerEvents: 'auto' }}
-                />
-              </div>
+              {previewUrl ? (
+                <div
+                  data-iframe-wrapper
+                  style={{
+                    transform: `scale(${previewZoom})`,
+                    transformOrigin: 'top left',
+                    width: `${100 / previewZoom}%`,
+                    height: `${100 / previewZoom}%`,
+                    transition: 'transform 0.1s ease-out',
+                  }}
+                >
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-full border-0"
+                    title={previewFileName}
+                    style={{ pointerEvents: 'auto' }}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <p>Preview will appear here when you open it</p>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Mobile Preview Dialog - matches invoice dialog size */}
-      {isMobile && previewOpen && previewUrl && (
-        <PDFPreviewModal
-          isOpen={previewOpen}
-          onClose={handlePreviewClose}
-          fileUrl={previewUrl ?? undefined}
-          fileName={previewFileName}
-          fullScreen
-        />
-      )}
-
-      <Dialog open={open} onOpenChange={handleDialogOpenChange} modal={!isMobile}>
-        <DialogContent 
-          className={cn(
-            "flex flex-col p-0",
-            // Desktop: right side with margins, showing blurred background border
-            "sm:!top-[1.5rem] sm:!bottom-[1.5rem] sm:!translate-x-0 sm:!translate-y-0 sm:!max-w-none sm:!h-auto sm:max-h-[calc(100vh-3rem)]",
-            // Mobile: fullscreen with safe areas - override all default positioning
-            isMobile && [
-              "invoice-dialog-fullscreen",
-              "!left-0",
-              "!translate-x-0",
-              "!translate-y-0",
-              "!top-0",
-              "!bottom-[var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px)))]",
-              "!w-full",
-              "!h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
-              "!max-h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
-              "!rounded-none",
-              "!m-0",
-              "!max-w-none"
-            ]
-          )}
-          style={isMobile ? {
-            transform: 'none',
-          } : {
-            // Desktop: right side, 60% width with margins for blurred border
-            left: "calc(40vw + 0.5rem)", // Start after preview + small gap
-            right: "1.5rem",
-            top: "1.5rem",
-            bottom: "1.5rem",
-            width: "calc(60vw - 2rem)", // 60% width with margins
-            height: "calc(100vh - 3rem)",
-            maxHeight: "calc(100vh - 3rem)",
-          } as React.CSSProperties}
-          showCloseButton={false}
-          onInteractOutside={(e) => {
-            if (isMobile && shouldBlockParentClose()) {
-              e.preventDefault();
-              return;
-            }
-            // Prevent closing when clicking on preview panel
-            const target = e.target as HTMLElement;
-            const previewPanel = document.querySelector('[data-preview-panel]');
-            if (previewPanel && previewPanel.contains(target)) {
-              e.preventDefault();
-            }
-          }}
-          onPointerDownOutside={(e) => {
-            if (isMobile && shouldBlockParentClose()) {
-              e.preventDefault();
-              return;
-            }
-            // Prevent closing when clicking on preview panel
-            const target = e.target as HTMLElement;
-            const previewPanel = document.querySelector('[data-preview-panel]');
-            if (previewPanel && previewPanel.contains(target)) {
-              e.preventDefault();
-            }
-          }}
-        >
-        {/* PageHeader-like structure matching Invoices page */}
-        <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
+        <div className="w-full overflow-hidden rounded-lg border bg-background shadow-sm flex flex-col">
+          {/* PageHeader-like structure matching Invoices page */}
+          <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
           {/* TitleRow */}
           <div className="flex items-center gap-3 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
             {/* Arrow button on left */}
             <Button
               variant="icon"
               size="icon"
-              onClick={() => onOpenChange(false)}
+              onClick={handleClose}
               className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
               aria-label="Close"
             >
@@ -1348,8 +1098,8 @@ export function InvoiceUploadReviewDialog({
             <div className="flex items-start gap-3 px-4 pb-1">
               {/* Spacer to align with icon (arrow button width + gap) */}
               <div className="size-9 shrink-0" />
-              {/* Invoice number - aligned with icon path (gap-3 + small offset for icon internal padding) */}
-              <p className="text-2xl md:text-3xl font-light text-muted-foreground ml-[5px]">
+              {/* Invoice number - aligned with icon (gap-3 automatically adds space) */}
+              <p className="text-2xl md:text-3xl font-light text-muted-foreground">
                 {invoice.invoiceNumber}
               </p>
             </div>
@@ -1360,7 +1110,7 @@ export function InvoiceUploadReviewDialog({
         <div className="separator-fade" />
 
         <div className={cn(
-          "space-y-4 px-6 pt-2 overflow-y-auto flex-1 min-h-0",
+          "space-y-4 px-6 pt-2",
           isMobile ? "pb-4" : "pb-6"
         )}>
 
@@ -1585,7 +1335,19 @@ export function InvoiceUploadReviewDialog({
             </div>
           )}
         </div>
-      </DialogContent>
+        </div>
+      </div>
+
+      {/* Mobile Preview Dialog - matches invoice dialog size */}
+      {isMobile && previewOpen && previewUrl && (
+        <PDFPreviewModal
+          isOpen={previewOpen}
+          onClose={handlePreviewClose}
+          fileUrl={previewUrl ?? undefined}
+          fileName={previewFileName}
+          fullScreen
+        />
+      )}
 
       {/* Share Invoice Dialog */}
       {invoiceId && (
@@ -1632,7 +1394,6 @@ export function InvoiceUploadReviewDialog({
           hasPayments={Number(invoice.amountPaid || 0) > 0}
         />
       )}
-    </Dialog>
     </>
   );
 }

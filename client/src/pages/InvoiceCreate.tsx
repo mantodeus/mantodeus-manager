@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { CreateInvoiceDialog } from "@/components/invoices/CreateInvoiceDialog";
+import { PageHeader } from "@/components/PageHeader";
 import { trpc } from "@/lib/trpc";
 
 export default function InvoiceCreate() {
@@ -17,13 +18,16 @@ export default function InvoiceCreate() {
   };
 
   return (
-    <CreateInvoiceDialog
-      open={dialogOpen}
-      onOpenChange={handleDialogChange}
-      onSuccess={async () => {
-        await utils.invoices.list.invalidate();
-        navigate("/invoices");
-      }}
-    />
+    <div className="space-y-6">
+      <PageHeader />
+      <CreateInvoiceDialog
+        open={dialogOpen}
+        onOpenChange={handleDialogChange}
+        onSuccess={async () => {
+          await utils.invoices.list.invalidate();
+          navigate("/invoices");
+        }}
+      />
+    </div>
   );
 }

@@ -50,11 +50,12 @@ export function CreateInvoiceDialog({
       ? previewUrl
       : `${previewUrl}#page=1&zoom=page-fit`
     : null;
-  const handleDialogOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && previewDialogOpen) {
+  const handleClose = () => {
+    if (previewDialogOpen) {
+      setPreviewDialogOpen(false);
       return;
     }
-    onOpenChange(nextOpen);
+    onOpenChange(false);
   };
 
   const handleSuccess = async () => {
@@ -163,44 +164,6 @@ export function CreateInvoiceDialog({
       }
     };
   }, [previewUrl]);
-
-  // Prevent background scrolling on mobile while fullscreen dialog is open
-  useEffect(() => {
-    if (!isMobile || !open) return;
-
-    const appContent = document.querySelector(".app-content") as HTMLElement | null;
-    const originalOverflow = appContent?.style.overflow ?? "";
-    const originalOverscroll = appContent?.style.overscrollBehavior ?? "";
-    const originalTouchAction = appContent?.style.touchAction ?? "";
-
-    if (appContent) {
-      appContent.style.overflow = "hidden";
-      appContent.style.overscrollBehavior = "contain";
-      appContent.style.touchAction = "none";
-    }
-
-    const preventScroll = (e: Event) => {
-      const target = e.target as HTMLElement | null;
-      const dialogContent = document.querySelector('[data-slot="dialog-content"].invoice-dialog-fullscreen');
-      if (dialogContent && target && dialogContent.contains(target)) {
-        return;
-      }
-      e.preventDefault();
-    };
-
-    window.addEventListener("wheel", preventScroll, { passive: false, capture: true });
-    window.addEventListener("touchmove", preventScroll, { passive: false, capture: true });
-
-    return () => {
-      window.removeEventListener("wheel", preventScroll, { capture: true } as EventListenerOptions);
-      window.removeEventListener("touchmove", preventScroll, { capture: true } as EventListenerOptions);
-      if (appContent) {
-        appContent.style.overflow = originalOverflow;
-        appContent.style.overscrollBehavior = originalOverscroll;
-        appContent.style.touchAction = originalTouchAction;
-      }
-    };
-  }, [isMobile, open]);
 
   // Reset zoom when preview changes
   useEffect(() => {
@@ -342,111 +305,78 @@ export function CreateInvoiceDialog({
     };
   }, [previewUrl, previewDialogOpen, previewZoom]);
 
+  if (!open) return null;
+
   return (
     <>
       {!isMobile ? (
         <CreateInvoiceWorkspace
           open={open}
-          onClose={() => onOpenChange(false)}
+          onClose={handleClose}
           onSuccess={onSuccess}
         />
       ) : (
-        <Dialog open={open} onOpenChange={handleDialogOpenChange} modal={!isMobile}>
-      <DialogContent 
-        className={cn(
-          "flex flex-col p-0",
-          // Mobile: fullscreen with safe areas - override all default positioning
-          isMobile && [
-            "invoice-dialog-fullscreen",
-            "!left-0",
-            "!translate-x-0",
-            "!translate-y-0",
-            "!top-0",
-            "!bottom-[var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px)))]",
-            "!w-full",
-            "!h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
-            "!max-h-[calc(100vh-var(--bottom-safe-area,calc(56px+env(safe-area-inset-bottom,0px))))]",
-            "!rounded-none",
-            "!m-0",
-            "!max-w-none"
-          ]
-        )}
-        style={isMobile ? {
-          transform: 'none',
-        } : undefined}
-        showCloseButton={false}
-        onInteractOutside={(e) => {
-          if (previewDialogOpen) {
-            e.preventDefault();
-          }
-        }}
-        onPointerDownOutside={(e) => {
-          if (previewDialogOpen) {
-            e.preventDefault();
-          }
-        }}
-      >
-        {/* PageHeader-like structure matching Invoices page */}
-        <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
-          {/* TitleRow */}
-          <div className="flex items-center gap-3 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
-            {/* Arrow button on left */}
-            <Button
-              variant="icon"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
-              aria-label="Close"
-            >
-              <ArrowLeft />
-            </Button>
-            
-            {/* Title with icon */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
-              <h1 className="text-2xl md:text-3xl font-light">Create Invoice</h1>
+        <div className="flex flex-col">
+          {/* PageHeader-like structure matching Invoices page */}
+          <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
+            {/* TitleRow */}
+            <div className="flex items-center gap-3 px-4" style={{ paddingTop: isMobile ? 'calc(1rem + env(safe-area-inset-top, 0px))' : '1rem' }}>
+              {/* Arrow button on left */}
+              <Button
+                variant="icon"
+                size="icon"
+                onClick={handleClose}
+                className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
+                aria-label="Close"
+              >
+                <ArrowLeft />
+              </Button>
+              
+              {/* Title with icon */}
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
+                <h1 className="text-2xl md:text-3xl font-light">Create Invoice</h1>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Fade-out separator */}
-        <div className="separator-fade" />
+          {/* Fade-out separator */}
+          <div className="separator-fade" />
 
-        <div className={cn(
-          "px-6 pt-4 flex-1 min-h-0 flex flex-col",
-          "pb-0"
-        )}>
-          <InvoiceForm
-            mode="create"
-            contacts={contacts}
-            onClose={() => onOpenChange(false)}
-            onSuccess={handleSuccess}
-            getFormDataRef={getFormDataRef}
-            renderBeforeFooter={
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleUpdatePreview}
-                disabled={isGeneratingPreview}
-                className="w-full"
-              >
-                {isGeneratingPreview ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Preview
-                  </>
-                )}
-              </Button>
-            }
-          />
+          <div className={cn(
+            "px-6 pt-4 flex-1 min-h-0 flex flex-col",
+            "pb-0"
+          )}>
+            <InvoiceForm
+              mode="create"
+              contacts={contacts}
+              onClose={handleClose}
+              onSuccess={handleSuccess}
+              getFormDataRef={getFormDataRef}
+              renderBeforeFooter={
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleUpdatePreview}
+                  disabled={isGeneratingPreview}
+                  className="w-full"
+                >
+                  {isGeneratingPreview ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Preview
+                    </>
+                  )}
+                </Button>
+              }
+            />
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
       )}
 
       {/* Mobile Preview Dialog - matches invoice dialog size */}
