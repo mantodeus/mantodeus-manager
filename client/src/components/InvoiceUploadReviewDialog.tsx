@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -1052,7 +1053,7 @@ export function InvoiceUploadReviewDialog({
       <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
         {/* TitleRow */}
         <div className="flex items-center gap-3" style={{ paddingTop: isMobile ? '0' : '1rem' }}>
-          {/* Arrow button on left */}
+          {/* Close button - ArrowLeft on mobile, X on desktop */}
           <Button
             variant="icon"
             size="icon"
@@ -1060,7 +1061,7 @@ export function InvoiceUploadReviewDialog({
             className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
             aria-label="Close"
           >
-            <ArrowLeft />
+            {isMobile ? <ArrowLeft /> : <X className="h-6 w-6" />}
           </Button>
           
           {/* Title with icon */}
@@ -1426,423 +1427,128 @@ export function InvoiceUploadReviewDialog({
 
   if (!open) return null;
 
-  return (
-    <>
-      <div className={cn("grid gap-6 min-h-[calc(100vh-12rem)]", !isMobile && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
-        {!isMobile && (
-          <div className="w-full bg-background lg:sticky lg:top-6 flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b bg-background">
-              <h2 className="text-lg font-semibold">Preview</h2>
-            </div>
-            <div 
-              ref={previewContainerRef}
-              data-preview-container
-              className="h-[calc(100vh-16rem)] overflow-auto bg-background relative"
-              style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
-            >
-              {previewUrl ? (
-                <div
-                  data-iframe-wrapper
-                  style={{
-                    transform: `scale(${previewZoom})`,
-                    transformOrigin: 'top left',
-                    width: `${100 / previewZoom}%`,
-                    height: `${100 / previewZoom}%`,
-                    transition: 'transform 0.1s ease-out',
-                  }}
-                >
-                  <iframe
-                    src={previewUrl}
-                    className="w-full h-full border-0"
-                    title={previewFileName}
-                    style={{ pointerEvents: 'auto' }}
-                  />
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <p>Preview will appear here when you open it</p>
-                </div>
-              )}
-            </div>
-          </div>
+  // Desktop: Windowed modal with portals
+  if (!isMobile) {
+    return (
+      <>
+        {/* Backdrop overlay */}
+        {createPortal(
+          <div
+            className="fixed z-[100] bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+            onClick={() => onOpenChange(false)}
+            onWheel={(e) => {
+              const target = e.target as HTMLElement;
+              if (target?.closest("[data-preview-container]")) {
+                return;
+              }
+              e.preventDefault();
+            }}
+            onTouchMove={(e) => e.preventDefault()}
+            onScroll={(e) => e.preventDefault()}
+            style={{
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: "100%",
+              height: "100%",
+              minHeight: "100vh",
+              pointerEvents: "auto",
+              overflow: "hidden",
+              touchAction: "none",
+            }}
+            aria-hidden="true"
+          />,
+          document.body
         )}
 
-        <div className="w-full bg-background flex flex-col">
-          {/* PageHeader-like structure matching Invoices page */}
-          <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
-          {/* TitleRow */}
-          <div className="flex items-center gap-3" style={{ paddingTop: isMobile ? '0' : '1rem' }}>
-            {/* Arrow button on left */}
-            <Button
-              variant="icon"
-              size="icon"
-              onClick={handleClose}
-              className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
-              aria-label="Close"
+        {createPortal(
+          <>
+            {/* Preview Panel - Left side */}
+            <div
+              ref={previewPanelRef}
+              className="fixed z-[110] bg-background border-r shadow-lg rounded-lg"
+              style={{
+                top: "1.5rem",
+                left: "1.5rem",
+                width: "calc(40vw - 2rem)",
+                height: "calc(100vh - 3rem)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
             >
-              <ArrowLeft />
-            </Button>
-            
-            {/* Title with icon */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              {isReview ? (
-                <FileText className="h-6 w-6 text-primary shrink-0" />
-              ) : (
-                <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
-              )}
-              <h1 className="text-2xl md:text-3xl font-light">
-                {isReview ? "Review Invoice" : "Edit Invoice"}
-              </h1>
-            </div>
-            
-            {/* Status badge and three-dot menu on right */}
-            {invoice && (
-              <div className="flex items-center gap-2 shrink-0">
-                {/* Status badge - display only, no dropdown */}
-                <div className="flex items-center gap-2">
-                  {renderStatusButton(invoice)}
+              <div className="flex flex-col h-full overflow-hidden rounded-lg">
+                <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+                  <h2 className="text-lg font-semibold">Preview</h2>
                 </div>
-                
-                {/* Three-dot menu for invoice actions */}
-                {availableInvoiceActions.length > 0 && (
-                  <DropdownMenu open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="icon"
-                        size="icon"
-                        className="size-9 [&_svg]:size-5 border border-transparent bg-transparent text-foreground hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8 dark:hover:bg-foreground/7 dark:active:bg-foreground/10 transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]"
-                        aria-label="More actions"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-64">
-                      <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {availableInvoiceActions.map((action) => {
-                        const config = actionConfig[action];
-                        if (!config) return null;
-                        const Icon = config.icon;
-                        const isDestructive = config.variant === "destructive";
-                        
-                        // Skip "edit" and "select" actions in dialog context
-                        if (action === "edit" || action === "select") return null;
-                        
-                        return (
-                          <DropdownMenuItem
-                            key={action}
-                            onClick={() => handleInvoiceAction(action)}
-                            className={cn(
-                              "flex items-center gap-2",
-                              isDestructive && "text-destructive focus:text-destructive"
-                            )}
-                          >
-                            <Icon className="h-4 w-4" />
-                            <span>{config.label}</span>
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                <div
+                  ref={previewContainerRef}
+                  data-preview-container
+                  className="flex-1 overflow-auto rounded-b-lg"
+                  style={{ touchAction: "pan-x pan-y pinch-zoom" }}
+                >
+                  {previewUrl ? (
+                    <div
+                      data-iframe-wrapper
+                      style={{
+                        transform: `scale(${previewZoom})`,
+                        transformOrigin: 'top left',
+                        width: `${100 / previewZoom}%`,
+                        height: `${100 / previewZoom}%`,
+                        transition: 'transform 0.1s ease-out',
+                      }}
+                    >
+                      <iframe
+                        src={previewUrl}
+                        className="w-full h-full border-0"
+                        title={previewFileName}
+                        style={{ pointerEvents: 'auto' }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      <p>Preview will appear here when you open it</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-          
-          {/* Invoice Number Row - aligned below icon */}
-          {invoice?.invoiceNumber && (
-            <div className="flex items-start gap-3 pb-1">
-              {/* Spacer to align with icon (arrow button width + gap) */}
-              <div className="size-9 shrink-0" />
-              {/* Invoice number - aligned with icon (gap-3 automatically adds space) */}
-              <p className="text-2xl md:text-3xl font-light text-muted-foreground">
-                {invoice.invoiceNumber}
-              </p>
             </div>
-          )}
-        </div>
 
-        {/* Fade-out separator */}
-        <div className="separator-fade" />
-
-        <div className={cn(
-          "space-y-4 pt-2 sm:px-6",
-          isMobile ? "pb-4" : "pb-6"
-        )}>
-
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <Label htmlFor="client">Client</Label>
-              {isAutofilled("clientId") && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Sparkles className="h-4 w-4 text-primary" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Autofilled from uploaded invoice</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-            <Select 
-              value={clientId} 
-              onValueChange={(value) => {
-                handleFieldEdit("clientId");
-                setClientId(value);
-              }} 
-              disabled={isReadOnly || isCancelled}
+            {/* Form Panel - Right side */}
+            <div
+              className="fixed z-[110] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
+              style={{
+                top: "1.5rem",
+                right: "1.5rem",
+                bottom: "1.5rem",
+                left: "calc(0.5rem + 40vw)",
+                width: "calc(60vw - 2rem)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
             >
-              <SelectTrigger id="client">
-                <SelectValue placeholder="Select client" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No client</SelectItem>
-                {contacts.map((contact) => (
-                  <SelectItem key={contact.id} value={contact.id.toString()}>
-                    {contact.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Row 1: Invoice Number and Total Amount side by side on desktop */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Label htmlFor="invoiceNumber">Invoice Number</Label>
-                {isAutofilled("invoiceNumber") && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Sparkles className="h-4 w-4 text-primary" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Autofilled from uploaded invoice</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {headerAndForm}
               </div>
-              <Input
-                id="invoiceNumber"
-                value={invoiceNumber}
-                onChange={(e) => {
-                  handleFieldEdit("invoiceNumber");
-                  setInvoiceNumber(e.target.value);
-                }}
-                placeholder="Auto-generated if empty"
-                disabled={isReadOnly || isCancelled}
-              />
             </div>
+          </>,
+          document.body
+        )}
 
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Label htmlFor="totalAmount">Total Amount (€) *</Label>
-                {isAutofilled("totalAmount") && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Sparkles className="h-4 w-4 text-primary" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Autofilled from uploaded invoice</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-              <Input
-                id="totalAmount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={totalAmount}
-                onChange={(e) => {
-                  handleFieldEdit("totalAmount");
-                  setTotalAmount(e.target.value);
-                }}
-                placeholder="0.00"
-                required
-                disabled={isReadOnly || isCancelled}
-              />
-            </div>
-          </div>
+        {dialogs}
+      </>
+    );
+  }
 
-          {/* Row 2: Invoice Date and Due Date side by side on all screen sizes */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Label htmlFor="issueDate">Invoice Date *</Label>
-                {isAutofilled("issueDate") && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Sparkles className="h-4 w-4 text-primary" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Autofilled from uploaded invoice</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-              <Input
-                id="issueDate"
-                type="date"
-                value={issueDate}
-                onChange={(e) => {
-                  handleFieldEdit("issueDate");
-                  setIssueDate(e.target.value);
-                }}
-                required
-                disabled={isReadOnly || isCancelled}
-              />
-            </div>
-
-            {/* Due Date - shown for both review and draft states, required for sending */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Label htmlFor="dueDate">Due Date *</Label>
-                {isAutofilled("dueDate") && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Sparkles className="h-4 w-4 text-primary" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Autofilled from uploaded invoice</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-              <Input
-                id="dueDate"
-                type="date"
-                value={dueDate}
-                onChange={(e) => {
-                  handleFieldEdit("dueDate");
-                  setDueDate(e.target.value);
-                }}
-                required
-                disabled={isReadOnly || isCancelled}
-              />
-            </div>
-          </div>
-
-          {/* Payment Date - shown only when invoice is paid */}
-          {invoice?.paidAt && (
-            <div className="space-y-2">
-              <Label htmlFor="paymentDate">Payment Date</Label>
-              <Input
-                id="paymentDate"
-                type="date"
-                value={paymentDate}
-                disabled
-                readOnly
-                className="bg-muted"
-              />
-            </div>
-          )}
-
-          {/* Footer with Preview button - part of scrollable content */}
-          {(isReview || isDraft) && invoice?.source === "uploaded" && (
-            <div className={cn(
-              "pt-4 border-t",
-              isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
-            )}>
-                {/* Preview button - only on mobile */}
-                {isMobile && (
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      if (showInlinePreview) {
-                        setShowInlinePreview(false);
-                        return;
-                      }
-                      if (previewUrl) {
-                        setShowInlinePreview(true);
-                        requestAnimationFrame(() => {
-                          inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
-                        });
-                        return;
-                      }
-                      handlePreviewPDF();
-                    }}
-                    disabled={isLoading}
-                    className="w-full gap-2"
-                  >
-                    <Eye className="h-4 w-4" />
-                    {showInlinePreview ? "Hide Preview" : "Preview"}
-                  </Button>
-                )}
-                {isMobile && showInlinePreview && previewUrl && (
-                  <div
-                    ref={inlinePreviewRef}
-                    className="w-full border-t bg-muted/30"
-                  >
-                    <DocumentPreview
-                      fileUrl={previewUrl}
-                      fileName={previewFileName}
-                      mimeType={previewMimeType}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-          {/* Footer with Preview button for sent/paid states - part of scrollable content */}
-          {!isReview && !isDraft && invoice?.source === "uploaded" && (
-            <div className={cn(
-              "pt-4 border-t",
-              isMobile ? "flex flex-col gap-2 w-full" : "flex flex-col gap-2"
-            )}>
-                {/* Preview button - only on mobile */}
-                {isMobile && (
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      if (showInlinePreview) {
-                        setShowInlinePreview(false);
-                        return;
-                      }
-                      if (previewUrl) {
-                        setShowInlinePreview(true);
-                        requestAnimationFrame(() => {
-                          inlinePreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
-                        });
-                        return;
-                      }
-                      handlePreviewPDF();
-                    }}
-                    disabled={isLoading}
-                    className="w-full gap-2"
-                  >
-                    <Eye className="h-4 w-4" />
-                    {showInlinePreview ? "Hide Preview" : "Preview"}
-                  </Button>
-                )}
-                {isMobile && showInlinePreview && previewUrl && (
-                  <div
-                    ref={inlinePreviewRef}
-                    className="w-full border-t bg-muted/30"
-                  >
-                    <DocumentPreview
-                      fileUrl={previewUrl}
-                      fileName={previewFileName}
-                      mimeType={previewMimeType}
-                    />
-                  </div>
-                )}
-            </div>
-          )}
-        </div>
-        </div>
-      </div>
+  // Mobile: Fullscreen layout
+  return (
+    <>
+      {headerAndForm}
+      {dialogs}
 
       {/* Share Invoice Dialog */}
       {invoiceId && (
