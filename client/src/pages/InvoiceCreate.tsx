@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { CreateInvoiceDialog } from "@/components/invoices/CreateInvoiceDialog";
-import { PageHeader } from "@/components/PageHeader";
 import { trpc } from "@/lib/trpc";
 
 export default function InvoiceCreate() {
@@ -18,8 +17,7 @@ export default function InvoiceCreate() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader />
+    <div className="min-h-screen px-6 py-6">
       <CreateInvoiceDialog
         open={dialogOpen}
         onOpenChange={handleDialogChange}

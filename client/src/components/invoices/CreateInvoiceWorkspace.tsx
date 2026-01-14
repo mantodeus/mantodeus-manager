@@ -358,10 +358,10 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
 
   return (
     <>
-      <div className={cn("grid gap-6", !isMobile && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
+      <div className={cn("grid gap-6 min-h-[calc(100vh-12rem)]", !isMobile && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
         {!isMobile && (
-          <div className="w-full overflow-hidden rounded-lg border bg-background shadow-sm lg:sticky lg:top-6">
-            <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+          <div className="w-full bg-background lg:sticky lg:top-6">
+            <div className="flex items-center justify-between pb-3 border-b">
               <h2 className="text-lg font-semibold">Preview</h2>
               {isGeneratingPreview && (
                 <div className="text-sm text-muted-foreground">Generating...</div>
@@ -400,7 +400,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
           </div>
         )}
 
-        <div className="w-full overflow-hidden rounded-lg border bg-background shadow-sm">
+        <div className="w-full bg-background">
           <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-start justify-between gap-4">

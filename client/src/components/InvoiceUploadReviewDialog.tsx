@@ -972,10 +972,10 @@ export function InvoiceUploadReviewDialog({
 
   return (
     <>
-      <div className={cn("grid gap-6", !isMobile && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
+      <div className={cn("grid gap-6 min-h-[calc(100vh-12rem)]", !isMobile && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
         {!isMobile && (
-          <div className="w-full overflow-hidden rounded-lg border bg-background shadow-sm lg:sticky lg:top-6">
-            <div className="flex items-center justify-between p-4 border-b bg-background">
+          <div className="w-full bg-background lg:sticky lg:top-6">
+            <div className="flex items-center justify-between pb-3 border-b bg-background">
               <h2 className="text-lg font-semibold">Preview</h2>
             </div>
             <div 
@@ -1011,7 +1011,7 @@ export function InvoiceUploadReviewDialog({
           </div>
         )}
 
-        <div className="w-full overflow-hidden rounded-lg border bg-background shadow-sm flex flex-col">
+        <div className="w-full bg-background flex flex-col">
           {/* PageHeader-like structure matching Invoices page */}
           <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
           {/* TitleRow */}
