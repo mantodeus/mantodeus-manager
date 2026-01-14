@@ -80,13 +80,13 @@ export function InvoiceUploadReviewDialog({
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const inlinePreviewRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
-  const previewMimeType = getPreviewMimeType(previewFileName, invoice?.originalFileName);
 
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: invoice } = trpc.invoices.get.useQuery(
     { id: invoiceId! },
     { enabled: !!invoiceId }
   );
+  const previewMimeType = getPreviewMimeType(previewFileName, invoice?.originalFileName);
 
   const handlePreviewPDF = async () => {
     if (!invoiceId || !invoice) return;
