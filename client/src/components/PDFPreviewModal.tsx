@@ -8,7 +8,10 @@ import "react-pdf/dist/Page/TextLayer.css";
 import { toast } from "sonner";
 
 // Set up the PDF worker from node_modules
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url,
+).toString();
 
 interface PDFPreviewModalProps {
   isOpen: boolean;
