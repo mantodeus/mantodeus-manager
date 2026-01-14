@@ -1345,11 +1345,10 @@ export function InvoiceUploadReviewDialog({
           
           {/* Invoice Number Row - aligned below icon */}
           {invoice?.invoiceNumber && (
-            <div className="flex items-start gap-3 px-4 pb-2">
+            <div className="flex items-start gap-3 px-4 pb-1">
               {/* Spacer to align with icon (arrow button width + gap) */}
               <div className="size-9 shrink-0" />
-              <div className="w-6 shrink-0" />
-              {/* Invoice number - aligned with icon */}
+              {/* Invoice number - aligned with icon (gap-3 automatically adds space) */}
               <p className="text-2xl md:text-3xl font-light text-muted-foreground">
                 {invoice.invoiceNumber}
               </p>
@@ -1361,7 +1360,7 @@ export function InvoiceUploadReviewDialog({
         <div className="separator-fade" />
 
         <div className={cn(
-          "space-y-4 px-6 pt-4 overflow-y-auto flex-1 min-h-0",
+          "space-y-4 px-6 pt-2 overflow-y-auto flex-1 min-h-0",
           isMobile ? "pb-4" : "pb-6"
         )}>
 
