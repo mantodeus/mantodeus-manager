@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 import { cn } from "@/lib/utils";
 
 function Popover({
@@ -22,6 +23,7 @@ function PopoverContent({
   onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+  const portalRoot = usePortalRoot();
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   const isStandalone =
     typeof window !== "undefined" &&
@@ -29,7 +31,7 @@ function PopoverContent({
       (window.navigator as any).standalone === true);
 
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={portalRoot}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}

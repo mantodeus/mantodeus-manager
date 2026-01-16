@@ -17,6 +17,7 @@ import { createPortal } from "react-dom";
 import { useLongPress } from "@/hooks/useLongPress";
 import { cn } from "@/lib/utils";
 import { Edit, Trash2, Copy, CheckCircle2, Archive, RotateCcw, Eye, DollarSign, XCircle, Send, CurrencyEuro } from "@/components/ui/Icon";
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 
 export type CenteredContextMenuAction =
   | "edit"
@@ -118,10 +119,6 @@ export const CenteredContextMenu = React.forwardRef<
   disabled = false,
   menuClassName,
 }, ref) => {
-  // #region agent log
-  // Track menu open state changes
-  const prevIsOpenRef = React.useRef(false);
-  // #endregion
   const [isOpen, setIsOpen] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [isPressing, setIsPressing] = useState(false);
@@ -135,6 +132,7 @@ export const CenteredContextMenu = React.forwardRef<
   const suppressClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const blockingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActionTimeRef = useRef(0);
+  const portalRoot = usePortalRoot();
 
   const menuShiftY = useMemo(() => {
     if (!itemRect || !itemRef.current) return 0;
@@ -305,21 +303,6 @@ export const CenteredContextMenu = React.forwardRef<
       }
       setIsBlocking(true);
       setIsOpen(true);
-      // #region agent log
-      const appContent = document.querySelector('.app-content') as HTMLElement | null;
-      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-      const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
-      const vv = (window as any).visualViewport;
-      const logData = {location:'CenteredContextMenu.tsx:307',message:'Context menu OPENING',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,visualViewportHeight:vv?.height,visualViewportOffsetTop:vv?.offsetTop,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'};
-      console.log('[DEBUG]', logData);
-      try {
-        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
-        logs.push(logData);
-        if (logs.length > 100) logs.shift();
-        localStorage.setItem('debug-logs', JSON.stringify(logs));
-      } catch(e) {}
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
-      // #endregion
       menuOpenTimeRef.current = Date.now();
       onOpenChange?.(true);
       element.classList.add("context-menu-active");
@@ -353,21 +336,6 @@ export const CenteredContextMenu = React.forwardRef<
 
   const closeMenu = useCallback(() => {
     setIsOpen(false);
-    // #region agent log
-    const appContent = document.querySelector('.app-content') as HTMLElement | null;
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
-    const vv = (window as any).visualViewport;
-    const logData = {location:'CenteredContextMenu.tsx:340',message:'Context menu CLOSING',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,visualViewportHeight:vv?.height,visualViewportOffsetTop:vv?.offsetTop,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'};
-    console.log('[DEBUG]', logData);
-    try {
-      const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
-      logs.push(logData);
-      if (logs.length > 100) logs.shift();
-      localStorage.setItem('debug-logs', JSON.stringify(logs));
-    } catch(e) {}
-    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
-    // #endregion
     onOpenChange?.(false);
     setIsPressing(false);
     setIsTouchHoldActive(false);
@@ -494,199 +462,43 @@ export const CenteredContextMenu = React.forwardRef<
   useEffect(() => {
     if (!isOpen) return;
 
-    // Store original app scroller styles (our app scrolls inside .app-content on mobile)
     const appContent = document.querySelector(".app-content") as HTMLElement | null;
-    
-      // #region agent log
-      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-      const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
-      const logData = {location:'CenteredContextMenu.tsx:460',message:'Context menu opening - BEFORE changes',data:{isOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'};
-      console.log('[DEBUG]', logData);
-      try {
-        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
-        logs.push(logData);
-        if (logs.length > 100) logs.shift();
-        localStorage.setItem('debug-logs', JSON.stringify(logs));
-      } catch(e) {}
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
-      // #endregion
-
-    // Store original body styles and scroll position
     const originalBodyOverflow = document.body.style.overflow;
-    const originalBodyPosition = document.body.style.position;
-    const originalBodyWidth = document.body.style.width;
-    const originalBodyTop = document.body.style.top;
-    const scrollY = window.scrollY;
     const originalAppOverflowY = appContent?.style.overflowY ?? "";
     const originalAppOverflow = appContent?.style.overflow ?? "";
 
-    // IMPORTANT (iOS PWA): Avoid `body { position: fixed }` scroll lock, it can
-    // change viewport metrics and cause fixed UI (bottom tab bar) to "jump".
-    // Instead, lock the actual app scroller (`.app-content`) and prevent wheel/touchmove.
     document.body.style.overflow = "hidden";
     if (appContent) {
       appContent.style.overflowY = "hidden";
       appContent.style.overflow = "hidden";
     }
-    
-    // #region agent log
-    setTimeout(() => {
-      const logData = {location:'CenteredContextMenu.tsx:482',message:'Context menu opening - AFTER overflow changes',data:{isOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow,appContentOverflow:appContent?.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'};
-      console.log('[DEBUG]', logData);
-      try {
-        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
-        logs.push(logData);
-        if (logs.length > 100) logs.shift();
-        localStorage.setItem('debug-logs', JSON.stringify(logs));
-      } catch(e) {}
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
-    }, 10);
-    // #endregion
 
-    // Also prevent scroll events on window
     const preventScroll = (e: Event) => {
-      // Allow scrolling within the menu itself
       const target = e.target as HTMLElement;
-      if (
-        menuRef.current &&
-        (menuRef.current.contains(target) || menuRef.current === target)
-      ) {
-        return; // Allow scrolling in menu
+      if (menuRef.current && (menuRef.current.contains(target) || menuRef.current === target)) {
+        return;
       }
       e.preventDefault();
       e.stopPropagation();
     };
 
-    // Prevent touchmove on body (mobile scroll prevention)
-    const preventTouchMove = (e: TouchEvent) => {
-      const target = e.target as HTMLElement;
-      // Allow touchmove within the menu
-      if (
-        menuRef.current &&
-        (menuRef.current.contains(target) || menuRef.current === target)
-      ) {
-        return; // Allow touch scrolling in menu
-      }
-      e.preventDefault();
-    };
-
-    // Prevent wheel events on window (desktop scroll prevention)
     window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
-    window.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true });
+    window.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
     document.body.addEventListener('wheel', preventScroll, { passive: false, capture: true });
-    document.body.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true });
+    document.body.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
 
     return () => {
-      // #region agent log
-      const logData1 = {location:'CenteredContextMenu.tsx:517',message:'Context menu closing - BEFORE cleanup',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'};
-      console.log('[DEBUG]', logData1);
-      try {
-        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
-        logs.push(logData1);
-        if (logs.length > 100) logs.shift();
-        localStorage.setItem('debug-logs', JSON.stringify(logs));
-      } catch(e) {}
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData1)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
-      // #endregion
-      
-      // Restore original body styles
       document.body.style.overflow = originalBodyOverflow;
-      document.body.style.position = originalBodyPosition;
-      document.body.style.width = originalBodyWidth;
-      document.body.style.top = originalBodyTop;
-
-      // Restore app scroller styles
       if (appContent) {
         appContent.style.overflowY = originalAppOverflowY;
         appContent.style.overflow = originalAppOverflow;
       }
-
-      // Remove event listeners
       window.removeEventListener('wheel', preventScroll, { capture: true } as any);
-      window.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
+      window.removeEventListener('touchmove', preventScroll, { capture: true } as any);
       document.body.removeEventListener('wheel', preventScroll, { capture: true } as any);
-      document.body.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
-      
-      // #region agent log
-      setTimeout(() => {
-        const logData2 = {location:'CenteredContextMenu.tsx:535',message:'Context menu closing - AFTER cleanup',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'};
-        console.log('[DEBUG]', logData2);
-        try {
-          const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
-          logs.push(logData2);
-          if (logs.length > 100) logs.shift();
-          localStorage.setItem('debug-logs', JSON.stringify(logs));
-        } catch(e) {}
-        fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
-      }, 10);
-      // #endregion
+      document.body.removeEventListener('touchmove', preventScroll, { capture: true } as any);
     };
   }, [isOpen]);
-  
-  // #region agent log - Fix: Prevent iOS PWA viewport height change when context menu opens
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
-    if (!isMobile || !isStandalone) return;
-    
-    // Capture initial viewport state BEFORE menu opens
-    const vv = (window as any).visualViewport;
-    const initialVvHeight = vv?.height ?? window.innerHeight;
-    const initialVvOffsetTop = vv?.offsetTop ?? 0;
-    const appContent = document.querySelector('.app-content') as HTMLElement | null;
-    const initialAppScrollTop = appContent?.scrollTop ?? 0;
-    
-    // Monitor for viewport changes and compensate
-    let rafId: number;
-    let compensationApplied = false;
-    
-    const monitor = () => {
-      if (!isOpen) {
-        if (rafId) cancelAnimationFrame(rafId);
-        return;
-      }
-      
-      const currentVv = (window as any).visualViewport;
-      const currentVvHeight = currentVv?.height ?? window.innerHeight;
-      const currentVvOffsetTop = currentVv?.offsetTop ?? 0;
-      const vvHeightDelta = currentVvHeight - initialVvHeight;
-      const vvOffsetDelta = currentVvOffsetTop - initialVvOffsetTop;
-      
-      // If viewport height changed (the jump), compensate by adjusting scroll
-      if (!compensationApplied && (Math.abs(vvHeightDelta) > 5 || Math.abs(vvOffsetDelta) > 5)) {
-        compensationApplied = true;
-        
-        // Compensate for the viewport change by adjusting scroll position
-        if (appContent) {
-          const currentScroll = appContent.scrollTop;
-          const compensation = -vvHeightDelta - vvOffsetDelta;
-          if (Math.abs(compensation) > 1) {
-            appContent.scrollTop = currentScroll + compensation;
-          }
-        } else {
-          const currentScroll = window.scrollY;
-          const compensation = -vvHeightDelta - vvOffsetDelta;
-          if (Math.abs(compensation) > 1) {
-            window.scrollTo({ top: currentScroll + compensation, behavior: 'auto' });
-          }
-        }
-      }
-      
-      rafId = requestAnimationFrame(monitor);
-    };
-    
-    // Start monitoring after a short delay to catch the viewport change
-    rafId = requestAnimationFrame(() => {
-      rafId = requestAnimationFrame(monitor);
-    });
-    
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      compensationApplied = false;
-    };
-  }, [isOpen]);
-  // #endregion
 
   useEffect(() => {
     return () => {
@@ -700,11 +512,6 @@ export const CenteredContextMenu = React.forwardRef<
       }
     };
   }, []);
-
-  // Expose open method via ref
-  React.useImperativeHandle(ref, () => ({
-    open: openMenu,
-  }));
 
   // Expose open method via ref
   React.useImperativeHandle(ref, () => ({
@@ -1031,7 +838,7 @@ export const CenteredContextMenu = React.forwardRef<
                 </div>
               )}
           </>,
-          document.body
+          portalRoot ?? document.body
         )}
     </>
   );

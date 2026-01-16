@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Upload, FileText, Loader2, X } from "@/components/ui/Icon";
 import { useIsMobile } from "@/hooks/useMobile";
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 import { InvoiceUploadZone } from "./InvoiceUploadZone";
 import {
   InvoiceWorkspaceBody,
@@ -43,6 +44,9 @@ export function BulkInvoiceUploadDialog({
   isUploading = false,
 }: BulkInvoiceUploadDialogProps) {
   const isMobile = useIsMobile();
+  const portalRoot = usePortalRoot();
+  const portalTarget =
+    portalRoot ?? (typeof document !== "undefined" ? document.body : null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -272,14 +276,14 @@ export function BulkInvoiceUploadDialog({
 
   // Mobile: Full-screen layout (only render when open)
   if (isMobile) {
-    if (!open) return null;
+    if (!open || !portalTarget) return null;
     return createPortal(
       <div className="fixed inset-0 z-[120] bg-background p-4">
         <div className="flex min-h-full w-full flex-col">
           {content}
         </div>
       </div>,
-      document.body
+      portalTarget
     );
   }
 

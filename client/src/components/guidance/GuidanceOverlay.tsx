@@ -8,6 +8,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useGuidance, type TourStep, type GuidanceAction } from "@/contexts/GuidanceContext";
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 import { cn } from "@/lib/utils";
 
 interface HighlightPosition {
@@ -25,6 +26,9 @@ export function GuidanceOverlay() {
     nextStep,
     cancelTour,
   } = useGuidance();
+  const portalRoot = usePortalRoot();
+  const portalTarget =
+    portalRoot ?? (typeof document !== "undefined" ? document.body : null);
   
   const [position, setPosition] = useState<HighlightPosition | null>(null);
   const [element, setElement] = useState<HTMLElement | null>(null);
@@ -113,6 +117,7 @@ export function GuidanceOverlay() {
   if (!position || !currentStep?.elementId || tourStatus !== "active") {
     return null;
   }
+  if (!portalTarget) return null;
 
   const action: GuidanceAction = currentStep.action || "pulse";
   const tooltip = currentStep.tooltip;
@@ -190,6 +195,6 @@ export function GuidanceOverlay() {
         }
       `}</style>
     </div>,
-    document.body
+    portalTarget
   );
 }

@@ -3,6 +3,7 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "@/components/ui/Icon";
 import { useAutoScrollOnOpen } from "@/hooks/useAutoScrollOnOpen";
 
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 import { cn } from "@/lib/utils";
 
 function Select({
@@ -60,6 +61,7 @@ function SelectContent({
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = React.useState(false);
+  const portalRoot = usePortalRoot();
 
   // Watch for open state changes via data-state attribute
   React.useEffect(() => {
@@ -101,7 +103,7 @@ function SelectContent({
   });
 
   return (
-    <SelectPrimitive.Portal>
+    <SelectPrimitive.Portal container={portalRoot}>
       <SelectPrimitive.Content
         ref={contentRef}
         data-slot="select-content"

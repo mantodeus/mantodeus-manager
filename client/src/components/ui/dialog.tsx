@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X as XIcon } from "@/components/ui/Icon";
 import * as React from "react";
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 
 // Context to track composition state across dialog children
 const DialogCompositionContext = React.createContext<{
@@ -63,7 +64,14 @@ function DialogTrigger({
 function DialogPortal({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />;
+  const portalRoot = usePortalRoot();
+  return (
+    <DialogPrimitive.Portal
+      data-slot="dialog-portal"
+      container={portalRoot}
+      {...props}
+    />
+  );
 }
 
 function DialogClose({

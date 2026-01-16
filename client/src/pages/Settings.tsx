@@ -92,6 +92,14 @@ export default function Settings() {
     weekStartsOn: "monday" as "monday" | "sunday",
   });
 
+  // Debug panel setting (stored in localStorage, not in preferences)
+  const [debugPanelEnabled, setDebugPanelEnabledState] = useState(false);
+
+  // Initialize debug panel setting from localStorage
+  useEffect(() => {
+    setDebugPanelEnabledState(isDebugPanelEnabled());
+  }, []);
+
   // Initialize form when settings load
   useEffect(() => {
     if (settings) {
@@ -416,6 +424,26 @@ export default function Settings() {
                   id="notifications"
                   checked={preferencesData.notificationsEnabled}
                   onCheckedChange={(checked) => handlePreferenceChange("notificationsEnabled", checked)}
+                />
+              </div>
+
+              {/* Debug Panel Toggle */}
+              <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+                <div className="space-y-0.5">
+                  <Label htmlFor="debugPanel" className="text-base cursor-pointer">
+                    Debug Panel
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Show the debug panel button (🐛) for troubleshooting. You can also press Shift+D to toggle it.
+                  </p>
+                </div>
+                <Switch
+                  id="debugPanel"
+                  checked={debugPanelEnabled}
+                  onCheckedChange={(checked) => {
+                    setDebugPanelEnabledState(checked);
+                    setDebugPanelEnabled(checked);
+                  }}
                 />
               </div>
             </div>

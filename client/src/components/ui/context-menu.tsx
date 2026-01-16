@@ -2,6 +2,7 @@ import * as React from "react";
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/Icon";
 import { useAutoScrollOnOpen } from "@/hooks/useAutoScrollOnOpen";
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 
 import { cn } from "@/lib/utils";
 
@@ -30,8 +31,14 @@ function ContextMenuGroup({
 function ContextMenuPortal({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Portal>) {
+  const portalRoot = usePortalRoot();
+
   return (
-    <ContextMenuPrimitive.Portal data-slot="context-menu-portal" {...props} />
+    <ContextMenuPrimitive.Portal
+      data-slot="context-menu-portal"
+      container={portalRoot}
+      {...props}
+    />
   );
 }
 
@@ -100,6 +107,7 @@ function ContextMenuContent({
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = React.useState(false);
+  const portalRoot = usePortalRoot();
 
   // Watch for open state changes via data-state attribute
   React.useEffect(() => {
@@ -141,7 +149,7 @@ function ContextMenuContent({
   });
 
   return (
-    <ContextMenuPrimitive.Portal>
+    <ContextMenuPrimitive.Portal container={portalRoot}>
       <ContextMenuPrimitive.Content
         ref={contentRef}
         data-slot="context-menu-content"

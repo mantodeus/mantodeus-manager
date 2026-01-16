@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useTheme } from "@/hooks/useTheme";
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 import { cn } from "@/lib/utils";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
 import { getInvoiceActions, type InvoiceAction } from "@/lib/invoiceActions";
@@ -63,6 +64,9 @@ export function InvoiceUploadReviewDialog({
   onSuccess,
 }: InvoiceUploadReviewDialogProps) {
   const isMobile = useIsMobile();
+  const portalRoot = usePortalRoot();
+  const portalTarget =
+    portalRoot ?? (typeof document !== "undefined" ? document.body : null);
   
   const { theme } = useTheme();
   const isDarkMode = theme === 'green-mantis';
@@ -94,6 +98,7 @@ export function InvoiceUploadReviewDialog({
     { enabled: !!invoiceId }
   );
   const previewMimeType = getPreviewMimeType(previewFileName, invoice?.originalFileName);
+  if (!portalTarget) return null;
 
   const handlePreviewPDF = async () => {
     if (!invoiceId || !invoice) return;
@@ -1419,7 +1424,7 @@ export function InvoiceUploadReviewDialog({
             }}
             aria-hidden="true"
           />,
-          document.body
+          portalTarget
         )}
 
         {createPortal(
@@ -1494,7 +1499,7 @@ export function InvoiceUploadReviewDialog({
               {headerAndForm}
             </div>
           </>,
-          document.body
+          portalTarget
         )}
 
         {dialogs}

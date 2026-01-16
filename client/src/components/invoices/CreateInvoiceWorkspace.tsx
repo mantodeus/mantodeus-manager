@@ -15,6 +15,7 @@ import { InvoiceForm, InvoicePreviewData } from "./InvoiceForm";
 import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/useMobile";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 import { cn } from "@/lib/utils";
 import {
   InvoiceWorkspaceBody,
@@ -33,9 +34,13 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
 
   console.log("CreateInvoiceWorkspace mounted");
   const isMobile = useIsMobile();
+  const portalRoot = usePortalRoot();
+  const portalTarget =
+    portalRoot ?? (typeof document !== "undefined" ? document.body : null);
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  if (!portalTarget) return null;
   
   // Note: Desktop uses a blurred backdrop that blocks background scroll.
   
@@ -401,7 +406,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
               }}
               aria-hidden="true"
             />,
-            document.body
+            portalTarget
           )}
 
           {createPortal(
@@ -535,7 +540,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
                 </div>
               </div>
             </>,
-            document.body
+            portalTarget
           )}
         </>
       )}

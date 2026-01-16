@@ -51,6 +51,7 @@ import ScanReceipt from "./pages/ScanReceipt";
 import DocumentUpload from "./pages/DocumentUpload";
 import { useEffect, useState } from "react";
 import { initializeTheme } from "@/lib/theme";
+import { isDebugPanelEnabled, setDebugPanelEnabled } from "@/lib/debugPanel";
 
 // #region agent log
 // Helper to extract debug logs from localStorage (run in console: window.getDebugLogs())
@@ -155,12 +156,14 @@ if (typeof window !== 'undefined') {
     });
     
     // Create floating button to open debug panel (mobile-friendly)
+    // Only show if enabled in settings
     setTimeout(() => {
       const button = document.createElement('button');
       button.id = 'debug-panel-toggle';
       button.innerHTML = '🐛';
       button.title = 'Debug Panel (or press Shift+D)';
-      button.style.cssText = 'position:fixed;bottom:80px;right:20px;width:50px;height:50px;background:#00ff88;color:#000;border:none;border-radius:50%;font-size:24px;z-index:99998;cursor:pointer;box-shadow:0 4px 12px rgba(0,255,136,0.4);display:flex;align-items:center;justify-content:center;';
+      const isEnabled = isDebugPanelEnabled();
+      button.style.cssText = `position:fixed;bottom:80px;right:20px;width:50px;height:50px;background:#00ff88;color:#000;border:none;border-radius:50%;font-size:24px;z-index:99998;cursor:pointer;box-shadow:0 4px 12px rgba(0,255,136,0.4);display:${isEnabled ? 'flex' : 'none'};align-items:center;justify-content:center;`;
       button.addEventListener('click', () => {
         (window as any).toggleDebugPanel();
       });
@@ -174,6 +177,20 @@ if (typeof window !== 'undefined') {
         (window as any).toggleDebugPanel();
       });
       document.body.appendChild(button);
+      
+      // Listen for storage changes to update button visibility (cross-tab sync)
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'debug-panel-enabled') {
+          const enabled = e.newValue === 'true';
+          button.style.display = enabled ? 'flex' : 'none';
+        }
+      });
+      
+      // Also listen for custom event for same-tab updates
+      window.addEventListener('debug-panel-setting-changed', ((e: CustomEvent) => {
+        const enabled = e.detail.enabled;
+        button.style.display = enabled ? 'flex' : 'none';
+      }) as EventListener);
     }, 1000);
   }
 }

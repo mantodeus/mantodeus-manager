@@ -2,6 +2,7 @@ import * as React from "react";
 import * as MenubarPrimitive from "@radix-ui/react-menubar";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/Icon";
 
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 import { cn } from "@/lib/utils";
 
 function Menubar({
@@ -35,7 +36,14 @@ function MenubarGroup({
 function MenubarPortal({
   ...props
 }: React.ComponentProps<typeof MenubarPrimitive.Portal>) {
-  return <MenubarPrimitive.Portal data-slot="menubar-portal" {...props} />;
+  const portalRoot = usePortalRoot();
+  return (
+    <MenubarPrimitive.Portal
+      data-slot="menubar-portal"
+      container={portalRoot}
+      {...props}
+    />
+  );
 }
 
 function MenubarRadioGroup({
