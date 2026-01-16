@@ -981,7 +981,7 @@
     min-height: 56px;
     height: auto;
     /* Safe area padding - only adds space when actually needed */
-    padding-bottom: var(--safe-area-bottom);
+    padding-bottom: calc(max(0px, var(--safe-area-bottom) - 6px));
     /* Force prevent text selection on entire tab bar */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -1592,7 +1592,6 @@
     z-index: 10;
   }
 }
-
 
 
 
