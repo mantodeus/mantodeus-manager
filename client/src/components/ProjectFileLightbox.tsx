@@ -674,7 +674,14 @@ export default function ProjectFileLightbox({
   };
 
   return (
-    <div className="fixed inset-0 z-50 style={{ background: 'var(--overlay-heavy)' }} flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{
+        background: 'var(--overlay-heavy)',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
       {/* Hidden image for loading */}
       <img ref={imgRef} className="hidden" crossOrigin="anonymous" alt="" />
 

@@ -278,7 +278,15 @@ export function BulkInvoiceUploadDialog({
   if (isMobile) {
     if (!open || !portalTarget) return null;
     return createPortal(
-      <div className="fixed inset-0 z-[120] bg-background p-4">
+      <div
+        className="fixed inset-0 z-[120] bg-background flex flex-col"
+        style={{
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+          paddingBottom: 'calc(var(--bottom-safe-area, 0px) + 1rem)',
+          paddingLeft: '1rem',
+          paddingRight: '1rem',
+        }}
+      >
         <div className="flex min-h-full w-full flex-col">
           {content}
         </div>

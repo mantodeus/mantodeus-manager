@@ -1117,7 +1117,8 @@
       margin-bottom: calc(var(--bottom-safe-area, 0px) + 1rem) !important;
     }
 
-    [data-slot="dialog-content"].invoice-dialog-fullscreen {
+    [data-slot="dialog-content"].invoice-dialog-fullscreen,
+    [data-slot="dialog-content"].fullscreen-dialog {
       max-height: 100vh !important;
       max-height: 100dvh !important;
       margin-bottom: 0 !important;
