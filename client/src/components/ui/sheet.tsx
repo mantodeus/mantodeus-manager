@@ -86,10 +86,11 @@ function SheetContent({
           "transition-transform ease-[var(--ease-out)]",
           "data-[state=closed]:duration-[var(--dur-standard)] data-[state=open]:duration-[var(--dur-slow)]",
           // Side-specific styling
+          // Note: left/right sheets respect bottom tab bar on mobile via --bottom-safe-area
           side === "right" &&
-            "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
+            "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right top-0 right-0 w-3/4 border-l sm:max-w-sm max-md:bottom-[var(--bottom-safe-area)] md:bottom-0 md:h-full",
           side === "left" &&
-            "data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm",
+            "data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left top-0 left-0 w-3/4 border-r sm:max-w-sm max-md:bottom-[var(--bottom-safe-area)] md:bottom-0 md:h-full",
           side === "top" &&
             "data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 h-auto border-b",
           side === "bottom" &&
