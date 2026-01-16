@@ -133,15 +133,7 @@ function YearTotalCard({
     if (!popoverOpen) return;
 
     const originalBodyOverflow = document.body.style.overflow;
-    const originalBodyPosition = document.body.style.position;
-    const originalBodyWidth = document.body.style.width;
-    const originalBodyTop = document.body.style.top;
-    const scrollY = window.scrollY;
-
     document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.top = `-${scrollY}px`;
 
     const preventScroll = (e: Event) => {
       const target = e.target as HTMLElement;
@@ -167,10 +159,7 @@ function YearTotalCard({
 
     return () => {
       document.body.style.overflow = originalBodyOverflow;
-      document.body.style.position = originalBodyPosition;
-      document.body.style.width = originalBodyWidth;
-      document.body.style.top = originalBodyTop;
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = originalBodyOverflow;
       window.removeEventListener('wheel', preventScroll, { capture: true } as any);
       window.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
       document.body.removeEventListener('wheel', preventScroll, { capture: true } as any);
@@ -392,15 +381,7 @@ function QuarterTotalCard({
     if (!popoverOpen) return;
 
     const originalBodyOverflow = document.body.style.overflow;
-    const originalBodyPosition = document.body.style.position;
-    const originalBodyWidth = document.body.style.width;
-    const originalBodyTop = document.body.style.top;
-    const scrollY = window.scrollY;
-
     document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.top = `-${scrollY}px`;
 
     const preventScroll = (e: Event) => {
       const target = e.target as HTMLElement;
@@ -426,10 +407,7 @@ function QuarterTotalCard({
 
     return () => {
       document.body.style.overflow = originalBodyOverflow;
-      document.body.style.position = originalBodyPosition;
-      document.body.style.width = originalBodyWidth;
-      document.body.style.top = originalBodyTop;
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = originalBodyOverflow;
       window.removeEventListener('wheel', preventScroll, { capture: true } as any);
       window.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
       document.body.removeEventListener('wheel', preventScroll, { capture: true } as any);

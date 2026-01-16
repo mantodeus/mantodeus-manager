@@ -200,17 +200,6 @@ export function useAutoScrollOnOpen({
             behavior: 'auto',
           });
         }
-        
-        // Also try scrollIntoView as a fallback to ensure menu is fully visible
-        try {
-          menuElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'nearest',
-          });
-        } catch (e) {
-          // Ignore errors
-        }
       } else if (topClipped) {
         // Menu top is hidden - scroll up to reveal it
         const scrollAmount = menuTop - viewportTop - scrollBuffer;

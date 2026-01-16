@@ -527,9 +527,6 @@ export const CenteredContextMenu = React.forwardRef<
         appContent.style.overflow = originalAppOverflow;
       }
 
-      // Restore scroll position (no-op for our default scroller, but keep for safety)
-      window.scrollTo(0, scrollY);
-
       // Remove event listeners
       window.removeEventListener('wheel', preventScroll, { capture: true } as any);
       window.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);

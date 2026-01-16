@@ -19,14 +19,27 @@ function PopoverContent({
   className,
   align = "center",
   sideOffset = 4,
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const isStandalone =
+    typeof window !== "undefined" &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true);
+
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}
         sideOffset={sideOffset}
+        onOpenAutoFocus={(event) => {
+          if (isMobile && isStandalone) {
+            event.preventDefault();
+          }
+          onOpenAutoFocus?.(event);
+        }}
         className={cn(
           // Surface styling with soft borders
           "bg-popover text-popover-foreground z-50 w-72 rounded-xl border border-border/50 p-4 shadow-xl outline-hidden",

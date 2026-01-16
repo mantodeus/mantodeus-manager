@@ -26,40 +26,6 @@ function Dialog({
   const justEndedRef = React.useRef(false);
   const endTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // #region agent log
-  React.useEffect(() => {
-    if (!props.open) return;
-    const isMobile = window.innerWidth < 768;
-    if (!isMobile) return;
-    
-    const logData = {
-      location: 'dialog.tsx:Dialog:open',
-      message: 'Dialog opening - checking body/app-content state',
-      data: {
-        bodyPosition: document.body.style.position,
-        bodyOverflow: document.body.style.overflow,
-        bodyTop: document.body.style.top,
-        bodyWidth: document.body.style.width,
-        windowScrollY: window.scrollY,
-        viewportHeight: window.innerHeight,
-        appContent: (() => {
-          const el = document.querySelector('.app-content') as HTMLElement | null;
-          return el ? {
-            scrollTop: el.scrollTop,
-            overflowY: el.style.overflowY,
-            overflow: el.style.overflow,
-          } : null;
-        })(),
-      },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      runId: 'run1',
-      hypothesisId: 'A',
-    };
-    console.log('[DEBUG] Dialog opening:', logData);
-    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log fetch failed:', e));
-  }, [props.open]);
-  // #endregion
 
   const contextValue = React.useMemo(
     () => ({
@@ -141,46 +107,6 @@ function DialogContent({
 }) {
   const { isComposing } = useDialogComposition();
 
-  // #region agent log
-  React.useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    if (!isMobile) return;
-    
-    const checkState = () => {
-      const logData = {
-        location: 'dialog.tsx:DialogContent:state-change',
-        message: 'DialogContent mounted/updated - checking body/app-content state',
-        data: {
-          bodyPosition: document.body.style.position,
-          bodyOverflow: document.body.style.overflow,
-          bodyTop: document.body.style.top,
-          bodyWidth: document.body.style.width,
-          windowScrollY: window.scrollY,
-          viewportHeight: window.innerHeight,
-          appContent: (() => {
-            const el = document.querySelector('.app-content') as HTMLElement | null;
-            return el ? {
-              scrollTop: el.scrollTop,
-              overflowY: el.style.overflowY,
-              overflow: el.style.overflow,
-            } : null;
-          })(),
-        },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'B',
-      };
-      console.log('[DEBUG] DialogContent state:', logData);
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log fetch failed:', e));
-    };
-    
-    // Check immediately and after a short delay (Radix applies styles asynchronously)
-    checkState();
-    const timeout = setTimeout(checkState, 100);
-    return () => clearTimeout(timeout);
-  });
-  // #endregion
 
   const handleEscapeKeyDown = React.useCallback(
     (e: KeyboardEvent) => {
