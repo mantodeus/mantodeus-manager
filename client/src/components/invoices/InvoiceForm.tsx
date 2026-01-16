@@ -1,6 +1,7 @@
 ﻿import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { trpc } from "@/lib/trpc";
-import { Eye, Loader2, PencilLine, Plus, X, Send, CheckCircle2, AlertCircle } from "@/components/ui/Icon";
+import { Loader2, PencilLine, Plus, X, Send, AlertCircle, ChevronRight } from "@/components/ui/Icon";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues, formatCurrency as formatCurrencyUtil } from "@/lib/invoiceState";
@@ -125,6 +126,17 @@ export function InvoiceForm({
     open: false,
     index: null,
   });
+  const [invoiceNumberDialogOpen, setInvoiceNumberDialogOpen] = useState(false);
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [datesDialogOpen, setDatesDialogOpen] = useState(false);
+  const [optionsDialogOpen, setOptionsDialogOpen] = useState(false);
+  const [lineItemsDialogOpen, setLineItemsDialogOpen] = useState(false);
+  const [invoiceNumberDraft, setInvoiceNumberDraft] = useState("");
+  const [optionsDraft, setOptionsDraft] = useState({
+    notes: "",
+    terms: "",
+    referenceNumber: "",
+  });
 
   const nextNumberQuery = trpc.invoices.nextNumber.useQuery(
     { issueDate: new Date(formState.issueDate) },
@@ -142,6 +154,19 @@ export function InvoiceForm({
       setFormState((prev) => ({ ...prev, invoiceNumber: nextNumberQuery.data!.invoiceNumber }));
     }
   }, [isCreate, nextNumberQuery.data]);
+
+  useEffect(() => {
+    setInvoiceNumberDraft(formState.invoiceNumber);
+  }, [formState.invoiceNumber]);
+
+  useEffect(() => {
+    if (!optionsDialogOpen) return;
+    setOptionsDraft({
+      notes: formState.notes ?? "",
+      terms: formState.terms ?? "",
+      referenceNumber: formState.referenceNumber ?? "",
+    });
+  }, [optionsDialogOpen, formState.notes, formState.terms, formState.referenceNumber]);
 
   useEffect(() => {
     if (!isCreate && getInvoiceQuery.data) {
@@ -197,6 +222,12 @@ export function InvoiceForm({
       total: subtotal,
     };
   }, [items]);
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("de-DE");
+  };
 
   // Expose function to get current form data (for manual preview updates)
   useEffect(() => {
@@ -273,6 +304,11 @@ export function InvoiceForm({
   const isMobile = useIsMobile();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const selectedClient = formState.clientId
+    ? contacts.find((contact) => String(contact.id) === formState.clientId)
+    : undefined;
+  const clientName = selectedClient?.name;
+  const validItemCount = items.filter((item) => item.name && item.quantity > 0).length;
 
   if (!isCreate && !invoice) {
     return <div className="text-sm text-muted-foreground">Loading invoice...</div>;
@@ -423,6 +459,602 @@ export function InvoiceForm({
   };
 
   // Lifecycle action handlers removed - all actions now handled via InvoiceStatusActionsDropdown
+
+  if (isMobile) {
+    const canEdit = !isReadOnly && !isCancelled;
+    return (
+      <div className="flex flex-col h-full w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4">
+          {/* Warning banners */}
+          {invoice && (
+            <>
+              {!invoice.sentAt && !invoice.needsReview && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    This invoice has not been sent yet.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {invoice.sentAt && !invoice.paidAt && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    This invoice has been sent but not paid yet.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {derivedValues.isOverdue && invoice.dueDate && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    This invoice is overdue by {Math.floor((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} day{Math.floor((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24)) !== 1 ? 's' : ''}.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
+          )}
+
+          {/* Payments section - only shown when sent */}
+          {invoice && isSent && (
+            <Card className="p-4 gap-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Payments</h3>
+                {!isPaid && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPaymentDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Payment
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground">Total</div>
+                  <div className="font-semibold">{formatCurrency(invoice.total)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Paid</div>
+                  <div className="font-semibold">{formatCurrency(invoice.amountPaid || 0)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Outstanding</div>
+                  <div className="font-semibold">{formatCurrency(derivedValues.outstanding)}</div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          <form id="invoice-form" onSubmit={handleSave} className="space-y-4">
+            {isCancellation && (
+              <Card className="p-4 gap-2">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-semibold">Cancellation invoice</h2>
+                  <Badge variant="outline" className="text-xs">
+                    STORNO
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Cancellation of invoice {invoice?.cancellationOfInvoiceNumber ?? "(unknown)"}
+                </p>
+                {invoice?.cancelledInvoiceId && onOpenInvoice && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="px-0 text-xs"
+                    onClick={() => onOpenInvoice(invoice.cancelledInvoiceId as number)}
+                  >
+                    View original invoice
+                  </Button>
+                )}
+              </Card>
+            )}
+            {isCancelledOriginal && (
+              <Card className="p-4 text-xs text-destructive border-destructive/40 bg-destructive/5">
+                Cancelled by invoice {invoice?.cancelledByInvoiceNumber ?? "(unknown)"}
+              </Card>
+            )}
+
+            <Card className="p-4 gap-4">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                Identity
+              </div>
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between text-left",
+                  !canEdit && "opacity-60 cursor-not-allowed"
+                )}
+                onClick={() => canEdit && setInvoiceNumberDialogOpen(true)}
+                disabled={!canEdit}
+              >
+                <div>
+                  <div className="text-xs text-muted-foreground">Invoice Number</div>
+                  <div className="text-lg font-light">{formState.invoiceNumber || "—"}</div>
+                </div>
+                <ChevronRight className={cn("h-4 w-4 text-muted-foreground", !canEdit && "opacity-0")} />
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between text-left",
+                  !canEdit && "opacity-60 cursor-not-allowed"
+                )}
+                onClick={() => canEdit && setClientDialogOpen(true)}
+                disabled={!canEdit}
+              >
+                <div>
+                  <div className="text-xs text-muted-foreground">Client</div>
+                  <div className="text-sm">{clientName || "Select client"}</div>
+                </div>
+                <ChevronRight className={cn("h-4 w-4 text-muted-foreground", !canEdit && "opacity-0")} />
+              </button>
+            </Card>
+
+            <Card className="p-4 gap-4">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                Dates
+              </div>
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between text-left",
+                  !canEdit && "opacity-60 cursor-not-allowed"
+                )}
+                onClick={() => canEdit && setDatesDialogOpen(true)}
+                disabled={!canEdit}
+              >
+                <div className="grid w-full grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Issue Date</div>
+                    <div className="text-sm">{formatDate(formState.issueDate)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Due Date</div>
+                    <div className="text-sm">{formatDate(formState.dueDate)}</div>
+                  </div>
+                  <div className="col-span-2">
+                    <div className="text-xs text-muted-foreground">Service Period</div>
+                    <div className="text-sm">
+                      {formatDate(formState.servicePeriodStart)} → {formatDate(formState.servicePeriodEnd)}
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className={cn("h-4 w-4 text-muted-foreground", !canEdit && "opacity-0")} />
+              </button>
+            </Card>
+
+            <Card className="p-4 gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Line Items
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {validItemCount} item{validItemCount === 1 ? "" : "s"} · {formatCurrency(totals.total)}
+                  </div>
+                </div>
+                {!isReadOnly && !isCancelled && (
+                  <Button type="button" size="sm" onClick={() => openItemEditor(null)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add
+                  </Button>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLineItemsDialogOpen(true)}
+              >
+                View items
+              </Button>
+            </Card>
+
+            <Card className="p-4 gap-4">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                Options
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="text-sm">Partial Invoice</div>
+                  <p className="text-xs text-muted-foreground">Flag invoice as partial (future use).</p>
+                </div>
+                <Switch
+                  checked={formState.partialInvoice}
+                  onCheckedChange={(val) => setFormState((prev) => ({ ...prev, partialInvoice: val }))}
+                  disabled={!isDraft}
+                  className="data-[state=unchecked]:bg-muted dark:data-[state=unchecked]:bg-muted/60"
+                />
+              </div>
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between text-left",
+                  !canEdit && "opacity-60 cursor-not-allowed"
+                )}
+                onClick={() => canEdit && setOptionsDialogOpen(true)}
+                disabled={!canEdit}
+              >
+                <div>
+                  <div className="text-xs text-muted-foreground">Notes & Terms</div>
+                  <div className="text-sm">{formState.notes ? "Edit notes" : "Add notes or terms"}</div>
+                </div>
+                <ChevronRight className={cn("h-4 w-4 text-muted-foreground", !canEdit && "opacity-0")} />
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between text-left",
+                  !canEdit && "opacity-60 cursor-not-allowed"
+                )}
+                onClick={() => canEdit && setOptionsDialogOpen(true)}
+                disabled={!canEdit}
+              >
+                <div>
+                  <div className="text-xs text-muted-foreground">Reference</div>
+                  <div className="text-sm">{formState.referenceNumber || "Add reference number"}</div>
+                </div>
+                <ChevronRight className={cn("h-4 w-4 text-muted-foreground", !canEdit && "opacity-0")} />
+              </button>
+            </Card>
+
+            <Card className="p-4 gap-2">
+              <div className="flex justify-between text-sm">
+                <span>Subtotal</span>
+                <span>{formatCurrency(totals.subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>VAT (pending)</span>
+                <span>{formatCurrency(totals.vat)}</span>
+              </div>
+              <div className="flex justify-between text-lg">
+                <span>Total</span>
+                <span>{formatCurrency(totals.total)}</span>
+              </div>
+            </Card>
+          </form>
+        </div>
+
+        {/* Footer buttons - part of scrollable content */}
+        <div className="flex flex-col gap-2 pt-4 border-t">
+          {/* Custom content before footer buttons (e.g., Update Preview button) */}
+          {renderBeforeFooter}
+
+          {/* Send button - only for non-cancelled draft invoices */}
+          {!isCreate && invoice && invoiceState === 'DRAFT' && !isCancelled && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSend}
+              disabled={isLoading || !formState.dueDate || totals.total <= 0}
+              className="w-full border-border text-foreground hover:bg-muted"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Send
+            </Button>
+          )}
+
+          {/* Delete and Update buttons - lifecycle actions are now in status badge dropdown */}
+          {(!hideFooterSave || (!isCreate && invoice)) && (
+            <div className="flex gap-2 pt-2 border-t">
+              {!isCreate && invoice && (
+                <Button
+                  type="button"
+                  variant="destructive-outline"
+                  className="flex-1"
+                  onClick={() => {
+                    if (isDraft || isReview) {
+                      moveToTrashMutation.mutate({ id: invoiceId! });
+                    } else {
+                      archiveMutation.mutate({ id: invoiceId! });
+                    }
+                  }}
+                  disabled={isLoading || moveToTrashMutation.isPending || archiveMutation.isPending}
+                >
+                  {(moveToTrashMutation.isPending || archiveMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Delete
+                </Button>
+              )}
+              {!hideFooterSave && (
+                <Button
+                  type="submit"
+                  form="invoice-form"
+                  className="flex-1"
+                  disabled={isLoading || isReadOnly || isCancelled}
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Save
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Mark as Not Cancelled button - only for cancelled invoices, at bottom */}
+          {!isCreate && invoice && isCancelled && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                markAsNotCancelledMutation.mutate({ id: invoiceId! });
+              }}
+              disabled={isLoading || markAsNotCancelledMutation.isPending}
+              className="w-full bg-transparent hover:bg-red-500 hover:text-white hover:border-red-500"
+            >
+              {markAsNotCancelledMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Mark as Not Cancelled
+            </Button>
+          )}
+        </div>
+
+        {/* Dialogs */}
+        {invoiceId && (
+          <>
+            <ShareInvoiceDialog
+              open={shareDialogOpen}
+              onOpenChange={setShareDialogOpen}
+              invoiceId={invoiceId}
+              onSuccess={() => {
+                utils.invoices.get.invalidate({ id: invoiceId });
+                onSuccess?.();
+              }}
+            />
+            <AddPaymentDialog
+              open={paymentDialogOpen}
+              onOpenChange={setPaymentDialogOpen}
+              invoiceId={invoiceId}
+              outstanding={derivedValues.outstanding}
+              onSuccess={() => {
+                utils.invoices.get.invalidate({ id: invoiceId });
+                onSuccess?.();
+              }}
+            />
+          </>
+        )}
+
+        <Dialog open={invoiceNumberDialogOpen} onOpenChange={setInvoiceNumberDialogOpen}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>Edit invoice number</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label>Invoice Number</Label>
+              <Input
+                value={invoiceNumberDraft}
+                onChange={(e) => setInvoiceNumberDraft(e.target.value)}
+                placeholder="RE-2026-003"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setInvoiceNumberDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setFormState((prev) => ({ ...prev, invoiceNumber: invoiceNumberDraft }));
+                  setInvoiceNumberDialogOpen(false);
+                }}
+              >
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={clientDialogOpen} onOpenChange={setClientDialogOpen}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>Select client</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label>Client</Label>
+              <Select
+                value={formState.clientId && formState.clientId.trim() !== "" ? formState.clientId : "none"}
+                onValueChange={(val) => {
+                  const normalized = normalizeSelectValue(val);
+                  setFormState((prev) => ({
+                    ...prev,
+                    clientId: normalized === undefined || val === "none" ? undefined : normalized,
+                  }));
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a client" />
+                </SelectTrigger>
+                <SelectContent align="start" className="z-[120]">
+                  <SelectItem value="none">None</SelectItem>
+                  {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={String(contact.id)}>
+                      {contact.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" onClick={() => setClientDialogOpen(false)}>
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={datesDialogOpen} onOpenChange={setDatesDialogOpen}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>Invoice dates</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Issue Date</Label>
+                <Input
+                  type="date"
+                  value={formState.issueDate}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, issueDate: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  value={formState.dueDate ?? ""}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, dueDate: e.target.value || undefined }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Service Period Start</Label>
+                <Input
+                  type="date"
+                  value={formState.servicePeriodStart ?? ""}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, servicePeriodStart: e.target.value || undefined }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Service Period End</Label>
+                <Input
+                  type="date"
+                  value={formState.servicePeriodEnd ?? ""}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, servicePeriodEnd: e.target.value || undefined }))}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" onClick={() => setDatesDialogOpen(false)}>
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={optionsDialogOpen} onOpenChange={setOptionsDialogOpen}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>Notes and options</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  value={optionsDraft.notes}
+                  onChange={(e) => setOptionsDraft((prev) => ({ ...prev, notes: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Terms</Label>
+                <Textarea
+                  value={optionsDraft.terms}
+                  onChange={(e) => setOptionsDraft((prev) => ({ ...prev, terms: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Order / Reference Number</Label>
+                <Input
+                  value={optionsDraft.referenceNumber}
+                  onChange={(e) => setOptionsDraft((prev) => ({ ...prev, referenceNumber: e.target.value }))}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOptionsDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setFormState((prev) => ({
+                    ...prev,
+                    notes: optionsDraft.notes,
+                    terms: optionsDraft.terms,
+                    referenceNumber: optionsDraft.referenceNumber,
+                  }));
+                  setOptionsDialogOpen(false);
+                }}
+              >
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={lineItemsDialogOpen} onOpenChange={setLineItemsDialogOpen}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>Line items</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              {items.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No line items yet.</p>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {items.map((item, index) => (
+                    <Card key={`${item.name}-${index}`} className="p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-medium">{item.name || "Untitled"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {item.quantity} x {formatCurrency(item.unitPrice)}
+                          </div>
+                        </div>
+                        <div className="text-sm font-medium tabular-nums">
+                          {formatCurrency(item.quantity * item.unitPrice)}
+                        </div>
+                      </div>
+                      {!isReadOnly && (
+                        <div className="pt-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setLineItemsDialogOpen(false);
+                              openItemEditor(index);
+                            }}
+                          >
+                            Edit item
+                          </Button>
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setLineItemsDialogOpen(false)}>
+                Close
+              </Button>
+              {!isReadOnly && !isCancelled && (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setLineItemsDialogOpen(false);
+                    openItemEditor(null);
+                  }}
+                >
+                  Add item
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <LineItemModal
+          open={itemEditor.open}
+          onOpenChange={(open) => (open ? openItemEditor(itemEditor.index) : closeItemEditor())}
+          item={editingItem}
+          onSave={handleSaveItem}
+          language={language}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -1008,4 +1640,3 @@ function LineItemModal({
     </Dialog>
   );
 }
-

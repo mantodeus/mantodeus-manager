@@ -168,13 +168,14 @@ export function CreateInvoiceDialog({
       ) : (
         <div className="flex min-h-full w-full flex-col">
           <InvoiceWorkspaceHeader
-            title="Create Invoice"
+            title="New Invoice"
+            subtitle="Draft · Not yet sent"
             onClose={handleClose}
             actions={
               <Button
                 type="submit"
                 form="invoice-form"
-                className="shrink-0"
+                className="shrink-0 rounded-full px-4"
                 disabled={getLoadingStateRef.current?.() || false}
               >
                 {getLoadingStateRef.current?.() ? (

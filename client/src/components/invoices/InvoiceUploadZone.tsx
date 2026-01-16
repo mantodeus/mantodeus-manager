@@ -68,8 +68,8 @@ export function InvoiceUploadZone({
   return (
     <Card
       className={cn(
-        "border-2 border-dashed transition-colors",
-        isDragging && "border-primary bg-primary/5",
+        "transition-colors",
+        isDragging && "border-primary/60 bg-primary/5",
         isUploading && "opacity-50 cursor-not-allowed",
         className
       )}
@@ -86,15 +86,13 @@ export function InvoiceUploadZone({
             </>
           ) : (
             <>
-              <div className="rounded-full bg-muted p-3">
+              <div className="rounded-full bg-muted/60 p-3">
                 <Upload className="h-6 w-6 text-muted-foreground" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium">
-                  Drop invoice PDFs here, or click to browse
-                </p>
+                <p className="text-sm font-medium">Upload invoices</p>
                 <p className="text-xs text-muted-foreground">
-                  PDF files only (max {maxFiles} files)
+                  PDF invoices only · up to {maxFiles} files
                 </p>
               </div>
               <Button

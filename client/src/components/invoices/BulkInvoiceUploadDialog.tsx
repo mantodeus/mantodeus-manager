@@ -14,6 +14,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Upload, FileText, Loader2, X } from "@/components/ui/Icon";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -207,16 +208,14 @@ export function BulkInvoiceUploadDialog({
                   // Calculate the reverse index for removal
                   const reverseIndex = selectedFiles.length - 1 - originalIndex;
                   return (
-                    <div
+                    <Card
                       key={`${file.name}-${file.size}-${file.lastModified}`}
-                      className="flex items-center gap-2 p-2 bg-muted rounded-md"
+                      className="flex flex-row items-center gap-3 p-3"
                     >
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{file.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatFileSize(file.size)}
-                        </p>
+                        <p className="text-xs text-muted-foreground">Ready to scan · {formatFileSize(file.size)}</p>
                       </div>
                       <Button
                         variant="ghost"
@@ -227,7 +226,7 @@ export function BulkInvoiceUploadDialog({
                       >
                         <X className="h-3 w-3" />
                       </Button>
-                    </div>
+                    </Card>
                   );
                 })}
               </div>

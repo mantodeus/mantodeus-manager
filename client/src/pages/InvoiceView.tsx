@@ -12,11 +12,12 @@ import { createPortal } from "react-dom";
 import { usePortalRoot } from "@/hooks/usePortalRoot";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { useIsMobile } from "@/hooks/useMobile";
-import { getInvoiceState } from "@/lib/invoiceState";
+import { formatCurrency, getInvoiceState } from "@/lib/invoiceState";
 import {
   InvoiceWorkspaceBody,
   InvoiceWorkspaceHeader,
 } from "@/components/invoices/InvoiceWorkspaceLayout";
+import { Card } from "@/components/ui/card";
 
 export default function InvoiceView() {
   const [, params] = useRoute("/invoices/:id");
@@ -27,6 +28,7 @@ export default function InvoiceView() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const portalRoot = usePortalRoot();
 
   const utils = trpc.useUtils();
@@ -58,6 +60,10 @@ export default function InvoiceView() {
       }
     };
   }, [previewUrl]);
+
+  useEffect(() => {
+    setIsEditing(false);
+  }, [invoiceId]);
 
   const handlePreviewPDF = async () => {
     if (!invoiceId || !invoice) return;
@@ -225,7 +231,7 @@ export default function InvoiceView() {
 
   const invoiceState = invoice ? getInvoiceState(invoice) : null;
   const isDraft = invoiceState === 'DRAFT';
-  const headerTitle = isDraft ? "Edit Invoice" : "View Invoice";
+  const headerTitle = isMobile && isEditing ? "Edit Invoice" : "View Invoice";
 
   const statusActions = invoice && invoice.source === "created" ? (
     <InvoiceStatusActionsDropdown
@@ -257,6 +263,20 @@ export default function InvoiceView() {
 
   const showDesktopDraftSplit = !isMobile && invoice && invoice.source === "created" && isDraft;
   const showDesktopWindowed = !isMobile && invoice && invoice.source === "created";
+  const showMobileSummary = isMobile && !isEditing && invoice && invoice.source === "created";
+
+  const clientName =
+    invoice &&
+    contacts.find(
+      (contact: { id: number }) =>
+        contact.id === invoice.clientId || contact.id === invoice.contactId
+    )?.name;
+
+  const formatDate = (value?: string | Date | null) => {
+    if (!value) return "—";
+    const date = typeof value === "string" ? new Date(value) : value;
+    return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("de-DE");
+  };
 
   if (showDesktopWindowed) {
     return (
@@ -416,7 +436,21 @@ export default function InvoiceView() {
       <InvoiceWorkspaceHeader
         title={headerTitle}
         onClose={() => navigate("/invoices")}
-        actions={statusActions}
+        actions={
+          <>
+            {statusActions}
+            {isMobile && isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full px-3"
+                onClick={() => setIsEditing(false)}
+              >
+                Done
+              </Button>
+            )}
+          </>
+        }
       />
 
       <InvoiceWorkspaceBody>
@@ -500,6 +534,66 @@ export default function InvoiceView() {
                     </Button>
                   </div>
                 )}
+            </div>
+          </div>
+        ) : showMobileSummary ? (
+          <div className="w-full space-y-4">
+            <Card className="p-4">
+              <div className="space-y-3">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Invoice
+                  </div>
+                  <div className="text-2xl font-light">
+                    {invoice?.invoiceNumber || "Draft"}
+                  </div>
+                </div>
+                {clientName && (
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Client
+                    </div>
+                    <div className="text-sm">{clientName}</div>
+                  </div>
+                )}
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total
+                  </div>
+                  <div className="text-2xl font-light tabular-nums">
+                    {formatCurrency(invoice?.total || 0)}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Issue Date</div>
+                    <div className="text-sm">{formatDate(invoice?.issueDate)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Due Date</div>
+                    <div className="text-sm">{formatDate(invoice?.dueDate)}</div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                className="flex-1"
+                onClick={handlePreviewPDF}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Preview
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setIsEditing(true)}
+              >
+                Edit
+              </Button>
             </div>
           </div>
         ) : (
