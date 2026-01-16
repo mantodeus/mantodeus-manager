@@ -233,6 +233,33 @@ if (typeof window !== 'undefined') {
     vv.addEventListener('resize', handleScroll, { passive: true });
     vv.addEventListener('scroll', handleScroll, { passive: true });
   }
+  
+  // Also monitor for layout shifts (Performance Observer) - iOS PWA can shift layout without scroll events
+  if ('PerformanceObserver' in window) {
+    try {
+      const layoutShiftObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.entryType === 'layout-shift' && !(entry as any).hadRecentInput) {
+            const isMobile = window.innerWidth < 768;
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+            const appContent = document.querySelector('.app-content') as HTMLElement | null;
+            const vv = (window as any).visualViewport;
+            const logData = {location:'App.tsx:layout-shift',message:'Layout shift detected',data:{isMobile,isStandalone,value:(entry as any).value,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,visualViewportHeight:vv?.height,visualViewportOffsetTop:vv?.offsetTop,appContentScrollTop:appContent?.scrollTop},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'I'};
+            console.log('[DEBUG]', logData);
+            try {
+              const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+              logs.push(logData);
+              if (logs.length > 100) logs.shift();
+              localStorage.setItem('debug-logs', JSON.stringify(logs));
+            } catch(e) {}
+          }
+        }
+      });
+      layoutShiftObserver.observe({ entryTypes: ['layout-shift'] });
+    } catch(e) {
+      console.warn('[DEBUG] Layout shift observer not supported:', e);
+    }
+  }
 }
 // #endregion
 

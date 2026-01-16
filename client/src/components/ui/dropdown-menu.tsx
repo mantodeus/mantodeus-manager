@@ -48,14 +48,14 @@ function DropdownMenuContent({
         const state = menuRef.current.getAttribute('data-state');
         const wasOpen = isOpen;
         const nowOpen = state === 'open';
-        setIsOpen(nowOpen);
         
-        // #region agent log
-        if (nowOpen !== wasOpen) {
-          const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-          const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
-          const appContent = document.querySelector('.app-content') as HTMLElement | null;
-          const logData = {location:'dropdown-menu.tsx:49',message:'Dropdown state changed',data:{wasOpen,nowOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'};
+        // #region agent log - Always log state checks to see what's happening
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+        const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+        const appContent = document.querySelector('.app-content') as HTMLElement | null;
+        const vv = (window as any).visualViewport;
+        if (nowOpen !== wasOpen || state) { // Log even if state didn't change, to see current state
+          const logData = {location:'dropdown-menu.tsx:checkState',message:nowOpen !== wasOpen ? 'Dropdown state CHANGED' : 'Dropdown state check',data:{wasOpen,nowOpen,currentState:state,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,visualViewportHeight:vv?.height,visualViewportOffsetTop:vv?.offsetTop,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'};
           console.log('[DEBUG]', logData);
           try {
             const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
@@ -66,6 +66,8 @@ function DropdownMenuContent({
           fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
         }
         // #endregion
+        
+        setIsOpen(nowOpen);
       }
     };
 
