@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { FileText, Plus, Loader2, Upload, DocumentCurrencyEuro, DocumentCurrencyPound, Search, SlidersHorizontal, Settings, X, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "sonner";
 import { getInvoiceState, getDerivedValues } from "@/lib/invoiceState";
@@ -83,9 +84,10 @@ function YearTotalCard({
   const menuRef = useRef<HTMLDivElement>(null);
   const [cardRect, setCardRect] = useState<DOMRect | null>(null);
   const [viewMode, setViewMode] = useState<'total' | 'paid-due'>('paid-due');
-  
+  const portalRoot = usePortalRoot();
+
   const yearTotal = yearPaid + yearDue;
-  
+
   const { longPressHandlers, reset: resetLongPress, gestureState } = useLongPress({
     onLongPress: (e) => {
       e.preventDefault();
@@ -303,7 +305,7 @@ function YearTotalCard({
             </div>
           </div>
         </>,
-        document.body
+        portalRoot || document.body
       )}
     </>
   );
@@ -331,9 +333,10 @@ function QuarterTotalCard({
   const menuRef = useRef<HTMLDivElement>(null);
   const [cardRect, setCardRect] = useState<DOMRect | null>(null);
   const [viewMode, setViewMode] = useState<'total' | 'paid-due'>('paid-due');
-  
+  const portalRoot = usePortalRoot();
+
   const quarterTotal = quarterPaid + quarterDue;
-  
+
   const { longPressHandlers, reset: resetLongPress, gestureState } = useLongPress({
     onLongPress: (e) => {
       e.preventDefault();
@@ -559,7 +562,7 @@ function QuarterTotalCard({
             </div>
           </div>
         </>,
-        document.body
+        portalRoot || document.body
       )}
     </>
   );

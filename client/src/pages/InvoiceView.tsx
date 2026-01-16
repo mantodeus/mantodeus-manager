@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getInvoiceState } from "@/lib/invoiceState";
@@ -26,6 +27,7 @@ export default function InvoiceView() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState("invoice.pdf");
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const portalRoot = usePortalRoot();
 
   const utils = trpc.useUtils();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -277,7 +279,7 @@ export default function InvoiceView() {
             }}
             aria-hidden="true"
           />,
-          document.body
+          portalRoot || document.body
         )}
 
         {createPortal(
@@ -390,7 +392,7 @@ export default function InvoiceView() {
               </div>
             </div>
           </>,
-          document.body
+          portalRoot || document.body
         )}
 
         {/* Share Invoice Dialog */}
