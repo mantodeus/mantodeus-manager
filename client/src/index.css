@@ -295,6 +295,30 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* App shell - the fixed viewport container that prevents iOS PWA viewport jumps.
+     By making the app shell a fixed viewport, iOS Safari/PWA cannot recalculate
+     viewport dimensions when content changes. All scrolling happens within
+     .app-content, keeping the safe-area context permanently locked. */
+  #app-shell {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Safe area padding for iOS notch/home indicator */
+    padding-top: env(safe-area-inset-top);
+    /* Don't add bottom padding here - handled by tab bar and content */
+  }
+
+  /* In standalone PWA mode, ensure the shell is the entire viewport */
+  @media (display-mode: standalone) {
+    #app-shell {
+      /* Use dvh to account for iOS dynamic viewport */
+      height: 100dvh;
+      height: -webkit-fill-available;
+    }
+  }
+
   /* Portal root for Radix portals - prevents iOS PWA viewport jumps */
   /* By portalling into #portal-root instead of document.body, we keep portals
      inside the app viewport, preventing iOS from recalculating the viewport */
@@ -303,6 +327,8 @@
     inset: 0;
     z-index: 9999;
     pointer-events: none;
+    /* Ensure portal root doesn't interfere with safe areas */
+    padding-top: env(safe-area-inset-top);
   }
 
   #portal-root > * {
@@ -354,11 +380,11 @@
     font-weight: 300; /* Readable body weight per design system */
     overflow-wrap: anywhere;
     word-break: break-word;
+    /* Safe area padding is now handled by #app-shell to prevent iOS PWA viewport jumps */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
-    /* Prevent content under iOS status bar in PWA */
-    padding-top: env(safe-area-inset-top);
-    /* Avoid double-counting bottom safe area; tabs/panels handle bottom spacing */
+    /* Don't add top/bottom padding here - handled by #app-shell and tab bar */
+    padding-top: 0;
     padding-bottom: 0;
     /* Ensure body background matches theme for off-screen areas (mobile pull-to-refresh, iOS status bar) */
     /* Use hex fallback for browsers that don't support oklch in off-screen areas */
@@ -367,6 +393,8 @@
     /* Ensure it works in both web and PWA */
     min-height: 100vh;
     min-height: 100dvh; /* Dynamic viewport height for mobile */
+    /* Prevent body scroll - all scrolling happens in .app-content */
+    overflow: hidden;
   }
   
   /* Dark mode background for off-screen areas */

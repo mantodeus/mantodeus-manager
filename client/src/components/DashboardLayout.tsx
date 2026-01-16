@@ -65,6 +65,9 @@ export default function DashboardLayout({
 
 /**
  * Desktop Layout with Tab Rail + Flyout navigation
+ *
+ * The parent #app-shell is position:fixed to prevent iOS PWA viewport jumps.
+ * All scrolling happens within .app-content, keeping the safe-area context locked.
  */
 function DesktopDashboardLayoutContent({
   children,
@@ -74,17 +77,17 @@ function DesktopDashboardLayoutContent({
   const [dataDialogOpen, setDataDialogOpen] = useState(false);
 
   return (
-    <div className="flex h-screen w-full">
+    <div className="flex h-full w-full overflow-hidden">
       {/* Tab Rail - always visible */}
       <DesktopNavRail onDataExport={() => setDataDialogOpen(true)} />
-      
+
       {/* Flyout - appears on hover/click */}
       <DesktopModuleFlyout />
 
       {/* Main Content Area */}
-      <main 
+      <main
         className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background"
-        style={{ 
+        style={{
           marginLeft: LAYOUT.RAIL_WIDTH,
           isolation: 'isolate',
         }}
@@ -106,6 +109,9 @@ function DesktopDashboardLayoutContent({
 
 /**
  * Mobile Layout with Bottom Tab Bar + Module Scroller
+ *
+ * The parent #app-shell is position:fixed to prevent iOS PWA viewport jumps.
+ * All scrolling happens within .app-content, keeping the safe-area context locked.
  */
 function MobileDashboardLayoutContent({
   children,
@@ -116,10 +122,14 @@ function MobileDashboardLayoutContent({
   useRouteTracking();
 
   return (
-    <div className="flex min-h-svh w-full flex-col">
-      <div className="h-0" />
-
-      <main className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background">
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      <main
+        className="app-content flex-1 min-w-0 min-h-0 overflow-y-auto p-4 bg-background"
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+        }}
+      >
         {children}
       </main>
 
@@ -127,7 +137,7 @@ function MobileDashboardLayoutContent({
       <ScrollerOverlay />
       <ModuleScroller />
       <BottomTabBar />
-      
+
       {/* Manto Assistant Panel - bottom sheet on mobile */}
       <MantoAssistantWrapper />
     </div>
