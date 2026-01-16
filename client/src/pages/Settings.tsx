@@ -21,8 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { trpc } from "@/lib/trpc";
 import { Loader2, Save, Building2, Receipt, CreditCard, Info, Palette, ImageIcon, User } from "@/components/ui/Icon";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/PageHeader";
-import { PageContainer } from "@/components/PageContainer";
+import { ModulePage } from "@/components/ModulePage";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemeName } from "@/lib/theme";
 import { LogoUploadSection } from "@/components/LogoUploadSection";
@@ -172,32 +171,37 @@ export default function Settings() {
 
   if (isLoading || preferencesLoading) {
     return (
-      <PageContainer>
+      <ModulePage
+        title="Settings"
+        subtitle="Configure your company information and invoice settings"
+      >
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </PageContainer>
+      </ModulePage>
     );
   }
 
   if (error) {
     return (
-      <PageContainer>
+      <ModulePage
+        title="Settings"
+        subtitle="Configure your company information and invoice settings"
+      >
         <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
           <div className="text-destructive">Error loading settings</div>
           <div className="text-sm text-muted-foreground">{error.message}</div>
           <Button onClick={() => window.location.reload()}>Reload Page</Button>
         </div>
-      </PageContainer>
+      </ModulePage>
     );
   }
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Settings"
-        subtitle="Configure your company information and invoice settings"
-      />
+    <ModulePage
+      title="Settings"
+      subtitle="Configure your company information and invoice settings"
+    >
 
       {/* Theme Settings */}
       <Card>
@@ -834,7 +838,7 @@ export default function Settings() {
           </Button>
         </div>
       </form>
-    </PageContainer>
+    </ModulePage>
   );
 }
 

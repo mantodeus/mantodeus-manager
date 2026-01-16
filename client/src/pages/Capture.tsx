@@ -1,4 +1,5 @@
 import { Camera } from "@/components/ui/Icon";
+import { ModulePage } from "@/components/ModulePage";
 
 /**
  * Capture page - Camera and gallery module
@@ -8,16 +9,18 @@ import { Camera } from "@/components/ui/Icon";
  */
 export default function Capture() {
   return (
-    <div className="p-4 space-y-3">
+    <ModulePage
+      title="Capture"
+      subtitle="Camera and gallery module is coming soon."
+    >
       <div className="flex items-center gap-3">
         <div className="rounded-lg bg-muted/70 p-2">
           <Camera className="h-5 w-5 text-foreground" />
         </div>
-        <h1 className="text-lg font-semibold">Capture</h1>
+        <p className="text-sm text-muted-foreground">
+          Check back later for lightning-fast capture.
+        </p>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Camera and gallery module is coming soon. Check back later for lightning-fast capture.
-      </p>
-    </div>
+    </ModulePage>
   );
 }

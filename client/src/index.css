@@ -976,9 +976,11 @@
   }
 
   .bottom-tab-bar {
-    /* Browser mode: minimal padding, just safe area */
-    height: calc(56px + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
+    /* Base height: 56px for content, safe area handled by padding */
+    min-height: 56px;
+    height: auto;
+    /* Safe area padding - only adds space when actually needed */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     /* Force prevent text selection on entire tab bar */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -990,14 +992,8 @@
     touch-action: none !important;
     z-index: 9999 !important;
     position: fixed !important;
-  }
-
-  /* PWA (standalone mode) - extra space for home swipe gesture on iOS */
-  @media (display-mode: standalone) {
-    .bottom-tab-bar {
-      height: calc(56px + env(safe-area-inset-bottom));
-      padding-bottom: env(safe-area-inset-bottom);
-    }
+    /* Ensure tab bar sits flush at bottom */
+    bottom: 0;
   }
 
   /* Ensure tab buttons never allow text selection and always receive events */

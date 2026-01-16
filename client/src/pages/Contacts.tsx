@@ -724,7 +724,6 @@ export default function Contacts() {
       subtitle="Manage your clients and contacts"
       onSearch={() => setIsSearchOpen(true)}
       onFilter={() => setIsFilterOpen(true)}
-      settingsEnabled={false}
       primaryActions={
         <>
           {isFormOpen && (

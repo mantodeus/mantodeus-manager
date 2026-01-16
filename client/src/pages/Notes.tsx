@@ -705,7 +705,6 @@ export default function Notes() {
       subtitle="Create and manage your notes"
       onSearch={() => setIsSearchOpen(true)}
       onFilter={() => setIsFilterOpen(true)}
-      settingsEnabled={false}
       primaryActions={
         <Button 
           onClick={() => navigate("/notes/new")} 

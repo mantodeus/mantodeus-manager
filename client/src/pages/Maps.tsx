@@ -22,8 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/PageHeader";
-import { PageContainer } from "@/components/PageContainer";
+import { ModulePage } from "@/components/ModulePage";
 import { MapPin, Search, X, Users } from "@/components/ui/Icon";
 import { MapView } from "@/components/Map";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
@@ -667,22 +666,23 @@ export default function Maps() {
 
   if (!user) {
     return (
-      <PageContainer>
-        <div className="flex items-center justify-center min-h-screen">
+      <ModulePage
+        title="Maps"
+        subtitle="View and manage job locations on the map"
+      >
+        <div className="flex items-center justify-center min-h-[400px]">
           <p className="text-muted-foreground">Please log in to view maps.</p>
         </div>
-      </PageContainer>
+      </ModulePage>
     );
   }
 
   return (
-    <PageContainer variant="fullscreen">
-      <PageHeader
-        title="Maps"
-        subtitle="View and manage job locations on the map"
-        variant="fullscreen"
-        onSearch={handleSearchClick}
-      />
+    <ModulePage
+      title="Maps"
+      subtitle="View and manage job locations on the map"
+      onSearch={handleSearchClick}
+    >
       <Dialog
         open={isSearchOpen}
         onOpenChange={(open) => {
@@ -1143,6 +1143,6 @@ export default function Maps() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+    </ModulePage>
   );
 }

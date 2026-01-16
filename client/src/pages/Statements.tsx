@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { ModulePage } from "@/components/ModulePage";
 
 export default function Statements() {
   useEffect(() => {
@@ -7,9 +8,13 @@ export default function Statements() {
   }, []);
 
   return (
-    <div className="p-4">
-      <h1 className="text-lg font-medium">Statements</h1>
-      <p className="text-sm text-muted-foreground">Coming soon.</p>
-    </div>
+    <ModulePage
+      title="Statements"
+      subtitle="Coming soon."
+    >
+      <div className="flex items-center justify-center min-h-[200px]">
+        <p className="text-sm text-muted-foreground">Coming soon.</p>
+      </div>
+    </ModulePage>
   );
 }

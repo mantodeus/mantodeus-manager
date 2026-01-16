@@ -587,13 +587,11 @@ export default function Projects() {
   );
 
   return (
-    <ModulePage
-      title="Projects"
-      subtitle="Manage your client projects and work"
-      searchEnabled={false}
-      onFilter={() => setIsFilterOpen(true)}
-      settingsEnabled={false}
-      primaryActions={
+      <ModulePage
+        title="Projects"
+        subtitle="Manage your client projects and work"
+        onFilter={() => setIsFilterOpen(true)}
+        primaryActions={
         <Button 
           asChild 
           className="h-10 whitespace-nowrap"

@@ -20,7 +20,7 @@ import { ReviewExpenseCard } from "@/components/expenses/ReviewExpenseCard";
 import { StickyReviewActions } from "@/components/expenses/StickyReviewActions";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 import { formatCurrency } from "@/lib/currencyFormat";
 import { VoidExpenseDialog } from "@/components/expenses/VoidExpenseDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
@@ -456,60 +456,56 @@ export default function Expenses() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Expenses"
-        subtitle="Track and manage your business expenses"
-        searchEnabled={false}
-        filterEnabled={false}
-        settingsEnabled={false}
-        primaryActions={
-          <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  className="h-10 whitespace-nowrap"
-                  data-guide-id="expenses.upload"
-                  data-guide-type="menu"
-                  data-guide-label="Upload Receipts"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => navigate("/expenses/scan")}
-                  className="cursor-pointer"
-                >
-                  <Camera className="h-4 w-4 mr-2" />
-                  <span>Scan</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setBulkUploadOpen(true)}
-                  className="cursor-pointer"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  <span>Upload files</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button 
-              asChild 
-              className="h-10 whitespace-nowrap"
-              data-guide-id="expenses.new"
-              data-guide-type="button"
-              data-guide-label="Create New Expense"
-            >
-              <Link href="/expenses/new">
-                <Plus className="w-4 h-4 mr-1" />
-                New
-              </Link>
-            </Button>
-          </>
-        }
-      />
+    <ModulePage
+      title="Expenses"
+      subtitle="Track and manage your business expenses"
+      primaryActions={
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="h-10 whitespace-nowrap"
+                data-guide-id="expenses.upload"
+                data-guide-type="menu"
+                data-guide-label="Upload Receipts"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => navigate("/expenses/scan")}
+                className="cursor-pointer"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                <span>Scan</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setBulkUploadOpen(true)}
+                className="cursor-pointer"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                <span>Upload files</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button 
+            asChild 
+            className="h-10 whitespace-nowrap"
+            data-guide-id="expenses.new"
+            data-guide-type="button"
+            data-guide-label="Create New Expense"
+          >
+            <Link href="/expenses/new">
+              <Plus className="w-4 h-4 mr-1" />
+              New
+            </Link>
+          </Button>
+        </>
+      }
+    >
 
       {/* Header Cards */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -688,7 +684,7 @@ export default function Expenses() {
           }}
         />
       )}
-    </div>
+    </ModulePage>
   );
 }
 
