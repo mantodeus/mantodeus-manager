@@ -94,7 +94,6 @@ if (typeof window !== 'undefined') {
     
     const logContainer = document.createElement('div');
     logContainer.id = 'debug-log-container';
-    const isMobile = window.innerWidth < 768;
     logContainer.style.cssText = `max-height:${isMobile ? '50vh' : '400px'};overflow-y:auto;`;
     
     function updateLogs() {
