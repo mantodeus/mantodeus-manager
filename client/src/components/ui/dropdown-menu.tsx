@@ -22,10 +22,29 @@ function DropdownMenuPortal({
 function DropdownMenuTrigger({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
+  // #region agent log - Capture baseline BEFORE menu opens
+  const handleClick = (e: React.MouseEvent) => {
+    const appContent = document.querySelector('.app-content') as HTMLElement | null;
+    const vv = (window as any).visualViewport;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+    const logData = {location:'dropdown-menu.tsx:trigger',message:'Dropdown trigger clicked - BEFORE open',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,visualViewportHeight:vv?.height,visualViewportOffsetTop:vv?.offsetTop,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'L'};
+    console.log('[DEBUG]', logData);
+    try {
+      const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+      logs.push(logData);
+      if (logs.length > 100) logs.shift();
+      localStorage.setItem('debug-logs', JSON.stringify(logs));
+    } catch(e) {}
+    props.onClick?.(e);
+  };
+  // #endregion
+  
   return (
     <DropdownMenuPrimitive.Trigger
       data-slot="dropdown-menu-trigger"
       {...props}
+      onClick={handleClick}
     />
   );
 }
@@ -158,6 +177,63 @@ function DropdownMenuContent({
     const timeout2 = setTimeout(checkScroll, 150);
     const timeout3 = setTimeout(checkScroll, 300);
     return () => { clearTimeout(timeout); clearTimeout(timeout2); clearTimeout(timeout3); };
+  }, [isOpen]);
+  // #endregion
+
+  // #region agent log - Continuous monitoring of scroll/viewport during menu open
+  React.useEffect(() => {
+    if (!isOpen) return;
+    
+    let rafId: number;
+    let lastWindowScrollY = window.scrollY;
+    let lastAppContentScrollTop: number | null = null;
+    const appContent = document.querySelector('.app-content') as HTMLElement | null;
+    if (appContent) lastAppContentScrollTop = appContent.scrollTop;
+    let lastVvHeight: number | null = null;
+    let lastVvOffsetTop: number | null = null;
+    const vv = (window as any).visualViewport;
+    if (vv) {
+      lastVvHeight = vv.height;
+      lastVvOffsetTop = vv.offsetTop;
+    }
+    
+    const monitor = () => {
+      const currentWindowScrollY = window.scrollY;
+      const currentAppContent = document.querySelector('.app-content') as HTMLElement | null;
+      const currentAppContentScrollTop = currentAppContent?.scrollTop ?? null;
+      const currentVv = (window as any).visualViewport;
+      const currentVvHeight = currentVv?.height ?? null;
+      const currentVvOffsetTop = currentVv?.offsetTop ?? null;
+      
+      const scrollChanged = currentWindowScrollY !== lastWindowScrollY || currentAppContentScrollTop !== lastAppContentScrollTop;
+      const viewportChanged = currentVvHeight !== lastVvHeight || currentVvOffsetTop !== lastVvOffsetTop;
+      
+      if (scrollChanged || viewportChanged) {
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+        const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+        const logData = {location:'dropdown-menu.tsx:monitor',message:'Menu open - viewport/scroll changed',data:{isMobile,isStandalone,windowScrollY:currentWindowScrollY,windowScrollYDelta:currentWindowScrollY-lastWindowScrollY,appContentScrollTop:currentAppContentScrollTop,appContentScrollTopDelta:currentAppContentScrollTop!==null&&lastAppContentScrollTop!==null?currentAppContentScrollTop-lastAppContentScrollTop:null,visualViewportHeight:currentVvHeight,visualViewportHeightDelta:currentVvHeight!==null&&lastVvHeight!==null?currentVvHeight-lastVvHeight:null,visualViewportOffsetTop:currentVvOffsetTop,visualViewportOffsetTopDelta:currentVvOffsetTop!==null&&lastVvOffsetTop!==null?currentVvOffsetTop-lastVvOffsetTop:null,windowInnerHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'J'};
+        console.log('[DEBUG]', logData);
+        try {
+          const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+          logs.push(logData);
+          if (logs.length > 100) logs.shift();
+          localStorage.setItem('debug-logs', JSON.stringify(logs));
+        } catch(e) {}
+        lastWindowScrollY = currentWindowScrollY;
+        lastAppContentScrollTop = currentAppContentScrollTop;
+        lastVvHeight = currentVvHeight;
+        lastVvOffsetTop = currentVvOffsetTop;
+      }
+      
+      rafId = requestAnimationFrame(monitor);
+    };
+    
+    // Start monitoring immediately and continue while menu is open
+    rafId = requestAnimationFrame(monitor);
+    
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, [isOpen]);
   // #endregion
 

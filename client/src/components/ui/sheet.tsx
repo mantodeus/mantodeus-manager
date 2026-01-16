@@ -62,11 +62,91 @@ function SheetContent({
     typeof window !== "undefined" &&
     (window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone === true);
+  
+  const sheetRef = React.useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = React.useState(false);
+  
+  // #region agent log - Monitor sheet open state
+  React.useEffect(() => {
+    if (!sheetRef.current) return;
+    const observer = new MutationObserver(() => {
+      const state = sheetRef.current?.getAttribute('data-state');
+      const nowOpen = state === 'open';
+      if (nowOpen !== isOpen) {
+        setIsOpen(nowOpen);
+        const appContent = document.querySelector('.app-content') as HTMLElement | null;
+        const vv = (window as any).visualViewport;
+        const logData = {location:'sheet.tsx:state',message:nowOpen ? 'Sheet OPENING' : 'Sheet CLOSING',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,visualViewportHeight:vv?.height,visualViewportOffsetTop:vv?.offsetTop,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'K'};
+        console.log('[DEBUG]', logData);
+        try {
+          const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+          logs.push(logData);
+          if (logs.length > 100) logs.shift();
+          localStorage.setItem('debug-logs', JSON.stringify(logs));
+        } catch(e) {}
+      }
+    });
+    observer.observe(sheetRef.current, { attributes: true, attributeFilter: ['data-state'] });
+    setIsOpen(sheetRef.current.getAttribute('data-state') === 'open');
+    return () => observer.disconnect();
+  }, [isMobile, isStandalone]);
+  
+  // #region agent log - Continuous monitoring during sheet open
+  React.useEffect(() => {
+    if (!isOpen) return;
+    
+    let rafId: number;
+    let lastWindowScrollY = window.scrollY;
+    let lastAppContentScrollTop: number | null = null;
+    const appContent = document.querySelector('.app-content') as HTMLElement | null;
+    if (appContent) lastAppContentScrollTop = appContent.scrollTop;
+    let lastVvHeight: number | null = null;
+    let lastVvOffsetTop: number | null = null;
+    const vv = (window as any).visualViewport;
+    if (vv) {
+      lastVvHeight = vv.height;
+      lastVvOffsetTop = vv.offsetTop;
+    }
+    
+    const monitor = () => {
+      const currentWindowScrollY = window.scrollY;
+      const currentAppContent = document.querySelector('.app-content') as HTMLElement | null;
+      const currentAppContentScrollTop = currentAppContent?.scrollTop ?? null;
+      const currentVv = (window as any).visualViewport;
+      const currentVvHeight = currentVv?.height ?? null;
+      const currentVvOffsetTop = currentVv?.offsetTop ?? null;
+      
+      const scrollChanged = currentWindowScrollY !== lastWindowScrollY || currentAppContentScrollTop !== lastAppContentScrollTop;
+      const viewportChanged = currentVvHeight !== lastVvHeight || currentVvOffsetTop !== lastVvOffsetTop;
+      
+      if (scrollChanged || viewportChanged) {
+        const logData = {location:'sheet.tsx:monitor',message:'Sheet open - viewport/scroll changed',data:{isMobile,isStandalone,windowScrollY:currentWindowScrollY,windowScrollYDelta:currentWindowScrollY-lastWindowScrollY,appContentScrollTop:currentAppContentScrollTop,appContentScrollTopDelta:currentAppContentScrollTop!==null&&lastAppContentScrollTop!==null?currentAppContentScrollTop-lastAppContentScrollTop:null,visualViewportHeight:currentVvHeight,visualViewportHeightDelta:currentVvHeight!==null&&lastVvHeight!==null?currentVvHeight-lastVvHeight:null,visualViewportOffsetTop:currentVvOffsetTop,visualViewportOffsetTopDelta:currentVvOffsetTop!==null&&lastVvOffsetTop!==null?currentVvOffsetTop-lastVvOffsetTop:null,windowInnerHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'K'};
+        console.log('[DEBUG]', logData);
+        try {
+          const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+          logs.push(logData);
+          if (logs.length > 100) logs.shift();
+          localStorage.setItem('debug-logs', JSON.stringify(logs));
+        } catch(e) {}
+        lastWindowScrollY = currentWindowScrollY;
+        lastAppContentScrollTop = currentAppContentScrollTop;
+        lastVvHeight = currentVvHeight;
+        lastVvOffsetTop = currentVvOffsetTop;
+      }
+      
+      rafId = requestAnimationFrame(monitor);
+    };
+    
+    rafId = requestAnimationFrame(monitor);
+    return () => { if (rafId) cancelAnimationFrame(rafId); };
+  }, [isOpen, isMobile, isStandalone]);
+  // #endregion
 
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
+        ref={sheetRef}
         data-slot="sheet-content"
         className={cn(
           // Surface styling with soft borders
