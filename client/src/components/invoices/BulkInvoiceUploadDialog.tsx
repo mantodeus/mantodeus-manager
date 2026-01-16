@@ -14,10 +14,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Upload, ArrowLeft, FileText, Loader2, X } from "@/components/ui/Icon";
-import { cn } from "@/lib/utils";
+import { AlertCircle, Upload, FileText, Loader2, X } from "@/components/ui/Icon";
 import { useIsMobile } from "@/hooks/useMobile";
 import { InvoiceUploadZone } from "./InvoiceUploadZone";
+import {
+  InvoiceWorkspaceBody,
+  InvoiceWorkspaceFooter,
+  InvoiceWorkspaceHeader,
+  InvoiceWorkspaceSeparator,
+} from "./InvoiceWorkspaceLayout";
 
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -144,40 +149,13 @@ export function BulkInvoiceUploadDialog({
 
   const content = (
     <>
-      {/* PageHeader-like structure matching Invoices page */}
-      <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
-        {/* TitleRow */}
-        <div
-          className={cn("flex items-center gap-3", !isMobile && "px-4")}
-          style={{ paddingTop: isMobile ? '0' : '1rem' }}
-        >
-          {/* Arrow button on left */}
-          <Button
-            variant="icon"
-            size="icon"
-            onClick={handleClose}
-            className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
-            aria-label="Close"
-            disabled={isUploading}
-          >
-            <ArrowLeft />
-          </Button>
-          
-          {/* Title */}
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <h1 className="text-2xl md:text-3xl font-light">Upload Invoices</h1>
-          </div>
-        </div>
-      </div>
+      <InvoiceWorkspaceHeader
+        title="Upload Invoices"
+        onClose={handleClose}
+        closeDisabled={isUploading}
+      />
 
-      {/* Fade-out separator */}
-      <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
-
-      <div className={cn(
-        "pt-2 overflow-y-auto flex-1 min-h-0",
-        !isMobile && "px-4",
-        "pb-4"
-      )}>
+      <InvoiceWorkspaceBody>
         <div className="space-y-4">
           <InvoiceUploadZone
             onUpload={handleFilesSelected}
@@ -251,12 +229,11 @@ export function BulkInvoiceUploadDialog({
             </div>
           )}
         </div>
-      </div>
+      </InvoiceWorkspaceBody>
 
-      {/* Fade-out separator */}
-      <div className="separator-fade" />
+      <InvoiceWorkspaceSeparator />
 
-      <div className={cn("flex flex-col gap-2 pt-4 pb-4", !isMobile && "px-4")}>
+      <InvoiceWorkspaceFooter>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -288,7 +265,7 @@ export function BulkInvoiceUploadDialog({
             )}
           </Button>
         </div>
-      </div>
+      </InvoiceWorkspaceFooter>
     </>
   );
 
@@ -315,4 +292,3 @@ export function BulkInvoiceUploadDialog({
     </Dialog>
   );
 }
-

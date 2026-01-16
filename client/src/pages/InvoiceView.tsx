@@ -3,8 +3,8 @@ import { ShareInvoiceDialog } from "@/components/invoices/ShareInvoiceDialog";
 import { InvoiceStatusActionsDropdown } from "@/components/invoices/InvoiceStatusActionsDropdown";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, Eye, X } from "@/components/ui/Icon";
-import { Link, useLocation, useRoute } from "wouter";
+import { Loader2, Eye } from "@/components/ui/Icon";
+import { useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -12,8 +12,12 @@ import { createPortal } from "react-dom";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getInvoiceState } from "@/lib/invoiceState";
+import {
+  InvoiceWorkspaceBody,
+  InvoiceWorkspaceHeader,
+} from "@/components/invoices/InvoiceWorkspaceLayout";
 
-export default function InvoiceDetail() {
+export default function InvoiceView() {
   const [, params] = useRoute("/invoices/:id");
   const [, navigate] = useLocation();
   const invoiceId = params?.id ? parseInt(params.id) : null;
@@ -217,10 +221,37 @@ export default function InvoiceDetail() {
     );
   }
 
-  const title = invoice?.invoiceName || invoice?.invoiceNumber || "Invoice";
-  const headerSubtitle = invoice?.invoiceNumber || invoice?.invoiceName || "";
   const invoiceState = invoice ? getInvoiceState(invoice) : null;
   const isDraft = invoiceState === 'DRAFT';
+  const headerTitle = isDraft ? "Edit Invoice" : "View Invoice";
+
+  const statusActions = invoice && invoice.source === "created" ? (
+    <InvoiceStatusActionsDropdown
+      invoice={{
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber || "",
+        needsReview: invoice.needsReview || false,
+        sentAt: invoice.sentAt,
+        paidAt: invoice.paidAt,
+        amountPaid: invoice.amountPaid,
+        total: invoice.total,
+        dueDate: invoice.dueDate,
+        cancelledAt: invoice.cancelledAt,
+        source: invoice.source,
+        type: invoice.type,
+      }}
+      onActionComplete={async () => {
+        await utils.invoices.get.invalidate({ id: invoiceId! });
+        await utils.invoices.list.invalidate();
+      }}
+      onSend={() => {
+        setShareDialogOpen(true);
+      }}
+      onAddPayment={() => {
+        toast.info("Add Payment - use the Payments section in the form");
+      }}
+    />
+  ) : null;
 
   const showDesktopDraftSplit = !isMobile && invoice && invoice.source === "created" && isDraft;
   const showDesktopWindowed = !isMobile && invoice && invoice.source === "created";
@@ -231,7 +262,7 @@ export default function InvoiceDetail() {
         {/* Backdrop overlay */}
         {createPortal(
           <div
-            className="fixed z-[100] bg-black/30 backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+            className="fixed z-[100] bg-black/40 backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
             onClick={() => navigate("/invoices")}
             onWheel={(e) => e.preventDefault()}
             onTouchMove={(e) => e.preventDefault()}
@@ -311,57 +342,14 @@ export default function InvoiceDetail() {
               onMouseDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
             >
-              <div className="flex-1 overflow-y-auto min-h-0">
-                <div className="p-6 space-y-6">
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4 min-w-0 flex-1">
-                      <div className="flex-1 min-w-0 flex flex-col">
-                        <h1 className="text-3xl font-regular">Edit Invoice</h1>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <InvoiceStatusActionsDropdown
-                        invoice={{
-                          id: invoice.id,
-                          invoiceNumber: invoice.invoiceNumber || "",
-                          needsReview: invoice.needsReview || false,
-                          sentAt: invoice.sentAt,
-                          paidAt: invoice.paidAt,
-                          amountPaid: invoice.amountPaid,
-                          total: invoice.total,
-                          dueDate: invoice.dueDate,
-                          cancelledAt: invoice.cancelledAt,
-                          source: invoice.source,
-                          type: invoice.type,
-                        }}
-                        onActionComplete={async () => {
-                          await utils.invoices.get.invalidate({ id: invoiceId! });
-                          await utils.invoices.list.invalidate();
-                        }}
-                        onSend={() => {
-                          setShareDialogOpen(true);
-                        }}
-                        onAddPayment={() => {
-                          toast.info("Add Payment - use the Payments section in the form");
-                        }}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigate("/invoices")}
-                        className="h-10 w-10"
-                        aria-label="Close"
-                      >
-                        <X className="h-6 w-6" />
-                      </Button>
-                    </div>
-                  </div>
+              <div className="flex h-full flex-col">
+                <InvoiceWorkspaceHeader
+                  title={headerTitle}
+                  onClose={() => navigate("/invoices")}
+                  actions={statusActions}
+                />
 
-                  {/* Fade-out separator */}
-                  <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
-
-                  {/* Form */}
+                <InvoiceWorkspaceBody>
                   <InvoiceForm
                     mode="edit"
                     invoiceId={invoiceId}
@@ -398,7 +386,7 @@ export default function InvoiceDetail() {
                       </Button>
                     }
                   />
-                </div>
+                </InvoiceWorkspaceBody>
               </div>
             </div>
           </>,
@@ -422,231 +410,151 @@ export default function InvoiceDetail() {
   }
 
   return (
-    <div className="min-h-full w-full">
-      {/* PageHeader-like structure matching Invoices page */}
-      <div style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
-        {/* TitleRow */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl md:text-3xl font-light">Edit Invoice</h1>
-          </div>
-          
-          {/* Icon Cluster - back arrow */}
-          <div className="flex items-center shrink-0 gap-3 sm:gap-2">
-            {!isMobile && invoice && invoice.source === "created" && (
-              <InvoiceStatusActionsDropdown
-                invoice={{
-                  id: invoice.id,
-                  invoiceNumber: invoice.invoiceNumber || "",
-                  needsReview: invoice.needsReview || false,
-                  sentAt: invoice.sentAt,
-                  paidAt: invoice.paidAt,
-                  amountPaid: invoice.amountPaid,
-                  total: invoice.total,
-                  dueDate: invoice.dueDate,
-                  cancelledAt: invoice.cancelledAt,
-                  source: invoice.source,
-                  type: invoice.type,
-                }}
-                onActionComplete={async () => {
-                  await utils.invoices.get.invalidate({ id: invoiceId! });
-                  await utils.invoices.list.invalidate();
-                }}
-                onSend={() => {
-                  setShareDialogOpen(true);
-                }}
-                onAddPayment={() => {
-                  toast.info("Add Payment - use the Payments section in the form");
-                }}
-              />
-            )}
-            <Link href="/invoices">
-              <Button
-                variant="icon"
-                size="icon"
-                className="size-9 [&_svg]:size-7 hover:bg-muted/50"
-                aria-label="Back"
-              >
-                <ArrowLeft />
-              </Button>
-            </Link>
-          </div>
-        </div>
+    <div className="flex min-h-full w-full flex-col">
+      <InvoiceWorkspaceHeader
+        title={headerTitle}
+        onClose={() => navigate("/invoices")}
+        actions={statusActions}
+      />
 
-        {/* ActionRow - Status badge */}
-        {isMobile && invoice && invoice.source === "created" && (
-          <div
-            className="flex items-center justify-end"
-            style={{ marginTop: 'var(--space-header-actions, 16px)' }}
-          >
-            <InvoiceStatusActionsDropdown
-              invoice={{
-                id: invoice.id,
-                invoiceNumber: invoice.invoiceNumber || "",
-                needsReview: invoice.needsReview || false,
-                sentAt: invoice.sentAt,
-                paidAt: invoice.paidAt,
-                amountPaid: invoice.amountPaid,
-                total: invoice.total,
-                dueDate: invoice.dueDate,
-                cancelledAt: invoice.cancelledAt,
-                source: invoice.source,
-                type: invoice.type,
-              }}
-              onActionComplete={async () => {
-                await utils.invoices.get.invalidate({ id: invoiceId! });
-                await utils.invoices.list.invalidate();
-              }}
-              onSend={() => {
-                setShareDialogOpen(true);
-              }}
-              onAddPayment={() => {
-                toast.info("Add Payment - use the Payments section in the form");
-              }}
-            />
+      <InvoiceWorkspaceBody>
+        {showDesktopDraftSplit ? (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start min-h-[calc(100vh-12rem)]">
+            <div className="w-full min-h-[calc(100vh-12rem)] flex flex-col">
+              <div className="flex items-center justify-between pb-3 border-b">
+                <h2 className="text-lg font-semibold">Preview</h2>
+                {isGeneratingPreview && (
+                  <div className="text-sm text-muted-foreground">Generating...</div>
+                )}
+              </div>
+              <div
+                ref={previewContainerRef}
+                data-preview-container
+                className="flex-1 overflow-auto"
+                style={{ touchAction: "pan-x pan-y pinch-zoom" }}
+              >
+                {previewUrl ? (
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-full border-0"
+                    title={previewFileName}
+                    style={{ pointerEvents: "auto" }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <p>Preview will appear here when you update it</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="w-full">
+                {/* Only show InvoiceForm for created invoices - uploaded invoices use review dialog */}
+                {invoice && invoice.source === "created" ? (
+                  <InvoiceForm
+                    mode="edit"
+                    invoiceId={invoiceId}
+                    contacts={contacts}
+                    onClose={() => navigate("/invoices")}
+                    onSuccess={async () => {
+                      toast.success("Invoice updated");
+                      await utils.invoices.list.invalidate();
+                      await utils.invoices.listNeedsReview.invalidate();
+                    }}
+                    onOpenInvoice={(nextId) => navigate(`/invoices/${nextId}`)}
+                    onPreview={handlePreviewPDF}
+                    showPreview={invoice && invoice.status !== "draft"}
+                    getFormDataRef={getFormDataRef}
+                    renderBeforeFooter={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleUpdatePreview}
+                        disabled={isGeneratingPreview}
+                        className="w-full"
+                      >
+                        {isGeneratingPreview ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Update Preview
+                          </>
+                        )}
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>This invoice is being edited in the review dialog.</p>
+                    <Button
+                      variant="outline"
+                      onClick={() => setReviewDialogOpen(true)}
+                      className="mt-4"
+                    >
+                      Open Review Dialog
+                    </Button>
+                  </div>
+                )}
+            </div>
+          </div>
+        ) : (
+          <div className="w-full">
+            {/* Only show InvoiceForm for created invoices - uploaded invoices use review dialog */}
+            {invoice && invoice.source === "created" ? (
+              <InvoiceForm
+                mode="edit"
+                invoiceId={invoiceId}
+                contacts={contacts}
+                onClose={() => navigate("/invoices")}
+                onSuccess={async () => {
+                  toast.success("Invoice updated");
+                  await utils.invoices.list.invalidate();
+                  await utils.invoices.listNeedsReview.invalidate();
+                }}
+                onOpenInvoice={(nextId) => navigate(`/invoices/${nextId}`)}
+                onPreview={handlePreviewPDF}
+                showPreview={invoice && invoice.status !== "draft"}
+                getFormDataRef={getFormDataRef}
+                renderBeforeFooter={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleUpdatePreview}
+                    disabled={isGeneratingPreview}
+                    className="w-full"
+                  >
+                    {isGeneratingPreview ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Update Preview
+                      </>
+                    )}
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>This invoice is being edited in the review dialog.</p>
+                <Button
+                  variant="outline"
+                  onClick={() => setReviewDialogOpen(true)}
+                  className="mt-4"
+                >
+                  Open Review Dialog
+                </Button>
+              </div>
+            )}
           </div>
         )}
-      </div>
-      
-      {/* Fade-out separator */}
-      <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
-
-      {showDesktopDraftSplit ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start min-h-[calc(100vh-12rem)]">
-          <div className="w-full min-h-[calc(100vh-12rem)] flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b">
-              <h2 className="text-lg font-semibold">Preview</h2>
-              {isGeneratingPreview && (
-                <div className="text-sm text-muted-foreground">Generating...</div>
-              )}
-            </div>
-            <div
-              ref={previewContainerRef}
-              data-preview-container
-              className="flex-1 overflow-auto"
-              style={{ touchAction: "pan-x pan-y pinch-zoom" }}
-            >
-              {previewUrl ? (
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-full border-0"
-                  title={previewFileName}
-                  style={{ pointerEvents: "auto" }}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <p>Preview will appear here when you update it</p>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="w-full">
-              {/* Only show InvoiceForm for created invoices - uploaded invoices use review dialog */}
-              {invoice && invoice.source === "created" ? (
-                <InvoiceForm
-                  mode="edit"
-                  invoiceId={invoiceId}
-                  contacts={contacts}
-                  onClose={() => navigate("/invoices")}
-                  onSuccess={async () => {
-                    toast.success("Invoice updated");
-                    await utils.invoices.list.invalidate();
-                    await utils.invoices.listNeedsReview.invalidate();
-                  }}
-                  onOpenInvoice={(nextId) => navigate(`/invoices/${nextId}`)}
-                  onPreview={handlePreviewPDF}
-                  showPreview={invoice && invoice.status !== "draft"}
-                  getFormDataRef={getFormDataRef}
-                  renderBeforeFooter={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleUpdatePreview}
-                      disabled={isGeneratingPreview}
-                      className="w-full"
-                    >
-                      {isGeneratingPreview ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Update Preview
-                        </>
-                      )}
-                    </Button>
-                  }
-                />
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>This invoice is being edited in the review dialog.</p>
-                  <Button
-                    variant="outline"
-                    onClick={() => setReviewDialogOpen(true)}
-                    className="mt-4"
-                  >
-                    Open Review Dialog
-                  </Button>
-                </div>
-              )}
-          </div>
-        </div>
-      ) : (
-        <div className="w-full">
-          {/* Only show InvoiceForm for created invoices - uploaded invoices use review dialog */}
-          {invoice && invoice.source === "created" ? (
-            <InvoiceForm
-              mode="edit"
-              invoiceId={invoiceId}
-              contacts={contacts}
-              onClose={() => navigate("/invoices")}
-              onSuccess={async () => {
-                toast.success("Invoice updated");
-                await utils.invoices.list.invalidate();
-                await utils.invoices.listNeedsReview.invalidate();
-              }}
-              onOpenInvoice={(nextId) => navigate(`/invoices/${nextId}`)}
-              onPreview={handlePreviewPDF}
-              showPreview={invoice && invoice.status !== "draft"}
-              getFormDataRef={getFormDataRef}
-              renderBeforeFooter={
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleUpdatePreview}
-                  disabled={isGeneratingPreview}
-                  className="w-full"
-                >
-                  {isGeneratingPreview ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Update Preview
-                    </>
-                  )}
-                </Button>
-              }
-            />
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>This invoice is being edited in the review dialog.</p>
-              <Button
-                variant="outline"
-                onClick={() => setReviewDialogOpen(true)}
-                className="mt-4"
-              >
-                Open Review Dialog
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+      </InvoiceWorkspaceBody>
 
       <PDFPreviewModal
         isOpen={previewModalOpen}

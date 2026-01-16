@@ -245,7 +245,7 @@ export function InvoiceForm({
   });
 
   // NOTE: Lifecycle action mutations removed - all lifecycle actions are now handled
-  // via the InvoiceStatusActionsDropdown component in InvoiceDetail page
+  // via the InvoiceStatusActionsDropdown component in InvoiceView page
   const utils = trpc.useUtils();
   const moveToTrashMutation = trpc.invoices.moveToTrash.useMutation({
     onSuccess: () => {
@@ -426,7 +426,7 @@ export function InvoiceForm({
 
   return (
     <div className="flex flex-col h-full w-full overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
-      {/* Header buttons removed - now handled by parent page (InvoiceDetail) */}
+      {/* Header buttons removed - now handled by parent page (InvoiceView) */}
 
       {/* Scrollable content area */}
       <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pb-4">
@@ -1008,5 +1008,4 @@ function LineItemModal({
     </Dialog>
   );
 }
-
 

@@ -1,4 +1,4 @@
-# Mantodeus Manager Design System
+﻿# Mantodeus Manager Design System
 ## Superwhisper-Inspired Redesign Specification
 
 **Version**: 1.0  
@@ -9,7 +9,7 @@
 
 ## A) Aesthetic Translation
 
-### Superwhisper Visual Language → Mantodeus
+### Superwhisper Visual Language â†’ Mantodeus
 
 | Superwhisper Element | Mantodeus Translation |
 |---------------------|----------------------|
@@ -28,7 +28,7 @@
    - Semantic states (success, warning, error)
    - Interactive feedback
 
-2. **Layered Depth**: Surfaces stack visually using the `surface-0` → `surface-3` hierarchy. Higher numbers = more elevated.
+2. **Layered Depth**: Surfaces stack visually using the `surface-0` â†’ `surface-3` hierarchy. Higher numbers = more elevated.
 
 3. **Buttery Motion**: All animations use defined easing curves. No jarring transitions.
 
@@ -90,12 +90,12 @@ font-family: 'Kanit', sans-serif;
 ```css
 :root {
   /* Header spacing */
-  --space-header-subtitle: 12px;      /* TitleRow ↔ SubtitleRow */
-  --space-header-actions: 16px;       /* SubtitleRow ↔ ActionRow */
+  --space-header-subtitle: 12px;      /* TitleRow â†” SubtitleRow */
+  --space-header-actions: 16px;       /* SubtitleRow â†” ActionRow */
   --space-header-icons: 8px;          /* Between icon buttons */
   
   /* Page layout spacing */
-  --space-page-gap: 24px;             /* Header ↔ Content, Section ↔ Section */
+  --space-page-gap: 24px;             /* Header â†” Content, Section â†” Section */
   --space-section-gap: 24px;          /* Between major sections */
   
   /* Card spacing */
@@ -309,7 +309,7 @@ type PageHeaderProps = {
 #### Header Anatomy
 
 ```
-DESKTOP (≥768px):
+DESKTOP (â‰¥768px):
 +------------------------------------------------------------------+
 |  TITLE                              [Search] [Filter] [Settings] |  <- TitleRow
 |  Description text here                                           |  <- SubtitleRow
@@ -319,7 +319,7 @@ DESKTOP (≥768px):
 
 MOBILE (<768px):
 +----------------------------------+
-|  TITLE           [🔍] [⚙️] [⚙️]  |  <- TitleRow
+|  TITLE           [ðŸ”] [âš™ï¸] [âš™ï¸]  |  <- TitleRow
 |  Description                     |  <- SubtitleRow
 +----------------------------------+
 |  [Secondary]                     |  <- ActionRow (full-width stacked)
@@ -331,12 +331,12 @@ MOBILE (<768px):
 
 | Variant | TitleRow | SubtitleRow | ActionRow | Icon Cluster |
 |---------|----------|-------------|-----------|--------------|
-| `default` | ✓ | ✓ | ✓ | Full (Search/Filter/Settings) |
-| `detail` | ✓ (with back button) | ✓ | ✓ | None |
-| `fullscreen` | ✓ | ✗ | ✗ | Settings only |
+| `default` | âœ“ | âœ“ | âœ“ | Full (Search/Filter/Settings) |
+| `detail` | âœ“ (with back button) | âœ“ | âœ“ | None |
+| `fullscreen` | âœ“ | âœ— | âœ— | Settings only |
 
 **Internal Component**: `<HeaderIconCluster />` renders icons with:
-- Fixed order: Search → Filter → Settings → extraActions
+- Fixed order: Search â†’ Filter â†’ Settings â†’ extraActions
 - Fixed size: `size-6` icons, `size-9` touch targets
 - Fixed spacing: `gap-2` between icons
 
@@ -532,7 +532,7 @@ Mobile bottom sheet + desktop side panel.
 
 ### Touch Targets
 
-- Minimum size: 44×44px
+- Minimum size: 44Ã—44px
 - Icon buttons: `size-9` (36px) with 4px margin = 44px effective
 - Tab bar buttons: 56px height
 
@@ -611,7 +611,7 @@ Mobile bottom sheet + desktop side panel.
 | Notes | `default` | `default` |
 | Contacts | `default` | `default` |
 | Reports | `default` | `default` |
-| InvoiceDetail | `detail` | `default` |
+| InvoiceView | `detail` | `default` |
 | ProjectDetail | `detail` | `default` |
 | NoteDetail | `detail` | `default` |
 | Calendar | `fullscreen` | `fullscreen` |

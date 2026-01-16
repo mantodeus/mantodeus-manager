@@ -1,11 +1,11 @@
-# Invoices Page — Complete Documentation
+﻿# Invoices Page â€” Complete Documentation
 
 **File:** `client/src/pages/Invoices.tsx` (2,588 lines)  
 **Last Updated:** 2024-12-17
 
 ---
 
-## 📋 Table of Contents
+## ðŸ“‹ Table of Contents
 
 1. [Overview](#overview)
 2. [Architecture & Data Flow](#architecture--data-flow)
@@ -27,18 +27,18 @@ The Invoices page is the main hub for managing invoices in Mantodeus Manager. It
 
 ### Key Capabilities
 
-- ✅ View active, archived, and trashed invoices
-- ✅ Create new invoices (via dialog)
-- ✅ Bulk upload invoice PDFs with OCR processing
-- ✅ Search invoices by client, date, amount, invoice number
-- ✅ Filter by project, client, time period, status
-- ✅ Multi-select for batch operations
-- ✅ Year/Quarter total cards with drill-down
-- ✅ "Needs Review" section for uploaded invoices
-- ✅ Full invoice lifecycle management (draft → sent → paid)
-- ✅ Status reversion (paid → sent, sent → draft)
-- ✅ Cancellation invoice creation
-- ✅ Archive/trash workflow
+- âœ… View active, archived, and trashed invoices
+- âœ… Create new invoices (via dialog)
+- âœ… Bulk upload invoice PDFs with OCR processing
+- âœ… Search invoices by client, date, amount, invoice number
+- âœ… Filter by project, client, time period, status
+- âœ… Multi-select for batch operations
+- âœ… Year/Quarter total cards with drill-down
+- âœ… "Needs Review" section for uploaded invoices
+- âœ… Full invoice lifecycle management (draft â†’ sent â†’ paid)
+- âœ… Status reversion (paid â†’ sent, sent â†’ draft)
+- âœ… Cancellation invoice creation
+- âœ… Archive/trash workflow
 
 ---
 
@@ -48,23 +48,23 @@ The Invoices page is the main hub for managing invoices in Mantodeus Manager. It
 
 ```
 Invoices (Page)
-├── PageHeader (title, search, filter, settings, primary actions)
-├── YearTotalCard (year totals with popover)
-├── QuarterTotalCard (quarter totals with popover)
-├── Needs Review Section (uploaded invoices pending review)
-├── Invoice Grid (filtered invoices)
-├── MultiSelectBar (batch operations)
-├── Search Overlay (mobile search interface)
-├── Filter Sheet (filter controls)
-└── Multiple Dialogs:
-    ├── CreateInvoiceDialog
-    ├── InvoiceUploadReviewDialog
-    ├── BulkInvoiceUploadDialog
-    ├── RevertInvoiceStatusDialog
-    ├── MarkAsSentWarningDialog
-    ├── MarkAsPaidDialog
-    ├── DeleteConfirmDialog (multiple instances)
-    └── PDFPreviewModal
+â”œâ”€â”€ PageHeader (title, search, filter, settings, primary actions)
+â”œâ”€â”€ YearTotalCard (year totals with popover)
+â”œâ”€â”€ QuarterTotalCard (quarter totals with popover)
+â”œâ”€â”€ Needs Review Section (uploaded invoices pending review)
+â”œâ”€â”€ Invoice Grid (filtered invoices)
+â”œâ”€â”€ MultiSelectBar (batch operations)
+â”œâ”€â”€ Search Overlay (mobile search interface)
+â”œâ”€â”€ Filter Sheet (filter controls)
+â””â”€â”€ Multiple Dialogs:
+    â”œâ”€â”€ CreateInvoiceDialog
+    â”œâ”€â”€ InvoiceUploadReviewDialog
+    â”œâ”€â”€ BulkInvoiceUploadDialog
+    â”œâ”€â”€ RevertInvoiceStatusDialog
+    â”œâ”€â”€ MarkAsSentWarningDialog
+    â”œâ”€â”€ MarkAsPaidDialog
+    â”œâ”€â”€ DeleteConfirmDialog (multiple instances)
+    â””â”€â”€ PDFPreviewModal
 ```
 
 ### Data Queries
@@ -235,12 +235,12 @@ Actions are determined by `getInvoiceActions()` from `@/lib/invoiceActions.ts`:
 
 ### 5. Invoice Lifecycle
 
-#### Draft → Sent
+#### Draft â†’ Sent
 - Requires: `dueDate` and `total > 0`
 - Sets `sentAt` timestamp
 - Can be reverted to draft if no payments received
 
-#### Sent → Paid
+#### Sent â†’ Paid
 - Sets `paidAt` timestamp
 - Can optionally mark as sent simultaneously (for uploaded invoices)
 - Can be reverted to sent (mark as not paid)
@@ -420,7 +420,7 @@ const mutation = trpc.invoices.xxx.useMutation({
 
 - `@/lib/invoiceState` - Invoice state derivation (`getInvoiceState`, `getDerivedValues`)
 - `@/lib/invoiceActions` - Action model (`getInvoiceActions`, `isActionValidForInvoice`)
-- `@/lib/accountingDate` - Accounting date calculations (EÜR vs Bilanz)
+- `@/lib/accountingDate` - Accounting date calculations (EÃœR vs Bilanz)
 - `@/hooks/useIsMobile` - Mobile detection
 - `@/hooks/useLongPress` - Long-press gesture detection
 - `@/hooks/useTheme` - Theme context
@@ -583,7 +583,7 @@ All mutations:
 - `drizzle/schema.ts` - Database schema
 
 ### Pages
-- `client/src/pages/InvoiceDetail.tsx` - Invoice detail/edit page
+- `client/src/pages/InvoiceView.tsx` - Invoice detail/edit page
 - `client/src/pages/InvoiceCreate.tsx` - Invoice create page
 - `client/src/pages/InvoicesArchived.tsx` - Archived invoices page
 - `client/src/pages/InvoicesRubbish.tsx` - Trashed invoices page
@@ -608,7 +608,7 @@ const { valid, reason } = isActionValidForInvoice('markAsSent', invoice);
 const { outstanding, isPaid, isPartial, isOverdue } = getDerivedValues(invoice);
 
 // Format currency
-const formatted = formatCurrency(1234.56); // "1.234,56 €"
+const formatted = formatCurrency(1234.56); // "1.234,56 â‚¬"
 ```
 
 ### Common Patterns

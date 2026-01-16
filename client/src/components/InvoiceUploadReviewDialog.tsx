@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Eye, Send, CheckCircle2, CurrencyEuro, ArrowLeft, RotateCcw, Info as HelpCircle, Sparkles, MoreVertical, Edit, Copy, Trash2, Archive, XCircle, X } from "@/components/ui/Icon";
+import { Loader2, Eye, Send, CheckCircle2, CurrencyEuro, RotateCcw, Info as HelpCircle, Sparkles, MoreVertical, Edit, Copy, Trash2, Archive, XCircle } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -37,6 +37,10 @@ import { MarkAsPaidDialog } from "./invoices/MarkAsPaidDialog";
 import { MarkAsNotPaidDialog } from "./invoices/MarkAsNotPaidDialog";
 import { useLongPress } from "@/hooks/useLongPress";
 import { DocumentPreview } from "@/components/document-preview/DocumentPreview";
+import {
+  InvoiceWorkspaceBody,
+  InvoiceWorkspaceHeader,
+} from "@/components/invoices/InvoiceWorkspaceLayout";
 
 interface InvoiceUploadReviewDialogProps {
   open: boolean;
@@ -449,7 +453,6 @@ export function InvoiceUploadReviewDialog({
   const isPaid = invoiceState === 'PAID';
   const isCancelled = invoice?.cancelledAt !== null && invoice?.cancelledAt !== undefined;
   const isReadOnly = isSent || isPaid || isCancelled; // Disable when sent/paid or cancelled
-  const headerSubtitle = invoice?.invoiceNumber || invoice?.invoiceName || "";
 
   const handleSend = () => {
     if (!invoice) return;
@@ -756,6 +759,59 @@ export function InvoiceUploadReviewDialog({
   
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
 
+  const headerTitle = isReview ? "Review Invoice" : "View Invoice";
+  const headerActions = invoice ? (
+    <div className="flex items-center gap-2 shrink-0">
+      {/* Status badge - display only, no dropdown */}
+      <div className="flex items-center gap-2">
+        {renderStatusButton(invoice)}
+      </div>
+
+      {/* Three-dot menu for invoice actions */}
+      {availableInvoiceActions.length > 0 && (
+        <DropdownMenu open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="icon"
+              size="icon"
+              className="size-9 [&_svg]:size-5 border border-transparent bg-transparent text-foreground hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8 dark:hover:bg-foreground/7 dark:active:bg-foreground/10 transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]"
+              aria-label="More actions"
+            >
+              <MoreVertical />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {availableInvoiceActions.map((action) => {
+              const config = actionConfig[action];
+              if (!config) return null;
+              const Icon = config.icon;
+              const isDestructive = config.variant === "destructive";
+
+              // Skip "edit" and "select" actions in dialog context
+              if (action === "edit" || action === "select") return null;
+
+              return (
+                <DropdownMenuItem
+                  key={action}
+                  onClick={() => handleInvoiceAction(action)}
+                  className={cn(
+                    "flex items-center gap-2",
+                    isDestructive && "text-destructive focus:text-destructive"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{config.label}</span>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  ) : null;
+
   // Auto-open preview on desktop when dialog opens
   useEffect(() => {
     if (!isMobile && open && invoiceId && invoice && !previewUrl) {
@@ -1048,93 +1104,14 @@ export function InvoiceUploadReviewDialog({
   );
 
   const headerAndForm = (
-    <div className="flex h-full w-full flex-col bg-background">
-      {/* PageHeader-like structure matching Invoices page */}
-      <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
-        {/* TitleRow */}
-        <div className="flex items-center gap-3" style={{ paddingTop: isMobile ? '0' : '1rem' }}>
-          {/* Close button - ArrowLeft on mobile, X on desktop */}
-          <Button
-            variant="icon"
-            size="icon"
-            onClick={handleClose}
-            className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
-            aria-label="Close"
-          >
-            {isMobile ? <ArrowLeft /> : <X className="h-6 w-6" />}
-          </Button>
-          
-          {/* Title */}
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <h1 className="text-2xl md:text-3xl font-light">
-              {isReview ? "Review Invoice" : "Edit Invoice"}
-            </h1>
-          </div>
-          
-          {/* Status badge and three-dot menu on right */}
-          {invoice && (
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Status badge - display only, no dropdown */}
-              <div className="flex items-center gap-2">
-                {renderStatusButton(invoice)}
-              </div>
-              
-              {/* Three-dot menu for invoice actions */}
-              {availableInvoiceActions.length > 0 && (
-                <DropdownMenu open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="icon"
-                      size="icon"
-                      className="size-9 [&_svg]:size-5 border border-transparent bg-transparent text-foreground hover:bg-foreground/5 hover:border-border/70 active:bg-foreground/8 dark:hover:bg-foreground/7 dark:active:bg-foreground/10 transition-[background-color,border-color] duration-[var(--dur-quick)] ease-[var(--ease-out)]"
-                      aria-label="More actions"
-                    >
-                      <MoreVertical />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuLabel>Invoice Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {availableInvoiceActions.map((action) => {
-                      const config = actionConfig[action];
-                      if (!config) return null;
-                      const Icon = config.icon;
-                      const isDestructive = config.variant === "destructive";
-                      
-                      // Skip "edit" and "select" actions in dialog context
-                      if (action === "edit" || action === "select") return null;
-                      
-                      return (
-                        <DropdownMenuItem
-                          key={action}
-                          onClick={() => handleInvoiceAction(action)}
-                          className={cn(
-                            "flex items-center gap-2",
-                            isDestructive && "text-destructive focus:text-destructive"
-                          )}
-                        >
-                          <Icon className="h-4 w-4" />
-                          <span>{config.label}</span>
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+    <div className="flex min-h-full w-full flex-col bg-background">
+      <InvoiceWorkspaceHeader
+        title={headerTitle}
+        onClose={handleClose}
+        actions={headerActions}
+      />
 
-      {/* Fade-out separator */}
-      <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
-
-      <div className={cn(
-        "space-y-4 pt-2 sm:px-6 flex-1 min-h-0 overflow-y-auto",
-        isMobile ? "pb-4" : "pb-6"
-      )}>
-
-
+      <InvoiceWorkspaceBody className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center gap-1.5">
             <Label htmlFor="client">Client</Label>
@@ -1404,7 +1381,7 @@ export function InvoiceUploadReviewDialog({
               )}
           </div>
         )}
-      </div>
+      </InvoiceWorkspaceBody>
     </div>
   );
 
@@ -1417,7 +1394,7 @@ export function InvoiceUploadReviewDialog({
         {/* Backdrop overlay */}
         {createPortal(
           <div
-            className="fixed z-[100] bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+            className="fixed z-[100] bg-black/40 backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
             onClick={() => onOpenChange(false)}
             onWheel={(e) => {
               const target = e.target as HTMLElement;
@@ -1450,7 +1427,7 @@ export function InvoiceUploadReviewDialog({
             {/* Preview Panel - Left side */}
             <div
               ref={previewPanelRef}
-              className="fixed z-[110] bg-background border-r shadow-lg rounded-lg"
+              className="fixed z-[110] bg-background border border-border shadow-xl rounded-lg"
               style={{
                 top: "1.5rem",
                 left: "1.5rem",
@@ -1501,7 +1478,7 @@ export function InvoiceUploadReviewDialog({
 
             {/* Form Panel - Right side */}
             <div
-              className="fixed z-[110] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
+              className="fixed z-[110] bg-background border border-border shadow-xl rounded-lg flex flex-col overflow-hidden"
               style={{
                 top: "1.5rem",
                 right: "1.5rem",
@@ -1514,9 +1491,7 @@ export function InvoiceUploadReviewDialog({
               onMouseDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
             >
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {headerAndForm}
-              </div>
+              {headerAndForm}
             </div>
           </>,
           document.body

@@ -1,4 +1,4 @@
-# Invoice Module — Comprehensive Audit Report
+﻿# Invoice Module â€” Comprehensive Audit Report
 
 **Generated:** 2024-12-17  
 **Purpose:** Deep technical audit for expert developer review and improvement  
@@ -10,16 +10,16 @@
 
 The invoice module is a **sophisticated, feature-rich system** with complex state management, dual workflows (created vs. uploaded), and German tax compliance. The codebase shows **strong architectural patterns** but has **several areas requiring attention**:
 
-### Strengths ✅
+### Strengths âœ…
 - Well-structured tRPC API with comprehensive validation
 - Timestamp-based state management (more reliable than status enum)
 - Dual workflow support (manual creation + PDF upload with OCR)
 - German tax compliance (Kleinunternehmerregelung, sequential numbering)
-- Comprehensive lifecycle management (draft → sent → paid → archived)
+- Comprehensive lifecycle management (draft â†’ sent â†’ paid â†’ archived)
 - Cancellation invoice support
 - Archive/trash workflow
 
-### Critical Issues ⚠️
+### Critical Issues âš ï¸
 1. **VAT calculation is hardcoded to 0** (line 50 in `invoiceRouter.ts`)
 2. **Status field vs. timestamp logic inconsistency** (status enum exists but UI uses timestamps)
 3. **Complex state derivation** across multiple files
@@ -27,7 +27,7 @@ The invoice module is a **sophisticated, feature-rich system** with complex stat
 5. **PDF generation uses external service** (Fly.io) - single point of failure
 6. **Bulk upload has extensive console.log** (production noise)
 
-### Areas for Improvement 🔧
+### Areas for Improvement ðŸ”§
 - Error handling and edge cases
 - Performance optimization (N+1 queries potential)
 - Code duplication (state logic in multiple places)
@@ -41,75 +41,75 @@ The invoice module is a **sophisticated, feature-rich system** with complex stat
 ### 1.1 System Components
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Invoice Module Architecture                │
-└─────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                    Invoice Module Architecture                â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 
 Frontend (React + TypeScript)
-├── Pages
-│   ├── Invoices.tsx (2,760 lines - main list page)
-│   ├── InvoiceDetail.tsx (edit page)
-│   ├── InvoiceCreate.tsx (create page)
-│   ├── InvoicesArchived.tsx
-│   └── InvoicesRubbish.tsx
-├── Components
-│   ├── InvoiceForm.tsx (996 lines - core form)
-│   ├── CreateInvoiceDialog.tsx (mobile wrapper)
-│   ├── CreateInvoiceWorkspace.tsx (desktop split view)
-│   ├── InvoiceUploadReviewDialog.tsx (uploaded invoice review)
-│   ├── BulkInvoiceUploadDialog.tsx
-│   ├── InvoiceStatusActionsDropdown.tsx
-│   └── ShareInvoiceDialog.tsx
-└── Utilities
-    ├── invoiceState.ts (state derivation)
-    └── invoiceActions.ts (action validation)
+â”œâ”€â”€ Pages
+â”‚   â”œâ”€â”€ Invoices.tsx (2,760 lines - main list page)
+â”‚   â”œâ”€â”€ InvoiceView.tsx (edit page)
+â”‚   â”œâ”€â”€ InvoiceCreate.tsx (create page)
+â”‚   â”œâ”€â”€ InvoicesArchived.tsx
+â”‚   â””â”€â”€ InvoicesRubbish.tsx
+â”œâ”€â”€ Components
+â”‚   â”œâ”€â”€ InvoiceForm.tsx (996 lines - core form)
+â”‚   â”œâ”€â”€ CreateInvoiceDialog.tsx (mobile wrapper)
+â”‚   â”œâ”€â”€ CreateInvoiceWorkspace.tsx (desktop split view)
+â”‚   â”œâ”€â”€ InvoiceUploadReviewDialog.tsx (uploaded invoice review)
+â”‚   â”œâ”€â”€ BulkInvoiceUploadDialog.tsx
+â”‚   â”œâ”€â”€ InvoiceStatusActionsDropdown.tsx
+â”‚   â””â”€â”€ ShareInvoiceDialog.tsx
+â””â”€â”€ Utilities
+    â”œâ”€â”€ invoiceState.ts (state derivation)
+    â””â”€â”€ invoiceActions.ts (action validation)
 
 Backend (Node.js + tRPC)
-├── Routers
-│   └── invoiceRouter.ts (1,456 lines - main API)
-├── Database
-│   └── db.ts (invoice CRUD functions)
-├── Templates
-│   └── invoice.ts (PDF HTML generation)
-├── Services
-│   ├── pdfService.ts (PDF rendering client)
-│   └── ai/documentOcrClient.ts (OCR processing)
-└── Core
-    └── pdfParser.ts (legacy PDF parsing)
+â”œâ”€â”€ Routers
+â”‚   â””â”€â”€ invoiceRouter.ts (1,456 lines - main API)
+â”œâ”€â”€ Database
+â”‚   â””â”€â”€ db.ts (invoice CRUD functions)
+â”œâ”€â”€ Templates
+â”‚   â””â”€â”€ invoice.ts (PDF HTML generation)
+â”œâ”€â”€ Services
+â”‚   â”œâ”€â”€ pdfService.ts (PDF rendering client)
+â”‚   â””â”€â”€ ai/documentOcrClient.ts (OCR processing)
+â””â”€â”€ Core
+    â””â”€â”€ pdfParser.ts (legacy PDF parsing)
 
 Database (MySQL + Drizzle ORM)
-├── invoices (main table)
-├── invoice_items (line items)
-└── companySettings (invoice configuration)
+â”œâ”€â”€ invoices (main table)
+â”œâ”€â”€ invoice_items (line items)
+â””â”€â”€ companySettings (invoice configuration)
 ```
 
 ### 1.2 Data Flow
 
 **Invoice Creation Flow:**
 ```
-User Input → InvoiceForm → tRPC.invoices.create
-  → generateInvoiceNumber() → ensureUniqueInvoiceNumber()
-  → normalizeLineItems() → calculateTotals()
-  → db.createInvoice() → mapInvoiceToPayload()
-  → Frontend receives invoice with derived state
+User Input â†’ InvoiceForm â†’ tRPC.invoices.create
+  â†’ generateInvoiceNumber() â†’ ensureUniqueInvoiceNumber()
+  â†’ normalizeLineItems() â†’ calculateTotals()
+  â†’ db.createInvoice() â†’ mapInvoiceToPayload()
+  â†’ Frontend receives invoice with derived state
 ```
 
 **Invoice Upload Flow:**
 ```
-PDF Upload → tRPC.invoices.uploadInvoice
-  → parseInvoicePdf() [legacy] OR processDocumentOcr() [new]
-  → storagePut() (S3)
-  → db.createInvoice() with needsReview=true
-  → InvoiceUploadReviewDialog → confirmUploadedInvoice()
-  → needsReview=false → moves to draft state
+PDF Upload â†’ tRPC.invoices.uploadInvoice
+  â†’ parseInvoicePdf() [legacy] OR processDocumentOcr() [new]
+  â†’ storagePut() (S3)
+  â†’ db.createInvoice() with needsReview=true
+  â†’ InvoiceUploadReviewDialog â†’ confirmUploadedInvoice()
+  â†’ needsReview=false â†’ moves to draft state
 ```
 
 **PDF Generation Flow:**
 ```
-Request PDF → GET /api/invoices/:id/pdf
-  → getInvoiceById() → getInvoiceItemsByInvoiceId()
-  → generateInvoiceHTML() → renderPDF() (Fly.io service)
-  → Stream PDF to client
+Request PDF â†’ GET /api/invoices/:id/pdf
+  â†’ getInvoiceById() â†’ getInvoiceItemsByInvoiceId()
+  â†’ generateInvoiceHTML() â†’ renderPDF() (Fly.io service)
+  â†’ Stream PDF to client
 ```
 
 ---
@@ -125,10 +125,10 @@ Request PDF → GET /api/invoices/:id/pdf
 ```typescript
 {
   id: int (PK, auto-increment)
-  userId: int (FK → users.id, NOT NULL)
-  clientId: int (FK → contacts.id, nullable)
-  contactId: int (FK → contacts.id, nullable) // ⚠️ Redundant with clientId?
-  jobId: int (FK → jobs.id, nullable)
+  userId: int (FK â†’ users.id, NOT NULL)
+  clientId: int (FK â†’ contacts.id, nullable)
+  contactId: int (FK â†’ contacts.id, nullable) // âš ï¸ Redundant with clientId?
+  jobId: int (FK â†’ jobs.id, nullable)
   
   // Invoice Identity
   invoiceNumber: varchar(50) // Unique per user
@@ -137,19 +137,19 @@ Request PDF → GET /api/invoices/:id/pdf
   invoiceCounter: int (NOT NULL) // Sequential counter
   
   // Status & Lifecycle
-  status: enum('draft', 'open', 'paid') // ⚠️ Not used by UI (uses timestamps)
+  status: enum('draft', 'open', 'paid') // âš ï¸ Not used by UI (uses timestamps)
   type: enum('standard', 'cancellation')
-  cancelledInvoiceId: int (FK → invoices.id, nullable)
+  cancelledInvoiceId: int (FK â†’ invoices.id, nullable)
   
   // Dates
   issueDate: timestamp (NOT NULL, default now)
   dueDate: timestamp (nullable)
-  sentAt: timestamp (nullable) // ⚠️ Primary state indicator
-  paidAt: timestamp (nullable) // ⚠️ Primary state indicator
+  sentAt: timestamp (nullable) // âš ï¸ Primary state indicator
+  paidAt: timestamp (nullable) // âš ï¸ Primary state indicator
   
   // Financial
   subtotal: decimal(12,2) (NOT NULL, default 0.00)
-  vatAmount: decimal(12,2) (NOT NULL, default 0.00) // ⚠️ Always 0 (hardcoded)
+  vatAmount: decimal(12,2) (NOT NULL, default 0.00) // âš ï¸ Always 0 (hardcoded)
   total: decimal(12,2) (NOT NULL, default 0.00)
   amountPaid: decimal(12,2) (NOT NULL, default 0.00)
   lastPaymentAt: timestamp (nullable)
@@ -175,7 +175,7 @@ Request PDF → GET /api/invoices/:id/pdf
   source: enum('created', 'uploaded') (default 'created')
   needsReview: boolean (default false) // For uploaded invoices
   uploadedAt: timestamp (nullable)
-  uploadedBy: int (FK → users.id, nullable)
+  uploadedBy: int (FK â†’ users.id, nullable)
   
   // Archive/Trash
   archivedAt: timestamp (nullable)
@@ -201,10 +201,10 @@ Request PDF → GET /api/invoices/:id/pdf
 - `invoices_cancelledInvoiceId_unique` (unique) on `cancelledInvoiceId`
 
 **Issues:**
-1. ⚠️ **`status` enum exists but UI uses `sentAt`/`paidAt` timestamps** - potential inconsistency
-2. ⚠️ **`clientId` and `contactId` both exist** - unclear distinction, may be redundant
-3. ⚠️ **Multiple file key fields** (`pdfFileKey`, `originalPdfS3Key`, `fileKey`) - legacy migration artifacts
-4. ⚠️ **`vatAmount` always 0** - hardcoded in calculation logic
+1. âš ï¸ **`status` enum exists but UI uses `sentAt`/`paidAt` timestamps** - potential inconsistency
+2. âš ï¸ **`clientId` and `contactId` both exist** - unclear distinction, may be redundant
+3. âš ï¸ **Multiple file key fields** (`pdfFileKey`, `originalPdfS3Key`, `fileKey`) - legacy migration artifacts
+4. âš ï¸ **`vatAmount` always 0** - hardcoded in calculation logic
 
 #### `invoice_items` Table
 **Location:** `drizzle/schema.ts:406-420`
@@ -212,7 +212,7 @@ Request PDF → GET /api/invoices/:id/pdf
 ```typescript
 {
   id: int (PK, auto-increment)
-  invoiceId: int (FK → invoices.id, CASCADE DELETE)
+  invoiceId: int (FK â†’ invoices.id, CASCADE DELETE)
   name: varchar(255) (NOT NULL)
   description: text (nullable)
   category: varchar(120) (nullable)
@@ -225,8 +225,8 @@ Request PDF → GET /api/invoices/:id/pdf
 ```
 
 **Issues:**
-1. ⚠️ **No VAT rate per item** - VAT is calculated globally, not per item
-2. ⚠️ **No item-level discounts** - only quantity × unitPrice
+1. âš ï¸ **No VAT rate per item** - VAT is calculated globally, not per item
+2. âš ï¸ **No item-level discounts** - only quantity Ã— unitPrice
 
 ### 2.2 Schema Evolution
 
@@ -273,7 +273,7 @@ export const invoiceRouter = router({
   duplicate: protectedProcedure.input(...).mutation()
   
   // Lifecycle Actions
-  issue: protectedProcedure.input(...).mutation() // Draft → Sent
+  issue: protectedProcedure.input(...).mutation() // Draft â†’ Sent
   markAsSent: protectedProcedure.input(...).mutation()
   markAsPaid: protectedProcedure.input(...).mutation()
   revertStatus: protectedProcedure.input(...).mutation()
@@ -300,7 +300,7 @@ export const invoiceRouter = router({
   cancelUploadedInvoice: protectedProcedure.input(...).mutation()
   
   // Debug
-  debug: protectedProcedure.query() // ⚠️ TEMPORARY - should be removed
+  debug: protectedProcedure.query() // âš ï¸ TEMPORARY - should be removed
 });
 ```
 
@@ -312,7 +312,7 @@ export const invoiceRouter = router({
 ```typescript
 function calculateTotals(items: ReturnType<typeof normalizeLineItems>) {
   const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
-  const vatAmount = 0; // ⚠️ VAT handling will be added later
+  const vatAmount = 0; // âš ï¸ VAT handling will be added later
   const total = subtotal + vatAmount;
   return {
     subtotal: Number(subtotal.toFixed(2)),
@@ -344,9 +344,9 @@ function calculateTotals(items: ReturnType<typeof normalizeLineItems>) {
 6. Ensure uniqueness with `ensureUniqueInvoiceNumber()`
 
 **Issues:**
-1. ⚠️ **Race condition risk:** Two concurrent creates could generate same number
-2. ⚠️ **No transaction:** `generateInvoiceNumber()` and `createInvoice()` are separate calls
-3. ⚠️ **Complex format parsing:** Regex-based parsing may fail on edge cases
+1. âš ï¸ **Race condition risk:** Two concurrent creates could generate same number
+2. âš ï¸ **No transaction:** `generateInvoiceNumber()` and `createInvoice()` are separate calls
+3. âš ï¸ **Complex format parsing:** Regex-based parsing may fail on edge cases
 
 **Recommendation:** Wrap in database transaction with row-level locking.
 
@@ -379,10 +379,10 @@ function getInvoiceState(invoice: {
 **Location:** `server/invoiceRouter.ts:1158-1416`
 
 **Issues:**
-1. ⚠️ **Extensive console.log** (lines 1176-1410) - production noise
-2. ⚠️ **No transaction:** Each file processed independently, partial failures possible
-3. ⚠️ **Error handling:** Errors logged but continue processing (good), but cleanup may fail
-4. ⚠️ **OCR processing:** Uses `processDocumentOcr()` which may be slow for bulk
+1. âš ï¸ **Extensive console.log** (lines 1176-1410) - production noise
+2. âš ï¸ **No transaction:** Each file processed independently, partial failures possible
+3. âš ï¸ **Error handling:** Errors logged but continue processing (good), but cleanup may fail
+4. âš ï¸ **OCR processing:** Uses `processDocumentOcr()` which may be slow for bulk
 
 **Recommendation:**
 - Replace `console.log` with structured logger
@@ -398,9 +398,9 @@ function getInvoiceState(invoice: {
 - Unique invoice number enforcement
 
 **Weaknesses:**
-1. ⚠️ **Generic error messages** - some errors don't provide actionable feedback
-2. ⚠️ **No retry logic** for transient failures (S3, PDF service)
-3. ⚠️ **Silent failures** - some operations log warnings but continue
+1. âš ï¸ **Generic error messages** - some errors don't provide actionable feedback
+2. âš ï¸ **No retry logic** for transient failures (S3, PDF service)
+3. âš ï¸ **Silent failures** - some operations log warnings but continue
 
 ---
 
@@ -420,10 +420,10 @@ function getInvoiceState(invoice: {
 - Long-press context menus (mobile)
 
 **Issues:**
-1. ⚠️ **Very large file** (2,760 lines) - should be split into smaller components
-2. ⚠️ **30+ useState hooks** - complex state management
-3. ⚠️ **6 tRPC queries** - potential N+1 or over-fetching
-4. ⚠️ **Complex filtering logic** - may have performance issues with large datasets
+1. âš ï¸ **Very large file** (2,760 lines) - should be split into smaller components
+2. âš ï¸ **30+ useState hooks** - complex state management
+3. âš ï¸ **6 tRPC queries** - potential N+1 or over-fetching
+4. âš ï¸ **Complex filtering logic** - may have performance issues with large datasets
 
 **Recommendation:** Split into:
 - `InvoicesList.tsx` (list display)
@@ -432,7 +432,7 @@ function getInvoiceState(invoice: {
 - `InvoicesTotals.tsx` (year/quarter cards)
 - `useInvoices.ts` (custom hook for data fetching)
 
-#### `InvoiceDetail.tsx`
+#### `InvoiceView.tsx`
 **Purpose:** Edit invoice page with conditional layouts
 
 **Layouts:**
@@ -441,8 +441,8 @@ function getInvoiceState(invoice: {
 - Uploaded: Review dialog (never shows full form)
 
 **Issues:**
-1. ⚠️ **Complex conditional rendering** - multiple layout branches
-2. ⚠️ **Preview state management** - unsaved preview vs. saved preview
+1. âš ï¸ **Complex conditional rendering** - multiple layout branches
+2. âš ï¸ **Preview state management** - unsaved preview vs. saved preview
 
 #### `InvoiceForm.tsx` (996 lines)
 **Purpose:** Core form component (shared for create/edit)
@@ -456,9 +456,9 @@ function getInvoiceState(invoice: {
 - Read-only state for sent/paid invoices
 
 **Issues:**
-1. ⚠️ **Large component** - should extract line item editor to separate component
-2. ⚠️ **Complex form state** - multiple interdependent fields
-3. ⚠️ **No form validation feedback** - only toast errors
+1. âš ï¸ **Large component** - should extract line item editor to separate component
+2. âš ï¸ **Complex form state** - multiple interdependent fields
+3. âš ï¸ **No form validation feedback** - only toast errors
 
 **Recommendation:**
 - Extract `LineItemEditor.tsx`
@@ -512,9 +512,9 @@ export function getInvoiceState(invoice: Invoice): InvoiceState {
 - Uploaded invoices: Use original PDF from S3
 
 **Issues:**
-1. ⚠️ **No caching** - PDF regenerated on every preview
-2. ⚠️ **No error recovery** - if PDF generation fails, user sees generic error
-3. ⚠️ **Rate limiting** - mentioned in docs but not visible in code
+1. âš ï¸ **No caching** - PDF regenerated on every preview
+2. âš ï¸ **No error recovery** - if PDF generation fails, user sees generic error
+3. âš ï¸ **Rate limiting** - mentioned in docs but not visible in code
 
 ---
 
@@ -528,9 +528,9 @@ export function getInvoiceState(invoice: Invoice): InvoiceState {
 
 **Flow:**
 ```
-generateInvoiceHTML() → HTML string
-  → renderPDF(html, options) → PDF Buffer
-  → Stream to client or upload to S3
+generateInvoiceHTML() â†’ HTML string
+  â†’ renderPDF(html, options) â†’ PDF Buffer
+  â†’ Stream to client or upload to S3
 ```
 
 ### 5.2 Template System
@@ -538,8 +538,8 @@ generateInvoiceHTML() → HTML string
 **Location:** `server/templates/invoice.ts` (583 lines)
 
 **Features:**
-- German formatting (DD.MM.YYYY dates, 1.234,56 € currency)
-- Kleinunternehmerregelung support (§ 19 UStG)
+- German formatting (DD.MM.YYYY dates, 1.234,56 â‚¬ currency)
+- Kleinunternehmerregelung support (Â§ 19 UStG)
 - Customizable accent color
 - Embedded Kanit fonts (base64)
 - Repeating footer on every page
@@ -547,9 +547,9 @@ generateInvoiceHTML() → HTML string
 - Notes and terms sections
 
 **Issues:**
-1. ⚠️ **Large template file** - HTML/CSS mixed with logic
-2. ⚠️ **Font embedding** - base64 fonts increase HTML size
-3. ⚠️ **No template versioning** - changes affect all invoices
+1. âš ï¸ **Large template file** - HTML/CSS mixed with logic
+2. âš ï¸ **Font embedding** - base64 fonts increase HTML size
+3. âš ï¸ **No template versioning** - changes affect all invoices
 
 **Recommendation:**
 - Extract CSS to separate file
@@ -567,9 +567,9 @@ generateInvoiceHTML() → HTML string
 - `pdf.generateInvoice` - Generate and store PDF (with share link)
 
 **Issues:**
-1. ⚠️ **External dependency** - PDF service on Fly.io (single point of failure)
-2. ⚠️ **No retry logic** - if service is down, invoice cannot be issued
-3. ⚠️ **No fallback** - no alternative PDF generation method
+1. âš ï¸ **External dependency** - PDF service on Fly.io (single point of failure)
+2. âš ï¸ **No retry logic** - if service is down, invoice cannot be issued
+3. âš ï¸ **No fallback** - no alternative PDF generation method
 
 **Recommendation:**
 - Add retry logic with exponential backoff
@@ -583,39 +583,39 @@ generateInvoiceHTML() → HTML string
 ### 6.1 State Transitions
 
 ```
-CREATED → DRAFT
-  ↓
-DRAFT → SENT (markAsSent / issue)
-  ↓
-SENT → PARTIAL (addPayment)
-  ↓
-SENT/PARTIAL → PAID (markAsPaid)
-  ↓
-PAID → SENT (revertToSent)
-  ↓
-SENT → DRAFT (revertToDraft) [only if amountPaid === 0]
-  ↓
-DRAFT/SENT → CANCELLED (markAsCancelled)
-  ↓
-CANCELLED → DRAFT (markAsNotCancelled)
-  ↓
-DRAFT → ARCHIVED (archive)
-  ↓
-DRAFT → TRASHED (moveToTrash)
-  ↓
-TRASHED → DELETED (delete) [hard delete]
+CREATED â†’ DRAFT
+  â†“
+DRAFT â†’ SENT (markAsSent / issue)
+  â†“
+SENT â†’ PARTIAL (addPayment)
+  â†“
+SENT/PARTIAL â†’ PAID (markAsPaid)
+  â†“
+PAID â†’ SENT (revertToSent)
+  â†“
+SENT â†’ DRAFT (revertToDraft) [only if amountPaid === 0]
+  â†“
+DRAFT/SENT â†’ CANCELLED (markAsCancelled)
+  â†“
+CANCELLED â†’ DRAFT (markAsNotCancelled)
+  â†“
+DRAFT â†’ ARCHIVED (archive)
+  â†“
+DRAFT â†’ TRASHED (moveToTrash)
+  â†“
+TRASHED â†’ DELETED (delete) [hard delete]
 ```
 
 ### 6.2 State Indicators
 
 **Primary Indicators (Timestamps):**
-- `needsReview: boolean` → REVIEW state
-- `sentAt: Date | null` → SENT state (if not null)
-- `paidAt: Date | null` → PAID state (if not null)
-- `amountPaid: number` → PARTIAL state (if > 0 and not paid)
+- `needsReview: boolean` â†’ REVIEW state
+- `sentAt: Date | null` â†’ SENT state (if not null)
+- `paidAt: Date | null` â†’ PAID state (if not null)
+- `amountPaid: number` â†’ PARTIAL state (if > 0 and not paid)
 
 **Secondary Indicator (Enum):**
-- `status: 'draft' | 'open' | 'paid'` → **NOT USED BY UI** (legacy)
+- `status: 'draft' | 'open' | 'paid'` â†’ **NOT USED BY UI** (legacy)
 
 **Issue:** Status enum exists but is ignored. This creates confusion and potential bugs.
 
@@ -626,27 +626,27 @@ TRASHED → DELETED (delete) [hard delete]
 
 ### 6.3 Validation Rules
 
-**Draft → Sent:**
-- ✅ `dueDate` must be set
-- ✅ `total > 0`
-- ✅ `invoiceNumber` must be unique
-- ✅ Not cancelled
-- ✅ Not needsReview (unless uploaded)
+**Draft â†’ Sent:**
+- âœ… `dueDate` must be set
+- âœ… `total > 0`
+- âœ… `invoiceNumber` must be unique
+- âœ… Not cancelled
+- âœ… Not needsReview (unless uploaded)
 
-**Sent → Paid:**
-- ✅ `sentAt` must be set (unless uploaded invoice)
-- ✅ `issueDate` must be set
-- ✅ `total > 0`
-- ✅ Not cancelled
+**Sent â†’ Paid:**
+- âœ… `sentAt` must be set (unless uploaded invoice)
+- âœ… `issueDate` must be set
+- âœ… `total > 0`
+- âœ… Not cancelled
 
 **Revert to Draft:**
-- ✅ `amountPaid === 0` (no payments received)
-- ✅ `sentAt` must be set
-- ✅ Not cancelled
+- âœ… `amountPaid === 0` (no payments received)
+- âœ… `sentAt` must be set
+- âœ… Not cancelled
 
 **Delete:**
-- ✅ `status === 'draft'` (backend check)
-- ✅ `trashedAt` must be set (must be in trash first)
+- âœ… `status === 'draft'` (backend check)
+- âœ… `trashedAt` must be set (must be in trash first)
 
 ---
 
@@ -775,9 +775,9 @@ TRASHED → DELETED (delete) [hard delete]
 ### 8.2 Refactoring (Priority 2)
 
 1. **Split Large Files**
-   - `Invoices.tsx` → multiple components
-   - `InvoiceForm.tsx` → extract `LineItemEditor`
-   - `invoiceRouter.ts` → split by feature (lifecycle, upload, etc.)
+   - `Invoices.tsx` â†’ multiple components
+   - `InvoiceForm.tsx` â†’ extract `LineItemEditor`
+   - `invoiceRouter.ts` â†’ split by feature (lifecycle, upload, etc.)
 
 2. **Extract Shared Logic**
    - Create `@shared/invoice-state` package
@@ -839,10 +839,10 @@ TRASHED → DELETED (delete) [hard delete]
 ## 9. Code Quality Metrics
 
 ### 9.1 File Sizes
-- `Invoices.tsx`: 2,760 lines ⚠️ (should be < 500)
-- `invoiceRouter.ts`: 1,456 lines ⚠️ (should be < 500)
-- `InvoiceForm.tsx`: 996 lines ⚠️ (should be < 500)
-- `invoice.ts` (template): 583 lines ✅ (acceptable)
+- `Invoices.tsx`: 2,760 lines âš ï¸ (should be < 500)
+- `invoiceRouter.ts`: 1,456 lines âš ï¸ (should be < 500)
+- `InvoiceForm.tsx`: 996 lines âš ï¸ (should be < 500)
+- `invoice.ts` (template): 583 lines âœ… (acceptable)
 
 ### 9.2 Complexity
 - **High complexity:** State derivation logic, invoice number generation
@@ -885,14 +885,14 @@ The invoice module is **functionally complete** with sophisticated features, but
 
 | File | Purpose | Lines | Status |
 |------|---------|-------|--------|
-| `server/invoiceRouter.ts` | Main tRPC API | 1,456 | ⚠️ Needs refactoring |
-| `server/db.ts` (invoice functions) | Database queries | ~400 | ✅ Good |
-| `server/templates/invoice.ts` | PDF HTML template | 583 | ✅ Good |
-| `client/src/pages/Invoices.tsx` | Main list page | 2,760 | ⚠️ Too large |
-| `client/src/components/invoices/InvoiceForm.tsx` | Core form | 996 | ⚠️ Too large |
-| `client/src/lib/invoiceState.ts` | State derivation | 66 | ✅ Good |
-| `client/src/lib/invoiceActions.ts` | Action validation | 233 | ✅ Good |
-| `drizzle/schema.ts` (invoices) | Database schema | ~100 | ✅ Good |
+| `server/invoiceRouter.ts` | Main tRPC API | 1,456 | âš ï¸ Needs refactoring |
+| `server/db.ts` (invoice functions) | Database queries | ~400 | âœ… Good |
+| `server/templates/invoice.ts` | PDF HTML template | 583 | âœ… Good |
+| `client/src/pages/Invoices.tsx` | Main list page | 2,760 | âš ï¸ Too large |
+| `client/src/components/invoices/InvoiceForm.tsx` | Core form | 996 | âš ï¸ Too large |
+| `client/src/lib/invoiceState.ts` | State derivation | 66 | âœ… Good |
+| `client/src/lib/invoiceActions.ts` | Action validation | 233 | âœ… Good |
+| `drizzle/schema.ts` (invoices) | Database schema | ~100 | âœ… Good |
 
 ---
 

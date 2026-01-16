@@ -1,4 +1,4 @@
-# Invoice Create & Edit Pages — Complete Documentation
+﻿# Invoice Create & Edit Pages â€” Complete Documentation
 
 ## Overview
 
@@ -12,25 +12,25 @@ The invoice creation and editing system in Mantodeus Manager consists of multipl
 
 ```
 InvoiceCreate (Page)
-└── CreateInvoiceDialog
-    ├── Mobile: Dialog with InvoiceForm
-    └── Desktop: CreateInvoiceWorkspace
-        ├── Left Panel: Preview (40vw)
-        └── Right Panel: InvoiceForm (60vw)
+â””â”€â”€ CreateInvoiceDialog
+    â”œâ”€â”€ Mobile: Dialog with InvoiceForm
+    â””â”€â”€ Desktop: CreateInvoiceWorkspace
+        â”œâ”€â”€ Left Panel: Preview (40vw)
+        â””â”€â”€ Right Panel: InvoiceForm (60vw)
 
-InvoiceDetail (Page)
-├── Desktop Draft: Split layout (same as CreateInvoiceWorkspace)
-├── Mobile/Non-Draft: Single column with InvoiceForm
-└── Uploaded Invoices: InvoiceUploadReviewDialog (never shows InvoiceForm)
+InvoiceView (Page)
+â”œâ”€â”€ Desktop Draft: Split layout (same as CreateInvoiceWorkspace)
+â”œâ”€â”€ Mobile/Non-Draft: Single column with InvoiceForm
+â””â”€â”€ Uploaded Invoices: InvoiceUploadReviewDialog (never shows InvoiceForm)
 ```
 
 ### Key Components
 
-1. **`InvoiceForm.tsx`** — Core form component (shared for create/edit)
-2. **`CreateInvoiceDialog.tsx`** — Mobile dialog wrapper
-3. **`CreateInvoiceWorkspace.tsx`** — Desktop full-page workspace
-4. **`InvoiceDetail.tsx`** — Edit page with conditional layouts
-5. **`InvoiceCreate.tsx`** — Create page (simple wrapper)
+1. **`InvoiceForm.tsx`** â€” Core form component (shared for create/edit)
+2. **`CreateInvoiceDialog.tsx`** â€” Mobile dialog wrapper
+3. **`CreateInvoiceWorkspace.tsx`** â€” Desktop full-page workspace
+4. **`InvoiceView.tsx`** â€” Edit page with conditional layouts
+5. **`InvoiceCreate.tsx`** â€” Create page (simple wrapper)
 
 ---
 
@@ -60,14 +60,14 @@ Shared form component used for both creating and editing invoices. Handles all f
 ### Form Fields
 
 #### Basic Information
-- **Invoice Number** — Auto-generated from company settings, can be manually overridden
-- **Client** — Dropdown select from contacts (optional)
-- **Issue Date** — Required, defaults to today
-- **Due Date** — Optional, required before sending
+- **Invoice Number** â€” Auto-generated from company settings, can be manually overridden
+- **Client** â€” Dropdown select from contacts (optional)
+- **Issue Date** â€” Required, defaults to today
+- **Due Date** â€” Optional, required before sending
 
 #### Service Period
-- **Service Period Start** — Optional date
-- **Service Period End** — Optional date
+- **Service Period Start** â€” Optional date
+- **Service Period End** â€” Optional date
 
 #### Line Items
 - Dynamic list of invoice items
@@ -76,10 +76,10 @@ Shared form component used for both creating and editing invoices. Handles all f
 - Categories: services, materials, travel, other (via `InvoiceCategorySelect`)
 
 #### Additional Fields
-- **Partial Invoice** — Boolean flag (future use)
-- **Anmerkungen (Notes)** — Optional textarea (appears on invoice PDF)
-- **Bedingungen (Terms)** — Optional textarea (appears on invoice PDF)
-- **Order/Reference Number** — Optional text field
+- **Partial Invoice** â€” Boolean flag (future use)
+- **Anmerkungen (Notes)** â€” Optional textarea (appears on invoice PDF)
+- **Bedingungen (Terms)** â€” Optional textarea (appears on invoice PDF)
+- **Order/Reference Number** â€” Optional text field
 
 ### State Management
 
@@ -158,9 +158,9 @@ The form becomes read-only when:
 - Hidden when invoice is fully paid
 
 #### Warning Banners
-- "Not sent yet" — if `!sentAt && !needsReview`
-- "Sent but not paid" — if `sentAt && !paidAt`
-- "Overdue" — if past due date and not paid
+- "Not sent yet" â€” if `!sentAt && !needsReview`
+- "Sent but not paid" â€” if `sentAt && !paidAt`
+- "Overdue" â€” if past due date and not paid
 
 ### Line Item Editor Modal
 
@@ -243,13 +243,13 @@ Both mobile and desktop use the same preview endpoint:
 
 **Features:**
 - Uses unsaved form data (via `getFormDataRef`)
-- Rate limiting (429 status) — silently fails, keeps last valid preview
+- Rate limiting (429 status) â€” silently fails, keeps last valid preview
 - AbortController for cancellation
 - Blob URL management (cleanup on unmount)
 
 ---
 
-## Edit Invoice Flow (`InvoiceDetail.tsx`)
+## Edit Invoice Flow (`InvoiceView.tsx`)
 
 ### Route
 `/invoices/:id`
@@ -303,8 +303,8 @@ function getInvoiceState(invoice) {
 ### Preview Behavior
 
 #### For Created Invoices
-- **Saved Preview:** Click "Preview" button → generates PDF from saved invoice data
-- **Unsaved Preview:** Click "Update Preview" button → generates PDF from form data (unsaved)
+- **Saved Preview:** Click "Preview" button â†’ generates PDF from saved invoice data
+- **Unsaved Preview:** Click "Update Preview" button â†’ generates PDF from form data (unsaved)
 
 #### For Uploaded Invoices
 - Uses original PDF from S3 (`originalPdfS3Key`)
@@ -400,7 +400,7 @@ Uses `@react-pdf/renderer` to generate PDFs:
 - Includes company settings (logo, address, bank details)
 - Includes client contact info (if linked)
 - Includes all line items with totals
-- German formatting (DD.MM.YYYY dates, 1.234,56 € currency)
+- German formatting (DD.MM.YYYY dates, 1.234,56 â‚¬ currency)
 
 ---
 
@@ -502,7 +502,7 @@ Uses `@react-pdf/renderer` to generate PDFs:
 - Counter resets each year
 
 ### VAT Handling
-- Currently: VAT is 0 (Kleinunternehmerregelung § 19 UStG)
+- Currently: VAT is 0 (Kleinunternehmerregelung Â§ 19 UStG)
 - Future: Configurable VAT rate (default 19%)
 - `isKleinunternehmer` flag in company settings
 
@@ -515,7 +515,7 @@ Uses `@react-pdf/renderer` to generate PDFs:
 
 ### PDF Format
 - German date format: DD.MM.YYYY
-- German currency format: 1.234,56 €
+- German currency format: 1.234,56 â‚¬
 - Includes company address, tax number, bank details
 
 ---
@@ -569,26 +569,26 @@ Uses `@react-pdf/renderer` to generate PDFs:
 ## File Locations
 
 ### Frontend Components
-- `client/src/components/invoices/InvoiceForm.tsx` — Main form component
-- `client/src/components/invoices/CreateInvoiceDialog.tsx` — Mobile dialog
-- `client/src/components/invoices/CreateInvoiceWorkspace.tsx` — Desktop workspace
-- `client/src/pages/InvoiceCreate.tsx` — Create page
-- `client/src/pages/InvoiceDetail.tsx` — Edit page
-- `client/src/components/invoices/InvoiceCategorySelect.tsx` — Category selector
-- `client/src/components/invoices/ShareInvoiceDialog.tsx` — Share dialog
-- `client/src/components/invoices/AddPaymentDialog.tsx` — Payment dialog
-- `client/src/components/invoices/InvoiceStatusActionsDropdown.tsx` — Status actions
+- `client/src/components/invoices/InvoiceForm.tsx` â€” Main form component
+- `client/src/components/invoices/CreateInvoiceDialog.tsx` â€” Mobile dialog
+- `client/src/components/invoices/CreateInvoiceWorkspace.tsx` â€” Desktop workspace
+- `client/src/pages/InvoiceCreate.tsx` â€” Create page
+- `client/src/pages/InvoiceView.tsx` â€” Edit page
+- `client/src/components/invoices/InvoiceCategorySelect.tsx` â€” Category selector
+- `client/src/components/invoices/ShareInvoiceDialog.tsx` â€” Share dialog
+- `client/src/components/invoices/AddPaymentDialog.tsx` â€” Payment dialog
+- `client/src/components/invoices/InvoiceStatusActionsDropdown.tsx` â€” Status actions
 
 ### Backend
-- `server/invoiceRouter.ts` — tRPC router with all endpoints
-- `server/db.ts` — Database queries
-- `server/_core/index.ts` — PDF preview endpoint
-- `server/templates/invoice.tsx` — PDF template
+- `server/invoiceRouter.ts` â€” tRPC router with all endpoints
+- `server/db.ts` â€” Database queries
+- `server/_core/index.ts` â€” PDF preview endpoint
+- `server/templates/invoice.tsx` â€” PDF template
 
 ### Utilities
-- `client/src/lib/invoiceState.ts` — State calculation helpers
-- `client/src/lib/invoiceActions.ts` — Action validation helpers
-- `client/src/lib/accountingDate.ts` — Date helpers
+- `client/src/lib/invoiceState.ts` â€” State calculation helpers
+- `client/src/lib/invoiceActions.ts` â€” Action validation helpers
+- `client/src/lib/accountingDate.ts` â€” Date helpers
 
 ---
 

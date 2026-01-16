@@ -6,13 +6,13 @@
  */
 
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Eye, Loader2 } from "@/components/ui/Icon";
+import { Eye, Loader2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
-import { cn } from "@/lib/utils";
 import { InvoiceForm, InvoicePreviewData } from "./InvoiceForm";
 import { Button } from "@/components/ui/button";
 import { CreateInvoiceWorkspace } from "./CreateInvoiceWorkspace";
+import { InvoiceWorkspaceBody, InvoiceWorkspaceHeader } from "./InvoiceWorkspaceLayout";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { DocumentPreview } from "@/components/document-preview/DocumentPreview";
@@ -167,31 +167,14 @@ export function CreateInvoiceDialog({
         />
       ) : (
         <div className="flex min-h-full w-full flex-col">
-          {/* PageHeader-like structure matching Invoices page */}
-          <div className="flex-shrink-0" style={{ marginBottom: 'var(--space-page-gap, 24px)' }}>
-            {/* TitleRow */}
-          <div className="flex items-center gap-3" style={{ paddingTop: isMobile ? '0' : '1rem' }}>
-              {/* Arrow button on left */}
+          <InvoiceWorkspaceHeader
+            title="Create Invoice"
+            onClose={handleClose}
+            actions={
               <Button
-                variant="icon"
-                size="icon"
-                onClick={handleClose}
-                className="size-9 [&_svg]:size-8 hover:bg-muted/50 shrink-0"
-                aria-label="Close"
-              >
-                <ArrowLeft />
-              </Button>
-              
-              {/* Title */}
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <h1 className="text-2xl md:text-3xl font-light">Create Invoice</h1>
-              </div>
-              
-              {/* Save button */}
-              <Button 
-                type="submit" 
-                form="invoice-form" 
-                className="shrink-0" 
+                type="submit"
+                form="invoice-form"
+                className="shrink-0"
                 disabled={getLoadingStateRef.current?.() || false}
               >
                 {getLoadingStateRef.current?.() ? (
@@ -203,16 +186,10 @@ export function CreateInvoiceDialog({
                   "Save"
                 )}
               </Button>
-            </div>
-          </div>
+            }
+          />
 
-          {/* Fade-out separator */}
-          <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
-
-          <div className={cn(
-            "pt-2 flex-1 min-h-0 flex flex-col overflow-y-auto sm:px-6",
-            "pb-0"
-          )}>
+          <InvoiceWorkspaceBody className="flex flex-col">
             <InvoiceForm
               mode="create"
               contacts={contacts}
@@ -270,10 +247,9 @@ export function CreateInvoiceDialog({
                 </div>
               }
             />
-          </div>
+          </InvoiceWorkspaceBody>
         </div>
       )}
     </>
   );
 }
-

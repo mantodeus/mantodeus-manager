@@ -9,13 +9,17 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { X, Eye, Loader2 } from "@/components/ui/Icon";
+import { Eye, Loader2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { InvoiceForm, InvoicePreviewData } from "./InvoiceForm";
 import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/useMobile";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  InvoiceWorkspaceBody,
+  InvoiceWorkspaceHeader,
+} from "./InvoiceWorkspaceLayout";
 
 interface CreateInvoiceWorkspaceProps {
   open: boolean;
@@ -366,7 +370,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
           {/* Backdrop overlay */}
           {createPortal(
             <div
-              className="fixed z-[100] bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+              className="fixed z-[100] bg-black/40 backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
               onClick={(e) => {
                 if (previewDialogOpen) {
                   e.preventDefault();
@@ -405,7 +409,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
               {/* Preview Panel - Left side */}
               <div
                 ref={previewPanelRef}
-                className="fixed z-[110] bg-background border-r shadow-lg rounded-lg"
+                className="fixed z-[110] bg-background border border-border shadow-xl rounded-lg"
                 style={{
                   top: "1.5rem",
                   left: "1.5rem",
@@ -460,7 +464,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
               {/* Form Panel - Right side */}
               <div
                 ref={formPanelRef}
-                className="fixed z-[110] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
+                className="fixed z-[110] bg-background border border-border shadow-xl rounded-lg flex flex-col overflow-hidden"
                 style={{
                   top: "1.5rem",
                   right: "1.5rem",
@@ -473,47 +477,30 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
                 onMouseDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
               >
-                <div className="flex-1 overflow-y-auto min-h-0">
-                  <div className="p-6 space-y-6">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4 min-w-0 flex-1">
-                        <div className="flex-1 min-w-0 flex flex-col">
-                          <h1 className="text-3xl font-regular">Create Invoice</h1>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <Button 
-                          type="submit" 
-                          form="invoice-form" 
-                          className="shrink-0" 
-                          disabled={getLoadingStateRef.current?.() || false}
-                        >
-                          {getLoadingStateRef.current?.() ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Saving...
-                            </>
-                          ) : (
-                            "Save"
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={onClose}
-                          className="h-10 w-10"
-                          aria-label="Close"
-                        >
-                          <X className="h-6 w-6" />
-                        </Button>
-                      </div>
-                    </div>
+                <div className="flex h-full flex-col">
+                  <InvoiceWorkspaceHeader
+                    title="Create Invoice"
+                    onClose={onClose}
+                    actions={
+                      <Button
+                        type="submit"
+                        form="invoice-form"
+                        className="shrink-0"
+                        disabled={getLoadingStateRef.current?.() || false}
+                      >
+                        {getLoadingStateRef.current?.() ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save"
+                        )}
+                      </Button>
+                    }
+                  />
 
-                    {/* Fade-out separator */}
-                    <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
-
-                    {/* Form */}
+                  <InvoiceWorkspaceBody>
                     <InvoiceForm
                       mode="create"
                       contacts={contacts}
@@ -544,7 +531,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
                         </Button>
                       }
                     />
-                  </div>
+                  </InvoiceWorkspaceBody>
                 </div>
               </div>
             </>,
