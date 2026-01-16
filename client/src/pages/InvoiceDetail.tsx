@@ -3,7 +3,7 @@ import { ShareInvoiceDialog } from "@/components/invoices/ShareInvoiceDialog";
 import { InvoiceStatusActionsDropdown } from "@/components/invoices/InvoiceStatusActionsDropdown";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, DocumentCurrencyEuro, Eye, X } from "@/components/ui/Icon";
+import { ArrowLeft, Loader2, Eye, X } from "@/components/ui/Icon";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { InvoiceUploadReviewDialog } from "@/components/InvoiceUploadReviewDialog";
@@ -321,13 +321,7 @@ export default function InvoiceDetail() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4 min-w-0 flex-1">
                       <div className="flex-1 min-w-0 flex flex-col">
-                        <h1 className="text-3xl font-regular flex items-center gap-2">
-                          <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
-                          {title}
-                        </h1>
-                        <p className="text-muted-foreground text-sm mt-3">
-                          View and edit invoice details
-                        </p>
+                        <h1 className="text-3xl font-regular">Edit Invoice</h1>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-3 shrink-0">
@@ -342,6 +336,9 @@ export default function InvoiceDetail() {
                       </Button>
                     </div>
                   </div>
+
+                  {/* Fade-out separator */}
+                  <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
 
                   {/* Action buttons */}
                   <div className="flex items-center justify-end gap-2 pb-2 border-b">
@@ -439,26 +436,7 @@ export default function InvoiceDetail() {
         {/* TitleRow */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-2">
-              {isMobile ? (
-                <>
-                  <DocumentCurrencyEuro className="h-6 w-6 text-primary mt-1" />
-                  <div className="flex min-w-0 flex-col">
-                    <h1 className="text-2xl md:text-3xl font-light">Edit</h1>
-                    {headerSubtitle && (
-                      <p className="text-muted-foreground text-sm mt-2 truncate">
-                        {headerSubtitle}
-                      </p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <h1 className="text-4xl md:text-3xl font-light flex items-center gap-2">
-                  <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
-                  {title}
-                </h1>
-              )}
-            </div>
+            <h1 className="text-2xl md:text-3xl font-light">Edit Invoice</h1>
           </div>
           
           {/* Icon Cluster - back arrow */}
@@ -539,7 +517,7 @@ export default function InvoiceDetail() {
       </div>
       
       {/* Fade-out separator */}
-      <div className="separator-fade" />
+      <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
 
       {showDesktopDraftSplit ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start min-h-[calc(100vh-12rem)]">

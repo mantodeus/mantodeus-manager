@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
-import { Loader2, FileText, Eye, Send, CheckCircle2, DocumentCurrencyEuro, CurrencyEuro, ArrowLeft, RotateCcw, Info as HelpCircle, Sparkles, MoreVertical, Edit, Copy, Trash2, Archive, XCircle, X } from "@/components/ui/Icon";
+import { Loader2, Eye, Send, CheckCircle2, CurrencyEuro, ArrowLeft, RotateCcw, Info as HelpCircle, Sparkles, MoreVertical, Edit, Copy, Trash2, Archive, XCircle, X } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -1064,13 +1064,8 @@ export function InvoiceUploadReviewDialog({
             {isMobile ? <ArrowLeft /> : <X className="h-6 w-6" />}
           </Button>
           
-          {/* Title with icon */}
+          {/* Title */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            {isReview ? (
-              <FileText className="h-6 w-6 text-primary shrink-0" />
-            ) : (
-              <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
-            )}
             <h1 className="text-2xl md:text-3xl font-light">
               {isReview ? "Review Invoice" : "Edit Invoice"}
             </h1>
@@ -1129,22 +1124,10 @@ export function InvoiceUploadReviewDialog({
             </div>
           )}
         </div>
-        
-        {/* Invoice Number Row - aligned below icon */}
-        {invoice?.invoiceNumber && (
-          <div className="flex items-start gap-3 pb-1">
-            {/* Spacer to align with icon (arrow button width + gap) */}
-            <div className="size-9 shrink-0" />
-            {/* Invoice number - aligned with icon (gap-3 automatically adds space) */}
-            <p className="text-2xl md:text-3xl font-light text-muted-foreground">
-              {invoice.invoiceNumber}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Fade-out separator */}
-      <div className="separator-fade" />
+      <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
 
       <div className={cn(
         "space-y-4 pt-2 sm:px-6 flex-1 min-h-0 overflow-y-auto",

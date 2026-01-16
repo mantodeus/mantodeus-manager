@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Upload, ArrowLeft, FileText, Loader2, DocumentCurrencyEuro, X } from "@/components/ui/Icon";
+import { AlertCircle, Upload, ArrowLeft, FileText, Loader2, X } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/useMobile";
 import { InvoiceUploadZone } from "./InvoiceUploadZone";
@@ -142,6 +142,12 @@ export function BulkInvoiceUploadDialog({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  // Always render the same structure to avoid hooks violations
+  // The conditional rendering happens at the Dialog level, not component structure
+  if (!open && !isMobile) {
+    return null;
+  }
+
   const content = (
     <>
       {/* PageHeader-like structure matching Invoices page */}
@@ -163,16 +169,15 @@ export function BulkInvoiceUploadDialog({
             <ArrowLeft />
           </Button>
           
-          {/* Title with icon */}
+          {/* Title */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
             <h1 className="text-2xl md:text-3xl font-light">Upload Invoices</h1>
           </div>
         </div>
       </div>
 
       {/* Fade-out separator */}
-      <div className="separator-fade" />
+      <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
 
       <div className={cn(
         "pt-2 overflow-y-auto flex-1 min-h-0",

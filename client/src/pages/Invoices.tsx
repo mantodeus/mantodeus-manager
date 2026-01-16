@@ -1601,16 +1601,8 @@ export default function Invoices() {
     }
   };
 
-  if (isMobile && bulkUploadOpen) {
-    return (
-      <BulkInvoiceUploadDialog
-        open={bulkUploadOpen}
-        onOpenChange={setBulkUploadOpen}
-        onUpload={handleBulkUpload}
-        isUploading={bulkUploadMutation.isPending}
-      />
-    );
-  }
+  // Note: Don't early return here - render BulkInvoiceUploadDialog at the bottom
+  // to ensure consistent hook order
 
   const getStatusBadge = (invoice: any) => {
     const invoiceState = getInvoiceState(invoice);

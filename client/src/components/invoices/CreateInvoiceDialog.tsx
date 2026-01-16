@@ -6,7 +6,7 @@
  */
 
 import { trpc } from "@/lib/trpc";
-import { DocumentCurrencyEuro, ArrowLeft, Eye, Loader2 } from "@/components/ui/Icon";
+import { ArrowLeft, Eye, Loader2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,7 @@ export function CreateInvoiceDialog({
   const inlinePreviewRef = useRef<HTMLDivElement>(null);
   const previewGenerationRef = useRef<AbortController | null>(null);
   const getFormDataRef = useRef<(() => InvoicePreviewData | null) | null>(null);
+  const getLoadingStateRef = useRef<(() => boolean) | null>(null);
   const handleClose = () => {
     onOpenChange(false);
   };
@@ -181,16 +182,32 @@ export function CreateInvoiceDialog({
                 <ArrowLeft />
               </Button>
               
-              {/* Title with icon */}
+              {/* Title */}
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <DocumentCurrencyEuro className="h-6 w-6 text-primary shrink-0" />
                 <h1 className="text-2xl md:text-3xl font-light">Create Invoice</h1>
               </div>
+              
+              {/* Save button */}
+              <Button 
+                type="submit" 
+                form="invoice-form" 
+                className="shrink-0" 
+                disabled={getLoadingStateRef.current?.() || false}
+              >
+                {getLoadingStateRef.current?.() ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </Button>
             </div>
           </div>
 
           {/* Fade-out separator */}
-          <div className="separator-fade" />
+          <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
 
           <div className={cn(
             "pt-2 flex-1 min-h-0 flex flex-col overflow-y-auto sm:px-6",
@@ -202,6 +219,8 @@ export function CreateInvoiceDialog({
               onClose={handleClose}
               onSuccess={handleSuccess}
               getFormDataRef={getFormDataRef}
+              getLoadingStateRef={getLoadingStateRef}
+              hideFooterSave={true}
               renderBeforeFooter={
                 <div className="w-full space-y-2">
                   <Button

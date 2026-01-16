@@ -90,6 +90,8 @@ export function InvoiceForm({
   onFormChange,
   getFormDataRef,
   renderBeforeFooter,
+  hideFooterSave = false,
+  getLoadingStateRef,
 }: {
   mode: "create" | "edit";
   invoiceId?: number;
@@ -102,6 +104,8 @@ export function InvoiceForm({
   onFormChange?: (formData: InvoicePreviewData) => void;
   getFormDataRef?: React.MutableRefObject<(() => InvoicePreviewData | null) | null>;
   renderBeforeFooter?: React.ReactNode;
+  hideFooterSave?: boolean;
+  getLoadingStateRef?: React.MutableRefObject<(() => boolean) | null>;
 }) {
   const isCreate = mode === "create";
   const [formState, setFormState] = useState<InvoiceFormState>(() => ({
@@ -279,6 +283,14 @@ export function InvoiceForm({
   const derivedValues = invoice ? getDerivedValues(invoice) : { outstanding: 0, isPaid: false, isPartial: false, isOverdue: false };
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
+
+  // Expose loading state to parent components
+  useEffect(() => {
+    if (getLoadingStateRef) {
+      getLoadingStateRef.current = () => isLoading;
+    }
+  }, [isLoading, getLoadingStateRef]);
+
   const isCancellation = invoice?.type === "cancellation";
   const isCancelledOriginal = Boolean(invoice?.isCancelled);
   
@@ -767,35 +779,39 @@ export function InvoiceForm({
         )}
         
         {/* Delete and Update buttons - lifecycle actions are now in status badge dropdown */}
-        <div className="flex gap-2 pt-2 border-t">
-          {!isCreate && invoice && (
-            <Button 
-              type="button" 
-              variant="destructive-outline" 
-              className="flex-1" 
-              onClick={() => {
-                if (isDraft || isReview) {
-                  moveToTrashMutation.mutate({ id: invoiceId! });
-                } else {
-                  archiveMutation.mutate({ id: invoiceId! });
-                }
-              }}
-              disabled={isLoading || moveToTrashMutation.isPending || archiveMutation.isPending}
-            >
-              {(moveToTrashMutation.isPending || archiveMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Delete
-            </Button>
-          )}
-          <Button 
-            type="submit" 
-            form="invoice-form" 
-            className={!isCreate && invoice ? "flex-1" : "flex-1"} 
-            disabled={isLoading || isReadOnly || isCancelled}
-          >
-            {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            Save
-          </Button>
-        </div>
+        {(!hideFooterSave || (!isCreate && invoice)) && (
+          <div className="flex gap-2 pt-2 border-t">
+            {!isCreate && invoice && (
+              <Button 
+                type="button" 
+                variant="destructive-outline" 
+                className="flex-1" 
+                onClick={() => {
+                  if (isDraft || isReview) {
+                    moveToTrashMutation.mutate({ id: invoiceId! });
+                  } else {
+                    archiveMutation.mutate({ id: invoiceId! });
+                  }
+                }}
+                disabled={isLoading || moveToTrashMutation.isPending || archiveMutation.isPending}
+              >
+                {(moveToTrashMutation.isPending || archiveMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Delete
+              </Button>
+            )}
+            {!hideFooterSave && (
+              <Button 
+                type="submit" 
+                form="invoice-form" 
+                className={!isCreate && invoice ? "flex-1" : "flex-1"} 
+                disabled={isLoading || isReadOnly || isCancelled}
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Save
+              </Button>
+            )}
+          </div>
+        )}
         
         {/* Mark as Not Cancelled button - only for cancelled invoices, at bottom */}
         {!isCreate && invoice && isCancelled && (

@@ -9,7 +9,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { DocumentCurrencyEuro, X, Eye, Loader2 } from "@/components/ui/Icon";
+import { X, Eye, Loader2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { InvoiceForm, InvoicePreviewData } from "./InvoiceForm";
 import { supabase } from "@/lib/supabase";
@@ -478,16 +478,25 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-4 min-w-0 flex-1">
                         <div className="flex-1 min-w-0 flex flex-col">
-                          <h1 className="text-3xl font-regular flex items-center gap-2">
-                            <DocumentCurrencyEuro className="h-6 w-6 text-primary" />
-                            Create Invoice
-                          </h1>
-                          <p className="text-muted-foreground text-sm mt-3">
-                            Create a new invoice
-                          </p>
+                          <h1 className="text-3xl font-regular">Create Invoice</h1>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-3 shrink-0">
+                      <div className="flex items-center gap-3 shrink-0">
+                        <Button 
+                          type="submit" 
+                          form="invoice-form" 
+                          className="shrink-0" 
+                          disabled={getLoadingStateRef.current?.() || false}
+                        >
+                          {getLoadingStateRef.current?.() ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            "Save"
+                          )}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -501,7 +510,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
                     </div>
 
                     {/* Fade-out separator */}
-                    <div className="separator-fade" />
+                    <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
 
                     {/* Form */}
                     <InvoiceForm
@@ -510,6 +519,8 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
                       onClose={onClose}
                       onSuccess={handleSuccess}
                       getFormDataRef={getFormDataRef}
+                      getLoadingStateRef={getLoadingStateRef}
+                      hideFooterSave={true}
                       renderBeforeFooter={
                         <Button
                           type="button"
