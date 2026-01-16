@@ -107,6 +107,26 @@
           document.body.appendChild(script);
         }
       })();
+      
+      // Load Eruda mobile console (works on iOS without Mac)
+      // Access by tapping the floating button or long-pressing anywhere
+      (function() {
+        // Only load in development or if localStorage flag is set
+        var isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        var enableEruda = localStorage.getItem('enable-eruda') === 'true';
+        
+        if (isDev || enableEruda) {
+          var script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/eruda@3.0.1/eruda.js';
+          script.onload = function() {
+            if (typeof eruda !== 'undefined') {
+              eruda.init();
+              console.log('[Eruda] Mobile console loaded. Tap the floating button to open.');
+            }
+          };
+          document.head.appendChild(script);
+        }
+      })();
     </script>
   </body>
 

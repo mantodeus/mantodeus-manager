@@ -55,7 +55,15 @@ function DropdownMenuContent({
           const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
           const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
           const appContent = document.querySelector('.app-content') as HTMLElement | null;
-          fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-menu.tsx:49',message:'Dropdown state changed',data:{wasOpen,nowOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+          const logData = {location:'dropdown-menu.tsx:49',message:'Dropdown state changed',data:{wasOpen,nowOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'};
+          console.log('[DEBUG]', logData);
+          try {
+            const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+            logs.push(logData);
+            if (logs.length > 100) logs.shift();
+            localStorage.setItem('debug-logs', JSON.stringify(logs));
+          } catch(e) {}
+          fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
         }
         // #endregion
       }
@@ -134,7 +142,15 @@ function DropdownMenuContent({
     const checkScroll = () => {
       const appContent = document.querySelector('.app-content') as HTMLElement | null;
       const menuRect = menuRef.current?.getBoundingClientRect();
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-menu.tsx:119',message:'Menu open scroll check',data:{isOpen,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,menuTop:menuRect?.top,menuBottom:menuRect?.bottom,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+      const logData = {location:'dropdown-menu.tsx:119',message:'Menu open scroll check',data:{isOpen,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,menuTop:menuRect?.top,menuBottom:menuRect?.bottom,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'};
+      console.log('[DEBUG]', logData);
+      try {
+        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+        logs.push(logData);
+        if (logs.length > 100) logs.shift();
+        localStorage.setItem('debug-logs', JSON.stringify(logs));
+      } catch(e) {}
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
     };
     const timeout = setTimeout(checkScroll, 50);
     const timeout2 = setTimeout(checkScroll, 150);
@@ -152,12 +168,28 @@ function DropdownMenuContent({
         onOpenAutoFocus={(event) => {
           // #region agent log
           const appContent = document.querySelector('.app-content') as HTMLElement | null;
-          fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-menu.tsx:126',message:'onOpenAutoFocus called',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow,defaultPrevented:event.defaultPrevented},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+          const logData1 = {location:'dropdown-menu.tsx:126',message:'onOpenAutoFocus called',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow,defaultPrevented:event.defaultPrevented},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'};
+          console.log('[DEBUG]', logData1);
+          try {
+            const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+            logs.push(logData1);
+            if (logs.length > 100) logs.shift();
+            localStorage.setItem('debug-logs', JSON.stringify(logs));
+          } catch(e) {}
+          fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData1)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
           // #endregion
           if (isMobile && isStandalone) {
             event.preventDefault();
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-menu.tsx:132',message:'onOpenAutoFocus prevented',data:{isMobile,isStandalone},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+            const logData2 = {location:'dropdown-menu.tsx:132',message:'onOpenAutoFocus prevented',data:{isMobile,isStandalone},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'};
+            console.log('[DEBUG]', logData2);
+            try {
+              const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+              logs.push(logData2);
+              if (logs.length > 100) logs.shift();
+              localStorage.setItem('debug-logs', JSON.stringify(logs));
+            } catch(e) {}
+            fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
             // #endregion
           }
           onOpenAutoFocus?.(event);

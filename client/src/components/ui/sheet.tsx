@@ -91,12 +91,28 @@ function SheetContent({
         onOpenAutoFocus={(event) => {
           // #region agent log
           const appContent = document.querySelector('.app-content') as HTMLElement | null;
-          fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'sheet.tsx:91',message:'Sheet onOpenAutoFocus called',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+          const logData1 = {location:'sheet.tsx:91',message:'Sheet onOpenAutoFocus called',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'};
+          console.log('[DEBUG]', logData1);
+          try {
+            const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+            logs.push(logData1);
+            if (logs.length > 100) logs.shift();
+            localStorage.setItem('debug-logs', JSON.stringify(logs));
+          } catch(e) {}
+          fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData1)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
           // #endregion
           if (isMobile && isStandalone) {
             event.preventDefault();
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'sheet.tsx:95',message:'Sheet onOpenAutoFocus prevented',data:{isMobile,isStandalone},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+            const logData2 = {location:'sheet.tsx:95',message:'Sheet onOpenAutoFocus prevented',data:{isMobile,isStandalone},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'};
+            console.log('[DEBUG]', logData2);
+            try {
+              const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+              logs.push(logData2);
+              if (logs.length > 100) logs.shift();
+              localStorage.setItem('debug-logs', JSON.stringify(logs));
+            } catch(e) {}
+            fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
             // #endregion
           }
           onOpenAutoFocus?.(event);

@@ -53,6 +53,132 @@ import { useEffect, useState } from "react";
 import { initializeTheme } from "@/lib/theme";
 
 // #region agent log
+// Helper to extract debug logs from localStorage (run in console: window.getDebugLogs())
+if (typeof window !== 'undefined') {
+  (window as any).getDebugLogs = () => {
+    try {
+      const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+      console.table(logs);
+      return logs;
+    } catch(e) {
+      console.error('Failed to get logs:', e);
+      return [];
+    }
+  };
+  (window as any).clearDebugLogs = () => {
+    localStorage.removeItem('debug-logs');
+    console.log('Debug logs cleared');
+  };
+  (window as any).toggleDebugPanel = () => {
+    const panel = document.getElementById('debug-panel');
+    if (panel) {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    } else {
+      createDebugPanel();
+    }
+  };
+  
+  function createDebugPanel() {
+    const panel = document.createElement('div');
+    panel.id = 'debug-panel';
+    const isMobile = window.innerWidth < 768;
+    panel.style.cssText = `position:fixed;${isMobile ? 'bottom:0;left:0;right:0;width:100%;max-height:70vh;' : 'bottom:20px;right:20px;width:400px;max-height:500px;'}background:#1a1a1a;color:#fff;border:2px solid #00ff88;border-radius:${isMobile ? '16px 16px 0 0;' : '8px;'}padding:16px;z-index:99999;overflow-y:auto;font-family:monospace;font-size:${isMobile ? '11px' : '12px'};box-shadow:0 4px 20px rgba(0,0,0,0.5);`;
+    
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #333;';
+    header.innerHTML = '<strong style="color:#00ff88;">Debug Logs</strong><button id="debug-close" style="background:#ff4444;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">Close</button>';
+    
+    const controls = document.createElement('div');
+    controls.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
+    controls.innerHTML = '<button id="debug-refresh" style="background:#00ff88;color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-weight:bold;">Refresh</button><button id="debug-clear" style="background:#ff8800;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;">Clear</button><button id="debug-copy" style="background:#0088ff;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;">Copy JSON</button>';
+    
+    const logContainer = document.createElement('div');
+    logContainer.id = 'debug-log-container';
+    const isMobile = window.innerWidth < 768;
+    logContainer.style.cssText = `max-height:${isMobile ? '50vh' : '400px'};overflow-y:auto;`;
+    
+    function updateLogs() {
+      try {
+        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+        logContainer.innerHTML = logs.length === 0 
+          ? '<div style="color:#888;padding:8px;">No logs yet. Try opening a menu/dropdown.</div>'
+          : logs.slice(-50).reverse().map((log: any, i: number) => {
+              const time = new Date(log.timestamp).toLocaleTimeString();
+              return `<div style="padding:8px;margin-bottom:4px;background:${i % 2 === 0 ? '#222' : '#1a1a1a'};border-left:3px solid #00ff88;">
+                <div style="color:#00ff88;font-weight:bold;">[${time}] ${log.message}</div>
+                <div style="color:#888;font-size:10px;margin-top:4px;">${log.location}</div>
+                <details style="margin-top:4px;"><summary style="color:#aaa;cursor:pointer;">Data</summary><pre style="color:#ccc;margin:4px 0;white-space:pre-wrap;font-size:10px;">${JSON.stringify(log.data, null, 2)}</pre></details>
+              </div>`;
+            }).join('');
+      } catch(e) {
+        logContainer.innerHTML = `<div style="color:#ff4444;">Error: ${e}</div>`;
+      }
+    }
+    
+    updateLogs();
+    
+    header.querySelector('#debug-close')?.addEventListener('click', () => {
+      panel.style.display = 'none';
+    });
+    
+    controls.querySelector('#debug-refresh')?.addEventListener('click', updateLogs);
+    controls.querySelector('#debug-clear')?.addEventListener('click', () => {
+      localStorage.removeItem('debug-logs');
+      updateLogs();
+    });
+    controls.querySelector('#debug-copy')?.addEventListener('click', () => {
+      try {
+        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+        navigator.clipboard.writeText(JSON.stringify(logs, null, 2));
+        alert('Logs copied to clipboard!');
+      } catch(e) {
+        alert('Failed to copy: ' + e);
+      }
+    });
+    
+    panel.appendChild(header);
+    panel.appendChild(controls);
+    panel.appendChild(logContainer);
+    document.body.appendChild(panel);
+    
+    // Auto-refresh every 2 seconds
+    const interval = setInterval(updateLogs, 2000);
+    panel.addEventListener('remove', () => clearInterval(interval));
+  }
+  
+  // Add keyboard shortcut to toggle panel (Shift+D)
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    document.addEventListener('keydown', (e) => {
+      if (e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        (window as any).toggleDebugPanel();
+      }
+    });
+    
+    // Create floating button to open debug panel (mobile-friendly)
+    setTimeout(() => {
+      const button = document.createElement('button');
+      button.id = 'debug-panel-toggle';
+      button.innerHTML = '🐛';
+      button.title = 'Debug Panel (or press Shift+D)';
+      button.style.cssText = 'position:fixed;bottom:80px;right:20px;width:50px;height:50px;background:#00ff88;color:#000;border:none;border-radius:50%;font-size:24px;z-index:99998;cursor:pointer;box-shadow:0 4px 12px rgba(0,255,136,0.4);display:flex;align-items:center;justify-content:center;';
+      button.addEventListener('click', () => {
+        (window as any).toggleDebugPanel();
+      });
+      button.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        button.style.transform = 'scale(0.9)';
+      });
+      button.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        button.style.transform = 'scale(1)';
+        (window as any).toggleDebugPanel();
+      });
+      document.body.appendChild(button);
+    }, 1000);
+  }
+}
+
 // Global scroll listener to track scroll changes
 if (typeof window !== 'undefined') {
   let lastWindowScrollY = window.scrollY;
@@ -70,7 +196,15 @@ if (typeof window !== 'undefined') {
     if (currentWindowScrollY !== lastWindowScrollY || currentAppContentScrollTop !== lastAppContentScrollTop) {
       const isMobile = window.innerWidth < 768;
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:scroll',message:'Scroll detected',data:{isMobile,isStandalone,windowScrollY:currentWindowScrollY,windowScrollYDelta:currentWindowScrollY-lastWindowScrollY,appContentScrollTop:currentAppContentScrollTop,appContentScrollTopDelta:currentAppContentScrollTop!==null&&lastAppContentScrollTop!==null?currentAppContentScrollTop-lastAppContentScrollTop:null,windowInnerHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'})}).catch(()=>{});
+      const logData = {location:'App.tsx:scroll',message:'Scroll detected',data:{isMobile,isStandalone,windowScrollY:currentWindowScrollY,windowScrollYDelta:currentWindowScrollY-lastWindowScrollY,appContentScrollTop:currentAppContentScrollTop,appContentScrollTopDelta:currentAppContentScrollTop!==null&&lastAppContentScrollTop!==null?currentAppContentScrollTop-lastAppContentScrollTop:null,windowInnerHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'};
+      console.log('[DEBUG]', logData);
+      try {
+        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+        logs.push(logData);
+        if (logs.length > 100) logs.shift();
+        localStorage.setItem('debug-logs', JSON.stringify(logs));
+      } catch(e) {}
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
       lastWindowScrollY = currentWindowScrollY;
       lastAppContentScrollTop = currentAppContentScrollTop;
     }

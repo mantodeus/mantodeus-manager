@@ -463,11 +463,19 @@ export const CenteredContextMenu = React.forwardRef<
     // Store original app scroller styles (our app scrolls inside .app-content on mobile)
     const appContent = document.querySelector(".app-content") as HTMLElement | null;
     
-    // #region agent log
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
-    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:460',message:'Context menu opening - BEFORE changes',data:{isOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
+      // #region agent log
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+      const logData = {location:'CenteredContextMenu.tsx:460',message:'Context menu opening - BEFORE changes',data:{isOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'};
+      console.log('[DEBUG]', logData);
+      try {
+        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+        logs.push(logData);
+        if (logs.length > 100) logs.shift();
+        localStorage.setItem('debug-logs', JSON.stringify(logs));
+      } catch(e) {}
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
+      // #endregion
 
     // Store original body styles and scroll position
     const originalBodyOverflow = document.body.style.overflow;
@@ -489,7 +497,15 @@ export const CenteredContextMenu = React.forwardRef<
     
     // #region agent log
     setTimeout(() => {
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:482',message:'Context menu opening - AFTER overflow changes',data:{isOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow,appContentOverflow:appContent?.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+      const logData = {location:'CenteredContextMenu.tsx:482',message:'Context menu opening - AFTER overflow changes',data:{isOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow,appContentOverflow:appContent?.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'};
+      console.log('[DEBUG]', logData);
+      try {
+        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+        logs.push(logData);
+        if (logs.length > 100) logs.shift();
+        localStorage.setItem('debug-logs', JSON.stringify(logs));
+      } catch(e) {}
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
     }, 10);
     // #endregion
 
@@ -528,7 +544,15 @@ export const CenteredContextMenu = React.forwardRef<
 
     return () => {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:517',message:'Context menu closing - BEFORE cleanup',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+      const logData1 = {location:'CenteredContextMenu.tsx:517',message:'Context menu closing - BEFORE cleanup',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'};
+      console.log('[DEBUG]', logData1);
+      try {
+        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+        logs.push(logData1);
+        if (logs.length > 100) logs.shift();
+        localStorage.setItem('debug-logs', JSON.stringify(logs));
+      } catch(e) {}
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData1)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
       // #endregion
       
       // Restore original body styles
@@ -551,7 +575,15 @@ export const CenteredContextMenu = React.forwardRef<
       
       // #region agent log
       setTimeout(() => {
-        fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:535',message:'Context menu closing - AFTER cleanup',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+        const logData2 = {location:'CenteredContextMenu.tsx:535',message:'Context menu closing - AFTER cleanup',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'};
+        console.log('[DEBUG]', logData2);
+        try {
+          const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+          logs.push(logData2);
+          if (logs.length > 100) logs.shift();
+          localStorage.setItem('debug-logs', JSON.stringify(logs));
+        } catch(e) {}
+        fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
       }, 10);
       // #endregion
     };
