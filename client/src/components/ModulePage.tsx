@@ -18,7 +18,7 @@
  *     </>
  *   }
  * >
- *   {/* Page content */}
+ *   Page content here
  * </ModulePage>
  * ```
  * 
@@ -76,6 +76,7 @@ export function ModulePage({
   primaryActions,
   children,
   className,
+  style,
 }: ModulePageProps) {
   return (
     <div className={cn("space-y-6", className)} style={style}>
