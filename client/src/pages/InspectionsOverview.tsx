@@ -60,8 +60,8 @@ export default function InspectionsOverview() {
 
   if (projectsLoading) {
     return (
-      <div className="p-4 space-y-4 max-w-4xl mx-auto">
-        <PageHeader title="Inspections" titleClassName="text-2xl font-bold" />
+      <div className="space-y-6">
+        <PageHeader title="Inspections" />
         <div className="flex items-center justify-center p-8">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
@@ -72,11 +72,10 @@ export default function InspectionsOverview() {
   // If no project selected, show project selector
   if (!selectedProjectId) {
     return (
-      <div className="p-4 space-y-4 max-w-4xl mx-auto">
+      <div className="space-y-6">
         <PageHeader
           title="Inspections"
           subtitle="Select a project to view or create inspections"
-          titleClassName="text-2xl font-bold"
         />
 
         {projects.length === 0 ? (
@@ -119,18 +118,21 @@ export default function InspectionsOverview() {
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
-    <div className="p-4 space-y-4 max-w-4xl mx-auto">
+    <div className="space-y-6">
       {/* Header */}
       <PageHeader
         title="Inspections"
         subtitle={selectedProject?.name}
-        titleClassName="text-2xl font-bold"
+        variant="detail"
         leading={
           <Button
             variant="ghost"
+            size="icon"
             onClick={() => setSelectedProjectId(null)}
+            className="size-9 [&_svg]:size-6"
+            aria-label="Back to projects"
           >
-            ← Back to Projects
+            ←
           </Button>
         }
       />
@@ -139,7 +141,7 @@ export default function InspectionsOverview() {
       {selectedProjectId && (
         <div className="flex items-center justify-end gap-2 pb-2 border-b">
           <Link href={`/projects/${selectedProjectId}/inspections`}>
-            <Button size="sm">
+            <Button className="h-10 whitespace-nowrap">
               <Plus className="h-4 w-4 mr-1" />
               New
             </Button>

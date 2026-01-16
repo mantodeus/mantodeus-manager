@@ -260,13 +260,11 @@ export default function InspectionUnitDetail() {
     }
   };
 
-  const actionHeader = <PageHeader />;
-
   // Show skeleton while loading
   if ((serverLoading && !isLocalId) || (offlineDataLoading && isLocalId)) {
     return (
-      <div className="p-4 space-y-4 max-w-4xl mx-auto">
-        {actionHeader}
+      <div className="space-y-6">
+        <PageHeader title="Loading..." variant="detail" />
         <InspectionUnitDetailSkeleton />
       </div>
     );
@@ -274,11 +272,21 @@ export default function InspectionUnitDetail() {
 
   if (!unit && !offlineUnit) {
     return (
-      <div className="p-4">
-        {actionHeader}
+      <div className="space-y-6">
+        <PageHeader 
+          title="Unit not found" 
+          variant="detail"
+          leading={
+            <Link href={`/projects/${projectId}/inspections`}>
+              <Button variant="ghost" size="icon" className="size-9 [&_svg]:size-6" aria-label="Back to inspections">
+                <ArrowLeft />
+              </Button>
+            </Link>
+          }
+        />
         <p className="text-muted-foreground">Unit not found</p>
         <Link href={`/projects/${projectId}/inspections`}>
-          <Button variant="outline" className="mt-4">
+          <Button variant="outline" className="h-10 whitespace-nowrap">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Inspections
           </Button>
@@ -288,14 +296,19 @@ export default function InspectionUnitDetail() {
   }
 
   return (
-    <div className="p-4 space-y-4 max-w-4xl mx-auto">
-      <PageHeader />
+    <div className="space-y-6">
+      <PageHeader 
+        title={unit?.label || "Inspection Unit"}
+        variant="detail"
+        leading={
+          <Link href={`/projects/${projectId}/inspections`}>
+            <Button variant="ghost" size="icon" className="size-9 [&_svg]:size-6" aria-label="Back to inspections">
+              <ArrowLeft />
+            </Button>
+          </Link>
+        }
+      />
       <div className="flex items-center gap-4">
-        <Link href={`/projects/${projectId}/inspections`}>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
         <div className="flex-1">
           {isEditingLabel ? (
             <div className="flex items-center gap-2">

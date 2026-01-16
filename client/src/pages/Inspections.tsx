@@ -115,7 +115,7 @@ export default function Inspections() {
 
   if (projectId === 0) {
     return (
-      <div className="p-4">
+      <div className="space-y-6">
         <p className="text-muted-foreground">No project selected</p>
       </div>
     );
@@ -124,19 +124,18 @@ export default function Inspections() {
   // Show skeleton while loading (first load only)
   if (inspectionsLoading || offlineDataLoading) {
     return (
-      <div className="p-4 space-y-4 max-w-4xl mx-auto">
-        <PageHeader title="Inspections" titleClassName="text-2xl font-bold" />
+      <div className="space-y-6">
+        <PageHeader title="Inspections" />
         <InspectionOverviewSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-4 max-w-4xl mx-auto">
+    <div className="space-y-6">
       <PageHeader
         title="Inspections"
         subtitle={project?.name}
-        titleClassName="text-2xl font-bold"
       />
 
       {/* Top-of-Page Action Row */}
@@ -156,7 +155,7 @@ export default function Inspections() {
               }}
               disabled={generatePDFMutation.isPending}
               variant="outline"
-              size="sm"
+              className="h-10 whitespace-nowrap"
             >
               {generatePDFMutation.isPending ? (
                 <>
@@ -174,7 +173,7 @@ export default function Inspections() {
         })()}
         <Button
           onClick={() => setCreateUnitDialogOpen(true)}
-          size="sm"
+          className="h-10 whitespace-nowrap"
         >
           <Plus className="h-4 w-4 mr-1" />
           New
