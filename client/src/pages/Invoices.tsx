@@ -2060,6 +2060,7 @@ export default function Invoices() {
                 {/* Primary actions */}
                 <div className="flex items-center gap-2 ml-1">
                   <Button
+                    type="button"
                     variant="outline"
                     onClick={() => setBulkUploadOpen(true)}
                     disabled={bulkUploadMutation.isPending}
@@ -2101,6 +2102,7 @@ export default function Invoices() {
           primaryActions={
             <div className="flex flex-row sm:contents gap-2 w-full sm:w-auto">
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setBulkUploadOpen(true)}
                 disabled={bulkUploadMutation.isPending}

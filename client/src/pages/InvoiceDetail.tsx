@@ -231,19 +231,15 @@ export default function InvoiceDetail() {
         {/* Backdrop overlay */}
         {createPortal(
           <div
-            className="fixed z-[100] bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+            className="fixed z-[100] bg-black/30 backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
             onClick={() => navigate("/invoices")}
             onWheel={(e) => e.preventDefault()}
             onTouchMove={(e) => e.preventDefault()}
             onScroll={(e) => e.preventDefault()}
             style={{
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: "100%",
-              height: "100%",
-              minHeight: "100vh",
+              inset: 0,
+              width: "100vw",
+              height: "100vh",
               pointerEvents: "auto",
               overflow: "hidden",
               touchAction: "none",
@@ -258,7 +254,7 @@ export default function InvoiceDetail() {
             {/* Preview Panel - Left side */}
             <div
               ref={previewPanelRef}
-              className="fixed z-[110] bg-background border-r shadow-lg rounded-lg"
+              className="fixed z-[110] bg-background border border-border shadow-xl rounded-lg"
               style={{
                 top: "1.5rem",
                 left: "1.5rem",
@@ -302,7 +298,7 @@ export default function InvoiceDetail() {
             {/* Form Panel - Right side */}
             <div
               ref={formPanelRef}
-              className="fixed z-[110] bg-background shadow-lg rounded-lg flex flex-col overflow-hidden"
+              className="fixed z-[110] bg-background border border-border shadow-xl rounded-lg flex flex-col overflow-hidden"
               style={{
                 top: "1.5rem",
                 right: "1.5rem",
@@ -317,19 +313,44 @@ export default function InvoiceDetail() {
             >
               <div className="flex-1 overflow-y-auto min-h-0">
                 <div className="p-6 space-y-6">
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-4">
+                  {/* Header with actions */}
+                  <div className="flex items-center justify-between gap-4 flex-shrink-0">
                     <div className="flex items-start gap-4 min-w-0 flex-1">
                       <div className="flex-1 min-w-0 flex flex-col">
                         <h1 className="text-3xl font-regular">Edit Invoice</h1>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-3 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0">
+                      <InvoiceStatusActionsDropdown
+                        invoice={{
+                          id: invoice.id,
+                          invoiceNumber: invoice.invoiceNumber || "",
+                          needsReview: invoice.needsReview || false,
+                          sentAt: invoice.sentAt,
+                          paidAt: invoice.paidAt,
+                          amountPaid: invoice.amountPaid,
+                          total: invoice.total,
+                          dueDate: invoice.dueDate,
+                          cancelledAt: invoice.cancelledAt,
+                          source: invoice.source,
+                          type: invoice.type,
+                        }}
+                        onActionComplete={async () => {
+                          await utils.invoices.get.invalidate({ id: invoiceId! });
+                          await utils.invoices.list.invalidate();
+                        }}
+                        onSend={() => {
+                          setShareDialogOpen(true);
+                        }}
+                        onAddPayment={() => {
+                          toast.info("Add Payment - use the Payments section in the form");
+                        }}
+                      />
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => navigate("/invoices")}
-                        className="h-10 w-10"
+                        className="h-9 w-9 shrink-0"
                         aria-label="Close"
                       >
                         <X className="h-6 w-6" />
@@ -339,35 +360,6 @@ export default function InvoiceDetail() {
 
                   {/* Fade-out separator */}
                   <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
-
-                  {/* Action buttons */}
-                  <div className="flex items-center justify-end gap-2 pb-2 border-b">
-                    <InvoiceStatusActionsDropdown
-                      invoice={{
-                        id: invoice.id,
-                        invoiceNumber: invoice.invoiceNumber || "",
-                        needsReview: invoice.needsReview || false,
-                        sentAt: invoice.sentAt,
-                        paidAt: invoice.paidAt,
-                        amountPaid: invoice.amountPaid,
-                        total: invoice.total,
-                        dueDate: invoice.dueDate,
-                        cancelledAt: invoice.cancelledAt,
-                        source: invoice.source,
-                        type: invoice.type,
-                      }}
-                      onActionComplete={async () => {
-                        await utils.invoices.get.invalidate({ id: invoiceId! });
-                        await utils.invoices.list.invalidate();
-                      }}
-                      onSend={() => {
-                        setShareDialogOpen(true);
-                      }}
-                      onAddPayment={() => {
-                        toast.info("Add Payment - use the Payments section in the form");
-                      }}
-                    />
-                  </div>
 
                   {/* Form */}
                   <InvoiceForm

@@ -7,7 +7,7 @@
  * - Upload via uploadInvoicesBulk
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -292,6 +292,7 @@ export function BulkInvoiceUploadDialog({
     </>
   );
 
+  // Mobile: Full-screen layout (only render when open)
   if (isMobile) {
     if (!open) return null;
     return (
@@ -301,11 +302,12 @@ export function BulkInvoiceUploadDialog({
     );
   }
 
-  // Desktop: Always render Dialog (it handles open/close internally)
+  // Desktop: Always render Dialog (Radix handles open/close state)
+  // This ensures React can properly manage the component lifecycle
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent 
-        className="flex flex-col p-0"
+        className="flex flex-col p-0 max-w-2xl"
         showCloseButton={false}
       >
         {content}
