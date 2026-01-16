@@ -128,6 +128,17 @@ export function useAutoScrollOnOpen({
   scrollBuffer = 12,
   enabled = true,
 }: UseAutoScrollOnOpenOptions): void {
+  // Hard-disable auto-scroll in mobile PWA/standalone to avoid viewport jumps.
+  if (typeof window !== 'undefined') {
+    const isMobile = window.innerWidth < 768;
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+    if (isMobile && isStandalone) {
+      return;
+    }
+  }
+
   useLayoutEffect(() => {
     if (!isOpen || !enabled || !menuRef.current) {
       return;

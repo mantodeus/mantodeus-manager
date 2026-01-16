@@ -16,12 +16,11 @@ interface ContextMenuProps {
 export function ContextMenu({ x, y, onAction, onClose, actions = ["edit", "delete", "select"] }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Enable auto-scroll on mobile only
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  // Auto-scroll is globally disabled for mobile PWA via the hook guard.
   useAutoScrollOnOpen({
     isOpen: true, // ContextMenu only renders when open
     menuRef: menuRef as React.RefObject<HTMLElement>,
-    enabled: isMobile,
+    enabled: true,
     scrollBuffer: 12,
   });
 
