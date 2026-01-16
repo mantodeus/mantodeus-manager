@@ -615,6 +615,46 @@ function App() {
     initializeTheme();
   }, []);
 
+  // PWA: keep bottom safe area in sync with the actual visual viewport.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+    if (!isStandalone) return;
+
+    const root = document.documentElement;
+    const vv = window.visualViewport;
+
+    const updateSafeAreaBottom = () => {
+      if (!vv) {
+        root.style.setProperty("--safe-area-bottom", "0px");
+        return;
+      }
+
+      const inset = Math.max(
+        0,
+        Math.round(window.innerHeight - vv.height - vv.offsetTop)
+      );
+      root.style.setProperty("--safe-area-bottom", `${inset}px`);
+    };
+
+    updateSafeAreaBottom();
+    vv?.addEventListener("resize", updateSafeAreaBottom);
+    vv?.addEventListener("scroll", updateSafeAreaBottom);
+    window.addEventListener("resize", updateSafeAreaBottom);
+    window.addEventListener("orientationchange", updateSafeAreaBottom);
+
+    return () => {
+      vv?.removeEventListener("resize", updateSafeAreaBottom);
+      vv?.removeEventListener("scroll", updateSafeAreaBottom);
+      window.removeEventListener("resize", updateSafeAreaBottom);
+      window.removeEventListener("orientationchange", updateSafeAreaBottom);
+      root.style.removeProperty("--safe-area-bottom");
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider
