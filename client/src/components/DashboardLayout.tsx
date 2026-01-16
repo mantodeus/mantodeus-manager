@@ -37,9 +37,13 @@ export default function DashboardLayout({
   if (isMobile) {
     return (
       <MobileNavProvider>
-        <MobileDashboardLayoutContent>
-          {children}
-        </MobileDashboardLayoutContent>
+        <div id="app-shell" className="app-shell">
+          <MobileDashboardLayoutContent>
+            {children}
+          </MobileDashboardLayoutContent>
+          {/* Portal root for Radix portals - prevents iOS PWA viewport jumps */}
+          <div id="portal-root" />
+        </div>
       </MobileNavProvider>
     );
   }
@@ -47,9 +51,13 @@ export default function DashboardLayout({
   return (
     <TooltipProvider delayDuration={0}>
       <DesktopNavProvider>
-        <DesktopDashboardLayoutContent>
-          {children}
-        </DesktopDashboardLayoutContent>
+        <div id="app-shell" className="app-shell">
+          <DesktopDashboardLayoutContent>
+            {children}
+          </DesktopDashboardLayoutContent>
+          {/* Portal root for Radix portals - prevents iOS PWA viewport jumps */}
+          <div id="portal-root" />
+        </div>
       </DesktopNavProvider>
     </TooltipProvider>
   );

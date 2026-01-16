@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { X as XIcon } from "@/components/ui/Icon";
+import { usePortalRoot } from "@/hooks/usePortalRoot";
 
 import { cn } from "@/lib/utils";
 
@@ -25,7 +26,14 @@ function SheetClose({
 function SheetPortal({
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
-  return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />;
+  const portalRoot = usePortalRoot();
+  return (
+    <SheetPrimitive.Portal 
+      data-slot="sheet-portal" 
+      container={portalRoot}
+      {...props} 
+    />
+  );
 }
 
 function SheetOverlay({
@@ -62,102 +70,11 @@ function SheetContent({
     typeof window !== "undefined" &&
     (window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone === true);
-  
-  const sheetRef = React.useRef<HTMLDivElement>(null);
-  const [isOpen, setIsOpen] = React.useState(false);
-  
-  // #region agent log - Monitor sheet open state
-  React.useEffect(() => {
-    if (!sheetRef.current) return;
-    const observer = new MutationObserver(() => {
-      const state = sheetRef.current?.getAttribute('data-state');
-      const nowOpen = state === 'open';
-      if (nowOpen !== isOpen) {
-        setIsOpen(nowOpen);
-        const appContent = document.querySelector('.app-content') as HTMLElement | null;
-        const vv = (window as any).visualViewport;
-        const logData = {location:'sheet.tsx:state',message:nowOpen ? 'Sheet OPENING' : 'Sheet CLOSING',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,visualViewportHeight:vv?.height,visualViewportOffsetTop:vv?.offsetTop,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'K'};
-        console.log('[DEBUG]', logData);
-        try {
-          const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
-          logs.push(logData);
-          if (logs.length > 100) logs.shift();
-          localStorage.setItem('debug-logs', JSON.stringify(logs));
-        } catch(e) {}
-      }
-    });
-    observer.observe(sheetRef.current, { attributes: true, attributeFilter: ['data-state'] });
-    setIsOpen(sheetRef.current.getAttribute('data-state') === 'open');
-    return () => observer.disconnect();
-  }, [isMobile, isStandalone]);
-  
-  // #region agent log - Fix: Prevent iOS PWA viewport height change when sheet opens
-  React.useEffect(() => {
-    if (!isOpen || !isMobile || !isStandalone) return;
-    
-    // Capture initial viewport state BEFORE sheet opens
-    const vv = (window as any).visualViewport;
-    const initialVvHeight = vv?.height ?? window.innerHeight;
-    const initialVvOffsetTop = vv?.offsetTop ?? 0;
-    const appContent = document.querySelector('.app-content') as HTMLElement | null;
-    const initialAppScrollTop = appContent?.scrollTop ?? 0;
-    
-    // Monitor for viewport changes and compensate
-    let rafId: number;
-    let compensationApplied = false;
-    
-    const monitor = () => {
-      if (!isOpen) {
-        if (rafId) cancelAnimationFrame(rafId);
-        return;
-      }
-      
-      const currentVv = (window as any).visualViewport;
-      const currentVvHeight = currentVv?.height ?? window.innerHeight;
-      const currentVvOffsetTop = currentVv?.offsetTop ?? 0;
-      const vvHeightDelta = currentVvHeight - initialVvHeight;
-      const vvOffsetDelta = currentVvOffsetTop - initialVvOffsetTop;
-      
-      // If viewport height changed (the jump), compensate by adjusting scroll
-      if (!compensationApplied && (Math.abs(vvHeightDelta) > 5 || Math.abs(vvOffsetDelta) > 5)) {
-        compensationApplied = true;
-        
-        // Compensate for the viewport change by adjusting scroll position
-        if (appContent) {
-          const currentScroll = appContent.scrollTop;
-          const compensation = -vvHeightDelta - vvOffsetDelta;
-          if (Math.abs(compensation) > 1) {
-            appContent.scrollTop = currentScroll + compensation;
-          }
-        } else {
-          const currentScroll = window.scrollY;
-          const compensation = -vvHeightDelta - vvOffsetDelta;
-          if (Math.abs(compensation) > 1) {
-            window.scrollTo({ top: currentScroll + compensation, behavior: 'auto' });
-          }
-        }
-      }
-      
-      rafId = requestAnimationFrame(monitor);
-    };
-    
-    // Start monitoring after a short delay to catch the viewport change
-    rafId = requestAnimationFrame(() => {
-      rafId = requestAnimationFrame(monitor);
-    });
-    
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      compensationApplied = false;
-    };
-  }, [isOpen, isMobile, isStandalone]);
-  // #endregion
 
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
-        ref={sheetRef}
         data-slot="sheet-content"
         className={cn(
           // Surface styling with soft borders
@@ -180,31 +97,8 @@ function SheetContent({
           className
         )}
         onOpenAutoFocus={(event) => {
-          // #region agent log
-          const appContent = document.querySelector('.app-content') as HTMLElement | null;
-          const logData1 = {location:'sheet.tsx:91',message:'Sheet onOpenAutoFocus called',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'};
-          console.log('[DEBUG]', logData1);
-          try {
-            const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
-            logs.push(logData1);
-            if (logs.length > 100) logs.shift();
-            localStorage.setItem('debug-logs', JSON.stringify(logs));
-          } catch(e) {}
-          fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData1)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
-          // #endregion
           if (isMobile && isStandalone) {
             event.preventDefault();
-            // #region agent log
-            const logData2 = {location:'sheet.tsx:95',message:'Sheet onOpenAutoFocus prevented',data:{isMobile,isStandalone},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'};
-            console.log('[DEBUG]', logData2);
-            try {
-              const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
-              logs.push(logData2);
-              if (logs.length > 100) logs.shift();
-              localStorage.setItem('debug-logs', JSON.stringify(logs));
-            } catch(e) {}
-            fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
-            // #endregion
           }
           onOpenAutoFocus?.(event);
         }}
