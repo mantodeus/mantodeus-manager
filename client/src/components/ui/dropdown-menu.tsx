@@ -22,12 +22,51 @@ function DropdownMenuPortal({
 function DropdownMenuTrigger({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
-  // #region agent log - Capture baseline BEFORE menu opens
+  // #region agent log - Capture baseline and start compensation IMMEDIATELY on trigger click
   const handleClick = (e: React.MouseEvent) => {
     const appContent = document.querySelector('.app-content') as HTMLElement | null;
     const vv = (window as any).visualViewport;
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+    
+    // PREVENTION: Lock viewport height IMMEDIATELY when trigger is clicked (before menu opens)
+    if (isMobile && isStandalone) {
+      const html = document.documentElement;
+      const body = document.body;
+      const initialVvHeight = vv?.height ?? window.innerHeight;
+      const initialScrollTop = appContent?.scrollTop ?? 0;
+      
+      // Store initial state for restoration (will be restored when menu closes)
+      const initialState = {
+        bodyHeight: body.style.height,
+        bodyMaxHeight: body.style.maxHeight,
+        bodyOverflow: body.style.overflow,
+        htmlHeight: html.style.height,
+        htmlMaxHeight: html.style.maxHeight,
+        htmlOverflow: html.style.overflow,
+      };
+      (window as any).__dropdownInitialState = initialState;
+      
+      // Lock the viewport height immediately
+      const lockHeight = initialVvHeight + 'px';
+      html.style.height = lockHeight;
+      html.style.maxHeight = lockHeight;
+      html.style.overflow = 'hidden';
+      body.style.height = lockHeight;
+      body.style.maxHeight = lockHeight;
+      body.style.overflow = 'hidden';
+      
+      // Log prevention start
+      const logData = {location:'dropdown-menu.tsx:trigger-prevent',message:'Locking viewport height on trigger click',data:{initialVvHeight,lockedHeight:lockHeight,initialScrollTop,isMobile,isStandalone},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'P'};
+      console.log('[DEBUG]', logData);
+      try {
+        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+        logs.push(logData);
+        if (logs.length > 100) logs.shift();
+        localStorage.setItem('debug-logs', JSON.stringify(logs));
+      } catch(e) {}
+    }
+    
     const logData = {location:'dropdown-menu.tsx:trigger',message:'Dropdown trigger clicked - BEFORE open',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,visualViewportHeight:vv?.height,visualViewportOffsetTop:vv?.offsetTop,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'L'};
     console.log('[DEBUG]', logData);
     try {
@@ -180,67 +219,125 @@ function DropdownMenuContent({
   }, [isOpen]);
   // #endregion
 
-  // #region agent log - Fix: Prevent iOS PWA viewport height change when menu opens
+  // #region agent log - PREVENT iOS PWA viewport height change when menu opens (no compensation)
   React.useEffect(() => {
     if (!isOpen || !isMobile || !isStandalone) return;
     
-    // Capture initial viewport state BEFORE menu opens
+    // PREVENTION STRATEGY: Lock the viewport height to prevent iOS from adjusting it
     const vv = (window as any).visualViewport;
-    const initialVvHeight = vv?.height ?? window.innerHeight;
-    const initialVvOffsetTop = vv?.offsetTop ?? 0;
+    const html = document.documentElement;
+    const body = document.body;
     const appContent = document.querySelector('.app-content') as HTMLElement | null;
-    const initialAppScrollTop = appContent?.scrollTop ?? 0;
     
-    // Monitor for viewport changes and compensate
+    // Capture current viewport height BEFORE it changes
+    const initialVvHeight = vv?.height ?? window.innerHeight;
+    const initialBodyHeight = body.style.height;
+    const initialHtmlHeight = html.style.height;
+    const initialBodyOverflow = body.style.overflow;
+    const initialHtmlOverflow = html.style.overflow;
+    const initialScrollTop = appContent?.scrollTop ?? 0;
+    
+    // Lock the viewport height by setting fixed heights on html/body
+    // This prevents iOS from recalculating the viewport when the menu opens
+    const lockHeight = initialVvHeight + 'px';
+    html.style.height = lockHeight;
+    html.style.maxHeight = lockHeight;
+    html.style.overflow = 'hidden';
+    body.style.height = lockHeight;
+    body.style.maxHeight = lockHeight;
+    body.style.overflow = 'hidden';
+    // Don't set position: fixed on body as that causes scroll position reset
+    
+    // Monitor to ensure viewport doesn't change and maintain scroll position
     let rafId: number;
-    let compensationApplied = false;
+    let checkCount = 0;
+    const maxChecks = 60; // Monitor for ~1 second
     
     const monitor = () => {
-      if (!isOpen) {
+      if (!isOpen || checkCount >= maxChecks) {
         if (rafId) cancelAnimationFrame(rafId);
         return;
       }
+      checkCount++;
       
       const currentVv = (window as any).visualViewport;
       const currentVvHeight = currentVv?.height ?? window.innerHeight;
-      const currentVvOffsetTop = currentVv?.offsetTop ?? 0;
       const vvHeightDelta = currentVvHeight - initialVvHeight;
-      const vvOffsetDelta = currentVvOffsetTop - initialVvOffsetTop;
       
-      // If viewport height changed (the jump), compensate by adjusting scroll
-      if (!compensationApplied && (Math.abs(vvHeightDelta) > 5 || Math.abs(vvOffsetDelta) > 5)) {
-        compensationApplied = true;
+      // If viewport tries to change, force it back
+      if (Math.abs(vvHeightDelta) > 2) {
+        // Re-apply the lock
+        html.style.height = lockHeight;
+        html.style.maxHeight = lockHeight;
+        body.style.height = lockHeight;
+        body.style.maxHeight = lockHeight;
         
-        // Compensate for the viewport change by adjusting scroll position
-        // The viewport height decrease causes content to shift up, so we need to scroll down
-        if (appContent) {
-          const currentScroll = appContent.scrollTop;
-          // If viewport got smaller (height decreased), content shifted up, so scroll down
-          const compensation = -vvHeightDelta - vvOffsetDelta;
-          if (Math.abs(compensation) > 1) {
-            appContent.scrollTop = currentScroll + compensation;
-          }
-        } else {
-          // Fallback to window scroll if no app-content
-          const currentScroll = window.scrollY;
-          const compensation = -vvHeightDelta - vvOffsetDelta;
-          if (Math.abs(compensation) > 1) {
-            window.scrollTo({ top: currentScroll + compensation, behavior: 'auto' });
-          }
+        // Log the prevention attempt (only first few times to avoid spam)
+        if (checkCount <= 5) {
+          const logData = {location:'dropdown-menu.tsx:prevent-viewport-change',message:'Preventing viewport height change',data:{vvHeightDelta,initialVvHeight,currentVvHeight,lockedHeight:lockHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'P'};
+          console.log('[DEBUG]', logData);
+          try {
+            const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+            logs.push(logData);
+            if (logs.length > 100) logs.shift();
+            localStorage.setItem('debug-logs', JSON.stringify(logs));
+          } catch(e) {}
         }
+      }
+      
+      // Also maintain scroll position
+      if (appContent && Math.abs((appContent.scrollTop ?? 0) - initialScrollTop) > 2) {
+        appContent.scrollTop = initialScrollTop;
       }
       
       rafId = requestAnimationFrame(monitor);
     };
     
-    // Start monitoring after a short delay to catch the viewport change
-    rafId = requestAnimationFrame(() => {
-      rafId = requestAnimationFrame(monitor);
-    });
+    // Start monitoring immediately
+    rafId = requestAnimationFrame(monitor);
+    
+    // Log that prevention is active
+    const logDataStart = {location:'dropdown-menu.tsx:prevent-start',message:'Locking viewport height to prevent jump',data:{initialVvHeight,lockedHeight:lockHeight,initialScrollTop},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'P'};
+    console.log('[DEBUG]', logDataStart);
+    try {
+      const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+      logs.push(logDataStart);
+      if (logs.length > 100) logs.shift();
+      localStorage.setItem('debug-logs', JSON.stringify(logs));
+    } catch(e) {}
     
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
-      compensationApplied = false;
+      
+      // Restore original styles (use stored initial state from trigger click if available)
+      const storedState = (window as any).__dropdownInitialState;
+      if (storedState) {
+        html.style.height = storedState.htmlHeight;
+        html.style.maxHeight = storedState.htmlMaxHeight || '';
+        html.style.overflow = storedState.htmlOverflow;
+        body.style.height = storedState.bodyHeight;
+        body.style.maxHeight = storedState.bodyMaxHeight || '';
+        body.style.overflow = storedState.bodyOverflow;
+        delete (window as any).__dropdownInitialState;
+      } else {
+        // Fallback to captured values
+        html.style.height = initialHtmlHeight;
+        html.style.maxHeight = '';
+        html.style.overflow = initialHtmlOverflow;
+        body.style.height = initialBodyHeight;
+        body.style.maxHeight = '';
+        body.style.overflow = initialBodyOverflow;
+      }
+      
+      // Log cleanup
+      const logDataEnd = {location:'dropdown-menu.tsx:prevent-end',message:'Viewport height lock released',data:{checkCount},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'P'};
+      console.log('[DEBUG]', logDataEnd);
+      try {
+        const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
+        logs.push(logDataEnd);
+        if (logs.length > 100) logs.shift();
+        localStorage.setItem('debug-logs', JSON.stringify(logs));
+      } catch(e) {}
     };
   }, [isOpen, isMobile, isStandalone]);
   // #endregion
