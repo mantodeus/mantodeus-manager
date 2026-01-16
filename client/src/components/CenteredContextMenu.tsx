@@ -297,6 +297,33 @@ export const CenteredContextMenu = React.forwardRef<
       
       const rect = element.getBoundingClientRect();
       setItemRect(rect);
+      
+      // Store original position values
+      const originalPosition = element.style.position || '';
+      const originalTop = element.style.top || '';
+      const originalLeft = element.style.left || '';
+      const originalWidth = element.style.width || '';
+      const originalHeight = element.style.height || '';
+      const originalZIndex = element.style.zIndex || '';
+      
+      // Position the card as fixed at its current location so it appears above portal elements
+      element.style.position = 'fixed';
+      element.style.top = `${rect.top}px`;
+      element.style.left = `${rect.left}px`;
+      element.style.width = `${rect.width}px`;
+      element.style.height = `${rect.height}px`;
+      element.style.zIndex = '9997';
+      
+      // Store original values for restoration
+      (element as any).__originalContextMenuStyles = {
+        position: originalPosition,
+        top: originalTop,
+        left: originalLeft,
+        width: originalWidth,
+        height: originalHeight,
+        zIndex: originalZIndex,
+      };
+      
       if (blockingTimeoutRef.current) {
         clearTimeout(blockingTimeoutRef.current);
         blockingTimeoutRef.current = null;
@@ -344,6 +371,18 @@ export const CenteredContextMenu = React.forwardRef<
       itemRef.current.classList.remove("context-menu-active");
       itemRef.current.classList.remove("context-menu-shifted");
       itemRef.current.style.removeProperty("--context-menu-shift");
+      
+      // Restore original position styles
+      const originalStyles = (itemRef.current as any).__originalContextMenuStyles;
+      if (originalStyles) {
+        itemRef.current.style.position = originalStyles.position || '';
+        itemRef.current.style.top = originalStyles.top || '';
+        itemRef.current.style.left = originalStyles.left || '';
+        itemRef.current.style.width = originalStyles.width || '';
+        itemRef.current.style.height = originalStyles.height || '';
+        itemRef.current.style.zIndex = originalStyles.zIndex || '';
+        delete (itemRef.current as any).__originalContextMenuStyles;
+      }
     }
     // Reset long-press gesture state immediately
     resetLongPress();
@@ -369,6 +408,21 @@ export const CenteredContextMenu = React.forwardRef<
       document.body.classList.remove('context-menu-open');
     };
   }, [isBlocking]);
+
+  // Hide original card when menu is open (it's now fixed and visible above blur)
+  useEffect(() => {
+    if (!isOpen || !itemRef.current) return;
+    
+    // Make the original card in document flow invisible since we have a fixed copy
+    const originalVisibility = itemRef.current.style.visibility || '';
+    itemRef.current.style.visibility = 'hidden';
+    
+    return () => {
+      if (itemRef.current) {
+        itemRef.current.style.visibility = originalVisibility;
+      }
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || !isTouchHoldActive) return;
@@ -737,9 +791,9 @@ export const CenteredContextMenu = React.forwardRef<
       {isBlocking &&
         createPortal(
           <>
-            {/* Background blur layer (visual only) */}
+            {/* Background blur layer (visual only) - reduced opacity so card is more visible */}
             <div
-              className="context-menu-overlay fixed inset-0 backdrop-blur-md bg-black/20"
+              className="context-menu-overlay fixed inset-0 backdrop-blur-md bg-black/10"
               style={{
                 zIndex: 9995,
                 animation: "fadeIn 220ms ease-out",
