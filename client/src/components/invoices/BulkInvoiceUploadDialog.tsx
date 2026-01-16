@@ -142,12 +142,6 @@ export function BulkInvoiceUploadDialog({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Always render the same structure to avoid hooks violations
-  // The conditional rendering happens at the Dialog level, not component structure
-  if (!open && !isMobile) {
-    return null;
-  }
-
   const content = (
     <>
       {/* PageHeader-like structure matching Invoices page */}
@@ -177,7 +171,7 @@ export function BulkInvoiceUploadDialog({
       </div>
 
       {/* Fade-out separator */}
-      <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
+      <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
 
       <div className={cn(
         "pt-2 overflow-y-auto flex-1 min-h-0",
@@ -307,6 +301,7 @@ export function BulkInvoiceUploadDialog({
     );
   }
 
+  // Desktop: Always render Dialog (it handles open/close internally)
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent 

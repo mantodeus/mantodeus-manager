@@ -1127,7 +1127,7 @@ export function InvoiceUploadReviewDialog({
       </div>
 
       {/* Fade-out separator */}
-      <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
+      <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
 
       <div className={cn(
         "space-y-4 pt-2 sm:px-6 flex-1 min-h-0 overflow-y-auto",

@@ -207,7 +207,7 @@ export function CreateInvoiceDialog({
           </div>
 
           {/* Fade-out separator */}
-          <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
+          <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
 
           <div className={cn(
             "pt-2 flex-1 min-h-0 flex flex-col overflow-y-auto sm:px-6",

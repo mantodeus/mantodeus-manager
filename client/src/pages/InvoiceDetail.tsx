@@ -338,7 +338,7 @@ export default function InvoiceDetail() {
                   </div>
 
                   {/* Fade-out separator */}
-                  <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
+                  <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
 
                   {/* Action buttons */}
                   <div className="flex items-center justify-end gap-2 pb-2 border-b">
@@ -517,7 +517,7 @@ export default function InvoiceDetail() {
       </div>
       
       {/* Fade-out separator */}
-      <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
+      <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
 
       {showDesktopDraftSplit ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start min-h-[calc(100vh-12rem)]">

@@ -42,6 +42,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const previewGenerationRef = useRef<AbortController | null>(null);
   const getFormDataRef = useRef<(() => InvoicePreviewData | null) | null>(null);
+  const getLoadingStateRef = useRef<(() => boolean) | null>(null);
   const [previewZoom, setPreviewZoom] = useState(1);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const autoFitDoneRef = useRef(false);
@@ -510,7 +511,7 @@ export function CreateInvoiceWorkspace({ open, onClose, onSuccess }: CreateInvoi
                     </div>
 
                     {/* Fade-out separator */}
-                    <div className="separator-fade" style={{ marginTop: 'var(--space-page-gap, 24px)', marginBottom: 'var(--space-page-gap, 24px)' }} />
+                    <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
 
                     {/* Form */}
                     <InvoiceForm
