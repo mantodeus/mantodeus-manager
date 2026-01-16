@@ -46,7 +46,18 @@ function DropdownMenuContent({
     const checkState = () => {
       if (menuRef.current) {
         const state = menuRef.current.getAttribute('data-state');
-        setIsOpen(state === 'open');
+        const wasOpen = isOpen;
+        const nowOpen = state === 'open';
+        setIsOpen(nowOpen);
+        
+        // #region agent log
+        if (nowOpen !== wasOpen) {
+          const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+          const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+          const appContent = document.querySelector('.app-content') as HTMLElement | null;
+          fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-menu.tsx:49',message:'Dropdown state changed',data:{wasOpen,nowOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+        }
+        // #endregion
       }
     };
 
@@ -116,6 +127,21 @@ function DropdownMenuContent({
     enabled: !isMobile,
     scrollBuffer: isMobile ? 32 : 16, // Increased buffer on mobile for better tab bar clearance
   });
+  
+  // #region agent log
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const checkScroll = () => {
+      const appContent = document.querySelector('.app-content') as HTMLElement | null;
+      const menuRect = menuRef.current?.getBoundingClientRect();
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-menu.tsx:119',message:'Menu open scroll check',data:{isOpen,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,menuTop:menuRect?.top,menuBottom:menuRect?.bottom,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+    };
+    const timeout = setTimeout(checkScroll, 50);
+    const timeout2 = setTimeout(checkScroll, 150);
+    const timeout3 = setTimeout(checkScroll, 300);
+    return () => { clearTimeout(timeout); clearTimeout(timeout2); clearTimeout(timeout3); };
+  }, [isOpen]);
+  // #endregion
 
   return (
     <DropdownMenuPrimitive.Portal>
@@ -124,8 +150,15 @@ function DropdownMenuContent({
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         onOpenAutoFocus={(event) => {
+          // #region agent log
+          const appContent = document.querySelector('.app-content') as HTMLElement | null;
+          fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-menu.tsx:126',message:'onOpenAutoFocus called',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow,defaultPrevented:event.defaultPrevented},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
           if (isMobile && isStandalone) {
             event.preventDefault();
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-menu.tsx:132',message:'onOpenAutoFocus prevented',data:{isMobile,isStandalone},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
           }
           onOpenAutoFocus?.(event);
         }}

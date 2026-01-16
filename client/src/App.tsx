@@ -52,6 +52,37 @@ import DocumentUpload from "./pages/DocumentUpload";
 import { useEffect, useState } from "react";
 import { initializeTheme } from "@/lib/theme";
 
+// #region agent log
+// Global scroll listener to track scroll changes
+if (typeof window !== 'undefined') {
+  let lastWindowScrollY = window.scrollY;
+  let lastAppContentScrollTop: number | null = null;
+  const appContent = document.querySelector('.app-content') as HTMLElement | null;
+  if (appContent) {
+    lastAppContentScrollTop = appContent.scrollTop;
+  }
+  
+  const handleScroll = () => {
+    const currentWindowScrollY = window.scrollY;
+    const currentAppContent = document.querySelector('.app-content') as HTMLElement | null;
+    const currentAppContentScrollTop = currentAppContent?.scrollTop ?? null;
+    
+    if (currentWindowScrollY !== lastWindowScrollY || currentAppContentScrollTop !== lastAppContentScrollTop) {
+      const isMobile = window.innerWidth < 768;
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:scroll',message:'Scroll detected',data:{isMobile,isStandalone,windowScrollY:currentWindowScrollY,windowScrollYDelta:currentWindowScrollY-lastWindowScrollY,appContentScrollTop:currentAppContentScrollTop,appContentScrollTopDelta:currentAppContentScrollTop!==null&&lastAppContentScrollTop!==null?currentAppContentScrollTop-lastAppContentScrollTop:null,windowInnerHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'})}).catch(()=>{});
+      lastWindowScrollY = currentWindowScrollY;
+      lastAppContentScrollTop = currentAppContentScrollTop;
+    }
+  };
+  
+  window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+  if (appContent) {
+    appContent.addEventListener('scroll', handleScroll, { passive: true });
+  }
+}
+// #endregion
+
 const LAST_ROUTE_KEY = "mantodeus-last-route";
 
 // Routes that should not be saved/restored

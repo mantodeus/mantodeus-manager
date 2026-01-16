@@ -89,8 +89,15 @@ function SheetContent({
           className
         )}
         onOpenAutoFocus={(event) => {
+          // #region agent log
+          const appContent = document.querySelector('.app-content') as HTMLElement | null;
+          fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'sheet.tsx:91',message:'Sheet onOpenAutoFocus called',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
           if (isMobile && isStandalone) {
             event.preventDefault();
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'sheet.tsx:95',message:'Sheet onOpenAutoFocus prevented',data:{isMobile,isStandalone},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
           }
           onOpenAutoFocus?.(event);
         }}

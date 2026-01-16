@@ -460,6 +460,13 @@ export const CenteredContextMenu = React.forwardRef<
   useEffect(() => {
     if (!isOpen) return;
 
+    // #region agent log
+    const appContent = document.querySelector('.app-content') as HTMLElement | null;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+    fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:460',message:'Context menu opening - BEFORE changes',data:{isOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
+
     // Store original body styles and scroll position
     const originalBodyOverflow = document.body.style.overflow;
     const originalBodyPosition = document.body.style.position;
@@ -480,6 +487,12 @@ export const CenteredContextMenu = React.forwardRef<
       appContent.style.overflowY = "hidden";
       appContent.style.overflow = "hidden";
     }
+    
+    // #region agent log
+    setTimeout(() => {
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:482',message:'Context menu opening - AFTER overflow changes',data:{isOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow,appContentOverflow:appContent?.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+    }, 10);
+    // #endregion
 
     // Also prevent scroll events on window
     const preventScroll = (e: Event) => {
@@ -515,6 +528,10 @@ export const CenteredContextMenu = React.forwardRef<
     document.body.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true });
 
     return () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:517',message:'Context menu closing - BEFORE cleanup',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
+      
       // Restore original body styles
       document.body.style.overflow = originalBodyOverflow;
       document.body.style.position = originalBodyPosition;
@@ -532,6 +549,12 @@ export const CenteredContextMenu = React.forwardRef<
       window.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
       document.body.removeEventListener('wheel', preventScroll, { capture: true } as any);
       document.body.removeEventListener('touchmove', preventTouchMove, { capture: true } as any);
+      
+      // #region agent log
+      setTimeout(() => {
+        fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:535',message:'Context menu closing - AFTER cleanup',data:{isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+      }, 10);
+      // #endregion
     };
   }, [isOpen]);
 
