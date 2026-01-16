@@ -13,7 +13,7 @@ import { getInvoiceActions, isActionValidForInvoice } from "@/lib/invoiceActions
 import { getAccountingDate, getAccountingHelperText } from "@/lib/accountingDate";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 import { RevertInvoiceStatusDialog } from "@/components/RevertInvoiceStatusDialog";
 import { MarkAsSentWarningDialog } from "@/components/MarkAsSentWarningDialog";
 import { MarkAsPaidDialog } from "@/components/invoices/MarkAsPaidDialog";
@@ -1935,26 +1935,12 @@ export default function Invoices() {
     return '120px'; // Desktop: just the bar height
   }, [isMultiSelectMode]);
 
-  return (
-    <div 
-      className="space-y-6"
-      style={{
-        paddingBottom: multiSelectPadding,
-      }}
-    >
-      {/* Search overlay - controlled by PageHeader's onSearch handler */}
-      {searchOverlay}
-      
-      {/* Filter sheet - controlled by PageHeader's onFilter handler */}
-      {filterSheet}
-      
-      {/* Desktop: Glass control surface header */}
-      {!isMobile ? (() => {
-        // Calculate contextual subtitle
+  // Calculate subtitle for ModulePage
+  const invoiceSubtitle = isMobile
+    ? `${invoiceStats.total} this year · ${invoiceStats.paid} paid · ${invoiceStats.due} due`
+    : (() => {
         const activeInvoices = filteredInvoices.filter(inv => inv._status === 'active');
         const invoiceCount = activeInvoices.length;
-        
-        // Calculate outstanding amount (sent but not paid)
         const outstandingAmount = activeInvoices.reduce((sum, inv) => {
           if (inv.sentAt && !inv.paidAt && !inv.cancelledAt) {
             const total = parseFloat(inv.total?.toString() || '0');
@@ -1963,155 +1949,62 @@ export default function Invoices() {
           }
           return sum;
         }, 0);
-        
-        // Get current quarter label
         const currentQuarter = `Q${selectedQuarter.quarter} ${selectedQuarter.year}`;
-        
         const subtitleParts = [
           `${invoiceCount} ${invoiceCount === 1 ? 'invoice' : 'invoices'}`,
           outstandingAmount > 0 ? `${formatCurrency(outstandingAmount)} outstanding` : null,
           currentQuarter
         ].filter(Boolean);
-        
-        const contextualSubtitle = subtitleParts.join(' · ');
-        
-        return (
-          <div 
-            className={cn(
-              "transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
-              isScrolled && "invoices-header-compact"
-            )}
-            style={{
-              padding: isScrolled ? '12px 0' : '0',
-              marginBottom: '24px',
-            }}
+        return subtitleParts.join(' · ');
+      })();
+
+  return (
+    <ModulePage
+      title="Invoices"
+      subtitle={invoiceSubtitle}
+      onSearch={() => setIsSearchOpen(true)}
+      onFilter={() => setIsFilterOpen(true)}
+      onSettings={() => navigate("/settings")}
+      primaryActions={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setBulkUploadOpen(true)}
+            disabled={bulkUploadMutation.isPending}
+            className="h-10 whitespace-nowrap"
+            data-guide-id="invoices.upload"
+            data-guide-type="button"
+            data-guide-label="Upload Invoice PDFs"
           >
-            <div className="flex items-center justify-between gap-4">
-              {/* Left block: Title + Subtitle */}
-              <div className="flex-1 min-w-0">
-                <h1 className={cn(
-                  "font-normal mb-0.5 transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
-                  isScrolled ? "text-2xl" : "text-3xl"
-                )}>
-                  Invoices
-                </h1>
-                <p className={cn(
-                  "text-sm text-muted-foreground/70 leading-tight transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
-                  isScrolled && "opacity-0 -translate-y-1 pointer-events-none"
-                )}>
-                  {contextualSubtitle}
-                </p>
-              </div>
-              
-              {/* Right block: Icon buttons + Primary actions */}
-              <div className="flex items-center gap-2 shrink-0">
-                {/* Icon buttons cluster */}
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="icon"
-                    size="icon"
-                    aria-label="Search"
-                    onClick={() => setIsSearchOpen(true)}
-                    className="size-9 [&_svg]:!size-8 sm:[&_svg]:!size-5 hover:bg-muted/50"
-                  >
-                    <Search />
-                  </Button>
-                  <Button
-                    variant="icon"
-                    size="icon"
-                    aria-label="Filter"
-                    onClick={() => setIsFilterOpen(true)}
-                    className="size-9 [&_svg]:!size-8 sm:[&_svg]:!size-5 hover:bg-muted/50"
-                  >
-                    <SlidersHorizontal />
-                  </Button>
-                  <Button
-                    variant="icon"
-                    size="icon"
-                    aria-label="Settings"
-                    onClick={() => navigate("/settings")}
-                    className="size-9 [&_svg]:!size-8 sm:[&_svg]:!size-5 hover:bg-muted/50"
-                  >
-                    <Settings />
-                  </Button>
-                </div>
-                
-                {/* Primary actions */}
-                <div className="flex items-center gap-2 ml-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setBulkUploadOpen(true)}
-                    disabled={bulkUploadMutation.isPending}
-                    className="h-9 whitespace-nowrap text-sm"
-                    data-guide-id="invoices.upload"
-                    data-guide-type="button"
-                    data-guide-label="Upload Invoice PDFs"
-                  >
-                    {bulkUploadMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                    ) : (
-                      <Upload className="w-4 h-4 mr-1.5" />
-                    )}
-                    Upload
-                  </Button>
-                  <Button 
-                    onClick={() => navigate("/invoices/new")}
-                    className="h-9 whitespace-nowrap text-sm"
-                    data-guide-id="invoices.create"
-                    data-guide-type="button"
-                    data-guide-label="Create New Invoice"
-                  >
-                    <Plus className="w-4 h-4 mr-1.5" />
-                    Create
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
-          </div>
-        );
-      })() : (
-        // Mobile: Keep existing PageHeader
-        <PageHeader
-          title="Invoices"
-          subtitle={`${invoiceStats.total} this year · ${invoiceStats.paid} paid · ${invoiceStats.due} due`}
-          onSearch={() => setIsSearchOpen(true)}
-          onFilter={() => setIsFilterOpen(true)}
-          onSettings={() => navigate("/settings")}
-          primaryActions={
-            <div className="flex flex-row sm:contents gap-2 w-full sm:w-auto">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setBulkUploadOpen(true)}
-                disabled={bulkUploadMutation.isPending}
-                className="h-10 whitespace-nowrap flex-1 sm:flex-initial"
-                data-guide-id="invoices.upload"
-                data-guide-type="button"
-                data-guide-label="Upload Invoice PDFs"
-              >
-                {bulkUploadMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4 mr-2" />
-                )}
-                Upload
-              </Button>
-              <Button
-                onClick={() => navigate("/invoices/new")}
-                className="h-10 whitespace-nowrap flex-1 sm:flex-initial"
-                data-guide-id="invoices.create"
-                data-guide-type="button"
-                data-guide-label="Create New Invoice"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Create
-              </Button>
-            </div>
-          }
-        />
-      )}
+            {bulkUploadMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Upload className="w-4 h-4 mr-2" />
+            )}
+            Upload
+          </Button>
+          <Button
+            onClick={() => navigate("/invoices/new")}
+            className="h-10 whitespace-nowrap"
+            data-guide-id="invoices.create"
+            data-guide-type="button"
+            data-guide-label="Create New Invoice"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Create
+          </Button>
+        </>
+      }
+      style={{
+        paddingBottom: multiSelectPadding,
+      }}
+    >
+      {/* Search overlay - controlled by ModulePage's onSearch handler */}
+      {searchOverlay}
+      
+      {/* Filter sheet - controlled by ModulePage's onFilter handler */}
+      {filterSheet}
 
       {/* Total Cards */}
       <div className="space-y-3">
@@ -2674,6 +2567,6 @@ export default function Invoices() {
         onUpload={handleBulkUpload}
         isUploading={bulkUploadMutation.isPending}
       />
-    </div>
+    </ModulePage>
   );
 }

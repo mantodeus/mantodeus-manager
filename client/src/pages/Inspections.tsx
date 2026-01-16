@@ -15,7 +15,7 @@ import { useState, useEffect, useMemo } from "react";
 import { unitStorage, inspectionStorage } from "@/lib/offlineStorage";
 import { toast } from "sonner";
 import { InspectionOverviewSkeleton } from "@/components/InspectionSkeletons";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 
 export default function Inspections() {
   const [, params] = useRoute("/projects/:projectId/inspections");
@@ -124,61 +124,62 @@ export default function Inspections() {
   // Show skeleton while loading (first load only)
   if (inspectionsLoading || offlineDataLoading) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Inspections" />
+      <ModulePage title="Inspections">
         <InspectionOverviewSkeleton />
-      </div>
+      </ModulePage>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Inspections"
-        subtitle={project?.name}
-      />
+  // Build primary actions
+  const primaryActions = (
+    <>
+      {(() => {
+        // Find first inspection with an ID (server-synced)
+        const inspectionWithId = allInspections.find(i => i.id && typeof i.id === 'number');
+        return inspectionWithId ? (
+          <Button
+            onClick={() => {
+              const inspectionId = inspectionWithId.id;
+              if (inspectionId && typeof inspectionId === 'number') {
+                generatePDFMutation.mutate({ inspectionId });
+              } else {
+                toast.error("No inspection found to export");
+              }
+            }}
+            disabled={generatePDFMutation.isPending}
+            variant="outline"
+            className="h-10 whitespace-nowrap"
+          >
+            {generatePDFMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileDown className="h-4 w-4 mr-2" />
+                Export PDF
+              </>
+            )}
+          </Button>
+        ) : null;
+      })()}
+      <Button
+        onClick={() => setCreateUnitDialogOpen(true)}
+        className="h-10 whitespace-nowrap"
+      >
+        <Plus className="h-4 w-4 mr-1" />
+        New
+      </Button>
+    </>
+  );
 
-      {/* Top-of-Page Action Row */}
-      <div className="flex items-center justify-end gap-2 pb-2 border-b">
-        {(() => {
-          // Find first inspection with an ID (server-synced)
-          const inspectionWithId = allInspections.find(i => i.id && typeof i.id === 'number');
-          return inspectionWithId ? (
-            <Button
-              onClick={() => {
-                const inspectionId = inspectionWithId.id;
-                if (inspectionId && typeof inspectionId === 'number') {
-                  generatePDFMutation.mutate({ inspectionId });
-                } else {
-                  toast.error("No inspection found to export");
-                }
-              }}
-              disabled={generatePDFMutation.isPending}
-              variant="outline"
-              className="h-10 whitespace-nowrap"
-            >
-              {generatePDFMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Export PDF
-                </>
-              )}
-            </Button>
-          ) : null;
-        })()}
-        <Button
-          onClick={() => setCreateUnitDialogOpen(true)}
-          className="h-10 whitespace-nowrap"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          New
-        </Button>
-      </div>
+  return (
+    <ModulePage
+      title="Inspections"
+      subtitle={project?.name}
+      primaryActions={primaryActions}
+    >
 
       {/* Inspections List */}
       {allInspections.length === 0 && allUnits.length === 0 ? (
@@ -269,7 +270,7 @@ export default function Inspections() {
           }}
         />
       )}
-    </div>
+    </ModulePage>
   );
 }
 

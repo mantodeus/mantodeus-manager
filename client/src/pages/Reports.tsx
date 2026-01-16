@@ -5,8 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { FileText, Download, Loader2, SlidersHorizontal, CheckCircle2, Archive, Trash2 } from "@/components/ui/Icon";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { PageHeader } from "@/components/PageHeader";
-import { PageContainer } from "@/components/PageContainer";
+import { ModulePage } from "@/components/ModulePage";
 import { useLocation } from "wouter";
 import { useState } from "react";
 import {
@@ -97,21 +96,20 @@ export default function Reports() {
 
   if (projectsLoading) {
     return (
-      <PageContainer>
+      <ModulePage title="Reports">
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </PageContainer>
+      </ModulePage>
     );
   }
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Reports"
-        subtitle="Generate and download project reports"
-        onFilter={handleFilterClick}
-      />
+    <ModulePage
+      title="Reports"
+      subtitle="Generate and download project reports"
+      onFilter={handleFilterClick}
+    >
       {filterSheet}
 
       <div className="grid gap-4">
@@ -191,6 +189,6 @@ export default function Reports() {
           </CardContent>
         </Card>
       </div>
-    </PageContainer>
+    </ModulePage>
   );
 }

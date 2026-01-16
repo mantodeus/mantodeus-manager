@@ -125,6 +125,7 @@ export const CenteredContextMenu = React.forwardRef<
   const [isTouchHoldActive, setIsTouchHoldActive] = useState(false);
   const [itemRect, setItemRect] = useState<DOMRect | null>(null);
   const [menuHeight, setMenuHeight] = useState(200);
+  const [cardCloneHtml, setCardCloneHtml] = useState<string>('');
   const menuOpenTimeRef = useRef(0);
   const itemRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -298,30 +299,36 @@ export const CenteredContextMenu = React.forwardRef<
       const rect = element.getBoundingClientRect();
       setItemRect(rect);
       
-      // Store original position values
-      const originalPosition = element.style.position || '';
-      const originalTop = element.style.top || '';
-      const originalLeft = element.style.left || '';
-      const originalWidth = element.style.width || '';
-      const originalHeight = element.style.height || '';
-      const originalZIndex = element.style.zIndex || '';
+      // Create a clone of the card HTML to render in portal
+      // This ensures it appears above the blur overlay
+      const clone = element.cloneNode(true) as HTMLElement;
+      // Remove interactive elements and context menu classes from clone
+      clone.querySelectorAll('button, a, input, [onclick]').forEach(el => {
+        (el as HTMLElement).style.pointerEvents = 'none';
+      });
+      // Add active class to clone
+      clone.classList.add('context-menu-active');
+      clone.classList.remove('context-menu-pressing');
+      // Set clone styles
+      clone.style.position = 'fixed';
+      clone.style.top = `${rect.top}px`;
+      clone.style.left = `${rect.left}px`;
+      clone.style.width = `${rect.width}px`;
+      clone.style.height = `${rect.height}px`;
+      clone.style.zIndex = '9997';
+      clone.style.pointerEvents = 'none';
+      clone.style.margin = '0';
+      clone.style.transform = 'scale(1.02)';
       
-      // Position the card as fixed at its current location so it appears above portal elements
-      element.style.position = 'fixed';
-      element.style.top = `${rect.top}px`;
-      element.style.left = `${rect.left}px`;
-      element.style.width = `${rect.width}px`;
-      element.style.height = `${rect.height}px`;
-      element.style.zIndex = '9997';
+      setCardCloneHtml(clone.outerHTML);
       
-      // Store original values for restoration
+      // Hide the original card in document flow
+      const originalVisibility = element.style.visibility || '';
+      const originalOpacity = element.style.opacity || '';
+      element.style.visibility = 'hidden';
       (element as any).__originalContextMenuStyles = {
-        position: originalPosition,
-        top: originalTop,
-        left: originalLeft,
-        width: originalWidth,
-        height: originalHeight,
-        zIndex: originalZIndex,
+        visibility: originalVisibility,
+        opacity: originalOpacity,
       };
       
       if (blockingTimeoutRef.current) {
@@ -372,18 +379,15 @@ export const CenteredContextMenu = React.forwardRef<
       itemRef.current.classList.remove("context-menu-shifted");
       itemRef.current.style.removeProperty("--context-menu-shift");
       
-      // Restore original position styles
+      // Restore original visibility
       const originalStyles = (itemRef.current as any).__originalContextMenuStyles;
       if (originalStyles) {
-        itemRef.current.style.position = originalStyles.position || '';
-        itemRef.current.style.top = originalStyles.top || '';
-        itemRef.current.style.left = originalStyles.left || '';
-        itemRef.current.style.width = originalStyles.width || '';
-        itemRef.current.style.height = originalStyles.height || '';
-        itemRef.current.style.zIndex = originalStyles.zIndex || '';
+        itemRef.current.style.visibility = originalStyles.visibility || '';
+        itemRef.current.style.opacity = originalStyles.opacity || '';
         delete (itemRef.current as any).__originalContextMenuStyles;
       }
     }
+    setCardCloneHtml('');
     // Reset long-press gesture state immediately
     resetLongPress();
     if (blockingTimeoutRef.current) {
@@ -409,20 +413,6 @@ export const CenteredContextMenu = React.forwardRef<
     };
   }, [isBlocking]);
 
-  // Hide original card when menu is open (it's now fixed and visible above blur)
-  useEffect(() => {
-    if (!isOpen || !itemRef.current) return;
-    
-    // Make the original card in document flow invisible since we have a fixed copy
-    const originalVisibility = itemRef.current.style.visibility || '';
-    itemRef.current.style.visibility = 'hidden';
-    
-    return () => {
-      if (itemRef.current) {
-        itemRef.current.style.visibility = originalVisibility;
-      }
-    };
-  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || !isTouchHoldActive) return;
@@ -813,6 +803,18 @@ export const CenteredContextMenu = React.forwardRef<
                 touchAction: "none",
               }}
             />
+
+            {/* Cloned card - appears above blur overlay */}
+            {isOpen && itemRect && cardCloneHtml && (
+              <div
+                dangerouslySetInnerHTML={{ __html: cardCloneHtml }}
+                style={{
+                  position: 'fixed',
+                  zIndex: 9997,
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
 
             {/* Centered menu - z-index below tab bar */}
             {isOpen &&

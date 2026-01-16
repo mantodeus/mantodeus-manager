@@ -14,7 +14,7 @@ import { Plus, CheckCircle2, Circle, Clock, Loader2, ArrowRight } from "@/compon
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { unitStorage, inspectionStorage } from "@/lib/offlineStorage";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 
 export default function InspectionsOverview() {
   const [, setLocation] = useLocation();
@@ -60,23 +60,21 @@ export default function InspectionsOverview() {
 
   if (projectsLoading) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Inspections" />
+      <ModulePage title="Inspections">
         <div className="flex items-center justify-center p-8">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
-      </div>
+      </ModulePage>
     );
   }
 
   // If no project selected, show project selector
   if (!selectedProjectId) {
     return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Inspections"
-          subtitle="Select a project to view or create inspections"
-        />
+      <ModulePage
+        title="Inspections"
+        subtitle="Select a project to view or create inspections"
+      >
 
         {projects.length === 0 ? (
           <Card>
@@ -110,7 +108,7 @@ export default function InspectionsOverview() {
             ))}
           </div>
         )}
-      </div>
+      </ModulePage>
     );
   }
 
@@ -118,36 +116,31 @@ export default function InspectionsOverview() {
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <PageHeader
-        title="Inspections"
-        subtitle={selectedProject?.name}
-        variant="detail"
-        leading={
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSelectedProjectId(null)}
-            className="size-9 [&_svg]:size-6"
-            aria-label="Back to projects"
-          >
-            ←
-          </Button>
-        }
-      />
-
-      {/* Top-of-Page Action Row */}
-      {selectedProjectId && (
-        <div className="flex items-center justify-end gap-2 pb-2 border-b">
+    <ModulePage
+      title="Inspections"
+      subtitle={selectedProject?.name}
+      leading={
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSelectedProjectId(null)}
+          className="size-9 [&_svg]:size-6"
+          aria-label="Back to projects"
+        >
+          ←
+        </Button>
+      }
+      primaryActions={
+        selectedProjectId ? (
           <Link href={`/projects/${selectedProjectId}/inspections`}>
             <Button className="h-10 whitespace-nowrap">
               <Plus className="h-4 w-4 mr-1" />
               New
             </Button>
           </Link>
-        </div>
-      )}
+        ) : undefined
+      }
+    >
 
       {/* Inspections List */}
       {allInspections.length === 0 && allUnits.length === 0 ? (
@@ -230,7 +223,7 @@ export default function InspectionsOverview() {
           )}
         </div>
       )}
-    </div>
+    </ModulePage>
   );
 }
 

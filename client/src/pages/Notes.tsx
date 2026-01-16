@@ -41,7 +41,7 @@ import { Plus, Search, Tag, FileText, Loader2, SlidersHorizontal, X, CheckCircle
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { MultiSelectBar } from "@/components/MultiSelectBar";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 import { Markdown } from "@/components/Markdown";
 import { useIsMobile } from "@/hooks/useMobile";
 import { extractNotePreview } from "@/lib/notesPreview";
@@ -700,32 +700,30 @@ export default function Notes() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Search overlay - controlled by PageHeader's onSearch handler */}
+    <ModulePage
+      title="Notes"
+      subtitle="Create and manage your notes"
+      onSearch={() => setIsSearchOpen(true)}
+      onFilter={() => setIsFilterOpen(true)}
+      settingsEnabled={false}
+      primaryActions={
+        <Button 
+          onClick={() => navigate("/notes/new")} 
+          className="h-10 whitespace-nowrap"
+          data-guide-id="notes.new"
+          data-guide-type="button"
+          data-guide-label="Create New Note"
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          New
+        </Button>
+      }
+    >
+      {/* Search overlay - controlled by ModulePage's onSearch handler */}
       {searchOverlay}
       
-      {/* Filter sheet - controlled by PageHeader's onFilter handler */}
+      {/* Filter sheet - controlled by ModulePage's onFilter handler */}
       {filterSheet}
-      
-      <PageHeader
-        title="Notes"
-        subtitle="Create and manage your notes"
-        onSearch={() => setIsSearchOpen(true)}
-        onFilter={() => setIsFilterOpen(true)}
-        settingsEnabled={false}
-        primaryActions={
-          <Button 
-            onClick={() => navigate("/notes/new")} 
-            className="h-10 whitespace-nowrap"
-            data-guide-id="notes.new"
-            data-guide-type="button"
-            data-guide-label="Create New Note"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            New
-          </Button>
-        }
-      />
 
       {/* Active Notes Grid */}
       <div className="space-y-4">
@@ -839,6 +837,6 @@ export default function Notes() {
         confirmLabel="Archive"
         isDeleting={archiveNoteMutation.isPending}
       />
-    </div>
+    </ModulePage>
   );
 }

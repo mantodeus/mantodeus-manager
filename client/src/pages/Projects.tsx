@@ -23,7 +23,7 @@ import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 import { MultiSelectBar, createArchiveAction, createDeleteAction } from "@/components/MultiSelectBar";
 import { cn } from "@/lib/utils";
 import {
@@ -587,31 +587,29 @@ export default function Projects() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Filter sheet - controlled by PageHeader's onFilter handler */}
+    <ModulePage
+      title="Projects"
+      subtitle="Manage your client projects and work"
+      searchEnabled={false}
+      onFilter={() => setIsFilterOpen(true)}
+      settingsEnabled={false}
+      primaryActions={
+        <Button 
+          asChild 
+          className="h-10 whitespace-nowrap"
+          data-guide-id="projects.new"
+          data-guide-type="button"
+          data-guide-label="Create New Project"
+        >
+          <Link href="/projects/new">
+            <Plus className="w-4 h-4 mr-1" />
+            New
+          </Link>
+        </Button>
+      }
+    >
+      {/* Filter sheet - controlled by ModulePage's onFilter handler */}
       {filterSheet}
-      
-      <PageHeader
-        title="Projects"
-        subtitle="Manage your client projects and work"
-        searchEnabled={false}
-        onFilter={() => setIsFilterOpen(true)}
-        settingsEnabled={false}
-        primaryActions={
-          <Button 
-            asChild 
-            className="h-10 whitespace-nowrap"
-            data-guide-id="projects.new"
-            data-guide-type="button"
-            data-guide-label="Create New Project"
-          >
-            <Link href="/projects/new">
-              <Plus className="w-4 h-4 mr-1" />
-              New
-            </Link>
-          </Button>
-        }
-      />
 
       {/* Projects Grid */}
       <div className="space-y-4">
@@ -696,7 +694,6 @@ export default function Projects() {
         confirmLabel="Delete"
         isDeleting={moveProjectToTrashMutation.isPending}
       />
-
-    </div>
+    </ModulePage>
   );
 }

@@ -32,7 +32,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 import {
@@ -719,39 +719,37 @@ export default function Contacts() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Search dialog - controlled by PageHeader's onSearch handler */}
+    <ModulePage
+      title="Contacts"
+      subtitle="Manage your clients and contacts"
+      onSearch={() => setIsSearchOpen(true)}
+      onFilter={() => setIsFilterOpen(true)}
+      settingsEnabled={false}
+      primaryActions={
+        <>
+          {isFormOpen && (
+            <Button variant="ghost" onClick={handleCloseForm} className="h-10 whitespace-nowrap">
+              Cancel
+            </Button>
+          )}
+          <Button 
+            onClick={handleNewContact} 
+            className="h-10 whitespace-nowrap"
+            data-guide-id="contacts.new"
+            data-guide-type="button"
+            data-guide-label="Create New Contact"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            New
+          </Button>
+        </>
+      }
+    >
+      {/* Search dialog - controlled by ModulePage's onSearch handler */}
       {searchDialog}
       
-      {/* Filter sheet - controlled by PageHeader's onFilter handler */}
+      {/* Filter sheet - controlled by ModulePage's onFilter handler */}
       {filterSheet}
-      
-      <PageHeader
-        title="Contacts"
-        subtitle="Manage your clients and contacts"
-        onSearch={() => setIsSearchOpen(true)}
-        onFilter={() => setIsFilterOpen(true)}
-        settingsEnabled={false}
-        primaryActions={
-          <>
-            {isFormOpen && (
-              <Button variant="ghost" onClick={handleCloseForm} className="h-10 whitespace-nowrap">
-                Cancel
-              </Button>
-            )}
-            <Button 
-              onClick={handleNewContact} 
-              className="h-10 whitespace-nowrap"
-              data-guide-id="contacts.new"
-              data-guide-type="button"
-              data-guide-label="Create New Contact"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              New
-            </Button>
-          </>
-        }
-      />
 
       {isFormOpen && (
         <div ref={formRef} className="rounded-lg border p-4">
@@ -1320,6 +1318,6 @@ export default function Contacts() {
         confirmLabel="Archive"
         isDeleting={archiveMutation.isPending}
       />
-    </div>
+    </ModulePage>
   );
 }
