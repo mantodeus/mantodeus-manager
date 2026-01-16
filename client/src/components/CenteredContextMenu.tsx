@@ -460,8 +460,10 @@ export const CenteredContextMenu = React.forwardRef<
   useEffect(() => {
     if (!isOpen) return;
 
+    // Store original app scroller styles (our app scrolls inside .app-content on mobile)
+    const appContent = document.querySelector(".app-content") as HTMLElement | null;
+    
     // #region agent log
-    const appContent = document.querySelector('.app-content') as HTMLElement | null;
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
     fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CenteredContextMenu.tsx:460',message:'Context menu opening - BEFORE changes',data:{isOpen,isMobile,isStandalone,windowScrollY:window.scrollY,windowInnerHeight:window.innerHeight,appContentScrollTop:appContent?.scrollTop,bodyOverflow:document.body.style.overflow},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
@@ -473,9 +475,6 @@ export const CenteredContextMenu = React.forwardRef<
     const originalBodyWidth = document.body.style.width;
     const originalBodyTop = document.body.style.top;
     const scrollY = window.scrollY;
-
-    // Store original app scroller styles (our app scrolls inside .app-content on mobile)
-    const appContent = document.querySelector(".app-content") as HTMLElement | null;
     const originalAppOverflowY = appContent?.style.overflowY ?? "";
     const originalAppOverflow = appContent?.style.overflow ?? "";
 
