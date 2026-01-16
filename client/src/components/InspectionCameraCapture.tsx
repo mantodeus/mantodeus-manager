@@ -345,7 +345,10 @@ export function InspectionCameraCapture({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div
+      className="fixed inset-0 bg-black z-50 flex flex-col"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/80">
         <CardTitle className="text-white">Take Photo</CardTitle>
