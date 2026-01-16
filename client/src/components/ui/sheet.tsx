@@ -51,10 +51,18 @@ function SheetContent({
   className,
   children,
   side = "right",
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
 }) {
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const isStandalone =
+    typeof window !== "undefined" &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true);
+
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -80,6 +88,18 @@ function SheetContent({
             "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto border-t rounded-t-xl",
           className
         )}
+        onOpenAutoFocus={(event) => {
+          if (isMobile && isStandalone) {
+            event.preventDefault();
+          }
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          if (isMobile && isStandalone) {
+            event.preventDefault();
+          }
+          onCloseAutoFocus?.(event);
+        }}
         {...props}
       >
         {children}

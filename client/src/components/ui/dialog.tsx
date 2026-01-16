@@ -202,7 +202,15 @@ function DialogContent({
 
   const handleOpenAutoFocus = React.useCallback(
     (event: Event) => {
-      event.preventDefault();
+      // On mobile PWA, prevent Radix auto-focus from scrolling the viewport.
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+      const isStandalone =
+        typeof window !== "undefined" &&
+        (window.matchMedia("(display-mode: standalone)").matches ||
+          (window.navigator as any).standalone === true);
+      if (isMobile && isStandalone) {
+        event.preventDefault();
+      }
       onOpenAutoFocus?.(event);
     },
     [onOpenAutoFocus]
@@ -314,4 +322,3 @@ export {
   DialogTitle,
   DialogTrigger
 };
-
