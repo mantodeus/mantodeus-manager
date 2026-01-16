@@ -325,10 +325,11 @@
   #portal-root {
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    /* Portal root sits BELOW the bottom tab bar (z-index: 9999) */
+    /* Sheets and dialogs inside will have their own z-index */
+    z-index: 9998;
     pointer-events: none;
-    /* Ensure portal root doesn't interfere with safe areas */
-    padding-top: env(safe-area-inset-top);
+    /* No padding here - children handle their own safe areas */
   }
 
   #portal-root > * {

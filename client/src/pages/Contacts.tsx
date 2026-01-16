@@ -1096,8 +1096,8 @@ export default function Contacts() {
         
         return (
           <Dialog open={!!previewContactId} onOpenChange={(open) => !open && setPreviewContactId(null)}>
-            <DialogContent 
-              className="!fixed !inset-0 !h-screen !w-screen !max-w-none !translate-x-0 !translate-y-0 rounded-none m-0 p-0 flex flex-col"
+            <DialogContent
+              className="!fixed !top-0 !left-0 !right-0 max-md:!bottom-[var(--bottom-safe-area)] md:!bottom-0 !max-w-none !translate-x-0 !translate-y-0 rounded-none m-0 p-0 flex flex-col pt-[env(safe-area-inset-top)]"
               showCloseButton={false}
             >
               {/* Header */}
