@@ -180,61 +180,69 @@ function DropdownMenuContent({
   }, [isOpen]);
   // #endregion
 
-  // #region agent log - Continuous monitoring of scroll/viewport during menu open
+  // #region agent log - Fix: Prevent iOS PWA viewport height change when menu opens
   React.useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !isMobile || !isStandalone) return;
     
-    let rafId: number;
-    let lastWindowScrollY = window.scrollY;
-    let lastAppContentScrollTop: number | null = null;
-    const appContent = document.querySelector('.app-content') as HTMLElement | null;
-    if (appContent) lastAppContentScrollTop = appContent.scrollTop;
-    let lastVvHeight: number | null = null;
-    let lastVvOffsetTop: number | null = null;
+    // Capture initial viewport state BEFORE menu opens
     const vv = (window as any).visualViewport;
-    if (vv) {
-      lastVvHeight = vv.height;
-      lastVvOffsetTop = vv.offsetTop;
-    }
+    const initialVvHeight = vv?.height ?? window.innerHeight;
+    const initialVvOffsetTop = vv?.offsetTop ?? 0;
+    const appContent = document.querySelector('.app-content') as HTMLElement | null;
+    const initialAppScrollTop = appContent?.scrollTop ?? 0;
+    
+    // Monitor for viewport changes and compensate
+    let rafId: number;
+    let compensationApplied = false;
     
     const monitor = () => {
-      const currentWindowScrollY = window.scrollY;
-      const currentAppContent = document.querySelector('.app-content') as HTMLElement | null;
-      const currentAppContentScrollTop = currentAppContent?.scrollTop ?? null;
+      if (!isOpen) {
+        if (rafId) cancelAnimationFrame(rafId);
+        return;
+      }
+      
       const currentVv = (window as any).visualViewport;
-      const currentVvHeight = currentVv?.height ?? null;
-      const currentVvOffsetTop = currentVv?.offsetTop ?? null;
+      const currentVvHeight = currentVv?.height ?? window.innerHeight;
+      const currentVvOffsetTop = currentVv?.offsetTop ?? 0;
+      const vvHeightDelta = currentVvHeight - initialVvHeight;
+      const vvOffsetDelta = currentVvOffsetTop - initialVvOffsetTop;
       
-      const scrollChanged = currentWindowScrollY !== lastWindowScrollY || currentAppContentScrollTop !== lastAppContentScrollTop;
-      const viewportChanged = currentVvHeight !== lastVvHeight || currentVvOffsetTop !== lastVvOffsetTop;
-      
-      if (scrollChanged || viewportChanged) {
-        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-        const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
-        const logData = {location:'dropdown-menu.tsx:monitor',message:'Menu open - viewport/scroll changed',data:{isMobile,isStandalone,windowScrollY:currentWindowScrollY,windowScrollYDelta:currentWindowScrollY-lastWindowScrollY,appContentScrollTop:currentAppContentScrollTop,appContentScrollTopDelta:currentAppContentScrollTop!==null&&lastAppContentScrollTop!==null?currentAppContentScrollTop-lastAppContentScrollTop:null,visualViewportHeight:currentVvHeight,visualViewportHeightDelta:currentVvHeight!==null&&lastVvHeight!==null?currentVvHeight-lastVvHeight:null,visualViewportOffsetTop:currentVvOffsetTop,visualViewportOffsetTopDelta:currentVvOffsetTop!==null&&lastVvOffsetTop!==null?currentVvOffsetTop-lastVvOffsetTop:null,windowInnerHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'J'};
-        console.log('[DEBUG]', logData);
-        try {
-          const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
-          logs.push(logData);
-          if (logs.length > 100) logs.shift();
-          localStorage.setItem('debug-logs', JSON.stringify(logs));
-        } catch(e) {}
-        lastWindowScrollY = currentWindowScrollY;
-        lastAppContentScrollTop = currentAppContentScrollTop;
-        lastVvHeight = currentVvHeight;
-        lastVvOffsetTop = currentVvOffsetTop;
+      // If viewport height changed (the jump), compensate by adjusting scroll
+      if (!compensationApplied && (Math.abs(vvHeightDelta) > 5 || Math.abs(vvOffsetDelta) > 5)) {
+        compensationApplied = true;
+        
+        // Compensate for the viewport change by adjusting scroll position
+        // The viewport height decrease causes content to shift up, so we need to scroll down
+        if (appContent) {
+          const currentScroll = appContent.scrollTop;
+          // If viewport got smaller (height decreased), content shifted up, so scroll down
+          const compensation = -vvHeightDelta - vvOffsetDelta;
+          if (Math.abs(compensation) > 1) {
+            appContent.scrollTop = currentScroll + compensation;
+          }
+        } else {
+          // Fallback to window scroll if no app-content
+          const currentScroll = window.scrollY;
+          const compensation = -vvHeightDelta - vvOffsetDelta;
+          if (Math.abs(compensation) > 1) {
+            window.scrollTo({ top: currentScroll + compensation, behavior: 'auto' });
+          }
+        }
       }
       
       rafId = requestAnimationFrame(monitor);
     };
     
-    // Start monitoring immediately and continue while menu is open
-    rafId = requestAnimationFrame(monitor);
+    // Start monitoring after a short delay to catch the viewport change
+    rafId = requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(monitor);
+    });
     
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
+      compensationApplied = false;
     };
-  }, [isOpen]);
+  }, [isOpen, isMobile, isStandalone]);
   // #endregion
 
   return (

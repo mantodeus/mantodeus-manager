@@ -622,6 +622,71 @@ export const CenteredContextMenu = React.forwardRef<
       // #endregion
     };
   }, [isOpen]);
+  
+  // #region agent log - Fix: Prevent iOS PWA viewport height change when context menu opens
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+    if (!isMobile || !isStandalone) return;
+    
+    // Capture initial viewport state BEFORE menu opens
+    const vv = (window as any).visualViewport;
+    const initialVvHeight = vv?.height ?? window.innerHeight;
+    const initialVvOffsetTop = vv?.offsetTop ?? 0;
+    const appContent = document.querySelector('.app-content') as HTMLElement | null;
+    const initialAppScrollTop = appContent?.scrollTop ?? 0;
+    
+    // Monitor for viewport changes and compensate
+    let rafId: number;
+    let compensationApplied = false;
+    
+    const monitor = () => {
+      if (!isOpen) {
+        if (rafId) cancelAnimationFrame(rafId);
+        return;
+      }
+      
+      const currentVv = (window as any).visualViewport;
+      const currentVvHeight = currentVv?.height ?? window.innerHeight;
+      const currentVvOffsetTop = currentVv?.offsetTop ?? 0;
+      const vvHeightDelta = currentVvHeight - initialVvHeight;
+      const vvOffsetDelta = currentVvOffsetTop - initialVvOffsetTop;
+      
+      // If viewport height changed (the jump), compensate by adjusting scroll
+      if (!compensationApplied && (Math.abs(vvHeightDelta) > 5 || Math.abs(vvOffsetDelta) > 5)) {
+        compensationApplied = true;
+        
+        // Compensate for the viewport change by adjusting scroll position
+        if (appContent) {
+          const currentScroll = appContent.scrollTop;
+          const compensation = -vvHeightDelta - vvOffsetDelta;
+          if (Math.abs(compensation) > 1) {
+            appContent.scrollTop = currentScroll + compensation;
+          }
+        } else {
+          const currentScroll = window.scrollY;
+          const compensation = -vvHeightDelta - vvOffsetDelta;
+          if (Math.abs(compensation) > 1) {
+            window.scrollTo({ top: currentScroll + compensation, behavior: 'auto' });
+          }
+        }
+      }
+      
+      rafId = requestAnimationFrame(monitor);
+    };
+    
+    // Start monitoring after a short delay to catch the viewport change
+    rafId = requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(monitor);
+    });
+    
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      compensationApplied = false;
+    };
+  }, [isOpen]);
+  // #endregion
 
   useEffect(() => {
     return () => {
