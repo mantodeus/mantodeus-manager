@@ -26,6 +26,7 @@ import { PageContainer } from "@/components/PageContainer";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemeName } from "@/lib/theme";
 import { LogoUploadSection } from "@/components/LogoUploadSection";
+import { isDebugPanelEnabled, setDebugPanelEnabled } from "@/lib/debugPanel";
 
 export default function Settings() {
   const { theme, switchTheme, themes } = useTheme();

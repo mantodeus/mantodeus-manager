@@ -194,19 +194,22 @@ export function applyTheme(themeName: ThemeName) {
   
   // Set HTML and body background colors for off-screen areas (browser chrome, mobile pull-to-refresh, iOS status bar)
   // Set on html element for off-screen scroll areas (works in both web and PWA)
-  root.style.setProperty('background-color', bgColor, 'important');
+  if (root && root.style) {
+    root.style.setProperty('background-color', bgColor, 'important');
+  }
   // Set on body element as well
-  if (document.body) {
+  if (document.body && document.body.style) {
     document.body.style.setProperty('background-color', bgColor, 'important');
   }
   // Also set on #root to ensure consistency
   const rootElement = document.getElementById('root');
-  if (rootElement) {
+  if (rootElement && rootElement.style) {
     rootElement.style.setProperty('background-color', bgColor, 'important');
   }
 
   // After CSS variables are fully applied, sync to the resolved background.
   requestAnimationFrame(() => {
+    if (!root || !root.style) return;
     const resolved = getComputedStyle(root).backgroundColor;
     if (
       resolved &&
@@ -216,11 +219,11 @@ export function applyTheme(themeName: ThemeName) {
     ) {
       themeColorMeta.content = resolved;
       root.style.setProperty('background-color', resolved, 'important');
-      if (document.body) {
+      if (document.body && document.body.style) {
         document.body.style.setProperty('background-color', resolved, 'important');
       }
       const rootElementNext = document.getElementById('root');
-      if (rootElementNext) {
+      if (rootElementNext && rootElementNext.style) {
         rootElementNext.style.setProperty('background-color', resolved, 'important');
       }
     }
