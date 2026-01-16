@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, X } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
 
 interface DatePickerProps {
   selectedDates: Date[];
@@ -11,6 +12,10 @@ interface DatePickerProps {
 
 export function DatePicker({ selectedDates, onChange, className }: DatePickerProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  
+  // Get user preferences for week start
+  const { data: preferences } = trpc.settings.preferences.get.useQuery();
+  const weekStartsOn = preferences?.weekStartsOn || "monday";
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -21,7 +26,14 @@ export function DatePicker({ selectedDates, onChange, className }: DatePickerPro
   const getFirstDayOfMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
-    return new Date(year, month, 1).getDay();
+    const day = new Date(year, month, 1).getDay();
+    // Adjust for week start preference
+    if (weekStartsOn === "monday") {
+      // Convert: 0 (Sun) -> 6, 1 (Mon) -> 0, 2 (Tue) -> 1, etc.
+      return day === 0 ? 6 : day - 1;
+    }
+    // Sunday start: return as-is (0 = Sunday, 1 = Monday, etc.)
+    return day;
   };
 
   const isSameDay = (date1: Date, date2: Date) => {
@@ -105,7 +117,10 @@ export function DatePicker({ selectedDates, onChange, className }: DatePickerPro
       </div>
 
       <div className="grid grid-cols-7 gap-1">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+        {(weekStartsOn === "monday" 
+          ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+          : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        ).map((day) => (
           <div key={day} className="h-10 flex items-center justify-center text-sm font-medium text-muted-foreground">
             {day}
           </div>

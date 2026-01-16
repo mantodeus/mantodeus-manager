@@ -571,6 +571,7 @@ export const userPreferences = mysqlTable("user_preferences", {
   language: varchar("language", { length: 10 }).default("en").notNull(),
   currency: varchar("currency", { length: 3 }).default("EUR").notNull(),
   notificationsEnabled: boolean("notificationsEnabled").default(true).notNull(),
+  weekStartsOn: varchar("weekStartsOn", { length: 10 }).default("monday").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [

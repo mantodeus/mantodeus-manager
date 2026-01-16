@@ -219,6 +219,7 @@ export const settingsRouter = router({
           language: z.enum(["en", "de"]).optional(),
           currency: z.enum(["EUR", "USD", "GBP", "CHF"]).optional(),
           notificationsEnabled: z.boolean().optional(),
+          weekStartsOn: z.enum(["monday", "sunday"]).optional(),
         })
       )
       .mutation(async ({ input, ctx }) => {

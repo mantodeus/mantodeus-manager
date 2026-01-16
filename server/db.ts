@@ -4302,6 +4302,7 @@ export async function updateUserPreferences(userId: number, data: Partial<Insert
     language: "en",
     currency: "EUR",
     notificationsEnabled: true,
+    weekStartsOn: "monday",
   };
 
   const normalizeString = (value: string | undefined) => {
@@ -4317,6 +4318,7 @@ export async function updateUserPreferences(userId: number, data: Partial<Insert
     language: normalizeString(data.language),
     currency: normalizeString(data.currency),
     notificationsEnabled: data.notificationsEnabled,
+    weekStartsOn: normalizeString(data.weekStartsOn),
   };
 
   const existing = await getUserPreferencesByUserId(userId);
@@ -4329,6 +4331,7 @@ export async function updateUserPreferences(userId: number, data: Partial<Insert
     language: (normalizedInput.language as string | undefined) ?? base.language ?? defaults.language,
     currency: (normalizedInput.currency as string | undefined) ?? base.currency ?? defaults.currency,
     notificationsEnabled: normalizedInput.notificationsEnabled ?? base.notificationsEnabled ?? defaults.notificationsEnabled,
+    weekStartsOn: (normalizedInput.weekStartsOn as string | undefined) ?? base.weekStartsOn ?? defaults.weekStartsOn,
   };
 
   if (!existing) {

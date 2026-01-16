@@ -89,6 +89,7 @@ export default function Settings() {
     language: "en",
     currency: "EUR",
     notificationsEnabled: true,
+    weekStartsOn: "monday" as "monday" | "sunday",
   });
 
   // Initialize form when settings load
@@ -128,6 +129,7 @@ export default function Settings() {
         language: preferences.language || "en",
         currency: preferences.currency || "EUR",
         notificationsEnabled: preferences.notificationsEnabled ?? true,
+        weekStartsOn: (preferences.weekStartsOn as "monday" | "sunday") || "monday",
       });
     }
   }, [preferences]);
@@ -146,6 +148,7 @@ export default function Settings() {
       language: preferencesData.language || "en",
       currency: preferencesData.currency || "EUR",
       notificationsEnabled: preferencesData.notificationsEnabled ?? true,
+      weekStartsOn: preferencesData.weekStartsOn || "monday",
     };
     await updatePreferencesMutation.mutateAsync(normalized);
   };
@@ -322,6 +325,23 @@ export default function Settings() {
                     <Label htmlFor="24h" className="font-normal cursor-pointer">24-hour</Label>
                   </div>
                 </RadioGroup>
+              </div>
+
+              {/* Week Starts On */}
+              <div className="space-y-2">
+                <Label htmlFor="weekStartsOn">Week Starts On</Label>
+                <Select
+                  value={preferencesData.weekStartsOn}
+                  onValueChange={(value) => handlePreferenceChange("weekStartsOn", value)}
+                >
+                  <SelectTrigger id="weekStartsOn">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monday">Monday</SelectItem>
+                    <SelectItem value="sunday">Sunday</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Timezone */}

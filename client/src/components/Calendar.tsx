@@ -27,6 +27,10 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [highlightJobId, setHighlightJobId] = useState<number | null>(null);
+  
+  // Get user preferences for week start
+  const { data: preferences } = trpc.settings.preferences.get.useQuery();
+  const weekStartsOn = preferences?.weekStartsOn || "monday";
   useEffect(() => {
     const url = new URL(window.location.href);
     const focusDateParam = url.searchParams.get('focusDate');
@@ -78,7 +82,11 @@ export default function Calendar() {
     
     if (viewMode === 'weekly') {
       const start = new Date(date);
-      start.setDate(date.getDate() - date.getDay());
+      const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const weekStartOffset = weekStartsOn === "monday" 
+        ? (dayOfWeek === 0 ? -6 : 1 - dayOfWeek) // If Sunday, go back 6 days; otherwise go to Monday
+        : -dayOfWeek; // Sunday start: go back to Sunday
+      start.setDate(date.getDate() + weekStartOffset);
       start.setHours(0, 0, 0, 0);
       const end = new Date(start);
       end.setDate(start.getDate() + 6);
@@ -90,7 +98,7 @@ export default function Calendar() {
     const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
     end.setHours(23, 59, 59, 999);
     return { start, end };
-  }, [currentDate, viewMode]);
+  }, [currentDate, viewMode, weekStartsOn]);
 
   const { data: events = [], isLoading } = trpc.calendar.getEvents.useQuery({
     startDate: dateRange.start,
@@ -102,7 +110,14 @@ export default function Calendar() {
   };
 
   const getFirstDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    const day = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    // Adjust for week start preference
+    if (weekStartsOn === "monday") {
+      // Convert: 0 (Sun) -> 6, 1 (Mon) -> 0, 2 (Tue) -> 1, etc.
+      return day === 0 ? 6 : day - 1;
+    }
+    // Sunday start: return as-is (0 = Sunday, 1 = Monday, etc.)
+    return day;
   };
 
   const getEventsForDate = (date: Date) => {
@@ -146,8 +161,16 @@ export default function Calendar() {
   };
 
   const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const weekStart = new Date(currentDate);
-  weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+  const weekStart = useMemo(() => {
+    const date = new Date(currentDate);
+    const dayOfWeek = date.getDay();
+    const weekStartOffset = weekStartsOn === "monday" 
+      ? (dayOfWeek === 0 ? -6 : 1 - dayOfWeek)
+      : -dayOfWeek;
+    const start = new Date(date);
+    start.setDate(date.getDate() + weekStartOffset);
+    return start;
+  }, [currentDate, weekStartsOn]);
 
   const isToday = (date: Date) => date.toDateString() === new Date().toDateString();
   const isSelected = (date: Date) => selectedDate?.toDateString() === date.toDateString();
@@ -205,9 +228,13 @@ export default function Calendar() {
       );
     }
 
+    const weekDayLabels = weekStartsOn === "monday" 
+      ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
     return (
       <div className="grid grid-cols-7 gap-1">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+        {weekDayLabels.map(day => (
           <div key={day} className="text-center text-muted-foreground text-xs py-1">
             {day}
           </div>
