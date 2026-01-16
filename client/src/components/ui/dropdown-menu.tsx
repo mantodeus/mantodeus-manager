@@ -102,13 +102,12 @@ function DropdownMenuContent({
     };
   }, []);
 
-  // Enable auto-scroll on all devices to prevent dropdowns from being cropped
-  // Use larger buffer on mobile to account for tab bar
+  // Avoid auto-scroll on mobile to prevent layout jumps when opening menus.
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   useAutoScrollOnOpen({
     isOpen,
     menuRef,
-    enabled: true,
+    enabled: !isMobile,
     scrollBuffer: isMobile ? 32 : 16, // Increased buffer on mobile for better tab bar clearance
   });
 
@@ -119,7 +118,7 @@ function DropdownMenuContent({
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
-          "glass-context-menu text-popover-foreground z-50 max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto",
+          "glass-context-menu text-popover-foreground z-[140] max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto",
           className
         )}
         {...props}

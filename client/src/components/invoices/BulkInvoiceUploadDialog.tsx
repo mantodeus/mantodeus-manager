@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogContent,
@@ -272,10 +273,13 @@ export function BulkInvoiceUploadDialog({
   // Mobile: Full-screen layout (only render when open)
   if (isMobile) {
     if (!open) return null;
-    return (
-      <div className="flex min-h-full w-full flex-col">
-        {content}
-      </div>
+    return createPortal(
+      <div className="fixed inset-0 z-[120] bg-background p-4">
+        <div className="flex min-h-full w-full flex-col">
+          {content}
+        </div>
+      </div>,
+      document.body
     );
   }
 

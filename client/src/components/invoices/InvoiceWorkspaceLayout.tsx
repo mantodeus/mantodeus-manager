@@ -21,7 +21,7 @@ export function InvoiceWorkspaceHeader({
   const isMobile = useIsMobile();
 
   return (
-    <div className={cn("flex-shrink-0", isMobile ? "px-4 pt-0" : "px-6 pt-6")}>
+    <div className={cn("flex-shrink-0", isMobile ? "px-0 pt-0" : "px-6 pt-6")}>
       <div className="flex items-center gap-3">
         {isMobile && (
           <Button
@@ -85,7 +85,7 @@ export function InvoiceWorkspaceBody({
     <div
       className={cn(
         "flex-1 min-h-0 overflow-y-auto pt-2",
-        isMobile ? "px-4 pb-4" : "px-6 pb-6",
+        isMobile ? "px-0 pb-4" : "px-6 pb-6",
         className
       )}
     >
@@ -107,7 +107,7 @@ export function InvoiceWorkspaceFooter({
     <div
       className={cn(
         "flex-shrink-0 pt-4",
-        isMobile ? "px-4 pb-4" : "px-6 pb-6",
+        isMobile ? "px-0 pb-4" : "px-6 pb-6",
         className
       )}
     >
