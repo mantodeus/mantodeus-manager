@@ -1990,7 +1990,7 @@ export default function Invoices() {
               {/* Left block: Title + Subtitle */}
               <div className="flex-1 min-w-0">
                 <h1 className={cn(
-                  "font-normal mb-1 transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
+                  "font-normal mb-0.5 transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
                   isScrolled ? "text-2xl" : "text-3xl"
                 )}>
                   Invoices

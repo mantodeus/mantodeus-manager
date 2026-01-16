@@ -60,7 +60,12 @@ export function InvoiceWorkspaceHeader({
       </div>
 
       {subtitle && (
-        <p className="text-muted-foreground text-sm mt-2">{subtitle}</p>
+        <p 
+          className="text-muted-foreground text-sm"
+          style={{ marginTop: 'var(--space-header-subtitle, 2px)' }}
+        >
+          {subtitle}
+        </p>
       )}
 
       <InvoiceWorkspaceSeparator />

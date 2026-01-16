@@ -14,8 +14,8 @@ type PageContainerProps = {
  * PageContainer - Enforces consistent page-level spacing and width constraints
  * 
  * Variants:
- * - default: max-w-7xl (1280px) with responsive horizontal padding
- * - narrow: max-w-3xl (768px) for Settings, forms
+ * - default: Full width (no max-width constraint) to match Invoices page width
+ * - narrow: max-w-3xl (768px) for Settings, forms (deprecated - use default instead)
  * - fullscreen: 100% width, no horizontal padding (content manages own layout)
  * 
  * Bottom padding automatically accounts for:
@@ -30,7 +30,7 @@ export function PageContainer({
   className,
 }: PageContainerProps) {
   const variantClasses = {
-    default: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    default: "w-full",
     narrow: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8",
     fullscreen: "w-full",
   };

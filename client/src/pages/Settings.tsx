@@ -193,7 +193,7 @@ export default function Settings() {
   }
 
   return (
-    <PageContainer variant="narrow">
+    <PageContainer>
       <PageHeader
         title="Settings"
         subtitle="Configure your company information and invoice settings"

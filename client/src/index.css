@@ -101,7 +101,7 @@
   --state-info: #3B82F6;  /* Blue for functional buttons (Mark as Sent, form submissions, etc.) */
   
   /* Header spacing tokens */
-  --space-header-subtitle: 12px;
+  --space-header-subtitle: 2px;
   --space-header-actions: 16px;
   --space-header-icons: 8px;
   
@@ -237,7 +237,7 @@
 /* Mobile spacing overrides */
 @media (max-width: 767px) {
   :root {
-    --space-header-subtitle: 8px;
+    --space-header-subtitle: 2px;
     --space-header-actions: 12px;
     --space-page-gap: 20px;
     --space-section-gap: 20px;
