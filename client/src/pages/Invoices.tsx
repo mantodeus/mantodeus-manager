@@ -1997,13 +1997,11 @@ export default function Invoices() {
         return (
           <div 
             className={cn(
-              "bg-card border border-border/70 rounded-2xl shadow-sm",
               "transition-all duration-[var(--dur-standard)] ease-[var(--ease-out)]",
-              "kpi-card-accent invoices-header-accent",
               isScrolled && "invoices-header-compact"
             )}
             style={{
-              padding: isScrolled ? '12px var(--space-card-padding, 16px)' : 'var(--space-card-padding, 16px)',
+              padding: isScrolled ? '12px 0' : '0',
               marginBottom: '24px',
             }}
           >
@@ -2089,6 +2087,7 @@ export default function Invoices() {
                 </div>
               </div>
             </div>
+            <div className="separator-fade" style={{ marginTop: '12px', marginBottom: '12px' }} />
           </div>
         );
       })() : (

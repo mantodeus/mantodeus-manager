@@ -313,8 +313,8 @@ export default function InvoiceDetail() {
             >
               <div className="flex-1 overflow-y-auto min-h-0">
                 <div className="p-6 space-y-6">
-                  {/* Header with actions */}
-                  <div className="flex items-center justify-between gap-4 flex-shrink-0">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4 min-w-0 flex-1">
                       <div className="flex-1 min-w-0 flex flex-col">
                         <h1 className="text-3xl font-regular">Edit Invoice</h1>
@@ -350,7 +350,7 @@ export default function InvoiceDetail() {
                         variant="ghost"
                         size="icon"
                         onClick={() => navigate("/invoices")}
-                        className="h-9 w-9 shrink-0"
+                        className="h-10 w-10"
                         aria-label="Close"
                       >
                         <X className="h-6 w-6" />
