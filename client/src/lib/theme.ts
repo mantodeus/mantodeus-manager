@@ -173,21 +173,26 @@ export function applyTheme(themeName: ThemeName) {
   localStorage.setItem('mantodeus.theme', themeName);
   
   // Update theme-color meta tag for browser UI (mobile pull-to-refresh background)
-  // Use neutral hex values that approximate the theme backgrounds
   let themeColorMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (!themeColorMeta) {
     themeColorMeta = document.createElement('meta');
     themeColorMeta.name = 'theme-color';
     document.head.appendChild(themeColorMeta);
   }
-  // Approximate hex values for oklch backgrounds (for meta tag compatibility)
-  themeColorMeta.content = themeName === 'green-mantis' ? '#1A1A1A' : '#FAFAF8';
+  
+  // Resolve computed background color so browser UI matches actual CSS variables.
+  const computedBackground = getComputedStyle(root).backgroundColor;
+  const fallbackBackground = themeName === 'green-mantis' ? '#1A1A1A' : '#FAFAF8';
+  const bgColor =
+    !computedBackground ||
+    computedBackground === 'rgba(0, 0, 0, 0)' ||
+    computedBackground === 'transparent'
+      ? fallbackBackground
+      : computedBackground;
+
+  themeColorMeta.content = bgColor;
   
   // Set HTML and body background colors for off-screen areas (browser chrome, mobile pull-to-refresh, iOS status bar)
-  // Use neutral hex values that match the oklch background colors exactly
-  // Light: oklch(0.985 0.004 95) ≈ #FAFAF8
-  // Dark: oklch(0.10 0 0) ≈ #1A1A1A
-  const bgColor = themeName === 'green-mantis' ? '#1A1A1A' : '#FAFAF8';
   // Set on html element for off-screen scroll areas (works in both web and PWA)
   root.style.setProperty('background-color', bgColor, 'important');
   // Set on body element as well
@@ -199,6 +204,27 @@ export function applyTheme(themeName: ThemeName) {
   if (rootElement) {
     rootElement.style.setProperty('background-color', bgColor, 'important');
   }
+
+  // After CSS variables are fully applied, sync to the resolved background.
+  requestAnimationFrame(() => {
+    const resolved = getComputedStyle(root).backgroundColor;
+    if (
+      resolved &&
+      resolved !== 'rgba(0, 0, 0, 0)' &&
+      resolved !== 'transparent' &&
+      resolved !== bgColor
+    ) {
+      themeColorMeta.content = resolved;
+      root.style.setProperty('background-color', resolved, 'important');
+      if (document.body) {
+        document.body.style.setProperty('background-color', resolved, 'important');
+      }
+      const rootElementNext = document.getElementById('root');
+      if (rootElementNext) {
+        rootElementNext.style.setProperty('background-color', resolved, 'important');
+      }
+    }
+  });
 }
 
 /**
@@ -235,3 +261,4 @@ export function initializeTheme() {
   // Force immediate reflow to ensure CSS is applied
   document.documentElement.offsetHeight;
 }
+

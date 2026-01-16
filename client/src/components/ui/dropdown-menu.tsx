@@ -33,6 +33,8 @@ function DropdownMenuTrigger({
 function DropdownMenuContent({
   className,
   sideOffset = 4,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   const menuRef = React.useRef<HTMLDivElement>(null);
@@ -104,6 +106,10 @@ function DropdownMenuContent({
 
   // Avoid auto-scroll on mobile to prevent layout jumps when opening menus.
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isStandalone =
+    typeof window !== 'undefined' &&
+    (window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true);
   useAutoScrollOnOpen({
     isOpen,
     menuRef,
@@ -117,6 +123,18 @@ function DropdownMenuContent({
         ref={menuRef}
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
+        onOpenAutoFocus={(event) => {
+          if (isMobile && isStandalone) {
+            event.preventDefault();
+          }
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          if (isMobile && isStandalone) {
+            event.preventDefault();
+          }
+          onCloseAutoFocus?.(event);
+        }}
         className={cn(
           "glass-context-menu text-popover-foreground z-[140] max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto",
           className

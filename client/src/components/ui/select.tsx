@@ -54,6 +54,8 @@ function SelectContent({
   children,
   position = "popper",
   align = "center",
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
   const contentRef = React.useRef<HTMLDivElement>(null);
@@ -85,13 +87,16 @@ function SelectContent({
     };
   }, []);
 
-  // Enable auto-scroll to prevent dropdowns from being cropped
-  // Use larger buffer on mobile to account for tab bar
+  // Avoid auto-scroll on mobile to prevent layout jumps when opening menus.
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isStandalone =
+    typeof window !== 'undefined' &&
+    (window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true);
   useAutoScrollOnOpen({
     isOpen,
     menuRef: contentRef,
-    enabled: true,
+    enabled: !isMobile,
     scrollBuffer: isMobile ? 32 : 16, // Increased buffer on mobile for better tab bar clearance
   });
 
@@ -100,6 +105,18 @@ function SelectContent({
       <SelectPrimitive.Content
         ref={contentRef}
         data-slot="select-content"
+        onOpenAutoFocus={(event) => {
+          if (isMobile && isStandalone) {
+            event.preventDefault();
+          }
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          if (isMobile && isStandalone) {
+            event.preventDefault();
+          }
+          onCloseAutoFocus?.(event);
+        }}
         className={cn(
           "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-[100] max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border shadow-md",
           position === "popper" &&
