@@ -182,20 +182,33 @@ if (typeof window !== 'undefined') {
 if (typeof window !== 'undefined') {
   let lastWindowScrollY = window.scrollY;
   let lastAppContentScrollTop: number | null = null;
+  let lastVisualViewportHeight: number | null = null;
+  let lastVisualViewportOffsetTop: number | null = null;
   const appContent = document.querySelector('.app-content') as HTMLElement | null;
   if (appContent) {
     lastAppContentScrollTop = appContent.scrollTop;
+  }
+  const vv = (window as any).visualViewport;
+  if (vv) {
+    lastVisualViewportHeight = vv.height;
+    lastVisualViewportOffsetTop = vv.offsetTop;
   }
   
   const handleScroll = () => {
     const currentWindowScrollY = window.scrollY;
     const currentAppContent = document.querySelector('.app-content') as HTMLElement | null;
     const currentAppContentScrollTop = currentAppContent?.scrollTop ?? null;
+    const currentVv = (window as any).visualViewport;
+    const currentVvHeight = currentVv?.height ?? null;
+    const currentVvOffsetTop = currentVv?.offsetTop ?? null;
     
-    if (currentWindowScrollY !== lastWindowScrollY || currentAppContentScrollTop !== lastAppContentScrollTop) {
+    const scrollChanged = currentWindowScrollY !== lastWindowScrollY || currentAppContentScrollTop !== lastAppContentScrollTop;
+    const viewportChanged = currentVvHeight !== lastVisualViewportHeight || currentVvOffsetTop !== lastVisualViewportOffsetTop;
+    
+    if (scrollChanged || viewportChanged) {
       const isMobile = window.innerWidth < 768;
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-      const logData = {location:'App.tsx:scroll',message:'Scroll detected',data:{isMobile,isStandalone,windowScrollY:currentWindowScrollY,windowScrollYDelta:currentWindowScrollY-lastWindowScrollY,appContentScrollTop:currentAppContentScrollTop,appContentScrollTopDelta:currentAppContentScrollTop!==null&&lastAppContentScrollTop!==null?currentAppContentScrollTop-lastAppContentScrollTop:null,windowInnerHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'};
+      const logData = {location:'App.tsx:scroll',message:scrollChanged?'Scroll detected':'VisualViewport changed',data:{isMobile,isStandalone,windowScrollY:currentWindowScrollY,windowScrollYDelta:currentWindowScrollY-lastWindowScrollY,appContentScrollTop:currentAppContentScrollTop,appContentScrollTopDelta:currentAppContentScrollTop!==null&&lastAppContentScrollTop!==null?currentAppContentScrollTop-lastAppContentScrollTop:null,windowInnerHeight:window.innerHeight,visualViewportHeight:currentVvHeight,visualViewportHeightDelta:currentVvHeight!==null&&lastVisualViewportHeight!==null?currentVvHeight-lastVisualViewportHeight:null,visualViewportOffsetTop:currentVvOffsetTop,visualViewportOffsetTopDelta:currentVvOffsetTop!==null&&lastVisualViewportOffsetTop!==null?currentVvOffsetTop-lastVisualViewportOffsetTop:null},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'};
       console.log('[DEBUG]', logData);
       try {
         const logs = JSON.parse(localStorage.getItem('debug-logs') || '[]');
@@ -206,12 +219,19 @@ if (typeof window !== 'undefined') {
       fetch('http://127.0.0.1:7242/ingest/7f3ab1cf-d324-4ab4-82d2-e71b2fb5152e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.warn('[DEBUG] Fetch failed:', e));
       lastWindowScrollY = currentWindowScrollY;
       lastAppContentScrollTop = currentAppContentScrollTop;
+      lastVisualViewportHeight = currentVvHeight;
+      lastVisualViewportOffsetTop = currentVvOffsetTop;
     }
   };
   
   window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
   if (appContent) {
     appContent.addEventListener('scroll', handleScroll, { passive: true });
+  }
+  // iOS PWA uses visualViewport for viewport changes
+  if (vv) {
+    vv.addEventListener('resize', handleScroll, { passive: true });
+    vv.addEventListener('scroll', handleScroll, { passive: true });
   }
 }
 // #endregion
