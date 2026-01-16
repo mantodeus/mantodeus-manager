@@ -15,7 +15,7 @@ import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 
 export default function ContactsArchived() {
   const [, setLocation] = useLocation();
@@ -127,18 +127,17 @@ export default function ContactsArchived() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Archived"
-        subtitle="Contacts you've archived. You can restore them anytime."
-        leading={
-          <Link href="/contacts">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-        }
-      />
+    <ModulePage
+      title="Archived"
+      subtitle="Contacts you've archived. You can restore them anytime."
+      leading={
+        <Link href="/contacts">
+          <Button variant="ghost" size="icon" className="size-9 [&_svg]:size-6">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+      }
+    >
 
       {/* Archived Contacts Grid */}
       <div className="space-y-4">
@@ -177,6 +176,6 @@ export default function ContactsArchived() {
         confirmLabel="Delete"
         isDeleting={deleteToRubbishMutation.isPending}
       />
-    </div>
+    </ModulePage>
   );
 }

@@ -309,16 +309,13 @@ export const CenteredContextMenu = React.forwardRef<
       // Add active class to clone
       clone.classList.add('context-menu-active');
       clone.classList.remove('context-menu-pressing');
-      // Set clone styles
-      clone.style.position = 'fixed';
-      clone.style.top = `${rect.top}px`;
-      clone.style.left = `${rect.left}px`;
-      clone.style.width = `${rect.width}px`;
-      clone.style.height = `${rect.height}px`;
+      // Set clone styles (positioning handled by wrapper div)
+      clone.style.position = 'relative';
+      clone.style.width = '100%';
+      clone.style.height = '100%';
       clone.style.zIndex = '9997';
       clone.style.pointerEvents = 'none';
       clone.style.margin = '0';
-      clone.style.transform = 'scale(1.02)';
       
       setCardCloneHtml(clone.outerHTML);
       
@@ -804,14 +801,20 @@ export const CenteredContextMenu = React.forwardRef<
               }}
             />
 
-            {/* Cloned card - appears above blur overlay */}
+            {/* Cloned card - appears above blur overlay, shifted up if needed */}
             {isOpen && itemRect && cardCloneHtml && (
               <div
                 dangerouslySetInnerHTML={{ __html: cardCloneHtml }}
                 style={{
                   position: 'fixed',
+                  top: `${itemRect.top - menuShiftY}px`,
+                  left: `${itemRect.left}px`,
+                  width: `${itemRect.width}px`,
+                  height: `${itemRect.height}px`,
                   zIndex: 9997,
                   pointerEvents: 'none',
+                  transform: 'scale(1.02)',
+                  transition: 'top 260ms cubic-bezier(0.16, 1, 0.3, 1), transform 200ms cubic-bezier(0.16, 1, 0.3, 1)',
                 }}
               />
             )}

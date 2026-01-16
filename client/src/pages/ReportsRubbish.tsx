@@ -15,7 +15,7 @@ import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 
 export default function ReportsRubbish() {
   const [, setLocation] = useLocation();
@@ -87,18 +87,17 @@ export default function ReportsRubbish() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Rubbish"
-        subtitle="Deleted reports"
-        leading={
-          <Link href="/reports">
-            <Button variant="ghost" size="icon" aria-label="Back to reports">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-        }
-      />
+    <ModulePage
+      title="Rubbish"
+      subtitle="Deleted reports"
+      leading={
+        <Link href="/reports">
+          <Button variant="ghost" size="icon" className="size-9 [&_svg]:size-6" aria-label="Back to reports">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+      }
+    >
 
       {trashedReports.length === 0 ? (
         <Card className="p-8 text-center">
@@ -175,7 +174,7 @@ export default function ReportsRubbish() {
         confirmLabel="Delete Permanently"
         isDeleting={deleteReportPermanentlyMutation.isPending}
       />
-    </div>
+    </ModulePage>
   );
 }
 

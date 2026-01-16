@@ -8,7 +8,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 import { Link, useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
@@ -251,122 +251,107 @@ export default function InvoicesRubbish() {
     setEmptyRubbishDialogOpen(false);
   };
 
-  const searchSlot = (
-    <>
-      {isSearchOpen && (
-        <div className="fixed inset-0 z-50 bg-background">
-          <div className="flex flex-col h-full">
-            {/* Search input at top */}
-            <div className="flex items-center gap-2 p-4 border-b">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Search client, date (e.g., October), amount..."
-                  value={searchDraft}
-                  onChange={(e) => setSearchDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      applySearch();
-                    }
-                    if (e.key === "Escape") {
-                      setIsSearchOpen(false);
-                    }
-                  }}
-                  className="pl-10 pr-10"
-                  autoFocus
-                />
-                {searchDraft && (
-                  <button
-                    onClick={() => setSearchDraft("")}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsSearchOpen(false)}
+  // Search overlay - controlled by ModulePage's onSearch handler
+  const searchOverlay = isSearchOpen && (
+    <div className="fixed inset-0 z-50 bg-background">
+      <div className="flex flex-col h-full">
+        {/* Search input at top */}
+        <div className="flex items-center gap-2 p-4 border-b">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              ref={searchInputRef}
+              placeholder="Search client, date (e.g., October), amount..."
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  applySearch();
+                }
+                if (e.key === "Escape") {
+                  setIsSearchOpen(false);
+                }
+              }}
+              className="pl-10 pr-10"
+              autoFocus
+            />
+            {searchDraft && (
+              <button
+                onClick={() => setSearchDraft("")}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {/* Search suggestions/results preview */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {searchDraft && (
-                <div className="space-y-2">
-                  {(() => {
-                    const searchLower = searchDraft.toLowerCase();
-                    return filteredInvoices
-                      .filter((invoice) => {
-                        const clientName = getInvoiceClient(invoice) || "";
-                        if (clientName.toLowerCase().includes(searchLower)) return true;
-                        if (invoice.issueDate) {
-                          const issueDate = new Date(invoice.issueDate);
-                          const monthName = issueDate.toLocaleDateString("en-US", { month: "long" }).toLowerCase();
-                          if (monthName.includes(searchLower)) return true;
-                        }
-                        const totalStr = invoice.total?.toString() || "";
-                        const searchNum = parseFloat(searchLower);
-                        if (!isNaN(searchNum) && totalStr.includes(searchLower)) return true;
-                        if (invoice.invoiceNumber?.toLowerCase().includes(searchLower)) return true;
-                        if (invoice.invoiceName?.toLowerCase().includes(searchLower)) return true;
-                        return false;
-                      })
-                      .slice(0, 10)
-                      .map((invoice) => {
-                        const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
-                        const clientName = getInvoiceClient(invoice);
-                        const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
-                        return (
-                          <Card
-                            key={invoice.id}
-                            className="p-3 cursor-pointer hover:bg-accent"
-                            onClick={() => {
-                              navigate(`/invoices/${invoice.id}`);
-                              setIsSearchOpen(false);
-                            }}
-                          >
-                            <div className="font-medium">{displayName}</div>
-                            {clientName && (
-                              <div className="text-sm text-muted-foreground">{clientName}</div>
-                            )}
-                            {issueDate && (
-                              <div className="text-sm text-muted-foreground">
-                                {issueDate.toLocaleDateString("de-DE")}
-                              </div>
-                            )}
-                          </Card>
-                        );
-                      });
-                  })()}
-                </div>
-              )}
-            </div>
+              </button>
+            )}
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSearchOpen(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-      )}
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label="Search invoices"
-        onClick={() => setIsSearchOpen(true)}
-      >
-        <Search className="size-6" />
-      </Button>
-    </>
+        
+        {/* Search suggestions/results preview */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {searchDraft && (
+            <div className="space-y-2">
+              {(() => {
+                const searchLower = searchDraft.toLowerCase();
+                return filteredInvoices
+                  .filter((invoice) => {
+                    const clientName = getInvoiceClient(invoice) || "";
+                    if (clientName.toLowerCase().includes(searchLower)) return true;
+                    if (invoice.issueDate) {
+                      const issueDate = new Date(invoice.issueDate);
+                      const monthName = issueDate.toLocaleDateString("en-US", { month: "long" }).toLowerCase();
+                      if (monthName.includes(searchLower)) return true;
+                    }
+                    const totalStr = invoice.total?.toString() || "";
+                    const searchNum = parseFloat(searchLower);
+                    if (!isNaN(searchNum) && totalStr.includes(searchLower)) return true;
+                    if (invoice.invoiceNumber?.toLowerCase().includes(searchLower)) return true;
+                    if (invoice.invoiceName?.toLowerCase().includes(searchLower)) return true;
+                    return false;
+                  })
+                  .slice(0, 10)
+                  .map((invoice) => {
+                    const displayName = invoice.invoiceName || invoice.invoiceNumber || "Untitled invoice";
+                    const clientName = getInvoiceClient(invoice);
+                    const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
+                    return (
+                      <Card
+                        key={invoice.id}
+                        className="p-3 cursor-pointer hover:bg-accent"
+                        onClick={() => {
+                          navigate(`/invoices/${invoice.id}`);
+                          setIsSearchOpen(false);
+                        }}
+                      >
+                        <div className="font-medium">{displayName}</div>
+                        {clientName && (
+                          <div className="text-sm text-muted-foreground">{clientName}</div>
+                        )}
+                        {issueDate && (
+                          <div className="text-sm text-muted-foreground">
+                            {issueDate.toLocaleDateString("de-DE")}
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  });
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 
-  const filterSlot = (
+  // Filter sheet - controlled by ModulePage's onFilter handler
+  const filterSheet = (
     <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Filter invoices">
-          <SlidersHorizontal className="size-6" />
-        </Button>
-      </SheetTrigger>
       <SheetContent side="right" className="p-0">
         <SheetHeader>
           <SheetTitle>Filters</SheetTitle>
@@ -546,34 +531,37 @@ export default function InvoicesRubbish() {
   const hasActiveFilters = filters.project !== "all" || filters.client !== "all" || filters.time !== "all" || searchQuery !== "";
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Rubbish"
-        subtitle="Deleted invoices. Items here can be restored or permanently deleted."
-        leading={
-          <Link href="/invoices">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-        }
-        actions={
-          filteredInvoices.length > 0 ? (
-            <Button
-              variant="destructive-outline"
-              size="sm"
-              onClick={() => setEmptyRubbishDialogOpen(true)}
-              disabled={deleteMutation.isPending}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Empty
-            </Button>
-          ) : undefined
-        }
-        actionsPlacement="right"
-        searchSlot={searchSlot}
-        filterSlot={filterSlot}
-      />
+    <ModulePage
+      title="Rubbish"
+      subtitle="Deleted invoices. Items here can be restored or permanently deleted."
+      leading={
+        <Link href="/invoices">
+          <Button variant="ghost" size="icon" className="size-9 [&_svg]:size-6">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+      }
+      onSearch={() => setIsSearchOpen(true)}
+      onFilter={() => setIsFilterOpen(true)}
+      primaryActions={
+        filteredInvoices.length > 0 ? (
+          <Button
+            variant="destructive-outline"
+            className="h-10 whitespace-nowrap"
+            onClick={() => setEmptyRubbishDialogOpen(true)}
+            disabled={deleteMutation.isPending}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Empty
+          </Button>
+        ) : undefined
+      }
+    >
+      {/* Search overlay - controlled by ModulePage's onSearch handler */}
+      {searchOverlay}
+      
+      {/* Filter sheet - controlled by ModulePage's onFilter handler */}
+      {filterSheet}
 
       {filteredInvoices.length === 0 ? (
         <Card className="p-8 text-center">
@@ -654,6 +642,6 @@ export default function InvoicesRubbish() {
         confirmLabel="Empty rubbish"
         isDeleting={deleteMutation.isPending}
       />
-    </div>
+    </ModulePage>
   );
 }

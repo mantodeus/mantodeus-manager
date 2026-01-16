@@ -17,7 +17,7 @@ import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { formatProjectSchedule } from "@/lib/dateFormat";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 
 type ProjectListItem = RouterOutputs["projects"]["listArchived"][number];
 
@@ -144,18 +144,17 @@ export default function ProjectsArchived() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Archived"
-        subtitle="Projects you've archived. You can restore them anytime."
-        leading={
-          <Link href="/projects">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-        }
-      />
+    <ModulePage
+      title="Archived"
+      subtitle="Projects you've archived. You can restore them anytime."
+      leading={
+        <Link href="/projects">
+          <Button variant="ghost" size="icon" className="size-9 [&_svg]:size-6">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+      }
+    >
 
       {/* Archived Projects Grid */}
       <div className="space-y-4">
@@ -196,6 +195,6 @@ export default function ProjectsArchived() {
         confirmLabel="Delete"
         isDeleting={moveProjectToTrashMutation.isPending}
       />
-    </div>
+    </ModulePage>
   );
 }

@@ -15,7 +15,7 @@ import { useState } from "react";
 import { ItemActionsMenu, ItemAction } from "@/components/ItemActionsMenu";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { PageHeader } from "@/components/PageHeader";
+import { ModulePage } from "@/components/ModulePage";
 
 type ProjectListItem = RouterOutputs["projects"]["listTrashed"][number];
 
@@ -111,32 +111,30 @@ export default function ProjectsRubbish() {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Rubbish"
-        subtitle="Deleted projects. Items here can be restored or permanently deleted."
-        leading={
-          <Link href="/projects">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-        }
-        actions={
-          trashedProjects && trashedProjects.length > 0 ? (
-            <Button
-              variant="destructive-outline"
-              size="sm"
-              onClick={() => setEmptyRubbishDialogOpen(true)}
-              disabled={deleteProjectPermanentlyMutation.isPending}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Empty
-            </Button>
-          ) : undefined
-        }
-        actionsPlacement="right"
-      />
+    <ModulePage
+      title="Rubbish"
+      subtitle="Deleted projects. Items here can be restored or permanently deleted."
+      leading={
+        <Link href="/projects">
+          <Button variant="ghost" size="icon" className="size-9 [&_svg]:size-6">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+      }
+      primaryActions={
+        trashedProjects && trashedProjects.length > 0 ? (
+          <Button
+            variant="destructive-outline"
+            className="h-10 whitespace-nowrap"
+            onClick={() => setEmptyRubbishDialogOpen(true)}
+            disabled={deleteProjectPermanentlyMutation.isPending}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Empty
+          </Button>
+        ) : undefined
+      }
+    >
 
       {/* Rubbish Items List */}
       <div className="space-y-3">
@@ -187,6 +185,6 @@ export default function ProjectsRubbish() {
         confirmLabel="Empty rubbish"
         isDeleting={deleteProjectPermanentlyMutation.isPending}
       />
-    </div>
+    </ModulePage>
   );
 }
