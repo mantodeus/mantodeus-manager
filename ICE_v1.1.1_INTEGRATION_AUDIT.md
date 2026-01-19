@@ -1,22 +1,156 @@
-# 🔍 ICE-v1.1.1 Integration Audit Report
+# 🔍 ICE-v1.1.2 Integration Audit Report — Clarified Doctrine Edition
 
 **Project**: Mantodeus Manager
 **Audit Date**: 2026-01-19
 **Auditor**: Senior Staff Engineer / Architect
-**Scope**: Invoice Completeness Engine (ICE-v1.1.1) vs. Production Codebase
+**Scope**: Invoice Completeness Engine (ICE-v1.1.2) Integration
+**Doctrine**: Legal Finality vs. Draft Visualization
 
 ---
 
-## Executive Summary
+## Executive Doctrine Statement (Authoritative)
 
-This audit analyzes the integration of the Invoice Completeness Engine (ICE-v1.1.1) into the Mantodeus Manager production codebase. ICE-v1.1.1 is the constitutional authority for invoice completeness, ensuring §14 UStG compliance and deterministic action gating.
+**ICE is the constitutional authority for legal finality (SEND).**
+**ICE is not the authority for draft visualization (PREVIEW).**
 
-### Critical Findings
+- **Preview** is a working artifact for iteration and inspection
+- **Send** is a legal action with §14 UStG compliance requirements
+
+All integration decisions below follow this doctrine.
+
+---
+
+## Critical Findings
 
 1. **§14 UStG Compliance Gap**: Missing recipient address snapshot (HIGH PRIORITY)
 2. **Extensive Duplicate Logic**: 8+ validation points duplicating ICE rules
 3. **UI/Server Divergence**: UI invents completeness logic independently of ICE
-4. **Preview System Risk**: Generates legally incomplete PDFs without validation
+4. **ICE Scope Refinement Required**: PREVIEW blocking must be minimal (renderability only)
+
+---
+
+## 🔄 Step 0: ICE-v1.1.1 → v1.1.2 Refinement
+
+**PREREQUISITE: Update ICE rule `affects` arrays before integration**
+
+### Semantic Distinction
+
+| Action | Purpose | Authority |
+|--------|---------|-----------|
+| **SEND** | Legal finality, creates binding invoice | **ICE is absolute** |
+| **PREVIEW** | Draft visualization, working document | **ICE is minimal** |
+| **SAVE** | Persist incomplete draft | **Always allowed** |
+
+### Required Rule Changes
+
+#### ❌ REMOVE PREVIEW from these rules:
+```typescript
+// BEFORE (v1.1.1)
+{
+  id: 'INVOICE_NUMBER_MISSING',
+  affects: ['PREVIEW', 'SEND'],  // ← blocks both
+}
+
+// AFTER (v1.1.2)
+{
+  id: 'INVOICE_NUMBER_MISSING',
+  affects: ['SEND'],  // ← blocks only SEND
+}
+```
+
+**Rules to modify:**
+- `INVOICE_NUMBER_MISSING`: Remove PREVIEW, keep SEND ✓
+- `ISSUE_DATE_MISSING`: Remove PREVIEW, keep SEND ✓
+- `TAX_ID_MISSING` (blocker variant): Remove PREVIEW, keep SEND ✓
+- `DUE_DATE_MISSING`: Already SEND-only ✓ (no change)
+- `SERVICE_PERIOD_*`: Already SEND-only ✓ (no change)
+- `RECIPIENT_INCOMPLETE`: Already SEND-only ✓ (no change)
+- `TOTAL_INVALID`: Already SEND-only ✓ (no change)
+
+#### ✅ KEEP PREVIEW blocking for these rules:
+```typescript
+{
+  id: 'NO_VALID_LINE_ITEMS',
+  affects: ['PREVIEW', 'SEND'],  // ← keep both (nothing to render)
+}
+
+{
+  id: 'ISSUER_IDENTITY_INCOMPLETE',
+  affects: ['PREVIEW', 'SEND'],  // ← keep both (dangerously misleading)
+}
+```
+
+**Rationale:**
+- **NO_VALID_LINE_ITEMS**: Cannot render empty invoice → technical impossibility
+- **ISSUER_IDENTITY_INCOMPLETE**: Would visually resemble legal document without issuer identity → dangerously misleading
+
+All other completeness issues are **legal blockers, not renderability blockers**.
+
+---
+
+## 📐 Clarified Action Semantics
+
+### SEND (Legal Finality) — Absolute ICE Authority
+
+**Governed exclusively by:** `allowedActions.includes('SEND')`
+
+**Blocking requirements:**
+- Must pass all 13 ICE rules
+- No UI overrides
+- No policy exceptions
+- No watermarks as substitutes
+
+**Lifecycle check order:**
+1. Cancellation/archival/payment locks (reject immediately)
+2. ICE completeness evaluation
+3. SEND action execution
+
+---
+
+### PREVIEW (Draft Visualization) — Minimal ICE Authority
+
+**Purpose:** Working document for draft inspection, layout verification, internal review
+
+**ICE blocks PREVIEW only for:**
+- `NO_VALID_LINE_ITEMS` → nothing to render
+- `ISSUER_IDENTITY_INCOMPLETE` → dangerously misleading
+
+**ICE does NOT block PREVIEW for:**
+- Missing invoice number
+- Missing due date
+- Missing service period
+- Missing tax ID
+- Missing recipient (shows placeholder)
+- Kleinunternehmer validation issues
+
+These are surfaced as **warnings**, not blocks.
+
+---
+
+### Watermark Policy (Mandatory)
+
+**If `completeness.stage !== 'READY_TO_SEND'`:**
+
+All preview outputs must display:
+
+```
+┌─────────────────────────────────────┐
+│  DRAFT — NOT LEGALLY VALID          │
+│  Complete all required fields       │
+│  before sending                     │
+└─────────────────────────────────────┘
+```
+
+**Implementation locations:**
+- PDF generation service (server/templates/invoice.ts)
+- PDF preview modal (client-side)
+- Share preview flows
+- Print preview
+
+**Display alongside watermark:**
+- ICE blockers (what's missing)
+- ICE warnings (Kleinunternehmer advisories)
+- Completeness percent
 
 ---
 
@@ -30,14 +164,14 @@ if (!invoice.issueDate) { throw ... }
 if (total <= 0) { throw ... }
 ```
 **Duplicates**: ICE rules `ISSUE_DATE_MISSING` + `TOTAL_INVALID`
-**Replace With**: `evaluateInvoiceCompleteness()` call, check `allowedActions.includes('SEND')`
+**Replace With**: `evaluateInvoiceCompleteness()` call, check `!allowedActions.includes('SEND')`
 
 #### ❌ DELETE: Lines 277-282 – create mutation
 ```typescript
 .min(1, "At least one item is required")
 ```
 **Duplicates**: ICE rule `NO_VALID_LINE_ITEMS`
-**Replace With**: ICE validation in mutation handler
+**Replace With**: ICE validation (advisory on create, blocking on send)
 
 #### ❌ DELETE: Lines 434-440 – update mutation
 ```typescript
@@ -45,7 +179,7 @@ if (total <= 0) { throw ... }
 if (validItems.length === 0) { throw ... }
 ```
 **Duplicates**: ICE rule `NO_VALID_LINE_ITEMS`
-**Replace With**: ICE validation
+**Replace With**: ICE validation (never block SAVE, always allow draft updates)
 
 ---
 
@@ -57,7 +191,7 @@ if (!formState.invoiceNumber.trim()) { ... }
 if (!validItems.length) { ... }
 ```
 **Duplicates**: ICE rules `INVOICE_NUMBER_MISSING` + `NO_VALID_LINE_ITEMS`
-**Replace With**: ICE validation with real-time feedback
+**Replace With**: ICE validation with real-time feedback, never block SAVE
 
 #### ❌ DELETE: client/src/components/invoices/InvoiceForm.tsx:401-417 (handleSend)
 ```typescript
@@ -65,20 +199,20 @@ if (!formState.dueDate) { toast.error(...) }
 if (total <= 0) { toast.error(...) }
 ```
 **Duplicates**: ICE rules `DUE_DATE_MISSING` + `TOTAL_INVALID`
-**Replace With**: Check ICE `allowedActions.includes('SEND')`, display blockers
+**Replace With**: Check `!allowedActions.includes('SEND')`, display all ICE blockers
 
 #### ❌ DELETE: client/src/components/invoices/ShareInvoiceDialog.tsx:66-75
 ```typescript
 if (!invoice.dueDate) { toast.error(...) }
 if (total <= 0) { toast.error(...) }
 ```
-**Duplicates**: ICE validation
-**Replace With**: ICE completeness check before share link creation
+**Duplicates**: Partial ICE validation (missing 11 other rules)
+**Replace With**: Full ICE completeness check before share link creation
 
 #### ⚠️ PARTIALLY REPLACE: client/src/lib/invoiceActions.ts:40-122
-**Current**: `getInvoiceActions()` manually determines available actions based on state
+**Current**: `getInvoiceActions()` manually determines available actions
 **ICE Should Govern**: Action availability via `allowedActions` array
-**Keep**: Cancellation-specific logic (ICE doesn't handle cancelledAt)
+**Keep**: Cancellation-specific logic (lifecycle, not completeness)
 **Replace**: Lines 70-93 (markAsSent, markAsPaid availability) with ICE-driven decisions
 
 ---
@@ -87,32 +221,74 @@ if (total <= 0) { toast.error(...) }
 
 #### ✅ KEEP: lineItemSchema & invoiceMetadataSchema
 **Reason**: Zod provides runtime type validation + input sanitization
-**Strategy**: Keep both layers (Zod for input validation, ICE for completeness)
+**Strategy**: Two-layer validation
+- **Zod layer**: Type safety, input sanitization, SQL injection prevention
+- **ICE layer**: Business rules, legal completeness, §14 UStG compliance
 
 ---
 
 ## 2️⃣ REQUIRED WIRING POINTS
 
-### 🔴 Blocking (Server-Side) – MUST block if ICE blocks
+### 🔴 Blocking (Server-Side) – MUST block if ICE blocks SEND
 
 | Location | Function | Call Site | Validation | Behavior |
 |----------|----------|-----------|------------|----------|
-| **server/invoiceRouter.ts:486-512** | `issue` mutation | Before `db.issueInvoice()` at line 509 | `!allowedActions.includes('SEND')` | **BLOCK**: Throw TRPCError with ICE blockers |
-| **server/invoiceRouter.ts:514-563** | `markAsPaid` mutation | Before `db.markInvoiceAsPaid()` at line 560 | `!allowedActions.includes('SEND')` | **BLOCK**: Throw TRPCError |
-| **server/pdfRouter.ts:~60-90** | `createShareLink` mutation | Before share link creation | `!allowedActions.includes('SEND')` | **BLOCK**: Throw TRPCError |
-| **server/invoiceRouter.ts:274-345** | `create` mutation | After parsing, before `db.createInvoice()` at line 329 | Check stage, warn if not READY_TO_SEND | **ADVISORY ONLY**: Allow save, return warnings |
-| **server/invoiceRouter.ts:347-484** | `update` mutation | After parsing, before `db.updateInvoice()` at line 462 | Check stage, warn if incomplete | **ADVISORY ONLY**: Always allow draft updates |
+| **server/invoiceRouter.ts:486-512** | `issue` mutation | Before `db.issueInvoice()` at line 509 | Check lifecycle → check `!allowedActions.includes('SEND')` | **BLOCK**: Throw TRPCError with ICE blockers |
+| **server/invoiceRouter.ts:514-563** | `markAsPaid` mutation | Before `db.markInvoiceAsPaid()` at line 560 | Check lifecycle → check `!allowedActions.includes('SEND')` | **BLOCK**: Throw TRPCError |
+| **server/pdfRouter.ts:~60-90** | `createShareLink` (final) | Before share link creation | Check lifecycle → check `!allowedActions.includes('SEND')` | **BLOCK**: Throw TRPCError |
+
+**Implementation template:**
+```typescript
+// 1. Lifecycle checks FIRST
+if (invoice.cancelledAt) {
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "Cancelled invoices cannot be sent"
+  });
+}
+
+// 2. ICE evaluation SECOND
+const completeness = evaluateInvoiceCompleteness(
+  invoiceSnapshot,
+  companySnapshot,
+  settingsSnapshot
+);
+
+// 3. SEND gating THIRD
+if (!completeness.allowedActions.includes('SEND')) {
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: `Invoice cannot be sent: ${completeness.blockers.map(b => b.message).join(', ')}`,
+    cause: {
+      blockers: completeness.blockers,
+      stage: completeness.stage,
+      percent: completeness.percent
+    }
+  });
+}
+```
 
 ---
 
-### 🟡 Advisory (UI Feedback) – Show warnings, allow save
+### 🟢 Non-Blocking (Server-Side) – Advisory only
+
+| Location | Function | Behavior |
+|----------|----------|----------|
+| **server/invoiceRouter.ts:274-345** | `create` mutation | Run ICE, return warnings in response, never block SAVE |
+| **server/invoiceRouter.ts:347-484** | `update` mutation | Run ICE, return warnings in response, never block SAVE |
+| **server/invoiceRouter.ts:906-1003** | `confirmUploadedInvoice` | Run ICE, return warnings, never block confirmation |
+| **server/pdfRouter.ts:162-242** | `preview` endpoint | Check `allowedActions.includes('PREVIEW')`, apply watermark if incomplete |
+
+---
+
+### 🟡 Advisory (UI Feedback) – Show warnings, enable iteration
 
 | Location | Function | Call Site | Purpose |
 |----------|----------|-----------|---------|
-| **client/src/components/invoices/InvoiceForm.tsx:341** | `handleSave` | At start of function | Show warnings, always allow SAVE |
-| **client/src/components/invoices/InvoiceForm.tsx:401** | `handleSend` | Before `issueMutation.mutate()` | **BLOCK in UI**: Disable button + show blockers |
-| **client/src/components/invoices/ShareInvoiceDialog.tsx:63** | `handleCreateShareLink` | Before `createShareLinkMutation` | **BLOCK in UI**: Disable button + show blockers |
-| **client/src/components/invoices/InvoiceStatusActionsDropdown.tsx** | Render actions | When building dropdown menu | Disable "Send" action if blocked |
+| **client/src/components/invoices/InvoiceForm.tsx:341** | `handleSave` | At start of function | Run ICE, show warnings, always allow SAVE |
+| **client/src/components/invoices/InvoiceForm.tsx:401** | `handleSend` | Before `issueMutation.mutate()` | **BLOCK in UI**: Disable button if `!allowedActions.includes('SEND')`, show all blockers |
+| **client/src/components/invoices/ShareInvoiceDialog.tsx:63** | `handleCreateShareLink` | Before `createShareLinkMutation` | **BLOCK in UI**: Disable button if `!allowedActions.includes('SEND')`, show all blockers |
+| **client/src/components/invoices/InvoiceStatusActionsDropdown.tsx** | Render actions | When building dropdown menu | Disable "Send" action if ICE blocks, show tooltip with blockers |
 
 ---
 
@@ -120,53 +296,16 @@ if (total <= 0) { toast.error(...) }
 
 | Location | Component | Display |
 |----------|-----------|---------|
-| **InvoiceForm** | Form header | Progress bar showing `percent`, stage badge |
-| **InvoiceView** | Detail page | Completeness card with blockers/warnings |
-| **CreateInvoiceWorkspace** | Wizard mode | Wizard step indicator based on `stage` |
+| **InvoiceForm** | Form header | Progress bar (`percent`), stage badge, blocker count |
+| **InvoiceView** | Detail page | Completeness card with blockers/warnings, action recommendations |
+| **CreateInvoiceWorkspace** | Wizard mode | Step indicator based on `stage`, category completion |
 | **InvoiceStatusActionsDropdown** | Action tooltips | Show blocker messages on disabled actions |
-
----
-
-### Implementation Guidance
-
-#### Server-side blocking template:
-```typescript
-// At mutation entry point (after fetching invoice + company + settings)
-const completeness = evaluateInvoiceCompleteness(
-  invoiceSnapshot,
-  companySnapshot,
-  settingsSnapshot
-);
-
-if (!completeness.allowedActions.includes('SEND')) {
-  throw new TRPCError({
-    code: "BAD_REQUEST",
-    message: `Invoice cannot be sent: ${completeness.blockers.map(b => b.message).join(', ')}`,
-    cause: { blockers: completeness.blockers }
-  });
-}
-```
-
-#### UI-side advisory template:
-```typescript
-// In form component
-const completeness = evaluateInvoiceCompleteness(snapshot, company, settings);
-const canSend = completeness.allowedActions.includes('SEND');
-
-// Show progress
-<ProgressBar percent={completeness.percent} stage={completeness.stage} />
-
-// Disable button + show tooltip
-<Button disabled={!canSend}>
-  {canSend ? 'Send' : `Blocked: ${completeness.blockers[0]?.message}`}
-</Button>
-```
 
 ---
 
 ## 3️⃣ DB/SCHEMA MISMATCHES
 
-### ❌ CRITICAL: Recipient Data Structure
+### ❌ CRITICAL: Recipient Data Structure (§14 UStG Compliance)
 
 #### ICE expects:
 ```typescript
@@ -181,32 +320,47 @@ invoices.clientId → contacts.id (FK relationship)
 ```
 
 **Issue**: ICE requires denormalized recipient snapshot, current DB uses normalized FK
-**Impact**: Cannot populate `InvoiceSnapshot` without JOIN or denormalization
+**Impact**: Cannot populate `InvoiceSnapshot` without JOIN; §14 UStG requires snapshot at time of invoice issuance
+**Legal Risk**: If contact is edited after invoice sent, historical invoice shows wrong address
 
-#### Resolution Options:
+#### Resolution (MANDATORY):
 
-**Option A (Recommended): Populate snapshot via JOIN**
-```typescript
-// When calling ICE, resolve client data:
-const invoice = await db.getInvoiceById(id);
-const client = invoice.clientId ? await db.getContactById(invoice.clientId) : null;
-
-const snapshot: InvoiceSnapshot = {
-  ...invoice,
-  recipientName: client?.name,
-  recipientAddress: client?.address,
-};
-```
-
-**Option B: Add denormalized columns (audit-safe snapshots)**
+**Add denormalized columns:**
 ```sql
 ALTER TABLE invoices
   ADD COLUMN recipientName VARCHAR(255),
   ADD COLUMN recipientAddress TEXT;
 ```
-→ Snapshot recipient data at invoice creation (§14 UStG: recipient address at time of invoice)
-→ Protects against contact edits invalidating historical invoices
-→ **RECOMMENDED for legal compliance**
+
+**Populate on SEND (not on save):**
+```typescript
+// In issue mutation, before db.issueInvoice():
+if (invoice.clientId) {
+  const client = await db.getContactById(invoice.clientId);
+  await db.updateInvoice(invoice.id, {
+    recipientName: client.name,
+    recipientAddress: client.address,
+  });
+}
+```
+
+**Use snapshot for PDF generation:**
+```typescript
+// In PDF template:
+const recipientName = invoice.recipientName || client?.name || "Unknown";
+const recipientAddress = invoice.recipientAddress || client?.address || "";
+```
+
+**Migration path for existing invoices:**
+```sql
+-- Backfill existing sent invoices
+UPDATE invoices i
+JOIN contacts c ON i.clientId = c.id
+SET i.recipientName = c.name,
+    i.recipientAddress = c.address
+WHERE i.sentAt IS NOT NULL
+  AND i.recipientName IS NULL;
+```
 
 ---
 
@@ -242,9 +396,8 @@ const companySnapshot: CompanySnapshot = {
 - `servicePeriodStart: timestamp (nullable)` ✅
 - `servicePeriodEnd: timestamp (nullable)` ✅
 
-**Issue**: DB allows both null, ICE blocks SEND if both null
+**Status**: ✅ DB structure supports ICE requirements
 **Impact**: Existing invoices with null periods cannot be sent (correct per §14 UStG)
-**Action**: None required – ICE behavior is correct
 
 ---
 
@@ -272,7 +425,7 @@ const companySnapshot: CompanySnapshot = {
 
 ---
 
-## 4️⃣ ACTION GATING & LIFECYCLE VIOLATIONS
+## 4️⃣ ACTION GATING & LIFECYCLE CORRECTNESS
 
 ### ❌ Current Violations of ICE Principles
 
@@ -281,12 +434,7 @@ const companySnapshot: CompanySnapshot = {
 - **Should**: Query ICE `allowedActions` to determine what's permitted
 - **Risk**: UI and ICE decisions diverge, user sees "Send" button when ICE blocks SEND
 
-#### 2. Preview Allowed Without Validation
-- **Current**: Preview always works (InvoiceView.tsx:68-110)
-- **ICE Rule**: PREVIEW blocked if `NO_VALID_LINE_ITEMS`, `ISSUER_IDENTITY_INCOMPLETE`, `TAX_ID_MISSING`
-- **Risk**: User previews invoice that cannot legally be sent, misleading appearance of validity
-
-#### 3. ShareInvoiceDialog Only Checks 2 Fields (lines 66-75)
+#### 2. ShareInvoiceDialog Only Checks 2 Fields (lines 66-75)
 - **Current**: Only validates `dueDate` + `total > 0`
 - **ICE**: 13 rules must pass for SEND action
 - **Missing Checks**:
@@ -298,7 +446,7 @@ const companySnapshot: CompanySnapshot = {
   - Invoice number
 - **Risk**: Creates share link for legally incomplete invoice
 
-#### 4. No Server-Side ICE Enforcement on Send
+#### 3. No Server-Side ICE Enforcement on Send
 - **Current**: `issue` mutation (line 486-512) only checks:
   - Draft status
   - No existing sentAt/paidAt
@@ -306,10 +454,10 @@ const companySnapshot: CompanySnapshot = {
 - **Missing**: All ICE completeness rules
 - **Risk**: API allows sending legally incomplete invoices
 
-#### 5. Revert Logic Ignores Completeness
-- **Current**: `revertToDraft` checks `amountPaid === 0` (correct)
-- **Missing**: Should re-evaluate ICE completeness after revert
-- **Risk**: Invoice reverted to draft may appear "ready" when it's not
+#### 4. No Lifecycle-Before-ICE Ordering
+- **Current**: ICE is not called at all in mutations
+- **Should**: Lifecycle checks → ICE → Action
+- **Risk**: ICE evaluates cancelled/archived invoices unnecessarily
 
 ---
 
@@ -348,10 +496,40 @@ const companySnapshot: CompanySnapshot = {
 - Tries to send → ICE blocks with multiple blockers
 - User confused: "I already confirmed this invoice"
 
-**Mitigation**:
-1. **Option A**: Run ICE in `confirmUploadedInvoice`, show warnings (don't block)
-2. **Option B**: Add "Quick Confirm" (skip to DRAFT) vs "Confirm & Send" (requires ICE READY_TO_SEND)
-3. **Recommended**: Option A – allow confirming incomplete uploads, block at send time
+**Mitigation (Clarified UX Messaging):**
+
+**Update UI messaging:**
+```typescript
+// In InvoiceUploadReviewDialog:
+<Alert>
+  Confirmation validates OCR parsing correctness, not legal completeness.
+  You'll need to complete all required fields before sending.
+</Alert>
+```
+
+**Run ICE in confirmUploadedInvoice (advisory only):**
+```typescript
+// After confirmation, before response:
+const completeness = evaluateInvoiceCompleteness(...);
+return {
+  success: true,
+  invoice,
+  completenessWarnings: completeness.blockers, // Show in UI
+  stage: completeness.stage,
+  percent: completeness.percent,
+};
+```
+
+**Show completeness immediately after confirmation:**
+```typescript
+// In InvoiceView after upload confirmation:
+{completenessWarnings.length > 0 && (
+  <Alert variant="warning">
+    Complete {completenessWarnings.length} required fields before sending:
+    <ul>{completenessWarnings.map(w => <li>{w.message}</li>)}</ul>
+  </Alert>
+)}
+```
 
 ---
 
@@ -368,10 +546,11 @@ const companySnapshot: CompanySnapshot = {
 - Tries to send later → ICE blocks with multiple issues
 - User must fix multiple fields before sending
 
-**Mitigation**:
-- **Show ICE warnings on save**: Display completeness percent + blockers as advisory
+**Mitigation:**
+- **Show ICE completeness card on every save** (non-blocking)
 - **Wizard mode**: Guide user through ICE categories (identity → recipient → time → items → legal)
 - **Do NOT block save**: DRAFT state is explicitly for incomplete invoices
+- **Progressive disclosure**: Show "Next: Complete recipient info" after saving
 
 ---
 
@@ -385,15 +564,28 @@ const companySnapshot: CompanySnapshot = {
 - ICE doesn't know about `cancelledAt` or cancellation relationships
 - ICE may allow SEND for cancelled invoice
 
-**Mitigation**:
-- **Apply cancellation checks BEFORE ICE**:
-  ```typescript
-  if (invoice.cancelledAt) {
-    throw new TRPCError({ message: "Cancelled invoices cannot be sent" });
-  }
-  const completeness = evaluateInvoiceCompleteness(...);
-  ```
-- **Order**: Cancellation → ICE → Action
+**Mitigation (Lifecycle-Before-ICE Ordering):**
+```typescript
+// In issue mutation:
+// 1. LIFECYCLE CHECKS FIRST
+if (invoice.cancelledAt) {
+  throw new TRPCError({ message: "Cancelled invoices cannot be sent" });
+}
+if (invoice.archivedAt) {
+  throw new TRPCError({ message: "Archived invoices cannot be sent" });
+}
+
+// 2. ICE EVALUATION SECOND
+const completeness = evaluateInvoiceCompleteness(...);
+if (!completeness.allowedActions.includes('SEND')) {
+  throw new TRPCError({ message: "Invoice incomplete", cause: completeness.blockers });
+}
+
+// 3. ACTION EXECUTION THIRD
+await db.issueInvoice(invoice.id);
+```
+
+**Order**: Lifecycle → ICE → Action
 
 ---
 
@@ -421,75 +613,105 @@ const companySnapshot: CompanySnapshot = {
 
 ---
 
-### 🟡 MEDIUM RISK: Preview Generation Without ICE Validation
+### 🟡 MEDIUM RISK: Preview Watermark Implementation
 
-**Scenario**: User clicks "Update Preview" with incomplete data
-
-**Current Behavior**:
-- InvoiceView.tsx:113-180 – validates: `invoiceNumber` + at least 1 item
-- Generates PDF via `/api/invoices/preview` (pdfRouter.ts:162-242)
-- Missing validation: issuer identity, recipient, tax ID, service period
+**Scenario**: User previews incomplete invoice, exports PDF, uses externally
 
 **ICE Impact**:
-- ICE blocks PREVIEW if missing: issuer identity, tax ID, valid line items
-- User sees PDF with missing/invalid legal data
-- **Risk**: User thinks invoice is valid, tries to use generated PDF externally
+- Preview is allowed for incomplete invoices (per doctrine)
+- Must have visible "DRAFT — NOT LEGALLY VALID" watermark
+- Must not visually resemble final invoice
 
-**Mitigation**:
-1. **Option A (Strict)**: Block preview if ICE blocks PREVIEW action
-2. **Option B (Permissive)**: Allow preview, show "DRAFT - NOT VALID FOR SENDING" watermark
-3. **Recommended**: Option B – preview is a working tool, not a legal document until SEND
+**Mitigation (Presentation Layer):**
+```typescript
+// In server/templates/invoice.ts:
+export function generateInvoiceHTML({
+  invoice,
+  completeness, // NEW: pass ICE result
+  ...
+}: InvoiceTemplateData) {
+  const isDraft = completeness.stage !== 'READY_TO_SEND';
+
+  return {
+    html: `
+      ${isDraft ? `
+        <div class="watermark">
+          DRAFT — NOT LEGALLY VALID
+        </div>
+      ` : ''}
+      ${renderInvoiceContent(...)}
+    `,
+    metadata: {
+      isDraft,
+      blockers: completeness.blockers,
+    }
+  };
+}
+```
+
+**CSS styling:**
+```css
+.watermark {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  font-size: 72px;
+  color: rgba(255, 0, 0, 0.2);
+  font-weight: bold;
+  pointer-events: none;
+  z-index: 9999;
+}
+```
 
 ---
 
-### 🔴 HIGH RISK: Missing Recipient Snapshot
+### 🔴 HIGH RISK: Missing Recipient Snapshot (§14 UStG)
 
 **Scenario**: User creates invoice with clientId → sends invoice → later edits contact address → historical invoice now shows wrong address
 
 **Current Behavior**:
 - Invoice stores `clientId` FK, no denormalized recipient data
 - PDF generation JOINs to `contacts` table (pdfRouter.ts:176-186)
-- **§14 UStG Violation**: Invoice must snapshot recipient address at time of creation
+- **§14 UStG Violation**: Invoice must snapshot recipient address at time of issuance
 
 **ICE Impact**:
 - ICE expects `recipientName` + `recipientAddress` strings (snapshot)
 - Current DB structure cannot populate ICE snapshot without JOIN
 - If contact deleted → invoice cannot be validated by ICE
 
-**Mitigation (CRITICAL for legal compliance)**:
-1. **Add columns**:
-   ```sql
-   ALTER TABLE invoices
-     ADD COLUMN recipientName VARCHAR(255),
-     ADD COLUMN recipientAddress TEXT;
-   ```
-2. **Populate on creation/send**:
-   ```typescript
-   // When creating/sending invoice:
-   const client = await db.getContactById(invoice.clientId);
-   await db.updateInvoice(invoice.id, {
-     recipientName: client.name,
-     recipientAddress: client.address,
-   });
-   ```
-3. **Use snapshot for PDF generation** (not live contact data)
+**Mitigation (See Section 3 - CRITICAL)**
 
 ---
 
 ## 📋 Summary & Recommendations
 
+### Step 0: ICE Code Changes (PREREQUISITE)
+
+✅ **Update ICE-v1.1.1 → v1.1.2** (modify `affects` arrays):
+- Remove PREVIEW from: `INVOICE_NUMBER_MISSING`, `ISSUE_DATE_MISSING`, `TAX_ID_MISSING`
+- Keep PREVIEW for: `NO_VALID_LINE_ITEMS`, `ISSUER_IDENTITY_INCOMPLETE`
+
+---
+
 ### Immediate Actions (Before Production)
 
-1. ✅ **Add ICE to server mutations** (issue, markAsPaid, createShareLink) – blocking validation
-2. ✅ **Add recipientName/recipientAddress columns** – legal compliance per §14 UStG
-3. ✅ **Replace UI validation logic** (InvoiceForm, ShareInvoiceDialog) with ICE calls
-4. ✅ **Update invoiceActions.ts** to query ICE for allowed actions
+1. ✅ **Add recipientName/recipientAddress columns** – §14 UStG compliance (CRITICAL)
+2. ✅ **Add lifecycle-before-ICE checks** to all mutations (cancelled, archived, paid)
+3. ✅ **Add ICE to server mutations** (issue, markAsPaid, createShareLink) – blocking validation
+4. ✅ **Replace UI validation logic** (InvoiceForm, ShareInvoiceDialog) with ICE calls
+5. ✅ **Update invoiceActions.ts** to query ICE for allowed actions
+6. ✅ **Implement watermark system** for draft previews
+
+---
 
 ### Advisory Enhancements
 
-5. 🟡 **Add ICE to InvoiceForm** – show completeness progress + warnings (non-blocking)
-6. 🟡 **Add ICE to confirmUploadedInvoice** – warn about incomplete uploads
-7. 🟡 **Preview watermark** – show "DRAFT" on PDFs for non-READY_TO_SEND invoices
+7. 🟡 **Add ICE to InvoiceForm** – show completeness progress + warnings (non-blocking)
+8. 🟡 **Add ICE to confirmUploadedInvoice** – warn about incomplete uploads with clear messaging
+9. 🟡 **Update upload confirmation UI** – clarify "confirmation ≠ legal readiness"
+
+---
 
 ### Code to Delete
 
@@ -499,33 +721,69 @@ const companySnapshot: CompanySnapshot = {
 - ❌ invoiceRouter.ts:552-558 (markAsPaid validation) → replace with ICE
 - ❌ Zod min(1) for line items → keep Zod, add ICE on top
 
+---
+
 ### Field Mapping Required
 
 ```typescript
-// Company snapshot
-const companySnapshot: CompanySnapshot = {
-  legalName: companySettings.companyName,      // ← name mismatch
-  address: companySettings.address,
-  taxNumber: companySettings.steuernummer,     // ← name mismatch
-  vatId: companySettings.ustIdNr,              // ← name mismatch
-};
+// Helper function to create ICE snapshots:
+export async function createICESnapshots(invoiceId: number) {
+  const invoice = await db.getInvoiceById(invoiceId);
+  const companySettings = await db.getCompanySettings(invoice.userId);
 
-// Invoice snapshot (with client JOIN)
-const client = invoice.clientId
-  ? await db.getContactById(invoice.clientId)
-  : null;
+  // Resolve client (use snapshot if exists, fallback to JOIN)
+  let recipientName = invoice.recipientName;
+  let recipientAddress = invoice.recipientAddress;
 
-const invoiceSnapshot: InvoiceSnapshot = {
-  ...invoice,
-  recipientName: client?.name,                 // ← denormalize
-  recipientAddress: client?.address,           // ← denormalize
-};
+  if (!recipientName && invoice.clientId) {
+    const client = await db.getContactById(invoice.clientId);
+    recipientName = client?.name;
+    recipientAddress = client?.address;
+  }
 
-// Settings snapshot
-const settingsSnapshot: InvoiceSettingsSnapshot = {
-  isKleinunternehmer: companySettings.isKleinunternehmer,
-};
+  const invoiceSnapshot: InvoiceSnapshot = {
+    invoiceNumber: invoice.invoiceNumber,
+    issueDate: invoice.issueDate,
+    dueDate: invoice.dueDate,
+    servicePeriodStart: invoice.servicePeriodStart,
+    servicePeriodEnd: invoice.servicePeriodEnd,
+    recipientName,
+    recipientAddress,
+    items: invoice.items?.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    })),
+    total: invoice.total,
+  };
+
+  const companySnapshot: CompanySnapshot = {
+    legalName: companySettings.companyName,
+    address: companySettings.address,
+    taxNumber: companySettings.steuernummer,
+    vatId: companySettings.ustIdNr,
+  };
+
+  const settingsSnapshot: InvoiceSettingsSnapshot = {
+    isKleinunternehmer: companySettings.isKleinunternehmer,
+  };
+
+  return { invoiceSnapshot, companySnapshot, settingsSnapshot };
+}
 ```
+
+---
+
+## 🧭 Constitutional Summary (Final)
+
+1. **ICE is the single source of truth for legal finality (SEND)**
+2. **SEND is non-negotiable and ICE-gated**
+3. **PREVIEW is a tooling concern with minimal ICE constraints**
+4. **Draft previews must be visibly marked as non-legal**
+5. **Business lifecycle rules are evaluated before ICE**
+6. **UI must never invent legality rules**
+7. **Confirmation validates parsing, not completeness**
+8. **§14 UStG compliance is non-negotiable**
 
 ---
 
@@ -549,14 +807,7 @@ const settingsSnapshot: InvoiceSettingsSnapshot = {
 
 ---
 
-**Audit completed. ICE-v1.1.1 is ready for integration with the action items above.**
+**Audit completed. ICE-v1.1.2 is ready for integration with the clarified doctrine above.**
 
----
-
-## Guiding Principles (Constitutional)
-
-1. ICE-v1.1.1 is the single source of truth for invoice completeness
-2. UI must never invent its own completeness logic
-3. AI may suggest changes, but only ICE governs legality
-4. Prefer deletion over duplication
-5. §14 UStG compliance is non-negotiable
+**Version**: ICE-v1.1.2 — Legal Authority Clarification
+**No architectural rollback required. Only rule `affects` arrays and integration wiring need updating.**
