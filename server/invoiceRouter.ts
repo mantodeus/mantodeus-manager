@@ -5,6 +5,12 @@ import * as db from "./db";
 import { parseInvoicePdf } from "./_core/pdfParser";
 import { storagePut, generateFileKey, deleteFromStorage } from "./storage";
 import { logger } from "./_core/logger";
+import {
+  evaluateInvoiceCompleteness,
+  buildInvoiceSnapshot,
+  buildCompanySnapshot,
+  buildSettingsSnapshot,
+} from "./lib/completeness/ice";
 
 const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required"),
@@ -506,6 +512,20 @@ export const invoiceRouter = router({
       }
       checkInvoiceNeedsReview(invoice, "sent");
 
+      const companySettings = await db.getCompanySettingsByUserId(userId);
+      const contact = invoice.clientId ? await db.getContactById(invoice.clientId) : null;
+      const invoiceSnapshot = buildInvoiceSnapshot(invoice, contact);
+      const companySnapshot = buildCompanySnapshot(companySettings ?? {});
+      const settingsSnapshot = buildSettingsSnapshot(companySettings ?? {});
+      const completeness = evaluateInvoiceCompleteness(invoiceSnapshot, companySnapshot, settingsSnapshot);
+
+      if (!completeness.allowedActions.includes("SEND")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Invoice cannot be marked as paid: ${completeness.blockers.map((b) => b.message).join(", ")}`,
+        });
+      }
+
       await db.issueInvoice(invoice.id);
       const updated = await db.getInvoiceById(invoice.id);
       return mapInvoiceToPayload(updated);
@@ -546,15 +566,19 @@ export const invoiceRouter = router({
         }
         checkInvoiceNeedsReview(invoice, "marked as paid");
       }
-      
-      // Ensure invoice has required fields before marking as paid
-      // This prevents marking incomplete invoices as paid
-      if (!invoice.issueDate) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice must have an issue date before it can be marked as paid" });
-      }
-      const total = Number(invoice.total || 0);
-      if (total <= 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice total must be greater than 0 before it can be marked as paid" });
+
+      const companySettings = await db.getCompanySettingsByUserId(userId);
+      const contact = invoice.clientId ? await db.getContactById(invoice.clientId) : null;
+      const invoiceSnapshot = buildInvoiceSnapshot(invoice, contact);
+      const companySnapshot = buildCompanySnapshot(companySettings ?? {});
+      const settingsSnapshot = buildSettingsSnapshot(companySettings ?? {});
+      const completeness = evaluateInvoiceCompleteness(invoiceSnapshot, companySnapshot, settingsSnapshot);
+
+      if (!completeness.allowedActions.includes("SEND")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Invoice cannot be issued: ${completeness.blockers.map((b) => b.message).join(", ")}`,
+        });
       }
 
       await db.markInvoiceAsPaid(invoice.id, input.paidAt, input.alsoMarkAsSent && !invoice.sentAt);

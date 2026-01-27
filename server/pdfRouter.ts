@@ -10,6 +10,12 @@ import * as db from "./db";
 import { storagePut, createPresignedReadUrl, generateFileKey } from "./storage";
 import { nanoid } from "nanoid";
 import { ENV } from "./_core/env";
+import {
+  evaluateInvoiceCompleteness,
+  buildInvoiceSnapshot,
+  buildCompanySnapshot,
+  buildSettingsSnapshot,
+} from "./lib/completeness/ice";
 
 export const pdfRouter = router({
   /**
@@ -311,22 +317,6 @@ export const pdfRouter = router({
           });
         }
 
-        // Validate: dueDate and totalAmount > 0 required before sending
-        if (!invoice.dueDate) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Invoice must have a due date before it can be sent",
-          });
-        }
-        const total = Number(invoice.total || 0);
-        if (total <= 0) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Invoice total must be greater than 0",
-          });
-        }
-
-        // Always regenerate PDF with latest invoice data (per spec)
         const companySettings = await db.getCompanySettingsByUserId(ctx.user.id);
         if (!companySettings) {
           throw new TRPCError({
@@ -335,6 +325,20 @@ export const pdfRouter = router({
           });
         }
 
+        const contact = invoice.clientId ? await db.getContactById(invoice.clientId) : null;
+        const invoiceSnapshot = buildInvoiceSnapshot(invoice, contact);
+        const companySnapshot = buildCompanySnapshot(companySettings);
+        const settingsSnapshot = buildSettingsSnapshot(companySettings);
+        const completeness = evaluateInvoiceCompleteness(invoiceSnapshot, companySnapshot, settingsSnapshot);
+
+        if (!completeness.allowedActions.includes("SEND")) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Cannot create share link: ${completeness.blockers.map((b) => b.message).join(", ")}`,
+          });
+        }
+
+        // Always regenerate PDF with latest invoice data (per spec)
         // Get client contact if linked
         let client = null;
         if (invoice.contactId || invoice.clientId) {
